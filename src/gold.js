@@ -161,10 +161,10 @@ function unrealized(pos, price) {
  *  curveEvery : > 0 → enregistre la valeur du compte toutes les N bougies (courbe de capital).
  */
 function backtest(strategy, candles, {
-  size = 1000, feePct = 0.05, daily = null, from = 0, to = Infinity, barSec = 3600, fx = null, ind: pre = null,
+  size = 1000, feePct = 0.05, daily = null, from = 0, to = Infinity, barSec = 3600, fx = null, vix = null, ind: pre = null,
   compound = false, capital: startCapital = size, positionPct = 100, curveEvery = 0, financingPct = 0,
 } = {}) {
-  const ind = pre || (strategy.scalp ? computeScalp(candles, barSec) : computeAll(candles, daily, barSec, fx));
+  const ind = pre || (strategy.scalp ? computeScalp(candles, barSec) : computeAll(candles, daily, barSec, fx, vix));
   const trades = [];
   const curve = [];
   let pos = null;
@@ -276,14 +276,15 @@ class MarketTrader {
     if (!M.enabled) return [];
     const tfs = [...new Set(this.strategies.map(tfOf))];
     const needsFx = this.strategies.some((s) => s.needsFx);
+    const needsVix = this.strategies.some((s) => s.needsVix);
     let data;
     try {
-      data = await M.fetch(tfs, needsFx);
+      data = await M.fetch(tfs, { needsFx, needsVix });
     } catch (err) {
       console.warn(`[${M.id}] données indisponibles (${err.message}), passage ignoré`);
       return [];
     }
-    const { price, stops, daily, fx, series } = data;
+    const { price, stops, daily, fx, vix, series } = data;
     if (!price) {
       console.warn(`[${M.id}] prix indisponible, passage ignoré`);
       return [];
@@ -296,7 +297,7 @@ class MarketTrader {
       const raw = series[tf];
       if (!raw) continue;
       const closed = raw.filter((c) => c.t + sec <= now);
-      byTf[tf] = { closed, ind: computeAll(closed, daily, sec, fx) };
+      byTf[tf] = { closed, ind: computeAll(closed, daily, sec, fx, vix) };
     }
     const events = [];
     this.state.lastPrice = price;

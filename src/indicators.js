@@ -320,18 +320,84 @@ function dollarSignal(candles, fxDaily, barSec) {
   return out;
 }
 
+/**
+ * Calendrier (bougies journalières) : rang du jour de bourse dans le mois (1 = premier)
+ * et nombre de jours ouvrés (lun–ven) restant dans le mois APRÈS ce jour.
+ */
+function calendar(candles) {
+  const tdom = [];
+  const bizLeft = [];
+  candles.forEach((c, i) => {
+    const d = new Date(c.t * 1000);
+    const prev = i > 0 ? new Date(candles[i - 1].t * 1000) : null;
+    const same = prev && prev.getUTCMonth() === d.getUTCMonth() && prev.getUTCFullYear() === d.getUTCFullYear();
+    tdom.push(same ? tdom[i - 1] + 1 : 1);
+    let left = 0;
+    const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
+    while (x.getUTCMonth() === d.getUTCMonth()) {
+      const wd = x.getUTCDay();
+      if (wd !== 0 && wd !== 6) left++;
+      x.setUTCDate(x.getUTCDate() + 1);
+    }
+    bizLeft.push(left);
+  });
+  return { tdom, bizLeft };
+}
+
+/** VIX aligné sur les bougies (dernière valeur connue à la date de la bougie) + moyennes. */
+function alignVix(candles, vix) {
+  const n = candles.length;
+  const out = { c: new Array(n).fill(null), sma10: new Array(n).fill(null), sma20: new Array(n).fill(null), sma50: new Array(n).fill(null) };
+  if (!vix || vix.length < 60) return out;
+  const closes = vix.map((v) => v.c);
+  const s10 = sma(closes, 10);
+  const s20 = sma(closes, 20);
+  const s50 = sma(closes, 50);
+  let j = -1;
+  for (let i = 0; i < n; i++) {
+    while (j + 1 < vix.length && vix[j + 1].t <= candles[i].t) j++;
+    if (j < 0) continue;
+    out.c[i] = closes[j];
+    out.sma10[i] = s10[j];
+    out.sma20[i] = s20[j];
+    out.sma50[i] = s50[j];
+  }
+  return out;
+}
+
+/** Plus bas / plus haut des clôtures sur n bougies (courante incluse). */
+function rollingCloses(closes, n) {
+  const min = [];
+  const max = [];
+  for (let i = 0; i < closes.length; i++) {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (let j = Math.max(0, i - n + 1); j <= i; j++) {
+      lo = Math.min(lo, closes[j]);
+      hi = Math.max(hi, closes[j]);
+    }
+    min.push(lo);
+    max.push(hi);
+  }
+  return { min, max };
+}
+
 /** Rendement sur n bougies (null au début). */
 function roc(closes, n) {
   return closes.map((c, i) => (i >= n ? c / closes[i - n] - 1 : null));
 }
 
 /** Calcule tous les indicateurs utilisés par les stratégies, une seule fois. barSec = durée d'une bougie. */
-function computeAll(candles, daily = null, barSec = 3600, fx = null) {
+function computeAll(candles, daily = null, barSec = 3600, fx = null, vix = null) {
   const closes = candles.map((c) => c.c);
   const p = pvt(candles);
   const bb = bollinger(closes, 20, 2);
   const bandwidth = closes.map((_, i) => (bb.mid[i] ? (bb.upper[i] - bb.lower[i]) / bb.mid[i] : null));
   return {
+    ibs: candles.map((c) => (c.h > c.l ? (c.c - c.l) / (c.h - c.l) : 0.5)),
+    c7: rollingCloses(closes, 7),
+    cal: barSec === 86400 ? calendar(candles) : null,
+    vix: alignVix(candles, vix),
     ema10: ema(closes, 10),
     ichi: ichimoku(candles),
     adx: adx(candles, 14),
@@ -343,6 +409,7 @@ function computeAll(candles, daily = null, barSec = 3600, fx = null) {
     barSec,
     hour: candles.map((c) => Math.floor((c.t % 86400) / 3600)),
     sma5: sma(closes, 5),
+    sma50: sma(closes, 50),
     sma200: sma(closes, 200),
     rsi2: rsi(closes, 2),
     roc63: roc(closes, 63),
@@ -472,5 +539,5 @@ function computeScalp(candles, barSec = 300) {
 module.exports = {
   sessionVwap, stochastic, openingRange, computeScalp,
   sma, ema, rsi, atr, bollinger, macd, donchian, supertrend, pvt, dailyTrend, candlePattern, swings, asiaRange, roc,
-  ichimoku, adx, heikinAshi, dollarSignal, computeAll,
+  ichimoku, adx, heikinAshi, dollarSignal, calendar, alignVix, rollingCloses, computeAll,
 };

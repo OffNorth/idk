@@ -644,6 +644,134 @@ STRATEGIES.push(
 );
 
 /* ------------------------------------------------------------------ */
+/* Lot Nasdaq : effets connus des indices actions (achat seul)          */
+/* ------------------------------------------------------------------ */
+
+const EQUITY = { tf: '1d', markets: ['nas100'], warmup: 210 };
+
+STRATEGIES.push(
+  {
+    ...EQUITY,
+    id: 'tom',
+    name: 'Effet de début de mois',
+    desc: 'Effet calendaire documenté sur les indices actions (Ariel 1987, Lakonishok & Smidt 1988) : les flux d’épargne arrivent en fin / début de mois. Achat à la clôture de l’avant-dernier jour ouvré du mois, revente à la clôture du 3e jour de bourse du mois suivant. Stop 3 ATR.',
+    evaluate(ind, i) {
+      const { tdom, bizLeft } = ind.cal || { tdom: [], bizLeft: [] };
+      return {
+        entry: bizLeft[i] === 1 ? 'long' : null,
+        exitLong: tdom[i] >= 3 && tdom[i] <= 10, // 3e jour de bourse du nouveau mois
+        exitShort: true,
+        sl: 3 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...EQUITY,
+    id: 'ibs',
+    name: 'IBS : clôture au plus bas du jour',
+    desc: 'Retour à la moyenne très court terme bien connu sur les indices : quand l’indice clôture dans les 20 % les plus bas de sa journée (IBS < 0,2) au-dessus de sa moyenne 200 jours, acheter ; revendre quand il clôture dans le haut de sa journée (IBS > 0,8) ou au-dessus du plus haut de la veille. Stop 3 ATR.',
+    evaluate(ind, i) {
+      const k = ind.candles;
+      return {
+        entry: ind.ibs[i] < 0.2 && ind.closes[i] > ind.sma200[i] ? 'long' : null,
+        exitLong: ind.ibs[i] > 0.8 || ind.closes[i] > k[i - 1].h,
+        exitShort: true,
+        sl: 3 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...EQUITY,
+    id: 'double7',
+    name: 'Double 7 (Connors)',
+    desc: 'Larry Connors : au-dessus de la moyenne 200 jours, acheter quand l’indice clôture à son plus bas de 7 jours, revendre quand il clôture à son plus haut de 7 jours. Stop 3 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes[i];
+      return {
+        entry: c > ind.sma200[i] && c <= ind.c7.min[i] ? 'long' : null,
+        exitLong: c >= ind.c7.max[i],
+        exitShort: true,
+        sl: 3 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...EQUITY,
+    id: 'down3',
+    name: '3 jours de baisse',
+    desc: 'Maison : dans une tendance haussière (prix > moyenne 200), acheter après 3 clôtures en baisse d’affilée, revendre à la première clôture en hausse. Stop 3 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes;
+      const down3 = c[i] < c[i - 1] && c[i - 1] < c[i - 2] && c[i - 2] < c[i - 3];
+      return {
+        entry: down3 && c[i] > ind.sma200[i] ? 'long' : null,
+        exitLong: c[i] > c[i - 1],
+        exitShort: true,
+        sl: 3 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...EQUITY,
+    id: 'sma200',
+    name: 'Filtre moyenne 200 jours',
+    desc: 'Le « market timing » le plus connu (Faber 2007) : être investi tant que l’indice est au-dessus de sa moyenne 200 jours (avec 2 % de marge pour éviter les allers-retours), sortir en dessous. Garde l’essentiel des hausses et évite le cœur des krachs. Stop de protection 5 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes[i];
+      const m = ind.sma200[i];
+      return {
+        entry: c > m * 1.02 ? 'long' : null,
+        exitLong: c < m * 0.98,
+        exitShort: true,
+        sl: 5 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...EQUITY,
+    id: 'vixspike',
+    name: 'Pic de peur (VIX)',
+    desc: 'Maison : quand le VIX (indice de la peur) dépasse de 25 % sa moyenne 20 jours alors que l’indice reste au-dessus de sa moyenne 200 jours, acheter la panique ; revendre quand le VIX repasse sous sa moyenne 10 jours. Stop 3 ATR.',
+    needsVix: true,
+    evaluate(ind, i) {
+      const v = ind.vix;
+      const spike = v.c[i] !== null && v.sma20[i] !== null && v.c[i] > 1.25 * v.sma20[i];
+      return {
+        entry: spike && ind.closes[i] > ind.sma200[i] ? 'long' : null,
+        exitLong: v.c[i] !== null && v.sma10[i] !== null && v.c[i] < v.sma10[i],
+        exitShort: true,
+        sl: 3 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...EQUITY,
+    id: 'vixcalm',
+    name: 'Marché calme (VIX)',
+    desc: 'Maison : être investi quand la peur est faible (VIX sous sa moyenne 50 jours) et l’indice au-dessus de sa moyenne 50 jours ; sortir quand le VIX dépasse de 10 % sa moyenne 50 jours ou que l’indice passe sous sa moyenne 50. Stop 4 ATR.',
+    needsVix: true,
+    evaluate(ind, i) {
+      const v = ind.vix;
+      const c = ind.closes;
+      const calm = (k) => v.c[k] !== null && v.sma50[k] !== null && v.c[k] < v.sma50[k] && c[k] > ind.sma50[k];
+      return {
+        entry: became(calm, i) ? 'long' : null,
+        exitLong: (v.c[i] !== null && v.sma50[i] !== null && v.c[i] > 1.1 * v.sma50[i]) || c[i] < ind.sma50[i],
+        exitShort: true,
+        sl: 4 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+);
+
+/* ------------------------------------------------------------------ */
 /* Versions « achat seul » (indices actions : les ventes à découvert    */
 /* y font perdre sur le long terme)                                    */
 /* ------------------------------------------------------------------ */
@@ -679,7 +807,7 @@ function withTf(s, tf) {
 
 /** ids : 'all', ou liste d'ids, éventuellement suffixés d'une unité de temps (« ema@6h »). */
 function selectStrategies(ids) {
-  if (!ids || !ids.length || ids.includes('all')) return STRATEGIES.filter((s) => !s.scalp);
+  if (!ids || !ids.length || ids.includes('all')) return STRATEGIES.filter((s) => !s.scalp && !s.markets);
   const out = [];
   for (const id of ids) {
     const [base, tf] = id.split('@');

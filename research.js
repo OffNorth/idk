@@ -42,7 +42,8 @@ const MARKETS = {
     async load() {
       const daily = await cachedYahoo(CACHE, '^NDX', '1d');
       const hourly = await cachedYahoo(CACHE, 'NQ=F', '1h', { range: '730d' });
-      return { series: { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': daily }, daily, fx: null };
+      const vix = await cachedYahoo(CACHE, '^VIX', '1d');
+      return { series: { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': daily }, daily, fx: null, vix };
     },
   },
 };
@@ -75,7 +76,7 @@ function exposure(list, from, to) {
 
 (async () => {
   console.log(`Chargement des données : ${M.name}…`);
-  const { series, daily, fx } = await M.load();
+  const { series, daily, fx, vix = null } = await M.load();
   const step = (series['1d'][series['1d'].length - 1].t - series['1d'][0].t) / (365 * 86400) > 15 ? 5 : 1;
 
   console.log(`\n${M.name} · frais ${FEE} % par côté · 1 000 $ par trade`);
@@ -95,13 +96,14 @@ function exposure(list, from, to) {
   const rows = [];
   for (const base of STRATEGIES) {
     if (base.id === 'hold' || base.scalp || M.exclude.includes(base.id)) continue; // scalp : voir scalp.js
+    if (base.markets && !base.markets.includes(MARKET)) continue; // stratégie propre à un autre marché
     for (const tf of base.onlyTf || ['1h', '6h', '1d']) {
       const s = withTf(base, tf);
       const candles = series[tf];
       const barSec = TF_SEC[tf];
       const split = Date.parse(SPLITS[tf]) / 1000;
       const cut = candles.findIndex((c) => c.t >= split);
-      const opts = { size: SIZE, feePct: FEE, daily, barSec, fx };
+      const opts = { size: SIZE, feePct: FEE, daily, barSec, fx, vix };
       const train = backtest(s, candles.slice(0, cut), opts);
       const test = backtest(s, candles, { ...opts, from: cut });
       const ys = Object.entries(buckets(train.list, 1));

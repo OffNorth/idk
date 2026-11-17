@@ -53,7 +53,8 @@ async function loadHistory(marketId, cacheDir) {
   if (marketId === 'nas100') {
     const { cachedYahoo } = require('./yahoo');
     const d = await cachedYahoo(cacheDir, '^NDX', '1d');
-    return { '1d': d, daily: d, fx: null, source: 'indice ^NDX, Yahoo Finance' };
+    const vix = await cachedYahoo(cacheDir, '^VIX', '1d').catch(() => null);
+    return { '1d': d, daily: d, fx: null, vix, source: 'indice ^NDX, Yahoo Finance' };
   }
   const hourly = await loadHourly(cacheDir);
   const fx = aggregate(await loadHourly(cacheDir, { symbol: 'EURUSDT' }), TF_SEC['1d']);
@@ -77,7 +78,7 @@ async function historyChart(cfg, { marketId = 'gold', fromYear, cacheDir = CACHE
     const candles = data[tf];
     const from = Math.max(0, candles.findIndex((c) => c.t >= fromT));
     const r = backtest(s, candles, {
-      daily: data.daily, fx: data.fx, barSec: TF_SEC[tf], feePct: market.feePct, financingPct: market.financingPct, from,
+      daily: data.daily, fx: data.fx, vix: data.vix, barSec: TF_SEC[tf], feePct: market.feePct, financingPct: market.financingPct, from,
       compound: true, capital: market.startCapital, positionPct: market.positionPct,
       curveEvery: Math.max(1, Math.round(86400 / TF_SEC[tf])), // un point par jour
     });

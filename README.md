@@ -116,7 +116,20 @@ Pour relancer : `npm run research` (frais 0,05 %), `npm run research -- 0.1` (fr
 Le bot trade aussi le **Nasdaq 100** en simulation, comme un CFD NAS100 :
 - Prix : **indice ^NDX** via Yahoo Finance (gratuit, sans clé, non officiel), bougies 5 min pour les stops.
 - Stratégies (retenues par le banc d'essai, **achat seul** : vendre le Nasdaq à découvert fait perdre sur le long terme) :
-  **RSI 2**, **MACD + EMA 200 (achat seul)**, **Momentum de tendance**, **EMA 20/50 (achat seul)**, + la référence.
+
+| Stratégie | Idée | 2010–2026 (CFD) | Sans financement |
+|---|---|---|---|
+| **Filtre moyenne 200 jours** (`sma200`) | investi au-dessus de la moyenne 200 j (marge 2 %), dehors en dessous | **+7,0 %/an**, pire baisse −32 % | +11,3 %/an |
+| **Marché calme (VIX)** (`vixcalm`) | investi quand le VIX est sous sa moyenne 50 j et l'indice au-dessus de sa moyenne 50 | +5,3 %/an, −22 % | +9,0 %/an |
+| Momentum de tendance (`tsmom`) | prix > moyenne 200 et hausse sur 3 mois | +3,9 %/an, −28 % | +8,2 %/an |
+| MACD + EMA 200, achat seul (`macd_long`) | croisement MACD dans le sens de l'EMA 200 | +3,6 %/an, −18 % | +5,8 %/an |
+| RSI 2 (`rsi2`) | racheter un repli très court dans la tendance | +3,4 %/an, −17 % | +4,2 %/an |
+| Effet de début de mois (`tom`) | acheté l'avant-dernier jour du mois, revendu au 3e jour du suivant | +3,1 %/an, −16 % | +4,3 %/an |
+| Double 7 (`double7`) | plus bas de 7 j au-dessus de la moyenne 200, revente au plus haut de 7 j | +3,1 %/an, −19 % | +5,0 %/an |
+| *Référence : garder l'indice* | | *+17,0 %/an, −36 %* | |
+
+  Aussi disponibles (`NAS_STRATEGIES`) : `ibs` (IBS, +6,2 %/an mais non retenue sur la période de choix),
+  `down3` (3 jours de baisse), `vixspike` (pic de peur VIX), `ema_long`. Le VIX vient de Yahoo (`^VIX`).
 - Coûts : 0,01 % par côté **+ financement de nuit 6 %/an** (`NAS_FINANCING_PCT`) au prorata des jours en position.
 - Messages marqués 🇺🇸 sur le canal, bilan et graphique séparés ; commande `/nasdaq`, `/historique nasdaq 2010`.
 
@@ -124,17 +137,10 @@ Le bot trade aussi le **Nasdaq 100** en simulation, comme un CFD NAS100 :
 
 ![Évolution simulée des stratégies Nasdaq 100 depuis 2010](docs/historique-nasdaq-2010.png)
 
-| Stratégie | Valeur finale | Pire baisse |
-|---|---|---|
-| *Référence : garder l'indice (ETF, sans financement)* | *14 185 $ (+1 319 %)* | *−36 %* |
-| Momentum de tendance | 1 907 $ (+91 %) | −28 % |
-| MACD + EMA 200 (achat seul) | 1 829 $ (+83 %) | −18 % |
-| RSI 2 | 1 755 $ (+76 %) | −17 % |
-| EMA 20/50 (achat seul) | 1 717 $ (+72 %) | −13 % |
 
-⚠️ **Sur le Nasdaq, garder l'indice a écrasé toutes les stratégies** depuis 2010 : l'indice a été multiplié par 14,
-les stratégies ne sont en position qu'une partie du temps (13 à 60 %) et paient le financement du CFD.
-Elles baissent beaucoup moins (−13 à −28 % contre −36 %), mais ratent l'essentiel de la hausse.
+⚠️ **Sur le Nasdaq, garder l'indice reste devant toutes les stratégies** depuis 2010 (+17 %/an) : l'indice a été multiplié
+par 14, les stratégies ne sont en position qu'une partie du temps et paient le financement du CFD. La meilleure
+(filtre moyenne 200 jours) fait +7 %/an en CFD, +11 %/an sans financement, en évitant le cœur des krachs.
 Le paper trading les compare en direct à la référence.
 
 ## Banc d'essai Nasdaq 100 (`npm run research -- nas100`)
