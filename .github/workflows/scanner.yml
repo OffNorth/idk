@@ -1,22 +1,20 @@
-# Lance le scanner automatiquement sur les serveurs de GitHub (gratuit, sans carte bancaire).
-# À configurer une fois : Settings → Secrets and variables → Actions →
-#   Secrets : TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
-name: Scanner meme coins
+# Mode secours : un passage de paper trading de l'or sur les serveurs de GitHub (gratuit, sans serveur).
+# Inutile si le bot tourne déjà en continu ailleurs (Bot-Hosting…) : laisse ce workflow désactivé,
+# sinon les trades seraient publiés en double.
+# Configuration : Settings → Secrets and variables → Actions → Secrets : TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
+name: Paper trading or
 
 on:
   schedule:
-    # Toutes les 10 min (~4300 min/mois).
-    # Dépôt privé : seulement 2000 min gratuites/mois → quota épuisé vers le 14 du mois.
-    # Dépôt public : minutes illimitées. Pour rester en privé sans dépasser : '*/30 * * * *'.
     - cron: '*/10 * * * *'
   workflow_dispatch: # bouton « Run workflow » pour lancer à la main
 
 concurrency:
-  group: scanner
+  group: gold
   cancel-in-progress: false
 
 jobs:
-  scan:
+  gold:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -29,43 +27,28 @@ jobs:
 
       - run: npm ci --omit=dev
 
-      # Mémoire entre deux passages : tokens suivis + alertes déjà envoyées (anti-doublon)
+      # Mémoire entre deux passages : positions ouvertes et historique des trades
       - name: Restaurer la mémoire
         uses: actions/cache/restore@v4
         with:
           path: data
-          key: scanner-data-${{ github.run_id }}
-          restore-keys: scanner-data-
+          key: gold-data-${{ github.run_id }}
+          restore-keys: gold-data-
 
-      - name: Scan et publication
+      - name: Paper trading
         run: node once.js
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           DATA_DIR: data
-          # Réglages optionnels : Settings → Secrets and variables → Actions → onglet Variables
-          MIN_MARKET_CAP: ${{ vars.MIN_MARKET_CAP }}
-          MAX_MARKET_CAP: ${{ vars.MAX_MARKET_CAP }}
-          MIN_ALERT_SCORE: ${{ vars.MIN_ALERT_SCORE }}
-          MAX_ALERTS_PER_SCAN: ${{ vars.MAX_ALERTS_PER_SCAN }}
-          TOP_SUMMARY_HOURS: ${{ vars.TOP_SUMMARY_HOURS }}
-          PAPER_TRADING: ${{ vars.PAPER_TRADING }}
-          PAPER_SIZE_USD: ${{ vars.PAPER_SIZE_USD }}
-          PAPER_TP_PCT: ${{ vars.PAPER_TP_PCT }}
-          PAPER_SL_PCT: ${{ vars.PAPER_SL_PCT }}
-          PAPER_TRAIL_START_PCT: ${{ vars.PAPER_TRAIL_START_PCT }}
-          PAPER_TRAIL_PCT: ${{ vars.PAPER_TRAIL_PCT }}
-          PAPER_MAX_HOLD_HOURS: ${{ vars.PAPER_MAX_HOLD_HOURS }}
-          GOLD_TRADING: ${{ vars.GOLD_TRADING }}
-          GOLD_STRATEGIES: ${{ vars.GOLD_STRATEGIES }}
-          SCANNER: ${{ vars.SCANNER }}
           GOLD_SIZE_USD: ${{ vars.GOLD_SIZE_USD }}
-          # Les tokens suivis ne sont revus qu'aux passages : on les garde plus longtemps
-          WATCH_HOURS: ${{ vars.WATCH_HOURS || '72' }}
+          GOLD_FEE_PCT: ${{ vars.GOLD_FEE_PCT }}
+          GOLD_STRATEGIES: ${{ vars.GOLD_STRATEGIES }}
+          SUMMARY_HOURS: ${{ vars.SUMMARY_HOURS }}
 
       - name: Sauvegarder la mémoire
         if: always()
         uses: actions/cache/save@v4
         with:
           path: data
-          key: scanner-data-${{ github.run_id }}
+          key: gold-data-${{ github.run_id }}

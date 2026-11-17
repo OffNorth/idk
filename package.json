@@ -1,13 +1,13 @@
 {
-  "name": "memecoin-scanner-bot",
+  "name": "gold-paper-bot",
   "version": "1.0.0",
-  "description": "Bot Telegram qui scanne les meme coins Solana entre 100k$ et 2M$ de market cap et publie les meilleurs",
+  "description": "Bot Telegram de paper trading de l'or avec plusieurs stratégies",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
-    "scan": "node scan.js",
+    "once": "node once.js",
     "backtest": "node backtest.js",
-    "check": "node --check bot.js && node --check scan.js && node --check once.js && node --check backtest.js && for f in src/*.js; do node --check $f || exit 1; done",
+    "check": "node --check bot.js && node --check once.js && node --check backtest.js && for f in src/*.js; do node --check $f || exit 1; done",
     "test": "node --test test/*.test.js"
   },
   "engines": {
