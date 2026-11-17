@@ -1,30 +1,70 @@
 #!/usr/bin/env node
 /**
- * Banc d'essai : toutes les stratégies × toutes les unités de temps (1 h, 6 h, 1 j) sur ~6 ans de PAXG
- * (archive Binance), avec séparation CHOIX / VÉRIFICATION pour éviter de se tromper soi-même.
+ * Banc d'essai : toutes les stratégies × toutes les unités de temps (1 h, 6 h, 1 j),
+ * avec séparation CHOIX / VÉRIFICATION pour éviter de se tromper soi-même.
  *
- *   npm run research                  → frais 0,05 % par côté, coupure au 2024-07-01
- *   npm run research -- 0.1           → frais 0,1 % par côté
- *   npm run research -- 0.05 2023-07-01
+ *   npm run research                      → or (PAXG, archive Binance, ~6 ans), frais 0,05 %
+ *   npm run research -- 0.1               → or, frais 0,1 % par côté
+ *   npm run research -- 0.05 2023-07-01   → or, autre date de coupure
+ *   npm run research -- nas100            → Nasdaq 100 (journalier depuis 1985, 1 h sur ~2 ans), frais 0,01 %
+ *   npm run research -- nas100 0.02
  *
  * Règle de sélection fixée AVANT de regarder la vérification (période de choix uniquement) :
  *   PnL > 0, profit factor ≥ 1,15, au moins 20 trades, et positive au moins 60 % des années.
  */
 const path = require('path');
 const { loadHourly, aggregate } = require('./src/history');
+const { cachedYahoo } = require('./src/yahoo');
 const { backtest } = require('./src/gold');
 const { STRATEGIES, withTf, tfOf, TF_SEC } = require('./src/strategies');
 
-const FEE = Number(process.argv[2]) || 0.05;
-const SPLIT = process.argv[3] || '2024-07-01';
+const CACHE = path.join(__dirname, 'data', 'research');
+
+/** Marchés disponibles : données, frais par défaut, dates de coupure choix / vérification. */
+const MARKETS = {
+  gold: {
+    name: 'Or (PAXG)',
+    fee: 0.05,
+    splits: { '1h': '2024-07-01', '6h': '2024-07-01', '1d': '2024-07-01' },
+    exclude: [],
+    async load() {
+      const hourly = await loadHourly(CACHE, { log: console.log });
+      const fx = aggregate(await loadHourly(CACHE, { log: console.log, symbol: 'EURUSDT' }), TF_SEC['1d']);
+      const daily = aggregate(hourly, TF_SEC['1d']);
+      return { series: { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': daily }, daily, fx };
+    },
+  },
+  nas100: {
+    name: 'Nasdaq 100',
+    fee: 0.01, // CFD NAS100 : spread ~1–2 points sur ~20 000
+    splits: { '1h': '2025-08-01', '6h': '2025-08-01', '1d': '2010-01-01' },
+    exclude: ['dollar'], // pas de données EUR/USD avant 2020
+    async load() {
+      const daily = await cachedYahoo(CACHE, '^NDX', '1d');
+      const hourly = await cachedYahoo(CACHE, 'NQ=F', '1h', { range: '730d' });
+      return { series: { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': daily }, daily, fx: null };
+    },
+  },
+};
+
+const args = process.argv.slice(2);
+const MARKET = args[0] && MARKETS[args[0]] ? args.shift() : 'gold';
+const M = MARKETS[MARKET];
+const FEE = Number(args[0]) || M.fee;
+const SPLITS = args[1] ? { '1h': args[1], '6h': args[1], '1d': args[1] } : M.splits;
 const SIZE = 1000;
 
-const year = (t) => new Date(t * 1000).getUTCFullYear();
 const usd = (v) => `${v >= 0 ? '+' : ''}${v.toFixed(0)}$`;
+const iso = (t) => new Date(t * 1000).toISOString().slice(0, 10);
 
-function yearly(list) {
+/** Gains par période : par année, ou par tranche de 5 ans si l'historique est long. */
+function buckets(list, step) {
   const by = {};
-  for (const t of list) by[year(t.exitT)] = (by[year(t.exitT)] || 0) + t.pnlUsd;
+  for (const t of list) {
+    const y = new Date(t.exitT * 1000).getUTCFullYear();
+    const k = step > 1 ? Math.floor(y / step) * step : y;
+    by[k] = (by[k] || 0) + t.pnlUsd;
+  }
   return by;
 }
 
@@ -34,42 +74,44 @@ function exposure(list, from, to) {
 }
 
 (async () => {
-  console.log('Chargement de l’historique PAXG 1 h (archive Binance)…');
-  const hourly = await loadHourly(path.join(__dirname, 'data', 'research'), { log: console.log });
-  const fx = aggregate(await loadHourly(path.join(__dirname, 'data', 'research'), { log: console.log, symbol: 'EURUSDT' }), TF_SEC['1d']);
-  const series = { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': aggregate(hourly, TF_SEC['1d']) };
-  const daily = series['1d'];
-  const split = Date.parse(SPLIT) / 1000;
-  const first = hourly[0];
-  const last = hourly[hourly.length - 1];
-  const at = (t) => hourly.find((c) => c.t >= t);
-  const iso = (t) => new Date(t * 1000).toISOString().slice(0, 10);
-  const holdTrain = SIZE * (at(split).c / first.c - 1);
-  const holdTest = SIZE * (last.c / at(split).c - 1);
+  console.log(`Chargement des données : ${M.name}…`);
+  const { series, daily, fx } = await M.load();
+  const step = (series['1d'][series['1d'].length - 1].t - series['1d'][0].t) / (365 * 86400) > 15 ? 5 : 1;
 
-  console.log(`\nOr (PAXG) ${iso(first.t)} → ${iso(last.t)} · ${hourly.length} bougies 1 h · frais ${FEE} % par côté`);
-  console.log(`CHOIX : ${iso(first.t)} → ${SPLIT} (achat-conservation ${usd(holdTrain)})`);
-  console.log(`VÉRIF : ${SPLIT} → ${iso(last.t)} (achat-conservation ${usd(holdTest)})\n`);
+  console.log(`\n${M.name} · frais ${FEE} % par côté · 1 000 $ par trade`);
+  const hold = {};
+  for (const tf of ['1h', '6h', '1d']) {
+    const c = series[tf];
+    const split = Date.parse(SPLITS[tf]) / 1000;
+    const k = c.findIndex((x) => x.t >= split);
+    hold[tf] = { train: SIZE * (c[k].c / c[0].c - 1), test: SIZE * (c[c.length - 1].c / c[k].c - 1) };
+    console.log(
+      `  ${tf} : ${c.length} bougies, ${iso(c[0].t)} → ${iso(c[c.length - 1].t)} · CHOIX avant ${SPLITS[tf]} ` +
+        `(achat-conservation ${usd(hold[tf].train)}) · VÉRIF après (achat-conservation ${usd(hold[tf].test)})`,
+    );
+  }
+  console.log('');
 
   const rows = [];
   for (const base of STRATEGIES) {
-    if (base.id === 'hold' || base.scalp) continue; // le scalp a son propre banc d'essai (scalp.js)
+    if (base.id === 'hold' || base.scalp || M.exclude.includes(base.id)) continue; // scalp : voir scalp.js
     for (const tf of base.onlyTf || ['1h', '6h', '1d']) {
       const s = withTf(base, tf);
       const candles = series[tf];
       const barSec = TF_SEC[tf];
+      const split = Date.parse(SPLITS[tf]) / 1000;
       const cut = candles.findIndex((c) => c.t >= split);
       const opts = { size: SIZE, feePct: FEE, daily, barSec, fx };
       const train = backtest(s, candles.slice(0, cut), opts);
       const test = backtest(s, candles, { ...opts, from: cut });
-      const ys = Object.entries(yearly(train.list));
+      const ys = Object.entries(buckets(train.list, 1));
       const posYears = ys.filter(([, v]) => v > 0).length / Math.max(1, ys.length);
       const selected = train.pnlUsd > 0 && (train.profitFactor || 0) >= 1.15 && train.trades >= 20 && posYears >= 0.6;
       rows.push({
         s, tf, train, test, posYears, selected,
-        expTrain: exposure(train.list, first.t, split),
-        expTest: exposure(test.list, split, last.t),
-        years: yearly([...train.list, ...test.list]),
+        expTrain: exposure(train.list, candles[0].t, split),
+        expTest: exposure(test.list, split, candles[candles.length - 1].t),
+        years: buckets([...train.list, ...test.list], step),
       });
     }
   }
@@ -96,7 +138,7 @@ function exposure(list, from, to) {
   for (const r of sel) {
     console.log(`  ${r.s.id}${r.tf === tfOf(r.s) ? '' : ''} [${r.tf}] : ${usd(r.test.pnlUsd)} (PF ${pf(r.test)}, ${r.test.trades} trades, exposition ${(r.expTest * 100).toFixed(0)} %)`);
   }
-  console.log(`  (achat-conservation sur la même période : ${usd(holdTest)})`);
+  console.log(`  (achat-conservation en vérification : 1 j ${usd(hold['1d'].test)} · 6 h / 1 h ${usd(hold['1h'].test)})`);
   console.log('\nPnL en $ pour 1 000 $ par trade, frais inclus. Résultats passés ≠ résultats futurs.');
 })().catch((e) => {
   console.error(e);

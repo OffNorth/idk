@@ -84,6 +84,29 @@ en direct continue de les départager. **Résultats passés ≠ résultats futur
 Pour relancer : `npm run research` (frais 0,05 %), `npm run research -- 0.1` (frais 0,1 %),
 `npm run research -- 0.05 2023-07-01` (autre coupure). Les données sont mises en cache dans `data/research/`.
 
+## Autre marché testé : Nasdaq 100 (`npm run research -- nas100`)
+
+Données Yahoo Finance (gratuites) : **indice ^NDX en journalier depuis 1985** (41 ans : bulle internet, 2008, Covid, 2022)
+et **future NQ en 1 h** sur ~2,4 ans. Choix sur 1985 → 2009, vérification sur 2010 → 2026 (1 h / 6 h : choix avant
+août 2025). Frais 0,01 % par côté (CFD NAS100).
+
+| Stratégie (journalier) | Vérif 2010–2026 | Après financement CFD (~6 %/an) | Remarque |
+|---|---|---|---|
+| **RSI 2 (achat seul)** | +728 $ | **+600 $** | en position 13 % du temps, trades de ~5 jours : le classique de Connors fonctionne sur les indices actions |
+| **Momentum de tendance (achat seul)** | +1 513 $ | **+772 $** | positions longues (~51 jours) : le financement coûte cher |
+| **MACD + EMA 200** | +820 $ | +433 $ | ventes à découvert perdantes (−207 $) : en version achat seul ce serait mieux |
+| PVT + EMA 50 | +739 $ | +350 $ | |
+| Momentum achat + vente, Turtle | +643 $ / +275 $ | **négatif** | vendre le Nasdaq à découvert coûte plus que ça ne rapporte |
+
+**À retenir**
+- Comme pour l'or, **le journalier marche, l'intraday beaucoup moins** (1 h / 6 h : historique court, résultats faibles).
+- **MACD + EMA 200 en journalier est retenue sur les deux marchés**, ce qui renforce la confiance en elle.
+- Le Nasdaq monte sur le long terme : **les ventes à découvert font perdre**, les versions « achat seul » sont meilleures.
+- Avec un CFD, **le financement de nuit** réduit fortement les gains des stratégies qui gardent longtemps
+  (un future NQ ou un ETF comme QQQ n'a pas ce coût).
+- Les montants sont en « 1 000 $ par trade » (sans réinvestissement), donc non comparables directement à
+  l'achat-conservation de l'indice, qui a été multiplié par ~100 depuis 1985.
+
 ## Scalp (bougies 1 et 5 min) — testé, non retenu (`npm run scalp`)
 
 6 stratégies de scalp testées, uniquement pendant les séances de Londres et New York (7 h–20 h UTC), tout fermé le soir :
@@ -170,12 +193,13 @@ double. Secrets à créer : `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`.
 bot.js             Bot Telegram + passage toutes les CHECK_INTERVAL_MINUTES
 once.js            Un seul passage (GitHub Actions / cron)
 backtest.js        Backtest récent (Coinbase) en console
-research.js        Banc d'essai complet sur l'historique Binance (choix / vérification)
+research.js        Banc d'essai complet (or : archive Binance · nas100 : Yahoo Finance), choix / vérification
 scalp.js           Banc d'essai du scalp (1 / 5 min, plusieurs niveaux de frais)
 src/gold.js        Moteur de paper trading multi-unités de temps + backtest
 src/strategies.js  Toutes les stratégies (guides, classiques, maison) + référence
 src/indicators.js  EMA, SMA, RSI, ATR, Bollinger, MACD, Donchian, Supertrend, PVT, chandeliers, sessions…
 src/history.js     Téléchargement / cache de l'archive Binance, agrégation 6 h / 1 j
+src/yahoo.js       Données Yahoo Finance (Nasdaq 100 et autres indices)
 src/cycle.js       Un passage : trading + bilan
 src/channel.js     Publication Telegram
 src/format.js      Messages Telegram
