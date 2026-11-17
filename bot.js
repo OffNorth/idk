@@ -182,7 +182,12 @@ bot.command('testcanal', async (ctx) => {
 /* Mini-app                                                            */
 /* ------------------------------------------------------------------ */
 
-const withKey = (url) => (cfg.webToken ? `${url}/?k=${encodeURIComponent(cfg.webToken)}` : `${url}/`);
+/** Lien complet de l'app, clé comprise : « http://IP:PORT/?k=… » ou « https://site/bot.html?k=… ». */
+function withKey(url) {
+  const u = new URL(url.includes('://') ? url : `https://${url}`);
+  if (cfg.webToken) u.searchParams.set('k', cfg.webToken);
+  return u.toString();
+}
 
 bot.command('app', async (ctx) => {
   if (!cfg.webEnabled) return ctx.reply('La mini-app est désactivée (WEB_APP=0 dans le .env).');
@@ -203,9 +208,8 @@ bot.command('app', async (ctx) => {
   );
 });
 
-/** Adresse publique : WEB_URL, sinon IP publique du serveur + port. */
-async function guessPublicUrl() {
-  if (cfg.webUrl) return cfg.webUrl;
+/** Adresse directe du bot (IP publique du serveur + port) : celle à mettre dans BOT_API_URL côté Vercel. */
+async function guessDirectUrl() {
   let ip = process.env.SERVER_IP && process.env.SERVER_IP !== '0.0.0.0' ? process.env.SERVER_IP : null;
   if (!ip) {
     ip = await fetch('https://api.ipify.org', { signal: AbortSignal.timeout(10_000) }).then((r) => (r.ok ? r.text() : null)).catch(() => null);
@@ -235,10 +239,11 @@ async function startApp() {
       },
     }).catch((err) => console.warn(`[tunnel] impossible : ${err.message} — lien http utilisé à la place`));
   }
-  const guessed = await guessPublicUrl();
-  if (!appUrl) appUrl = guessed;
+  const direct = await guessDirectUrl();
+  if (direct) console.log(`API du bot : ${direct} → à mettre dans BOT_API_URL (Vercel → Settings → Environment Variables)`);
+  if (!appUrl) appUrl = cfg.webUrl || direct;
   if (appUrl) {
-    console.log(`Mini-app : ${appUrl}/ (commande /app)`);
+    console.log(`Mini-app : ${appUrl} (commande /app)`);
     await setMenuButton(appUrl);
   }
 }

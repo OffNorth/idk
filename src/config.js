@@ -63,8 +63,9 @@ module.exports = {
   webEnabled: num('WEB_APP', 1) === 1,
   // Port : WEB_PORT, sinon le port attribué par l'hébergeur (SERVER_PORT sur Bot-Hosting / Pterodactyl, PORT ailleurs)
   webPort: num('WEB_PORT', num('SERVER_PORT', num('PORT', 8080))),
-  // Adresse publique de l'app (ex. http://1.2.3.4:25565 ou https://…) ; vide = devinée (IP publique + port)
-  webUrl: (process.env.WEB_URL || '').replace(/\/+$/, ''),
+  // Adresse de l'app envoyée par /app : par défaut la page du site Marchés (Vercel, https), qui relaie l'API du bot
+  // « direct » = page servie par le bot lui-même (http://IP:PORT)
+  webUrl: (process.env.WEB_URL === 'direct' ? '' : process.env.WEB_URL || 'https://marches-eight.vercel.app/bot.html').replace(/\/+$/, ''),
   // Clé facultative exigée par l'API (?k=…) ; le lien envoyé par /app la contient
   webToken: process.env.WEB_TOKEN || '',
   // 1 = lien HTTPS gratuit via un tunnel Cloudflare (nécessaire pour l'ouvrir DANS Telegram)

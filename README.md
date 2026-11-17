@@ -240,15 +240,19 @@ Le bot sert une **page web** pour suivre les stratégies depuis le téléphone :
 - **Stratégies** : les 65 stratégies codées, filtrables (actives / disponibles / rejetées), avec leur résultat au banc
   d'essai et un bouton **« Tester »** qui simule n'importe laquelle sur l'historique.
 
-Elle démarre avec le bot. La commande **`/app`** envoie le lien.
+La page est hébergée sur le site **Marchés** (dépôt `OffNorth/app`, Vercel, https) : **https://marches-eight.vercel.app/bot.html**.
+Le bot sert seulement une petite API en lecture seule ; le site la relaie (`/api/bot`), car une page https ne peut pas
+appeler du http. Pas d'autre hébergeur à trouver. La commande **`/app`** envoie le lien, et le bouton « 📊 App » apparaît
+à côté du champ de saisie dans Telegram (l'app s'ouvre **dans** Telegram).
 
-**Sur Bot-Hosting** : le bot écoute sur le port attribué au serveur (`SERVER_PORT`, affiché à côté de l'adresse IP du serveur,
-ex. `51.75.x.x:25565`). Le lien est donc `http://IP:PORT/` : il s'ouvre dans le navigateur.
-Pour l'ouvrir **dans Telegram** (vraie mini-app, bouton « 📊 App » à côté du champ de saisie), Telegram exige une adresse
-**https** : mettre `WEB_TUNNEL=1` dans le `.env` (tunnel gratuit Cloudflare, sans compte : le bot télécharge le programme
-`cloudflared` une fois, ~40 Mo, et met le bouton à jour à chaque redémarrage), ou indiquer sa propre adresse https dans `WEB_URL`.
+Mise en route (une fois) :
+1. Redémarrer le bot. La console affiche `API du bot : http://IP:PORT → à mettre dans BOT_API_URL`.
+2. Sur Vercel → projet *marches* → *Settings → Environment Variables* : ajouter `BOT_API_URL` avec cette adresse, puis *Redeploy*.
+3. (Conseillé) Mettre une clé dans `WEB_TOKEN` (`.env` du bot) : seules les personnes qui ont le lien de `/app` voient les données.
+   La clé est retenue sur le téléphone après la première ouverture.
 
-Les données sont en lecture seule. Pour que seul toi puisses les voir, mets une clé dans `WEB_TOKEN` : le lien de `/app` la contient.
+Le port est celui que l'hébergeur attribue au serveur (`SERVER_PORT` sur Bot-Hosting). Variante sans le site :
+`WEB_URL=direct` (lien `http://IP:PORT/`, s'ouvre dans le navigateur) ou `WEB_URL=direct` + `WEB_TUNNEL=1` (lien https Cloudflare).
 
 ## Commandes Telegram
 
@@ -308,8 +312,8 @@ double. Secrets à créer : `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`.
 | `NAS_STRATEGIES` | `golden,mom12_1,macro,trendmix,mom12,sma200,lowvol,vixcalm,halloween,rates,tsmom,macd_long,sweep,hold` | Stratégies actives sur le Nasdaq |
 | `WEB_APP` | 1 | Mini-app de suivi (0 = désactivée) |
 | `WEB_PORT` | `SERVER_PORT`, sinon 8080 | Port de la mini-app |
-| `WEB_URL` | (devinée : IP publique + port) | Adresse publique de la mini-app |
-| `WEB_TUNNEL` | 0 | 1 = lien https gratuit (Cloudflare) pour l'ouvrir dans Telegram |
+| `WEB_URL` | `https://marches-eight.vercel.app/bot.html` | Lien envoyé par `/app` (`direct` = page servie par le bot, http://IP:PORT) |
+| `WEB_TUNNEL` | 0 | avec `WEB_URL=direct` : lien https gratuit (Cloudflare) |
 | `WEB_TOKEN` | (vide) | Clé exigée pour voir les données |
 | `GOLD_START_CAPITAL` | 1000 | Capital de départ de chaque stratégie (gains réinvestis) |
 | `GOLD_POSITION_PCT` | 100 | Part du capital misée à chaque trade (%) |
