@@ -24,7 +24,8 @@ module.exports = {
   goldEnabled: num('GOLD_TRADING', 1) === 1,
   goldSizeUsd: num('GOLD_SIZE_USD', 1000),
   goldFeePct: num('GOLD_FEE_PCT', 0.05),
-  goldStrategies: list('GOLD_STRATEGIES', 'all'),
+  // Par défaut : les combinaisons retenues par le banc d'essai (npm run research) + la référence
+  goldStrategies: list('GOLD_STRATEGIES', 'macd@1d,tsmom,sma1060@1d,ema@1d,fibo@6h,hold'),
 
   // Fréquence des passages (minutes) et du bilan publié sur le canal (heures, 0 = jamais)
   checkIntervalMin: num('CHECK_INTERVAL_MINUTES', 3),

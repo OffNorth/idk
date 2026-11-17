@@ -88,7 +88,7 @@ bot.command(['gold', 'paper'], (ctx) => ctx.reply(portfolio(cfg, store), HTML));
 bot.command('strategies', (ctx) =>
   ctx.reply(
     selectStrategies(cfg.goldStrategies)
-      .map((s) => `<b>${esc(s.name)}</b> (<code>${s.id}</code>)\n${esc(s.desc)}`)
+      .map((s) => `<b>${esc(s.name)}</b> (<code>${s.id}</code> · bougies ${s.tf || '1h'})\n${esc(s.desc)}`)
       .join('\n\n'),
     HTML,
   ),

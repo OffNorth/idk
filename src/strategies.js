@@ -188,9 +188,157 @@ STRATEGIES.push({
   },
 });
 
-function selectStrategies(ids) {
-  if (!ids || !ids.length || ids.includes('all')) return STRATEGIES;
-  return STRATEGIES.filter((s) => ids.includes(s.id));
+/* ------------------------------------------------------------------ */
+/* Stratégies maison (idées connues sur l'or / les matières premières)  */
+/* ------------------------------------------------------------------ */
+
+STRATEGIES.push(
+  {
+    id: 'tsmom',
+    tf: '1d',
+    name: 'Momentum de tendance (achat seul)',
+    desc: 'Maison, d’après le « time-series momentum » (Moskowitz et al., 2012) : l’or a tendance à continuer dans le sens de ses 3 derniers mois. Achat quand le prix est au-dessus de sa moyenne 200 jours ET a monté sur 3 mois ; sortie dès qu’une condition tombe. Jamais à découvert (l’or monte sur le long terme). Stop de protection 4 ATR.',
+    warmup: 210,
+    evaluate(ind, i) {
+      const up = ind.closes[i] > ind.sma200[i] && ind.roc63[i] > 0;
+      return { entry: up ? 'long' : null, exitLong: !up, exitShort: false, sl: 4 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    id: 'tsmom_ls',
+    tf: '1d',
+    name: 'Momentum de tendance (achat + vente)',
+    desc: 'Maison : comme le momentum de tendance, mais vend aussi à découvert quand le prix est sous sa moyenne 200 jours ET a baissé sur 3 mois.',
+    warmup: 210,
+    evaluate(ind, i) {
+      const c = ind.closes[i];
+      const up = c > ind.sma200[i] && ind.roc63[i] > 0;
+      const down = c < ind.sma200[i] && ind.roc63[i] < 0;
+      return { entry: up ? 'long' : down ? 'short' : null, exitLong: !up, exitShort: !down, sl: 4 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    id: 'turtle',
+    tf: '1d',
+    name: 'Turtle (cassure 55 / sortie 20)',
+    desc: 'Maison, d’après le système 2 des « Turtles » : achat sur un plus haut de 55 périodes, vente à découvert sur un plus bas de 55, sortie sur le canal 20 opposé. Stop 2 ATR.',
+    warmup: 60,
+    evaluate(ind, i) {
+      const c = ind.closes[i];
+      return {
+        entry: c > ind.dc55.hh[i] ? 'long' : c < ind.dc55.ll[i] ? 'short' : null,
+        exitLong: c < ind.dc20.ll[i],
+        exitShort: c > ind.dc20.hh[i],
+        sl: 2 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    id: 'rsi2',
+    tf: '1d',
+    name: 'RSI 2 (repli dans la tendance, achat seul)',
+    desc: 'Maison, d’après Larry Connors : dans une tendance haussière (prix > moyenne 200), acheter un repli très court (RSI 2 < 10) et revendre dès que le prix repasse au-dessus de sa moyenne 5. Stop 3 ATR.',
+    warmup: 210,
+    evaluate(ind, i) {
+      const c = ind.closes[i];
+      return {
+        entry: ind.rsi2[i] < 10 && c > ind.sma200[i] ? 'long' : null,
+        exitLong: c > ind.sma5[i],
+        exitShort: false,
+        sl: 3 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    id: 'pullback',
+    tf: '6h',
+    name: 'Repli RSI dans la tendance EMA 50/200',
+    desc: 'Maison : tendance définie par EMA 50 vs EMA 200 ; achat quand le RSI 14 repasse au-dessus de 40 après un repli (vente à découvert quand il repasse sous 60 en tendance baissière). Sortie RSI > 70 / < 30 ou changement de tendance. Stop 2 ATR.',
+    warmup: 210,
+    evaluate(ind, i) {
+      const up = ind.ema50[i] > ind.ema200[i];
+      const r = ind.rsi;
+      return {
+        entry: up && r[i - 1] < 40 && r[i] >= 40 ? 'long' : !up && r[i - 1] > 60 && r[i] <= 60 ? 'short' : null,
+        exitLong: !up || r[i] > 70,
+        exitShort: up || r[i] < 30,
+        sl: 2 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    id: 'keltner',
+    tf: '6h',
+    name: 'Cassure de volatilité (Keltner)',
+    desc: 'Maison : achat quand le prix clôture plus de 2 ATR au-dessus de son EMA 20 (mouvement anormalement fort), vente à découvert en dessous. Stop suiveur 3 ATR, sortie si le prix repasse l’EMA 50.',
+    warmup: 60,
+    evaluate(ind, i) {
+      const c = ind.closes[i];
+      const band = 2 * ind.atr[i];
+      return {
+        entry: c > ind.ema20[i] + band ? 'long' : c < ind.ema20[i] - band ? 'short' : null,
+        exitLong: c < ind.ema50[i],
+        exitShort: c > ind.ema50[i],
+        sl: 3 * ind.atr[i],
+        tp: null,
+      };
+    },
+    trail(pos, ind, i) {
+      const d = 3 * ind.atr[i];
+      return pos.side === 'long' ? pos.best - d : pos.best + d;
+    },
+  },
+  {
+    id: 'asia',
+    tf: '1h',
+    onlyTf: ['1h'],
+    name: 'Cassure du range asiatique',
+    desc: 'Maison : l’or est calme pendant la session asiatique (00–07 h UTC) puis bouge à l’ouverture de Londres. Achat à la première clôture au-dessus du plus haut asiatique (vente à découvert sous le plus bas) entre 07 et 12 h UTC ; stop de l’autre côté du range, objectif = 1 range, sortie forcée à 20 h UTC.',
+    warmup: 30,
+    evaluate(ind, i) {
+      const h = ind.hour[i];
+      const end = h >= 20 || h < 7;
+      const none = { entry: null, exitLong: end, exitShort: end, sl: 0, tp: null };
+      const hi = ind.asia?.hi[i];
+      const lo = ind.asia?.lo[i];
+      if (hi == null || h > 12) return none;
+      const c = ind.closes[i];
+      const p = ind.closes[i - 1];
+      const range = hi - lo;
+      if (!(range > 0)) return none;
+      if (c > hi && p <= hi) return { ...none, entry: 'long', sl: c - lo, tp: hi + range - c };
+      if (c < lo && p >= lo) return { ...none, entry: 'short', sl: hi - c, tp: c - (lo - range) };
+      return none;
+    },
+  },
+);
+
+/* ------------------------------------------------------------------ */
+/* Unités de temps                                                     */
+/* ------------------------------------------------------------------ */
+
+const TF_SEC = { '1h': 3600, '6h': 21600, '1d': 86400 };
+const tfOf = (s) => s.tf || '1h';
+
+/** Copie d'une stratégie sur une autre unité de temps (id « ema@6h »). */
+function withTf(s, tf) {
+  if (tf === tfOf(s)) return s;
+  return { ...s, tf, id: `${s.id}@${tf}`, name: `${s.name} [${tf}]` };
 }
 
-module.exports = { STRATEGIES, selectStrategies };
+/** ids : 'all', ou liste d'ids, éventuellement suffixés d'une unité de temps (« ema@6h »). */
+function selectStrategies(ids) {
+  if (!ids || !ids.length || ids.includes('all')) return STRATEGIES;
+  const out = [];
+  for (const id of ids) {
+    const [base, tf] = id.split('@');
+    const s = STRATEGIES.find((x) => x.id === base);
+    if (s && TF_SEC[tf || tfOf(s)]) out.push(tf ? withTf(s, tf) : s);
+  }
+  return out;
+}
+
+module.exports = { STRATEGIES, selectStrategies, withTf, tfOf, TF_SEC };

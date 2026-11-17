@@ -7,8 +7,9 @@
     "start": "node bot.js",
     "once": "node once.js",
     "backtest": "node backtest.js",
-    "check": "node --check bot.js && node --check once.js && node --check backtest.js && for f in src/*.js; do node --check $f || exit 1; done",
-    "test": "node --test test/*.test.js"
+    "check": "node --check bot.js && node --check once.js && node --check backtest.js && node --check research.js && for f in src/*.js; do node --check $f || exit 1; done",
+    "test": "node --test test/*.test.js",
+    "research": "node research.js"
   },
   "engines": {
     "node": ">=20"

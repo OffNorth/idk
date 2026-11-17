@@ -9,10 +9,9 @@
  */
 const { getJson } = require('./http');
 const { computeAll } = require('./indicators');
-const { selectStrategies } = require('./strategies');
+const { selectStrategies, tfOf, TF_SEC } = require('./strategies');
 
 const FILE = 'gold.json';
-const H = 3600;
 const CB = 'https://api.exchange.coinbase.com/products/PAXG-USD/candles';
 
 const parseCb = (rows) => rows.map(([t, l, h, o, c, v]) => ({ t, o, h, l, c, v })).sort((a, b) => a.t - b.t);
@@ -39,6 +38,20 @@ async function fetchHistory(days = 90, granularity = 3600) {
     for (const c of parseCb(rows)) byT.set(c.t, c);
   }
   return [...byT.values()].sort((a, b) => a.t - b.t);
+}
+
+/** Historique long gardé en mémoire `ttlSec` secondes (évite de re-télécharger à chaque passage). */
+const cache = new Map();
+async function cachedHistory(granularity, days, ttlSec) {
+  const key = `${granularity}:${days}`;
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < ttlSec * 1000) return hit.data;
+  const data = await fetchHistory(days, granularity);
+  if (data.length > 50) {
+    cache.set(key, { at: Date.now(), data });
+    return data;
+  }
+  return hit ? hit.data : fetchCandles(granularity);
 }
 
 /** Bougies 1 h + bougies jour (avec 220 jours de marge pour la MM200 journalière). */
@@ -117,8 +130,8 @@ function summarize(trades) {
 /* Backtest (bougies 1 h uniquement)                                   */
 /* ------------------------------------------------------------------ */
 
-function backtest(strategy, candles, { size = 1000, feePct = 0.05, daily = null, from = 0 } = {}) {
-  const ind = computeAll(candles, daily);
+function backtest(strategy, candles, { size = 1000, feePct = 0.05, daily = null, from = 0, barSec = 3600 } = {}) {
+  const ind = computeAll(candles, daily, barSec);
   const trades = [];
   let pos = null;
   for (let i = Math.max(strategy.warmup, 1, from); i < candles.length; i++) {
@@ -174,16 +187,27 @@ class GoldTrader {
   /** Un passage pour toutes les stratégies. Retourne les événements à publier. */
   async run() {
     if (!this.cfg.goldEnabled) return [];
-    const [h1, m5, d1] = await Promise.all([fetchCandles(3600), fetchCandles(300), fetchCandles(86400)]);
-    if (!h1) {
+    const tfs = [...new Set(this.strategies.map(tfOf))];
+    const [m5, d1, ...series] = await Promise.all([
+      fetchCandles(300),
+      cachedHistory(86400, 500, 3600),
+      ...tfs.map((tf) => (tf === '1d' ? null : tf === '6h' ? cachedHistory(21600, 150, 1800) : fetchCandles(3600))),
+    ]);
+    const now = Math.floor(Date.now() / 1000);
+    const price = m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c;
+    if (!price) {
       console.warn('[or] prix indisponible, passage ignoré');
       return [];
     }
-    const now = Math.floor(Date.now() / 1000);
-    const price = (m5 && m5[m5.length - 1].c) || h1[h1.length - 1].c;
-    const closed = h1.filter((c) => c.t + H <= now);
-    const ind = computeAll(closed, d1);
-    const i = closed.length - 1;
+    // Indicateurs calculés une fois par unité de temps, sur les bougies clôturées
+    const byTf = {};
+    tfs.forEach((tf, k) => {
+      const sec = TF_SEC[tf];
+      const raw = tf === '1d' ? d1 : series[k];
+      if (!raw) return;
+      const closed = raw.filter((c) => c.t + sec <= now);
+      byTf[tf] = { closed, ind: computeAll(closed, d1, sec) };
+    });
     const fee = this.cfg.goldFeePct;
     const events = [];
     this.state.lastPrice = price;
@@ -204,7 +228,11 @@ class GoldTrader {
         if (acc.position) acc.position.checkedFrom = now;
       }
 
-      // 2. Nouvelle bougie 1 h clôturée → évaluation de la stratégie
+      // 2. Nouvelle bougie clôturée sur l'unité de temps de la stratégie → évaluation
+      const data = byTf[tfOf(strat)];
+      if (!data) continue;
+      const { closed, ind } = data;
+      const i = closed.length - 1;
       if (i < strat.warmup || closed[i].t <= acc.lastEvalT) continue;
       acc.lastEvalT = closed[i].t;
       const sig = strat.evaluate(ind, i);

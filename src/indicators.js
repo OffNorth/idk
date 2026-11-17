@@ -139,7 +139,7 @@ function pvt(candles) {
  * Tendance journalière pour chaque bougie 1 h (dernière bougie jour CLÔTURÉE avant la fin de l'heure) :
  *  +1 = haussière (clôture > MM200 et MM20 > MM50), −1 = baissière (l'inverse), 0 = neutre / inconnue.
  */
-function dailyTrend(hourly, daily) {
+function dailyTrend(hourly, daily, barSec = 3600) {
   const out = new Array(hourly.length).fill(0);
   if (!daily || daily.length < 200) return out;
   const closes = daily.map((d) => d.c);
@@ -148,7 +148,7 @@ function dailyTrend(hourly, daily) {
   const m200 = sma(closes, 200);
   let j = -1;
   for (let i = 0; i < hourly.length; i++) {
-    const end = hourly[i].t + 3600;
+    const end = hourly[i].t + barSec;
     while (j + 1 < daily.length && daily[j + 1].t + 86400 <= end) j++;
     if (j < 0 || m200[j] === null) continue;
     if (closes[j] > m200[j] && m20[j] > m50[j]) out[i] = 1;
@@ -199,13 +199,58 @@ function swings(candles, n) {
   return { hi, lo, hiIdx, loIdx };
 }
 
-/** Calcule tous les indicateurs utilisés par les stratégies, une seule fois. */
-function computeAll(candles, daily = null) {
+/**
+ * Range de la session asiatique (00:00–06:59 UTC) du jour, pour chaque bougie 1 h à partir de 07:00 UTC.
+ * null avant 07:00 ou si la session est incomplète.
+ */
+function asiaRange(candles) {
+  const hi = new Array(candles.length).fill(null);
+  const lo = new Array(candles.length).fill(null);
+  let day = -1;
+  let h = -Infinity;
+  let l = Infinity;
+  let n = 0;
+  candles.forEach((c, i) => {
+    const d = Math.floor(c.t / 86400);
+    const hour = Math.floor((c.t % 86400) / 3600);
+    if (d !== day) {
+      day = d;
+      h = -Infinity;
+      l = Infinity;
+      n = 0;
+    }
+    if (hour < 7) {
+      h = Math.max(h, c.h);
+      l = Math.min(l, c.l);
+      n++;
+    } else if (n >= 6) {
+      hi[i] = h;
+      lo[i] = l;
+    }
+  });
+  return { hi, lo };
+}
+
+/** Rendement sur n bougies (null au début). */
+function roc(closes, n) {
+  return closes.map((c, i) => (i >= n ? c / closes[i - n] - 1 : null));
+}
+
+/** Calcule tous les indicateurs utilisés par les stratégies, une seule fois. barSec = durée d'une bougie. */
+function computeAll(candles, daily = null, barSec = 3600) {
   const closes = candles.map((c) => c.c);
   const p = pvt(candles);
   return {
     candles,
     closes,
+    barSec,
+    hour: candles.map((c) => Math.floor((c.t % 86400) / 3600)),
+    sma5: sma(closes, 5),
+    sma200: sma(closes, 200),
+    rsi2: rsi(closes, 2),
+    roc63: roc(closes, 63),
+    dc55: donchian(candles, 55),
+    asia: barSec === 3600 ? asiaRange(candles) : null,
     sma10: sma(closes, 10),
     sma60: sma(closes, 60),
     ema20: ema(closes, 20),
@@ -220,10 +265,12 @@ function computeAll(candles, daily = null) {
     st: supertrend(candles, 10, 3),
     pvt: p,
     pvtSig: ema(p, 21),
-    dTrend: dailyTrend(candles, daily),
+    dTrend: dailyTrend(candles, daily, barSec),
     pattern: candlePattern(candles),
     sw48: swings(candles, 48),
   };
 }
 
-module.exports = { sma, ema, rsi, atr, bollinger, macd, donchian, supertrend, pvt, dailyTrend, candlePattern, swings, computeAll };
+module.exports = {
+  sma, ema, rsi, atr, bollinger, macd, donchian, supertrend, pvt, dailyTrend, candlePattern, swings, asiaRange, roc, computeAll,
+};
