@@ -19,8 +19,9 @@ const { runCycle, portfolio } = require('./src/cycle');
   if (!(await channel.check())) process.exit(1);
 
   const out = await runCycle({ cfg, store, channel });
-  console.log(`${out.events} événement(s) or\n`);
-  console.log(portfolio(cfg, store).replace(/<[^>]+>/g, ''));
+  console.log(`événements : ${Object.entries(out.byMarket).map(([m, n]) => `${m} ${n}`).join(" · ")}\n`);
+  if (cfg.goldEnabled) console.log(portfolio(cfg, store, 'gold').replace(/<[^>]+>/g, ''));
+  if (cfg.nasEnabled) console.log('\n' + portfolio(cfg, store, 'nas100').replace(/<[^>]+>/g, ''));
 })().catch((err) => {
   console.error(`❌ ${explainTelegramError(err)}`);
   process.exit(1);

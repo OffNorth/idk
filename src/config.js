@@ -33,6 +33,19 @@ module.exports = {
   // Par défaut : les combinaisons retenues par le banc d'essai (npm run research) + la référence
   goldStrategies: list('GOLD_STRATEGIES', 'macd@1d,vote,dollar,tsmom,sma1060@1d,ema@1d,fibo@6h,hold'),
 
+  // Financement de nuit annuel (%) — 0 pour le PAXG (pas de levier)
+  goldFinancingPct: num('GOLD_FINANCING_PCT', 0),
+
+  // Paper trading du Nasdaq 100 (indice ^NDX, Yahoo Finance) — CFD NAS100 simulé
+  nasEnabled: num('NAS_TRADING', 1) === 1,
+  // Retenues par le banc d'essai (npm run research -- nas100), en version achat seul + référence
+  nasStrategies: list('NAS_STRATEGIES', 'rsi2,macd_long,tsmom,ema_long,hold'),
+  nasStartCapital: num('NAS_START_CAPITAL', num('GOLD_START_CAPITAL', num('GOLD_SIZE_USD', 1000))),
+  nasPositionPct: num('NAS_POSITION_PCT', 100),
+  nasFeePct: num('NAS_FEE_PCT', 0.01),
+  // Coût de financement d'un CFD gardé la nuit (%/an), appliqué au prorata des jours en position
+  nasFinancingPct: num('NAS_FINANCING_PCT', 6),
+
   // Fréquence des passages (minutes) et du bilan publié sur le canal (heures, 0 = jamais)
   checkIntervalMin: num('CHECK_INTERVAL_MINUTES', 3),
   summaryHours: num('SUMMARY_HOURS', 4),

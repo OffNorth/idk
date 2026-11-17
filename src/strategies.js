@@ -180,8 +180,9 @@ STRATEGIES.push(
 /** Référence : acheter l'or une fois et le garder (pour savoir si une stratégie fait mieux que détenir). */
 STRATEGIES.push({
   id: 'hold',
+  tf: '1d',
   name: 'Référence : achat-conservation',
-  desc: 'Pas une stratégie : achète l’or au démarrage et le garde. Sert de point de comparaison — une stratégie qui ne fait pas mieux n’apporte rien.',
+  desc: 'Pas une stratégie : achète le marché au démarrage et le garde. Sert de point de comparaison — une stratégie qui ne fait pas mieux n’apporte rien.',
   warmup: 1,
   evaluate(ind, i) {
     return { entry: 'long', exitLong: false, exitShort: false, sl: ind.closes[i] * 0.9, tp: null };
@@ -641,6 +642,27 @@ STRATEGIES.push(
     },
   },
 );
+
+/* ------------------------------------------------------------------ */
+/* Versions « achat seul » (indices actions : les ventes à découvert    */
+/* y font perdre sur le long terme)                                    */
+/* ------------------------------------------------------------------ */
+
+function longOnly(base, tf = base.tf) {
+  return {
+    ...base,
+    tf,
+    id: `${base.id}_long`,
+    name: `${base.name} (achat seul)`,
+    desc: `${base.desc} Version achat seul : ne vend jamais à découvert.`,
+    evaluate(ind, i) {
+      const s = base.evaluate(ind, i);
+      return { ...s, entry: s.entry === 'long' ? 'long' : null, exitShort: true };
+    },
+  };
+}
+
+STRATEGIES.push(longOnly(STRATEGIES.find((s) => s.id === 'macd'), '1d'), longOnly(STRATEGIES.find((s) => s.id === 'ema'), '1d'));
 
 /* ------------------------------------------------------------------ */
 /* Unités de temps                                                     */

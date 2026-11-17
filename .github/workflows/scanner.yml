@@ -2,7 +2,7 @@
 # Inutile si le bot tourne déjà en continu ailleurs (Bot-Hosting…) : laisse ce workflow désactivé,
 # sinon les trades seraient publiés en double.
 # Configuration : Settings → Secrets and variables → Actions → Secrets : TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
-name: Paper trading or
+name: Paper trading or + Nasdaq
 
 on:
   schedule:
@@ -47,6 +47,10 @@ jobs:
           GOLD_FEE_PCT: ${{ vars.GOLD_FEE_PCT }}
           GOLD_STRATEGIES: ${{ vars.GOLD_STRATEGIES }}
           SUMMARY_HOURS: ${{ vars.SUMMARY_HOURS }}
+          NAS_TRADING: ${{ vars.NAS_TRADING }}
+          NAS_STRATEGIES: ${{ vars.NAS_STRATEGIES }}
+          NAS_START_CAPITAL: ${{ vars.NAS_START_CAPITAL }}
+          NAS_FINANCING_PCT: ${{ vars.NAS_FINANCING_PCT }}
 
       - name: Sauvegarder la mémoire
         if: always()

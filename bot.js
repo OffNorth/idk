@@ -22,6 +22,7 @@ const { backtestMessage, esc } = require('./src/format');
 const { createChannel, explainTelegramError, HTML } = require('./src/channel');
 const { runCycle, portfolio } = require('./src/cycle');
 const { liveChart, historyChart } = require('./src/portfolio');
+const { activeMarkets, marketById } = require('./src/markets');
 const { InputFile } = require('grammy');
 
 if (!cfg.telegramToken) throw new Error('TELEGRAM_BOT_TOKEN manquant (voir .env.example)');
@@ -41,7 +42,7 @@ function tick() {
   if (!running) {
     running = runCycle({ cfg, store, channel, publish: !paused })
       .then((out) => {
-        console.log(`[${new Date().toISOString()}] ${out.events} événement(s) or`);
+        console.log(`[${new Date().toISOString()}] événements : ${Object.entries(out.byMarket).map(([m, n]) => `${m} ${n}`).join(" · ") || "aucun marché actif"}`);
         return out;
       })
       .catch((err) => {
@@ -68,14 +69,15 @@ bot.use(async (ctx, next) => {
 bot.command('start', (ctx) =>
   ctx.reply(
     [
-      '<b>🥇 Paper trading de l’or</b>',
+      '<b>📊 Paper trading : 🥇 or + 🇺🇸 Nasdaq 100</b>',
       '',
-      `Je trade l’or (PAXG/USD) en <b>simulation</b> avec ${selectStrategies(cfg.goldStrategies).length} stratégies en parallèle,`,
-      `$${cfg.goldSizeUsd} par trade et par stratégie. Chaque entrée / sortie est publiée sur le canal.`,
+      ...activeMarkets(cfg).map((m) => `${m.emoji} ${m.name} : ${selectStrategies(m.strategies).length} stratégies, $${m.startCapital} chacune au départ, gains réinvestis`),
+      'Chaque entrée / sortie est publiée sur le canal. <b>Simulation</b> : aucun argent réel.',
       '',
-      '/gold — bilan de chaque stratégie',
-      '/portfolio — graphique de l’évolution du portefeuille',
-      '/historique [année] — simulation depuis 2021 (gains réinvestis)',
+      '/gold — bilan de l’or',
+      '/nasdaq — bilan du Nasdaq 100',
+      '/portfolio — graphiques de l’évolution des portefeuilles',
+      '/historique [or|nasdaq] [année] — simulation sur l’historique (gains réinvestis)',
       '/strategies — comment fonctionne chaque stratégie',
       '/backtest [jours] — tester les stratégies sur l’historique',
       '/bilan — publier le bilan sur le canal',
@@ -89,7 +91,8 @@ bot.command('start', (ctx) =>
   ),
 );
 
-bot.command(['gold', 'paper'], (ctx) => ctx.reply(portfolio(cfg, store), HTML));
+bot.command(['gold', 'paper', 'or'], (ctx) => ctx.reply(portfolio(cfg, store, 'gold'), HTML));
+bot.command(['nasdaq', 'nas100', 'nas'], (ctx) => ctx.reply(portfolio(cfg, store, 'nas100'), HTML));
 
 /** Envoie un graphique PNG en réponse (ou un message d'erreur). */
 async function replyChart(ctx, build, waitText) {
@@ -103,18 +106,28 @@ async function replyChart(ctx, build, waitText) {
   }
 }
 
-bot.command('portfolio', (ctx) => replyChart(ctx, async () => liveChart(store, cfg), '⏳ Graphique du portefeuille…'));
+bot.command('portfolio', async (ctx) => {
+  for (const m of activeMarkets(cfg)) await replyChart(ctx, async () => liveChart(store, cfg, m.id), `⏳ Graphique ${m.emoji} ${m.name}…`);
+});
 
 bot.command('historique', (ctx) => {
-  const year = Math.min(Math.max(Number(ctx.match.trim()) || 2021, 2021), new Date().getUTCFullYear() - 1);
-  return replyChart(ctx, () => historyChart(cfg, { fromYear: year }), `⏳ Simulation depuis ${year} (le premier appel télécharge ~6 ans d’historique, ~1 min)…`);
+  const args = ctx.match.trim().toLowerCase().split(/\s+/);
+  const marketId = args.some((a) => a.startsWith('nas')) ? 'nas100' : 'gold';
+  const minYear = marketId === 'nas100' ? 1987 : 2021;
+  const asked = Number(args.find((a) => /^\d{4}$/.test(a)));
+  const year = Math.min(Math.max(asked || (marketId === 'nas100' ? 2010 : 2021), minYear), new Date().getUTCFullYear() - 1);
+  const m = marketById(cfg, marketId);
+  return replyChart(ctx, () => historyChart(cfg, { marketId, fromYear: year }), `⏳ ${m.emoji} ${m.name} : simulation depuis ${year} (le premier appel télécharge l’historique, jusqu’à ~1 min)…`);
 });
 
 bot.command('strategies', (ctx) =>
   ctx.reply(
-    selectStrategies(cfg.goldStrategies)
-      .map((s) => `<b>${esc(s.name)}</b> (<code>${s.id}</code> · bougies ${s.tf || '1h'})\n${esc(s.desc)}`)
-      .join('\n\n'),
+    activeMarkets(cfg)
+      .map((m) => `<b>${m.emoji} ${esc(m.name)}</b>\n\n` + selectStrategies(m.strategies)
+        .map((s) => `<b>${esc(s.name)}</b> (<code>${s.id}</code> · bougies ${s.tf || '1h'})\n${esc(s.desc)}`)
+        .join('\n\n'))
+      .join('\n\n———\n\n')
+      .slice(0, 4000),
     HTML,
   ),
 );
@@ -142,7 +155,7 @@ bot.command('backtest', async (ctx) => {
 bot.command('bilan', async (ctx) => {
   if (!cfg.channelId) return ctx.reply('❌ TELEGRAM_CHANNEL_ID n’est pas défini dans le .env.');
   try {
-    await channel.sendText(portfolio(cfg, store));
+    for (const m of activeMarkets(cfg)) await channel.sendText(portfolio(cfg, store, m.id));
     channel.markSummary();
     await ctx.reply('✅ Bilan publié sur le canal.');
   } catch (err) {
@@ -153,7 +166,7 @@ bot.command('bilan', async (ctx) => {
 bot.command('testcanal', async (ctx) => {
   if (!cfg.channelId) return ctx.reply('❌ TELEGRAM_CHANNEL_ID n’est pas défini dans le .env.');
   try {
-    await channel.sendText('✅ <b>Test</b> : le bot de paper trading de l’or peut publier ici.');
+    await channel.sendText('✅ <b>Test</b> : le bot de paper trading (or + Nasdaq 100) peut publier ici.');
     await ctx.reply('✅ Message de test publié sur le canal.');
   } catch (err) {
     await ctx.reply(`❌ ${explainTelegramError(err)}`);
@@ -164,8 +177,8 @@ bot.command('settings', (ctx) =>
   ctx.reply(
     [
       '<b>⚙️ Paramètres</b>',
-      `Stratégies : ${selectStrategies(cfg.goldStrategies).map((s) => s.id).join(', ')}`,
-      `Taille : $${cfg.goldSizeUsd} par trade et par stratégie · frais ${cfg.goldFeePct}% par côté`,
+      ...activeMarkets(cfg).map((m) =>
+        `${m.emoji} ${esc(m.name)} : ${selectStrategies(m.strategies).map((s) => s.id).join(', ')} · $${m.startCapital} au départ, ${m.positionPct} % du capital par trade · frais ${m.feePct} %/côté${m.financingPct ? ` · financement ${m.financingPct} %/an` : ''}`),
       `Vérification toutes les ${cfg.checkIntervalMin} min`,
       `Bilan sur le canal : ${cfg.summaryHours > 0 ? `toutes les ${cfg.summaryHours} h` : 'désactivé'}`,
       `Canal : ${cfg.channelId ? esc(cfg.channelId) : 'non défini'} · publications ${paused ? '⏸ en pause' : '▶️ actives'}`,
@@ -192,9 +205,10 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
 
 (async () => {
   await bot.api.setMyCommands([
-    { command: 'gold', description: 'Bilan de chaque stratégie' },
-    { command: 'portfolio', description: 'Graphique de l’évolution du portefeuille' },
-    { command: 'historique', description: 'Simulation depuis 2021 : /historique 2021' },
+    { command: 'gold', description: 'Bilan de l’or' },
+    { command: 'nasdaq', description: 'Bilan du Nasdaq 100' },
+    { command: 'portfolio', description: 'Graphiques de l’évolution des portefeuilles' },
+    { command: 'historique', description: 'Simulation : /historique or 2021 · /historique nasdaq 2010' },
     { command: 'strategies', description: 'Comment fonctionne chaque stratégie' },
     { command: 'backtest', description: 'Tester les stratégies : /backtest 90' },
     { command: 'bilan', description: 'Publier le bilan sur le canal' },

@@ -16,17 +16,19 @@ function fmtDuration(ms) {
 /** Ouverture ou clôture d'une position simulée. */
 function goldEventMessage(ev) {
   const name = esc(ev.strategy.name);
+  const mk = ev.market?.emoji || '🥇';
+  const mn = esc(ev.market?.name || 'Or');
   if (ev.type === 'open' && ev.strategy.id === 'hold') {
     return [
-      `🥇 <b>Or · ${name}</b>`,
+      `${mk} <b>${mn} · ${name}</b>`,
       `Achat de référence simulé à <b>$${ev.pos.entry.toFixed(2)}</b> · taille $${ev.pos.size}, gardé sans limite de durée`,
-      '<i>Sert à comparer : une stratégie doit faire mieux que simplement détenir l’or.</i>',
+      `<i>Sert à comparer : une stratégie doit faire mieux que simplement détenir ${ev.market?.id === 'nas100' ? 'l’indice (comme un ETF, sans financement)' : 'l’or'}.</i>`,
     ].join('\n');
   }
   if (ev.type === 'open') {
     const p = ev.pos;
     return [
-      `🥇 <b>Or · ${name}</b>`,
+      `${mk} <b>${mn} · ${name}</b>`,
       `${p.side === 'long' ? '📈 <b>ACHAT</b> (long)' : '📉 <b>VENTE À DÉCOUVERT</b> (short)'} simulé à <b>$${p.entry.toFixed(2)}</b> · taille $${p.size}`,
       `Stop : $${p.sl.toFixed(2)}${ev.strategy.trail ? ' (suiveur)' : ''} · Objectif : ${p.tp ? `$${p.tp.toFixed(2)}` : 'signal de sortie'}`,
       `<i>RSI ${Number(ev.rsi ?? 0).toFixed(0)} · paper trading, aucun argent réel</i>`,
@@ -34,7 +36,7 @@ function goldEventMessage(ev) {
   }
   const t = ev.trade;
   return [
-    `🥇 ${t.pnlUsd >= 0 ? '🟢' : '🔴'} <b>Or · ${name}</b> — ${t.side === 'long' ? 'long' : 'short'} clôturé`,
+    `${mk} ${t.pnlUsd >= 0 ? '🟢' : '🔴'} <b>${mn} · ${name}</b> — ${t.side === 'long' ? 'long' : 'short'} clôturé`,
     `$${t.entry.toFixed(2)} → $${t.exit.toFixed(2)} · <b>${signedPct(t.pnlPct)}</b> (${signedUsd(t.pnlUsd)} sur $${t.size})`,
     `Raison : ${esc(t.reason)} · durée ${fmtDuration((t.exitT - t.entryT) * 1000)} · <i>paper trading, frais inclus</i>`,
     ...(ev.capital !== undefined
@@ -52,7 +54,7 @@ function portfolioMessage(gold) {
   const total = strat.reduce((s, r) => s + r.equity, 0);
   const start = gold.start * strat.length;
   const lines = [
-    '<b>📒 Bilan paper trading — Or</b> <i>(simulation, gains réinvestis)</i>',
+    `<b>📒 Bilan paper trading — ${gold.market?.emoji || '🥇'} ${esc(gold.market?.name || 'Or')}</b> <i>(simulation, gains réinvestis)</i>`,
     `Prix : ${gold.price ? `$${gold.price.toFixed(2)}` : '?'} · ${strat.length} stratégies × ${money(gold.start)}`,
     `Valeur du portefeuille : <b>${money(total)}</b> (${signedPct((total / start - 1) * 100)})`,
   ];

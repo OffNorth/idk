@@ -1,10 +1,10 @@
 /**
- * Un passage, partagé par bot.js (serveur) et once.js (GitHub Actions) :
- *   1. paper trading de l'or, toutes stratégies (ouvertures / clôtures publiées)
+ * Un passage, partagé par bot.js (serveur) et once.js (GitHub Actions), pour chaque marché actif (or, Nasdaq 100) :
+ *   1. paper trading, toutes stratégies (ouvertures / clôtures publiées)
  *   2. bilan publié sur le canal si c'est l'heure
  *   3. graphique de l'évolution du portefeuille si c'est l'heure
  */
-const { GoldTrader } = require('./gold');
+const { MarketTrader, activeMarkets, marketById } = require('./markets');
 const { goldEventMessage, portfolioMessage } = require('./format');
 const { explainTelegramError } = require('./channel');
 
@@ -17,39 +17,50 @@ async function safeSend(channel, text) {
 }
 
 async function runCycle({ cfg, store, channel, publish = true }) {
-  const out = { events: 0 };
+  const out = { events: 0, byMarket: {} };
+  const markets = activeMarkets(cfg);
 
-  if (cfg.goldEnabled) {
-    for (const ev of await new GoldTrader(store, cfg).run()) {
-      out.events++;
-      console.log(
-        `[or] ${ev.strategy.id} : ${ev.type === 'open' ? `ouverture ${ev.pos.side} à ${ev.pos.entry.toFixed(2)}` : `clôture ${ev.trade.pnlPct.toFixed(2)}% (${ev.trade.reason})`}`,
-      );
-      if (publish) await safeSend(channel, goldEventMessage(ev));
+  for (const market of markets) {
+    let n = 0;
+    try {
+      for (const ev of await new MarketTrader(market, store, cfg).run()) {
+        n++;
+        console.log(
+          `[${market.id}] ${ev.strategy.id} : ${ev.type === 'open' ? `ouverture ${ev.pos.side} à ${ev.pos.entry.toFixed(2)}` : `clôture ${ev.trade.pnlPct.toFixed(2)}% (${ev.trade.reason})`}`,
+        );
+        if (publish) await safeSend(channel, goldEventMessage(ev));
+      }
+    } catch (err) {
+      console.error(`[${market.id}] échec du passage :`, err.message);
     }
+    out.byMarket[market.id] = n;
+    out.events += n;
   }
 
   if (publish && channel.summaryDue()) {
-    await safeSend(channel, portfolio(cfg, store));
+    for (const market of markets) await safeSend(channel, portfolio(cfg, store, market.id));
     channel.markSummary();
   }
 
-  // Graphique de l'évolution du portefeuille (une fois par jour par défaut)
-  if (publish && cfg.goldEnabled && channel.chartDue()) {
-    try {
-      const { liveChart } = require('./portfolio');
-      const { png, caption } = liveChart(store, cfg);
-      await channel.sendPhoto(png, caption);
-    } catch (err) {
-      console.error(`[canal] graphique impossible : ${explainTelegramError(err)}`);
+  // Graphique de l'évolution du portefeuille (une fois par jour par défaut), un par marché
+  if (publish && markets.length && channel.chartDue()) {
+    const { liveChart } = require('./portfolio');
+    for (const market of markets) {
+      try {
+        const { png, caption } = liveChart(store, cfg, market.id);
+        await channel.sendPhoto(png, caption);
+      } catch (err) {
+        console.error(`[canal] graphique ${market.id} impossible : ${explainTelegramError(err)}`);
+      }
     }
     channel.markChart();
   }
   return out;
 }
 
-function portfolio(cfg, store) {
-  return portfolioMessage(new GoldTrader(store, cfg).stats(), cfg);
+/** Bilan texte d'un marché (or par défaut). */
+function portfolio(cfg, store, marketId = 'gold') {
+  return portfolioMessage(new MarketTrader(marketById(cfg, marketId), store, cfg).stats(), cfg);
 }
 
 module.exports = { runCycle, portfolio };

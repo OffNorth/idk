@@ -4,10 +4,14 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { Store } = require('../src/store');
-const { GoldTrader } = require('../src/gold');
+const { GoldTrader } = require('../src/markets');
 const { portfolioMessage, goldEventMessage } = require('../src/format');
 
-const cfg = { goldEnabled: true, goldSizeUsd: 1000, goldFeePct: 0.05, goldStrategies: ['all'] };
+const cfg = {
+  goldEnabled: true, goldStartCapital: 1000, goldPositionPct: 100, goldFeePct: 0.05, goldFinancingPct: 0, goldStrategies: ['all'],
+  nasEnabled: true, nasStartCapital: 1000, nasPositionPct: 100, nasFeePct: 0.01, nasFinancingPct: 6, nasStrategies: ['rsi2', 'macd_long', 'hold'],
+  get goldSizeUsd() { return this.goldStartCapital; },
+};
 
 test('or : indicateurs', () => {
   const { ema, rsi, sma, supertrend, donchian } = require('../src/indicators');
@@ -69,12 +73,23 @@ test('graphique PNG valide', () => {
   assert.strictEqual(png.readUInt32BE(20), 200);
 });
 
+test('financement CFD appliqué au prorata des jours', () => {
+  const { closePos } = require('../src/gold');
+  const pos = { side: 'long', entry: 100, size: 1000, entryT: 0 };
+  const t = closePos(pos, 100, 'test', 365 * 86400, 0, 6);
+  assert.ok(Math.abs(t.pnlUsd + 60) < 1e-9, '6 %/an sur un an = −60 $');
+});
+
 test('or : bilan et messages', () => {
   const store = new Store(fs.mkdtempSync(path.join(os.tmpdir(), 'gold-')));
   const trader = new GoldTrader(store, cfg);
   const stats = trader.stats();
   assert.strictEqual(stats.rows.length, require('../src/strategies').STRATEGIES.filter((s) => !s.scalp).length, 'toutes les stratégies (hors scalp)');
-  assert.match(portfolioMessage(stats, cfg), /Bilan paper trading — Or/);
+  assert.match(portfolioMessage(stats, cfg), /Bilan paper trading — 🥇 Or/);
+  const { MarketTrader, nasMarket } = require('../src/markets');
+  const nas = new MarketTrader(nasMarket(cfg), store, cfg).stats();
+  assert.strictEqual(nas.rows.length, 3);
+  assert.match(portfolioMessage(nas, cfg), /Nasdaq 100/);
   const strategy = trader.strategies[0];
   const pos = { side: 'long', entry: 4000, sl: 3980, tp: 4040, size: 1000, entryT: 0 };
   assert.match(goldEventMessage({ type: 'open', strategy, pos, rsi: 55 }), /ACHAT/);

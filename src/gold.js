@@ -91,10 +91,16 @@ function openPos(side, price, sig, size, t) {
   };
 }
 
-function closePos(pos, price, reason, t, feePct) {
+/**
+ * Clôture d'une position. feePct = frais par côté (%), financingPct = coût de financement annuel (%)
+ * appliqué au prorata des jours en position (CFD : « swap » de nuit).
+ */
+function closePos(pos, price, reason, t, feePct, financingPct = 0) {
   const dir = pos.side === 'long' ? 1 : -1;
-  const pnlPct = (dir * (price / pos.entry - 1) - (2 * feePct) / 100) * 100;
-  return { ...pos, exit: price, exitT: t, reason, pnlPct, pnlUsd: (pos.size * pnlPct) / 100 };
+  const days = Math.max(0, (t - pos.entryT) / 86400);
+  const financing = (financingPct * days) / 365;
+  const pnlPct = (dir * (price / pos.entry - 1) - (2 * feePct) / 100 - financing / 100) * 100;
+  return { ...pos, exit: price, exitT: t, reason, pnlPct, pnlUsd: (pos.size * pnlPct) / 100, financingPct: financing };
 }
 
 /** Stop / objectif touché dans une bougie ? (prudence : le stop passe avant l'objectif) */
@@ -156,7 +162,7 @@ function unrealized(pos, price) {
  */
 function backtest(strategy, candles, {
   size = 1000, feePct = 0.05, daily = null, from = 0, to = Infinity, barSec = 3600, fx = null, ind: pre = null,
-  compound = false, capital: startCapital = size, positionPct = 100, curveEvery = 0,
+  compound = false, capital: startCapital = size, positionPct = 100, curveEvery = 0, financingPct = 0,
 } = {}) {
   const ind = pre || (strategy.scalp ? computeScalp(candles, barSec) : computeAll(candles, daily, barSec, fx));
   const trades = [];
@@ -164,7 +170,7 @@ function backtest(strategy, candles, {
   let pos = null;
   let capital = startCapital;
   const close = (price, reason, t) => {
-    const trade = closePos(pos, price, reason, t, feePct);
+    const trade = closePos(pos, price, reason, t, feePct, financingPct);
     capital += trade.pnlUsd;
     trade.capital = capital;
     trades.push(trade);
@@ -199,12 +205,18 @@ function backtest(strategy, candles, {
 /* Trading simulé en direct                                            */
 /* ------------------------------------------------------------------ */
 
-class GoldTrader {
-  constructor(store, cfg) {
+/**
+ * Paper trading en direct d'un marché (or, Nasdaq 100…). `market` fournit :
+ *   id, name, emoji, file, enabled, strategies (ids), startCapital, positionPct, feePct, financingPct,
+ *   fetch(tfs, needsFx) → { price, stops (bougies 5 min), daily, fx, series: { tf: bougies } }
+ */
+class MarketTrader {
+  constructor(market, store, cfg) {
+    this.market = market;
     this.store = store;
     this.cfg = cfg;
-    this.strategies = selectStrategies(cfg.goldStrategies);
-    const s = store.loadJson(FILE, {});
+    this.strategies = selectStrategies(market.strategies);
+    const s = store.loadJson(market.file, {});
     this.state = s.accounts ? s : { accounts: {} }; // ancien format → on repart de zéro
   }
 
@@ -212,11 +224,11 @@ class GoldTrader {
     for (const acc of Object.values(this.state.accounts)) {
       if (acc.closed.length > 300) acc.closed = acc.closed.slice(-300);
     }
-    this.store.saveJson(FILE, this.state);
+    this.store.saveJson(this.market.file, this.state);
   }
 
   account(id) {
-    const start = this.cfg.goldStartCapital;
+    const start = this.market.startCapital;
     if (!this.state.accounts[id]) this.state.accounts[id] = { position: null, closed: [], lastEvalT: 0, capital: start };
     const acc = this.state.accounts[id];
     // anciens comptes (avant le réinvestissement) : capital = départ + gains déjà réalisés
@@ -260,31 +272,32 @@ class GoldTrader {
 
   /** Un passage pour toutes les stratégies. Retourne les événements à publier. */
   async run() {
-    if (!this.cfg.goldEnabled) return [];
+    const M = this.market;
+    if (!M.enabled) return [];
     const tfs = [...new Set(this.strategies.map(tfOf))];
     const needsFx = this.strategies.some((s) => s.needsFx);
-    const [m5, d1, fx, ...series] = await Promise.all([
-      fetchCandles(300),
-      cachedHistory(86400, 500, 3600),
-      needsFx ? fetchEurUsd() : null,
-      ...tfs.map((tf) => (tf === '1d' ? null : tf === '6h' ? cachedHistory(21600, 150, 1800) : fetchCandles(3600))),
-    ]);
-    const now = Math.floor(Date.now() / 1000);
-    const price = m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c;
-    if (!price) {
-      console.warn('[or] prix indisponible, passage ignoré');
+    let data;
+    try {
+      data = await M.fetch(tfs, needsFx);
+    } catch (err) {
+      console.warn(`[${M.id}] données indisponibles (${err.message}), passage ignoré`);
       return [];
     }
+    const { price, stops, daily, fx, series } = data;
+    if (!price) {
+      console.warn(`[${M.id}] prix indisponible, passage ignoré`);
+      return [];
+    }
+    const now = Math.floor(Date.now() / 1000);
     // Indicateurs calculés une fois par unité de temps, sur les bougies clôturées
     const byTf = {};
-    tfs.forEach((tf, k) => {
+    for (const tf of tfs) {
       const sec = TF_SEC[tf];
-      const raw = tf === '1d' ? d1 : series[k];
-      if (!raw) return;
+      const raw = series[tf];
+      if (!raw) continue;
       const closed = raw.filter((c) => c.t + sec <= now);
-      byTf[tf] = { closed, ind: computeAll(closed, d1, sec, fx) };
-    });
-    const fee = this.cfg.goldFeePct;
+      byTf[tf] = { closed, ind: computeAll(closed, daily, sec, fx) };
+    }
     const events = [];
     this.state.lastPrice = price;
     this.state.lastUpdate = Date.now();
@@ -293,11 +306,11 @@ class GoldTrader {
       const acc = this.account(strat.id);
 
       // 1. Stop / objectif touchés depuis le dernier passage (bougies 5 min)
-      if (acc.position && m5) {
-        for (const c of m5.filter((x) => x.t + 300 > acc.position.checkedFrom)) {
+      if (acc.position && stops) {
+        for (const c of stops.filter((x) => x.t + 300 > acc.position.checkedFrom)) {
           const hit = hitInCandle(acc.position, c);
           if (hit) {
-            events.push(this.#close(strat, acc, hit.price, hit.reason, now, fee));
+            events.push(this.#close(strat, acc, hit.price, hit.reason, now));
             break;
           }
         }
@@ -305,9 +318,9 @@ class GoldTrader {
       }
 
       // 2. Nouvelle bougie clôturée sur l'unité de temps de la stratégie → évaluation
-      const data = byTf[tfOf(strat)];
-      if (!data) continue;
-      const { closed, ind } = data;
+      const d = byTf[tfOf(strat)];
+      if (!d) continue;
+      const { closed, ind } = d;
       const i = closed.length - 1;
       if (i < strat.warmup || closed[i].t <= acc.lastEvalT) continue;
       acc.lastEvalT = closed[i].t;
@@ -316,14 +329,14 @@ class GoldTrader {
         trailStop(strat, acc.position, ind, i);
         const p = acc.position;
         if ((p.side === 'long' && sig.exitLong) || (p.side === 'short' && sig.exitShort)) {
-          events.push(this.#close(strat, acc, price, 'signal de sortie', now, fee));
+          events.push(this.#close(strat, acc, price, 'signal de sortie', now));
         }
       }
       if (!acc.position && sig.entry) {
-        const size = Math.max(0, (acc.capital * this.cfg.goldPositionPct) / 100);
+        const size = Math.max(0, (acc.capital * M.positionPct) / 100);
         if (size <= 0) continue;
         acc.position = openPos(sig.entry, price, sig, size, now);
-        events.push({ type: 'open', strategy: strat, pos: acc.position, rsi: ind.rsi[i] });
+        events.push({ type: 'open', market: M, strategy: strat, pos: acc.position, rsi: ind.rsi[i] });
       }
     }
     this.snapshot(now);
@@ -331,18 +344,18 @@ class GoldTrader {
     return events;
   }
 
-  #close(strat, acc, price, reason, t, fee) {
-    const trade = closePos(acc.position, price, reason, t, fee);
+  #close(strat, acc, price, reason, t) {
+    const trade = closePos(acc.position, price, reason, t, this.market.feePct, this.market.financingPct);
     acc.capital += trade.pnlUsd;
     trade.capital = acc.capital;
     acc.position = null;
     acc.closed.push(trade);
-    return { type: 'close', strategy: strat, trade, capital: acc.capital, start: this.cfg.goldStartCapital };
+    return { type: 'close', market: this.market, strategy: strat, trade, capital: acc.capital, start: this.market.startCapital };
   }
 
   stats() {
     const price = this.state.lastPrice;
-    const start = this.cfg.goldStartCapital;
+    const start = this.market.startCapital;
     const rows = this.strategies.map((strat) => {
       const acc = this.account(strat.id);
       const equity = this.equity(acc, price);
@@ -358,6 +371,7 @@ class GoldTrader {
     });
     const totalEquity = rows.reduce((s, r) => s + r.equity, 0);
     return {
+      market: this.market,
       price,
       rows,
       start,
@@ -369,4 +383,4 @@ class GoldTrader {
   }
 }
 
-module.exports = { GoldTrader, backtest, unrealized, fetchHistory, fetchBacktestData, fetchCandles, hitInCandle };
+module.exports = { MarketTrader, backtest, unrealized, fetchHistory, fetchBacktestData, fetchCandles, cachedHistory, fetchEurUsd, hitInCandle, closePos };

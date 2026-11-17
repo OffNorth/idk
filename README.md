@@ -1,6 +1,6 @@
-# 🥇 Gold Paper Bot
+# 🥇 Gold Paper Bot (+ 🇺🇸 Nasdaq 100)
 
-Bot Telegram qui **trade l'or en simulation** (paper trading) avec plusieurs stratégies en parallèle et publie chaque
+Bot Telegram qui **trade l'or et le Nasdaq 100 en simulation** (paper trading) avec plusieurs stratégies en parallèle et publie chaque
 entrée, chaque sortie et un bilan régulier sur un canal Telegram. Les stratégies actives par défaut ont été choisies
 par un **banc d'essai sur 6 ans** de données (voir plus bas).
 
@@ -111,7 +111,33 @@ en direct continue de les départager. **Résultats passés ≠ résultats futur
 Pour relancer : `npm run research` (frais 0,05 %), `npm run research -- 0.1` (frais 0,1 %),
 `npm run research -- 0.05 2023-07-01` (autre coupure). Les données sont mises en cache dans `data/research/`.
 
-## Autre marché testé : Nasdaq 100 (`npm run research -- nas100`)
+## 🇺🇸 Nasdaq 100 en paper trading
+
+Le bot trade aussi le **Nasdaq 100** en simulation, comme un CFD NAS100 :
+- Prix : **indice ^NDX** via Yahoo Finance (gratuit, sans clé, non officiel), bougies 5 min pour les stops.
+- Stratégies (retenues par le banc d'essai, **achat seul** : vendre le Nasdaq à découvert fait perdre sur le long terme) :
+  **RSI 2**, **MACD + EMA 200 (achat seul)**, **Momentum de tendance**, **EMA 20/50 (achat seul)**, + la référence.
+- Coûts : 0,01 % par côté **+ financement de nuit 6 %/an** (`NAS_FINANCING_PCT`) au prorata des jours en position.
+- Messages marqués 🇺🇸 sur le canal, bilan et graphique séparés ; commande `/nasdaq`, `/historique nasdaq 2010`.
+
+### Historique simulé 2010 → 2026 (1 000 $ au départ, gains réinvestis, frais + financement)
+
+![Évolution simulée des stratégies Nasdaq 100 depuis 2010](docs/historique-nasdaq-2010.png)
+
+| Stratégie | Valeur finale | Pire baisse |
+|---|---|---|
+| *Référence : garder l'indice (ETF, sans financement)* | *14 185 $ (+1 319 %)* | *−36 %* |
+| Momentum de tendance | 1 907 $ (+91 %) | −28 % |
+| MACD + EMA 200 (achat seul) | 1 829 $ (+83 %) | −18 % |
+| RSI 2 | 1 755 $ (+76 %) | −17 % |
+| EMA 20/50 (achat seul) | 1 717 $ (+72 %) | −13 % |
+
+⚠️ **Sur le Nasdaq, garder l'indice a écrasé toutes les stratégies** depuis 2010 : l'indice a été multiplié par 14,
+les stratégies ne sont en position qu'une partie du temps (13 à 60 %) et paient le financement du CFD.
+Elles baissent beaucoup moins (−13 à −28 % contre −36 %), mais ratent l'essentiel de la hausse.
+Le paper trading les compare en direct à la référence.
+
+## Banc d'essai Nasdaq 100 (`npm run research -- nas100`)
 
 Données Yahoo Finance (gratuites) : **indice ^NDX en journalier depuis 1985** (41 ans : bulle internet, 2008, Covid, 2022)
 et **future NQ en 1 h** sur ~2,4 ans. Choix sur 1985 → 2009, vérification sur 2010 → 2026 (1 h / 6 h : choix avant
@@ -162,9 +188,10 @@ les stratégies journalières restent les meilleures (`npm run research -- 0.01`
 
 | Commande | Rôle |
 |---|---|
+| `/nasdaq` | Bilan du Nasdaq 100 |
 | `/gold` | Bilan de chaque stratégie (valeur du compte, trades, % gagnants, position en cours) |
 | `/portfolio` | Graphique de l'évolution du portefeuille depuis le lancement |
-| `/historique [année]` | Simulation des stratégies actives depuis 2021 (gains réinvestis), avec graphique |
+| `/historique [or\|nasdaq] [année]` | Simulation des stratégies actives sur l'historique (gains réinvestis), avec graphique |
 | `/strategies` | Description des stratégies actives |
 | `/backtest [jours]` | Backtest récent sur Coinbase (90 jours par défaut, 365 max) |
 | `/bilan` | Publie le bilan sur le canal maintenant |
@@ -232,7 +259,8 @@ src/indicators.js  EMA, SMA, RSI, ATR, Bollinger, MACD, Donchian, Supertrend, PV
 src/history.js     Téléchargement / cache de l'archive Binance, agrégation 6 h / 1 j
 src/yahoo.js       Données Yahoo Finance (Nasdaq 100 et autres indices)
 src/cycle.js       Un passage : trading + bilan + graphique
-src/portfolio.js   Graphique du portefeuille en direct et historique simulé
+src/portfolio.js   Graphique du portefeuille en direct et historique simulé (par marché)
+src/markets.js     Marchés : or (Coinbase/Kraken) et Nasdaq 100 (Yahoo), stratégies, frais, financement
 src/chart.js       Rendu PNG des courbes (sans dépendance)
 src/channel.js     Publication Telegram
 src/format.js      Messages Telegram
