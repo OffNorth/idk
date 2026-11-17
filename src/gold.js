@@ -164,7 +164,8 @@ function backtest(strategy, candles, {
   size = 1000, feePct = 0.05, daily = null, from = 0, to = Infinity, barSec = 3600, fx = null, vix = null, ind: pre = null,
   compound = false, capital: startCapital = size, positionPct = 100, curveEvery = 0, financingPct = 0,
 } = {}) {
-  const ind = pre || (strategy.scalp ? computeScalp(candles, barSec) : computeAll(candles, daily, barSec, fx, vix));
+  const ind = pre || (strategy.intraday ? require('./intraday').computeIntraday(candles, barSec)
+    : strategy.scalp ? computeScalp(candles, barSec) : computeAll(candles, daily, barSec, fx, vix));
   const trades = [];
   const curve = [];
   let pos = null;
@@ -297,7 +298,9 @@ class MarketTrader {
       const raw = series[tf];
       if (!raw) continue;
       const closed = raw.filter((c) => c.t + sec <= now);
-      byTf[tf] = { closed, ind: computeAll(closed, daily, sec, fx, vix) };
+      const intraday = this.strategies.some((s) => s.intraday && tfOf(s) === tf);
+      const ind = intraday ? require('./intraday').computeIntraday(closed, sec, series['1h']) : computeAll(closed, daily, sec, fx, vix);
+      byTf[tf] = { closed, ind };
     }
     const events = [];
     this.state.lastPrice = price;

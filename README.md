@@ -143,6 +143,21 @@ par 14, les stratégies ne sont en position qu'une partie du temps et paient le 
 (filtre moyenne 200 jours) fait +7 %/an en CFD, +11 %/an sans financement, en évitant le cœur des krachs.
 Le paper trading les compare en direct à la référence.
 
+### Intraday NAS100 (formation TradingView, module 5) — `npm run nas-intraday`
+
+Les 3 stratégies de la formation ont été codées sur bougies 5 min de l'indice (heures de New York, changement d'heure géré),
+fenêtre 9:30–11:30 New York (15:30–17:30 Paris), tout fermé avant la clôture, 2 trades par jour au plus.
+Test sur les **60 dernières séances** (limite gratuite de Yahoo pour le 5 min), choix sur la 1re moitié, vérification sur la 2e :
+
+| Stratégie | Trades | Gagnants | Avant frais | Verdict |
+|---|---|---|---|---|
+| A. Cassure du range d'ouverture 15 min (`orb15`) | 26 | 19 % | ≈ 0 par trade | pas d'avantage, non activée |
+| B. Repli VWAP / EMA 20 (`vwappb`) | 32 | 16 % | −0,22 R par trade | perdante, non activée |
+| C. Chasse aux stops puis retournement (`sweep`) | 4 | 50 % | +2,25 R par trade | positive mais **4 trades seulement** : activée **à l'essai** en paper trading |
+
+60 séances, c'est trop court pour conclure : le paper trading en direct (évalué toutes les 3 min sur les bougies 5 min)
+sert à accumuler des trades. Pas de financement de nuit puisque tout est fermé le jour même.
+
 ## Banc d'essai Nasdaq 100 (`npm run research -- nas100`)
 
 Données Yahoo Finance (gratuites) : **indice ^NDX en journalier depuis 1985** (41 ans : bulle internet, 2008, Covid, 2022)
@@ -259,6 +274,7 @@ once.js            Un seul passage (GitHub Actions / cron)
 backtest.js        Backtest récent (Coinbase) en console
 research.js        Banc d'essai complet (or : archive Binance · nas100 : Yahoo Finance), choix / vérification
 scalp.js           Banc d'essai du scalp (1 / 5 min, plusieurs niveaux de frais)
+nas-intraday.js    Test des 3 stratégies intraday NAS100 (60 dernières séances)
 src/gold.js        Moteur de paper trading multi-unités de temps + backtest
 src/strategies.js  Toutes les stratégies (guides, classiques, maison) + référence
 src/indicators.js  EMA, SMA, RSI, ATR, Bollinger, MACD, Donchian, Supertrend, PVT, chandeliers, sessions…
@@ -266,6 +282,7 @@ src/history.js     Téléchargement / cache de l'archive Binance, agrégation 6 
 src/yahoo.js       Données Yahoo Finance (Nasdaq 100 et autres indices)
 src/cycle.js       Un passage : trading + bilan + graphique
 src/portfolio.js   Graphique du portefeuille en direct et historique simulé (par marché)
+src/intraday.js    Indicateurs et stratégies intraday NAS100 (VWAP, range d'ouverture, sweep…)
 src/markets.js     Marchés : or (Coinbase/Kraken) et Nasdaq 100 (Yahoo), stratégies, frais, financement
 src/chart.js       Rendu PNG des courbes (sans dépendance)
 src/channel.js     Publication Telegram

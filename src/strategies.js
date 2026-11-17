@@ -792,6 +792,9 @@ function longOnly(base, tf = base.tf) {
 
 STRATEGIES.push(longOnly(STRATEGIES.find((s) => s.id === 'macd'), '1d'), longOnly(STRATEGIES.find((s) => s.id === 'ema'), '1d'));
 
+/* Intraday NAS100 (formation TradingView, module 5) : voir src/intraday.js */
+STRATEGIES.push(...require('./intraday').INTRADAY);
+
 /* ------------------------------------------------------------------ */
 /* Unités de temps                                                     */
 /* ------------------------------------------------------------------ */
@@ -807,7 +810,7 @@ function withTf(s, tf) {
 
 /** ids : 'all', ou liste d'ids, éventuellement suffixés d'une unité de temps (« ema@6h »). */
 function selectStrategies(ids) {
-  if (!ids || !ids.length || ids.includes('all')) return STRATEGIES.filter((s) => !s.scalp && !s.markets);
+  if (!ids || !ids.length || ids.includes('all')) return STRATEGIES.filter((s) => !s.scalp && !s.markets && !s.intraday);
   const out = [];
   for (const id of ids) {
     const [base, tf] = id.split('@');

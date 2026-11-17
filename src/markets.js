@@ -66,14 +66,14 @@ function nasMarket(cfg) {
     feePct: cfg.nasFeePct,
     financingPct: cfg.nasFinancingPct,
     async fetch(tfs, { needsVix } = {}) {
-      const needIntraday = tfs.some((tf) => tf !== '1d');
+      const needIntraday = tfs.some((tf) => tf === '1h' || tf === '6h');
       const [m5, d1, h1, vix] = await Promise.all([
         cached('ndx5m', 120, () => fetchYahoo('^NDX', '5m', { range: '5d', ...LIVE })),
         cached('ndx1d', 3600, () => fetchYahoo('^NDX', '1d', { range: '2y', ...LIVE })),
         needIntraday ? cached('ndx1h', 900, () => fetchYahoo('^NDX', '1h', { range: '730d', ...LIVE })) : null,
         needsVix ? cached('vix1d', 3600, () => fetchYahoo('^VIX', '1d', { range: '2y', ...LIVE })).catch(() => null) : null,
       ]);
-      const series = { '1d': d1, '1h': h1, '6h': h1 ? aggregate(h1, 21600) : null };
+      const series = { '1d': d1, '1h': h1, '6h': h1 ? aggregate(h1, 21600) : null, '5m': m5 };
       return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx: null, vix, series };
     },
   };

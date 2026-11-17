@@ -39,7 +39,7 @@ module.exports = {
   // Paper trading du Nasdaq 100 (indice ^NDX, Yahoo Finance) — CFD NAS100 simulé
   nasEnabled: num('NAS_TRADING', 1) === 1,
   // Retenues par le banc d'essai (npm run research -- nas100), en version achat seul + référence
-  nasStrategies: list('NAS_STRATEGIES', 'sma200,vixcalm,macd_long,tsmom,rsi2,double7,tom,hold'),
+  nasStrategies: list('NAS_STRATEGIES', 'sma200,vixcalm,macd_long,tsmom,rsi2,double7,tom,sweep,hold'),
   nasStartCapital: num('NAS_START_CAPITAL', num('GOLD_START_CAPITAL', num('GOLD_SIZE_USD', 1000))),
   nasPositionPct: num('NAS_POSITION_PCT', 100),
   nasFeePct: num('NAS_FEE_PCT', 0.01),

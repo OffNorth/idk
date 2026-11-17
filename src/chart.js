@@ -13,6 +13,8 @@ const PALETTE = [
   { rgb: [147, 51, 234], emoji: '🟪' },
   { rgb: [202, 160, 0], emoji: '🟨' },
   { rgb: [133, 77, 14], emoji: '🟫' },
+  { rgb: [236, 72, 153], emoji: '🩷' },
+  { rgb: [6, 182, 212], emoji: '🩵' },
 ];
 const REFERENCE = { rgb: [90, 90, 90], emoji: '⬛' };
 
