@@ -1,0 +1,19 @@
+{
+  "name": "memecoin-scanner-bot",
+  "version": "1.0.0",
+  "description": "Bot Telegram qui scanne les meme coins Solana entre 100k$ et 2M$ de market cap et publie les meilleurs",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "scan": "node scan.js",
+    "check": "node --check bot.js && node --check scan.js && for f in src/*.js; do node --check $f || exit 1; done",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "grammy": "^1.34.0"
+  }
+}
