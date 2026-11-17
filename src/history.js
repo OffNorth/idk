@@ -51,25 +51,28 @@ function months(from, to) {
   return list;
 }
 
-/** Bougies 1 h de FIRST_MONTH jusqu'au dernier mois complet (cache disque). symbol : PAXGUSDT, EURUSDT… */
-async function loadHourly(cacheDir, { log = () => {}, symbol = 'PAXGUSDT' } = {}) {
+/**
+ * Bougies de `interval` (1h, 5m, 1m…) de `from` jusqu'au dernier mois complet (cache disque).
+ * symbol : PAXGUSDT, EURUSDT…
+ */
+async function loadKlines(cacheDir, { log = () => {}, symbol = 'PAXGUSDT', interval = '1h', from = FIRST_MONTH } = {}) {
   fs.mkdirSync(cacheDir, { recursive: true });
   const now = new Date();
   const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
   const lastMonth = `${last.getUTCFullYear()}-${String(last.getUTCMonth() + 1).padStart(2, '0')}`;
   const all = [];
-  for (const mo of months(FIRST_MONTH, lastMonth)) {
-    const file = path.join(cacheDir, `${symbol}-1h-${mo}.json`);
+  for (const mo of months(from, lastMonth)) {
+    const file = path.join(cacheDir, `${symbol}-${interval}-${mo}.json`);
     let rows;
     if (fs.existsSync(file)) {
       rows = JSON.parse(fs.readFileSync(file, 'utf8'));
     } else {
-      const res = await fetch(`${BASE}/${symbol}/1h/${symbol}-1h-${mo}.zip`, { signal: AbortSignal.timeout(30_000) });
+      const res = await fetch(`${BASE}/${symbol}/${interval}/${symbol}-${interval}-${mo}.zip`, { signal: AbortSignal.timeout(60_000) });
       if (res.status === 404) continue;
       if (!res.ok) throw new Error(`archive Binance ${mo} : HTTP ${res.status}`);
       rows = parseCsv(unzipFirst(Buffer.from(await res.arrayBuffer())).toString('utf8'));
       fs.writeFileSync(file, JSON.stringify(rows));
-      log(`  ${symbol} ${mo} : ${rows.length} bougies`);
+      log(`  ${symbol} ${interval} ${mo} : ${rows.length} bougies`);
     }
     all.push(...rows);
   }
@@ -77,8 +80,11 @@ async function loadHourly(cacheDir, { log = () => {}, symbol = 'PAXGUSDT' } = {}
   return [...byT.values()].sort((a, b) => a.t - b.t);
 }
 
-/** Agrège des bougies 1 h en bougies de `sec` secondes alignées sur UTC (6 h : 0/6/12/18 h, 1 j : minuit). */
-function aggregate(hourly, sec) {
+/**
+ * Agrège des bougies en bougies de `sec` secondes alignées sur UTC (6 h : 0/6/12/18 h, 1 j : minuit).
+ * srcSec = durée des bougies d'origine (3600 par défaut).
+ */
+function aggregate(hourly, sec, srcSec = 3600) {
   const out = [];
   let cur = null;
   for (const c of hourly) {
@@ -96,7 +102,10 @@ function aggregate(hourly, sec) {
   }
   if (cur) out.push(cur);
   // on écarte les bougies incomplètes (moins de 80 % des heures attendues)
-  return out.filter((b) => b.n >= Math.floor((sec / 3600) * 0.8)).map(({ n, ...b }) => b);
+  return out.filter((b) => b.n >= Math.floor((sec / srcSec) * 0.8)).map(({ n, ...b }) => b);
 }
 
-module.exports = { loadHourly, aggregate, unzipFirst, parseCsv };
+/** Bougies 1 h (compatibilité). */
+const loadHourly = (cacheDir, opts = {}) => loadKlines(cacheDir, { ...opts, interval: '1h' });
+
+module.exports = { loadKlines, loadHourly, aggregate, unzipFirst, parseCsv };

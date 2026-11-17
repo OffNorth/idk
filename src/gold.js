@@ -8,7 +8,7 @@
  * Simulation uniquement : aucun ordre réel n'est passé.
  */
 const { getJson } = require('./http');
-const { computeAll } = require('./indicators');
+const { computeAll, computeScalp } = require('./indicators');
 const { selectStrategies, tfOf, TF_SEC } = require('./strategies');
 
 const FILE = 'gold.json';
@@ -142,11 +142,12 @@ function summarize(trades) {
 /* Backtest (bougies 1 h uniquement)                                   */
 /* ------------------------------------------------------------------ */
 
-function backtest(strategy, candles, { size = 1000, feePct = 0.05, daily = null, from = 0, barSec = 3600, fx = null } = {}) {
-  const ind = computeAll(candles, daily, barSec, fx);
+function backtest(strategy, candles, { size = 1000, feePct = 0.05, daily = null, from = 0, to = Infinity, barSec = 3600, fx = null, ind: pre = null } = {}) {
+  const ind = pre || (strategy.scalp ? computeScalp(candles, barSec) : computeAll(candles, daily, barSec, fx));
   const trades = [];
   let pos = null;
-  for (let i = Math.max(strategy.warmup, 1, from); i < candles.length; i++) {
+  const end = Math.min(candles.length, to);
+  for (let i = Math.max(strategy.warmup, 1, from); i < end; i++) {
     const c = candles[i];
     if (pos && pos.openIdx < i) {
       const hit = hitInCandle(pos, c);
@@ -163,7 +164,7 @@ function backtest(strategy, candles, { size = 1000, feePct = 0.05, daily = null,
         pos = null;
       }
     }
-    if (!pos && sig.entry && i < candles.length - 1) {
+    if (!pos && sig.entry && i < end - 1) {
       pos = openPos(sig.entry, c.c, sig, size, c.t);
       pos.openIdx = i;
     }

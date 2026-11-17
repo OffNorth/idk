@@ -26,7 +26,7 @@ test('or : chaque stratégie produit des trades cohérents en backtest', () => {
   // marché synthétique : tendances + oscillations
   const closes = Array.from({ length: 600 }, (_, i) => 2000 + 80 * Math.sin(i / 40) + 15 * Math.sin(i / 3) + i * 0.2);
   const candles = closes.map((c, i) => ({ t: i * 3600, o: c, h: c + 3, l: c - 3, c, v: 10 + (i % 7) }));
-  for (const s of STRATEGIES) {
+  for (const s of STRATEGIES.filter((x) => !x.scalp)) {
     const r = backtest(s, candles, { size: 1000, feePct: 0.05 });
     if (!['hold', 'fibo', 'insidebar', 'dollar'].includes(s.id)) assert.ok(r.trades > 0, `${s.id} doit trader`);
     for (const t of r.list) {
@@ -49,7 +49,7 @@ test('or : bilan et messages', () => {
   const store = new Store(fs.mkdtempSync(path.join(os.tmpdir(), 'gold-')));
   const trader = new GoldTrader(store, cfg);
   const stats = trader.stats();
-  assert.strictEqual(stats.rows.length, require('../src/strategies').STRATEGIES.length, 'toutes les stratégies');
+  assert.strictEqual(stats.rows.length, require('../src/strategies').STRATEGIES.filter((s) => !s.scalp).length, 'toutes les stratégies (hors scalp)');
   assert.match(portfolioMessage(stats, cfg), /Bilan paper trading — Or/);
   const strategy = trader.strategies[0];
   const pos = { side: 'long', entry: 4000, sl: 3980, tp: 4040, size: 1000, entryT: 0 };

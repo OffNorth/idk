@@ -368,7 +368,109 @@ function computeAll(candles, daily = null, barSec = 3600, fx = null) {
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Scalp (bougies 1 / 5 min) : jeu d'indicateurs léger                 */
+/* ------------------------------------------------------------------ */
+
+/** VWAP de séance (remise à zéro à 00:00 UTC) et écart-type pondéré autour du VWAP. */
+function sessionVwap(candles) {
+  const vwap = [];
+  const sd = [];
+  let day = -1;
+  let pv = 0;
+  let vol = 0;
+  let pv2 = 0;
+  for (const c of candles) {
+    const d = Math.floor(c.t / 86400);
+    if (d !== day) {
+      day = d;
+      pv = 0;
+      vol = 0;
+      pv2 = 0;
+    }
+    const tp = (c.h + c.l + c.c) / 3;
+    const v = c.v > 0 ? c.v : 1e-9;
+    pv += tp * v;
+    pv2 += tp * tp * v;
+    vol += v;
+    const m = pv / vol;
+    vwap.push(m);
+    sd.push(Math.sqrt(Math.max(0, pv2 / vol - m * m)));
+  }
+  return { vwap, sd };
+}
+
+/** Stochastique lent (%K lissé, %D). */
+function stochastic(candles, n = 14, k = 3, d = 3) {
+  const raw = candles.map((c, i) => {
+    if (i < n - 1) return 50;
+    let h = -Infinity;
+    let l = Infinity;
+    for (let j = i - n + 1; j <= i; j++) {
+      h = Math.max(h, candles[j].h);
+      l = Math.min(l, candles[j].l);
+    }
+    return h > l ? ((c.c - l) / (h - l)) * 100 : 50;
+  });
+  const K = sma(raw, k).map((x) => (x === null ? 50 : x));
+  const D = sma(K, d).map((x) => (x === null ? 50 : x));
+  return { k: K, d: D };
+}
+
+/**
+ * Range d'ouverture d'une séance : plus haut / plus bas entre `startMin` et `startMin + lenMin` (minutes UTC),
+ * disponible pour les bougies suivantes du même jour.
+ */
+function openingRange(candles, barSec, startMin, lenMin) {
+  const hi = new Array(candles.length).fill(null);
+  const lo = new Array(candles.length).fill(null);
+  let day = -1;
+  let h = -Infinity;
+  let l = Infinity;
+  candles.forEach((c, i) => {
+    const d = Math.floor(c.t / 86400);
+    const m = Math.floor((c.t % 86400) / 60);
+    if (d !== day) {
+      day = d;
+      h = -Infinity;
+      l = Infinity;
+    }
+    const end = m + barSec / 60;
+    if (m >= startMin && end <= startMin + lenMin) {
+      h = Math.max(h, c.h);
+      l = Math.min(l, c.l);
+    } else if (m >= startMin + lenMin && h > -Infinity) {
+      hi[i] = h;
+      lo[i] = l;
+    }
+  });
+  return { hi, lo };
+}
+
+/** Indicateurs utilisés par les stratégies de scalp (bien plus léger que computeAll). */
+function computeScalp(candles, barSec = 300) {
+  const closes = candles.map((c) => c.c);
+  return {
+    candles,
+    closes,
+    barSec,
+    minute: candles.map((c) => Math.floor((c.t % 86400) / 60)),
+    ema9: ema(closes, 9),
+    ema21: ema(closes, 21),
+    ema50: ema(closes, 50),
+    rsi: rsi(closes, 14),
+    rsi7: rsi(closes, 7),
+    atr: atr(candles, 14),
+    bb: bollinger(closes, 20, 2),
+    vw: sessionVwap(candles),
+    stoch: stochastic(candles, 14, 3, 3),
+    orLondon: openingRange(candles, barSec, 7 * 60, 30),
+    orNy: openingRange(candles, barSec, 13 * 60 + 30, 30),
+  };
+}
+
 module.exports = {
+  sessionVwap, stochastic, openingRange, computeScalp,
   sma, ema, rsi, atr, bollinger, macd, donchian, supertrend, pvt, dailyTrend, candlePattern, swings, asiaRange, roc,
   ichimoku, adx, heikinAshi, dollarSignal, computeAll,
 };

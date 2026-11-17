@@ -507,10 +507,146 @@ STRATEGIES.push(
 );
 
 /* ------------------------------------------------------------------ */
+/* Scalp (bougies 1 / 5 min) — séances Londres + New York uniquement    */
+/* ------------------------------------------------------------------ */
+
+const inSession = (ind, i) => ind.minute[i] >= 7 * 60 && ind.minute[i] < 20 * 60;
+const endOfDay = (ind, i) => ind.minute[i] >= 20 * 60 || ind.minute[i] < 7 * 60;
+const SCALP = { tf: '5m', onlyTf: ['1m', '5m'], scalp: true, warmup: 60 };
+
+STRATEGIES.push(
+  {
+    ...SCALP,
+    id: 's_emavwap',
+    name: 'Scalp EMA 9/21 + VWAP',
+    desc: 'Scalp classique : croisement EMA 9 / EMA 21 dans le sens du prix par rapport au VWAP de la séance. Stop 1 ATR, objectif 1,5 ATR, tout fermé à 20 h UTC.',
+    evaluate(ind, i) {
+      const c = ind.closes[i];
+      const vw = ind.vw.vwap[i];
+      const up = crossUp(ind.ema9, ind.ema21, i);
+      const down = crossDown(ind.ema9, ind.ema21, i);
+      const ok = inSession(ind, i);
+      return {
+        entry: ok && up && c > vw ? 'long' : ok && down && c < vw ? 'short' : null,
+        exitLong: endOfDay(ind, i) || down,
+        exitShort: endOfDay(ind, i) || up,
+        sl: ind.atr[i],
+        tp: 1.5 * ind.atr[i],
+      };
+    },
+  },
+  {
+    ...SCALP,
+    id: 's_vwaprev',
+    name: 'Scalp retour au VWAP',
+    desc: 'Contre-tendance : quand le prix s’écarte de plus de 2 écarts-types du VWAP de la séance avec un RSI 7 extrême (< 20 ou > 80), parier sur un retour au VWAP. Stop 1 ATR, sortie au VWAP.',
+    evaluate(ind, i) {
+      const c = ind.closes[i];
+      const { vwap, sd } = ind.vw;
+      const ok = inSession(ind, i) && sd[i] > 0;
+      return {
+        entry: ok && c < vwap[i] - 2 * sd[i] && ind.rsi7[i] < 20 ? 'long' : ok && c > vwap[i] + 2 * sd[i] && ind.rsi7[i] > 80 ? 'short' : null,
+        exitLong: endOfDay(ind, i) || c >= vwap[i],
+        exitShort: endOfDay(ind, i) || c <= vwap[i],
+        sl: ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...SCALP,
+    id: 's_bbrsi',
+    name: 'Scalp Bollinger + RSI 7',
+    desc: 'Contre-tendance : clôture hors des bandes de Bollinger (20, 2) avec RSI 7 extrême → retour vers la moyenne 20. Stop 1 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes[i];
+      const ok = inSession(ind, i);
+      return {
+        entry: ok && c < ind.bb.lower[i] && ind.rsi7[i] < 20 ? 'long' : ok && c > ind.bb.upper[i] && ind.rsi7[i] > 80 ? 'short' : null,
+        exitLong: endOfDay(ind, i) || c >= ind.bb.mid[i],
+        exitShort: endOfDay(ind, i) || c <= ind.bb.mid[i],
+        sl: ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...SCALP,
+    id: 's_orb',
+    name: 'Scalp cassure du range d’ouverture (Londres / New York)',
+    desc: 'Range des 30 premières minutes de Londres (07:00 UTC) et de New York (13:30 UTC) ; entrée à la première clôture hors du range dans les 2 h qui suivent. Stop de l’autre côté du range, objectif 1,5 fois le risque. Sortie à 12:00 (Londres) / 17:00 UTC (New York).',
+    evaluate(ind, i) {
+      const m = ind.minute[i];
+      const exit = (m >= 12 * 60 && m < 14 * 60) || m >= 17 * 60 || m < 7 * 60;
+      const none = { entry: null, exitLong: exit, exitShort: exit, sl: 0, tp: null };
+      const or = m >= 7 * 60 + 30 && m < 9 * 60 + 30 ? ind.orLondon : m >= 14 * 60 && m < 16 * 60 ? ind.orNy : null;
+      if (!or || or.hi[i] === null) return none;
+      const c = ind.closes[i];
+      const p = ind.closes[i - 1];
+      const { hi, lo } = { hi: or.hi[i], lo: or.lo[i] };
+      if (c > hi && p <= hi) {
+        const risk = Math.max(c - lo, 0.5 * ind.atr[i]);
+        return { ...none, entry: 'long', sl: risk, tp: 1.5 * risk };
+      }
+      if (c < lo && p >= lo) {
+        const risk = Math.max(hi - c, 0.5 * ind.atr[i]);
+        return { ...none, entry: 'short', sl: risk, tp: 1.5 * risk };
+      }
+      return none;
+    },
+  },
+  {
+    ...SCALP,
+    id: 's_stoch',
+    name: 'Scalp stochastique dans la tendance',
+    desc: 'Repli dans la tendance courte : prix au-dessus d’une EMA 50 montante, achat quand le stochastique (14, 3, 3) repart à la hausse depuis la zone < 20 ; inverse en tendance baissière. Stop 1 ATR, objectif 1,5 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes[i];
+      const e = ind.ema50;
+      const { k, d } = ind.stoch;
+      const ok = inSession(ind, i);
+      const up = c > e[i] && e[i] > e[i - 10];
+      const down = c < e[i] && e[i] < e[i - 10];
+      return {
+        entry: ok && up && crossUp(k, d, i) && k[i - 1] < 20 ? 'long' : ok && down && crossDown(k, d, i) && k[i - 1] > 80 ? 'short' : null,
+        exitLong: endOfDay(ind, i),
+        exitShort: endOfDay(ind, i),
+        sl: ind.atr[i],
+        tp: 1.5 * ind.atr[i],
+      };
+    },
+  },
+  {
+    ...SCALP,
+    id: 's_burst',
+    name: 'Scalp accélération (3 bougies)',
+    desc: 'Momentum : 3 bougies consécutives dans le même sens, mouvement total > 2 ATR et clôture près de l’extrême → suivre le mouvement. Stop 1 ATR, objectif 1 ATR.',
+    evaluate(ind, i) {
+      const k = ind.candles;
+      const ok = inSession(ind, i) && i >= 3;
+      const a = ind.atr[i];
+      const ups = ok && [0, 1, 2].every((j) => k[i - j].c > k[i - j].o);
+      const downs = ok && [0, 1, 2].every((j) => k[i - j].c < k[i - j].o);
+      const move = ok ? k[i].c - k[i - 2].o : 0;
+      const c = k[i];
+      const nearHigh = c.c >= c.h - 0.2 * (c.h - c.l);
+      const nearLow = c.c <= c.l + 0.2 * (c.h - c.l);
+      return {
+        entry: ups && move > 2 * a && nearHigh ? 'long' : downs && -move > 2 * a && nearLow ? 'short' : null,
+        exitLong: endOfDay(ind, i),
+        exitShort: endOfDay(ind, i),
+        sl: a,
+        tp: a,
+      };
+    },
+  },
+);
+
+/* ------------------------------------------------------------------ */
 /* Unités de temps                                                     */
 /* ------------------------------------------------------------------ */
 
-const TF_SEC = { '1h': 3600, '6h': 21600, '1d': 86400 };
+const TF_SEC = { '1m': 60, '5m': 300, '1h': 3600, '6h': 21600, '1d': 86400 };
 const tfOf = (s) => s.tf || '1h';
 
 /** Copie d'une stratégie sur une autre unité de temps (id « ema@6h »). */
@@ -521,7 +657,7 @@ function withTf(s, tf) {
 
 /** ids : 'all', ou liste d'ids, éventuellement suffixés d'une unité de temps (« ema@6h »). */
 function selectStrategies(ids) {
-  if (!ids || !ids.length || ids.includes('all')) return STRATEGIES;
+  if (!ids || !ids.length || ids.includes('all')) return STRATEGIES.filter((s) => !s.scalp);
   const out = [];
   for (const id of ids) {
     const [base, tf] = id.split('@');

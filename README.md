@@ -84,6 +84,30 @@ en direct continue de les départager. **Résultats passés ≠ résultats futur
 Pour relancer : `npm run research` (frais 0,05 %), `npm run research -- 0.1` (frais 0,1 %),
 `npm run research -- 0.05 2023-07-01` (autre coupure). Les données sont mises en cache dans `data/research/`.
 
+## Scalp (bougies 1 et 5 min) — testé, non retenu (`npm run scalp`)
+
+6 stratégies de scalp testées, uniquement pendant les séances de Londres et New York (7 h–20 h UTC), tout fermé le soir :
+EMA 9/21 + VWAP, retour au VWAP (±2 écarts-types + RSI 7), Bollinger + RSI 7, cassure du range d'ouverture
+(Londres 07:00 / New York 13:30 UTC), stochastique dans la tendance, accélération sur 3 bougies.
+
+Données : PAXG 5 min sur 6 ans (648 000 bougies) et 1 min sur 12 mois (525 000 bougies), avec choix / vérification.
+Frais testés par côté : 0,005 % (compte ECN XAU/USD), 0,01 % (broker CFD classique), 0,05 % (PAXG crypto).
+
+| Constat | Détail |
+|---|---|
+| Une bougie 5 min bouge en moyenne de 0,056 %, une bougie 1 min de 0,014 % | avec 0,05 % de frais par côté, il faudrait gagner ~2 bougies 5 min entières par trade juste pour payer les frais |
+| 5 des 6 stratégies perdent **avant même les frais** en 5 min | gain moyen par trade négatif |
+| Seule **Bollinger + RSI 7 (5 min)** a un petit avantage brut : +0,0245 % par trade | supporte au maximum ~0,012 % de frais par côté ; en vérification : +94 $ avec un compte ECN, −313 $ avec un broker classique |
+| En 1 min, rien ne fonctionne | gains bruts quasi nuls (≤ 0,007 % par trade) |
+
+**Conclusion : pas de stratégie de scalp viable sur l'or avec ces règles**, et aucune n'est activée dans le bot.
+Le scalp ne peut se jouer qu'avec des frais quasi nuls et une exécution très rapide, ce que le paper trading
+toutes les 3 minutes ne reproduit pas. À noter : le PAXG sur Binance est moins liquide que l'or « réel »
+(XAU/USD), donc ses bougies 1 min ne reflètent qu'imparfaitement le scalp sur l'or.
+
+Avec des frais de broker (0,01 %), les stratégies en 1 h restent elles aussi presque toutes perdantes ;
+les stratégies journalières restent les meilleures (`npm run research -- 0.01`).
+
 ## Commandes Telegram
 
 | Commande | Rôle |
@@ -147,6 +171,7 @@ bot.js             Bot Telegram + passage toutes les CHECK_INTERVAL_MINUTES
 once.js            Un seul passage (GitHub Actions / cron)
 backtest.js        Backtest récent (Coinbase) en console
 research.js        Banc d'essai complet sur l'historique Binance (choix / vérification)
+scalp.js           Banc d'essai du scalp (1 / 5 min, plusieurs niveaux de frais)
 src/gold.js        Moteur de paper trading multi-unités de temps + backtest
 src/strategies.js  Toutes les stratégies (guides, classiques, maison) + référence
 src/indicators.js  EMA, SMA, RSI, ATR, Bollinger, MACD, Donchian, Supertrend, PVT, chandeliers, sessions…

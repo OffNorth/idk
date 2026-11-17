@@ -53,7 +53,7 @@ function exposure(list, from, to) {
 
   const rows = [];
   for (const base of STRATEGIES) {
-    if (base.id === 'hold') continue;
+    if (base.id === 'hold' || base.scalp) continue; // le scalp a son propre banc d'essai (scalp.js)
     for (const tf of base.onlyTf || ['1h', '6h', '1d']) {
       const s = withTf(base, tf);
       const candles = series[tf];
