@@ -19,16 +19,18 @@ const { runCycle, portfolio } = require('./src/cycle');
   const channel = createChannel(new Api(cfg.telegramToken), cfg, store);
   if (!(await channel.check())) process.exit(1);
 
-  const res = await scan(cfg, store);
+  const res = cfg.scannerEnabled ? await scan(cfg, store) : null;
   const out = await runCycle({ cfg, store, channel, res });
-  console.log(
-    `${res.watched} suivis · ${res.inRange} dans la fourchette · ${res.ranked.length} retenus · ` +
-      `meilleur ${res.ranked[0] ? Math.round(res.ranked[0].result.total) : '-'} · ${out.sent} alerte(s) publiée(s) · ` +
-      `${out.paperClosed} paper trade(s) clôturé(s) · ${out.goldEvents} événement(s) or`,
-  );
-  res.ranked.slice(0, 5).forEach((x, i) =>
-    console.log(`  ${i + 1}. ${x.token.symbol} — ${Math.round(x.result.total)}/100 — ${x.token.url}`),
-  );
+  if (res) {
+    console.log(
+      `${res.watched} suivis · ${res.inRange} dans la fourchette · ${res.ranked.length} retenus · ` +
+        `meilleur ${res.ranked[0] ? Math.round(res.ranked[0].result.total) : '-'} · ${out.sent} alerte(s) publiée(s)`,
+    );
+    res.ranked.slice(0, 5).forEach((x, i) =>
+      console.log(`  ${i + 1}. ${x.token.symbol} — ${Math.round(x.result.total)}/100 — ${x.token.url}`),
+    );
+  }
+  console.log(`${out.goldEvents} événement(s) or`);
   console.log('\n' + portfolio(cfg, store).replace(/<[^>]+>/g, ''));
 })().catch((err) => {
   console.error(`❌ ${explainTelegramError(err)}`);

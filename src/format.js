@@ -129,21 +129,60 @@ function paperCloseMessage(t) {
 }
 
 function goldEventMessage(ev) {
+  const name = esc(ev.strategy.name);
   if (ev.type === 'open') {
     const p = ev.pos;
     return [
-      `🥇 <b>Or — ${p.side === 'long' ? '📈 ACHAT (long)' : '📉 VENTE (short)'} simulé</b>`,
-      `Entrée : $${p.entry.toFixed(2)} · taille $${p.size}`,
-      `Stop loss : $${p.sl.toFixed(2)} · Take profit : $${p.tp.toFixed(2)}`,
-      `<i>Signal : croisement EMA 20/50 en 1 h · RSI ${p.rsi.toFixed(0)} · paper trading</i>`,
+      `🥇 <b>Or · ${name}</b>`,
+      `${p.side === 'long' ? '📈 <b>ACHAT</b> (long)' : '📉 <b>VENTE À DÉCOUVERT</b> (short)'} simulé à <b>$${p.entry.toFixed(2)}</b> · taille $${p.size}`,
+      `Stop : $${p.sl.toFixed(2)}${ev.strategy.trail ? ' (suiveur)' : ''} · Objectif : ${p.tp ? `$${p.tp.toFixed(2)}` : 'signal de sortie'}`,
+      `<i>RSI ${Number(ev.rsi ?? 0).toFixed(0)} · paper trading, aucun argent réel</i>`,
     ].join('\n');
   }
   const t = ev.trade;
   return [
-    `🥇 ${t.pnlUsd >= 0 ? '🟢' : '🔴'} <b>Or — position ${t.side === 'long' ? 'long' : 'short'} clôturée</b>`,
+    `🥇 ${t.pnlUsd >= 0 ? '🟢' : '🔴'} <b>Or · ${name}</b> — ${t.side === 'long' ? 'long' : 'short'} clôturé`,
     `$${t.entry.toFixed(2)} → $${t.exit.toFixed(2)} · <b>${signedPct(t.pnlPct)}</b> (${signedUsd(t.pnlUsd)} sur $${t.size})`,
-    `Raison : ${esc(t.reason)} · durée ${dur(t.exitAt - t.entryAt)} · <i>paper trading</i>`,
+    `Raison : ${esc(t.reason)} · durée ${dur((t.exitT - t.entryT) * 1000)} · <i>paper trading, frais inclus</i>`,
   ].join('\n');
+}
+
+/** Bilan des stratégies or. */
+function goldPortfolioLines(gold, cfg) {
+  const lines = [
+    `<b>🥇 Or</b> · prix ${gold.price ? `$${gold.price.toFixed(2)}` : '?'} · $${cfg.goldSizeUsd} par trade`,
+    `PnL total : <b>${signedUsd(gold.totalPnl)}</b>`,
+  ];
+  for (const r of gold.rows) {
+    const pos = r.position
+      ? `${r.position.side === 'long' ? '📈 long' : '📉 short'} depuis $${r.position.entry.toFixed(2)} (${signedUsd(r.unrealized)})`
+      : 'pas de position';
+    lines.push(
+      '',
+      `<b>${esc(r.strategy.name)}</b>`,
+      `  ${r.trades} trades · ${r.winRate.toFixed(0)}% gagnants · PnL <b>${signedUsd(r.pnlUsd)}</b>${r.profitFactor ? ` · PF ${r.profitFactor.toFixed(2)}` : ''}`,
+      `  ${pos}`,
+    );
+  }
+  return lines;
+}
+
+/** Résultat d'un backtest (commande /backtest). */
+function backtestMessage(results, info, cfg) {
+  const lines = [
+    `<b>🧪 Backtest or · ${info.days} jours (bougies 1 h)</b>`,
+    `$${info.from.toFixed(0)} → $${info.to.toFixed(0)} · achat-conservation ${signedPct(info.buyHold)}`,
+    `$${cfg.goldSizeUsd} par trade · frais ${cfg.goldFeePct}% par côté`,
+    '',
+  ];
+  for (const { strategy, r } of results) {
+    lines.push(
+      `<b>${esc(strategy.name)}</b>`,
+      `  ${r.trades} trades · ${r.winRate.toFixed(0)}% gagnants · <b>${signedUsd(r.pnlUsd)}</b> · PF ${r.profitFactor ? r.profitFactor.toFixed(2) : '-'} · DD max $${r.maxDrawdown.toFixed(0)}`,
+    );
+  }
+  lines.push('', '<i>PF > 1 = rentable sur la période. Résultats passés ≠ résultats futurs.</i>');
+  return lines.join('\n');
 }
 
 /** Bilan complet du paper trading (memes + or). */
@@ -164,15 +203,7 @@ function portfolioMessage(memes, gold, cfg) {
     }
     lines.push('');
   }
-  if (gold) {
-    lines.push(
-      `<b>Or</b> ($${cfg.goldSizeUsd} par trade) · prix ${gold.lastPrice ? `$${gold.lastPrice.toFixed(2)}` : '?'}`,
-      `Trades clôturés : ${gold.trades} · gagnants ${gold.wins} (${gold.winRate.toFixed(0)}%) · PnL <b>${signedUsd(gold.realized)}</b>`,
-      gold.position
-        ? `Position : ${gold.position.side} depuis $${gold.position.entry.toFixed(2)} · latent ${signedUsd(gold.unrealized)}`
-        : "Position : aucune (attente d'un croisement EMA 20/50)",
-    );
-  }
+  if (gold) lines.push(...goldPortfolioLines(gold, cfg));
   return lines.join('\n');
 }
 
@@ -186,4 +217,5 @@ module.exports = {
   paperCloseMessage,
   goldEventMessage,
   portfolioMessage,
+  backtestMessage,
 };

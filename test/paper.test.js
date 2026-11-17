@@ -5,7 +5,6 @@ const os = require('os');
 const path = require('path');
 const { Store } = require('../src/store');
 const { PaperBook } = require('../src/paper');
-const { signal, ema, rsi } = require('../src/gold');
 const { portfolioMessage, paperCloseMessage } = require('../src/format');
 
 const cfg = {
@@ -61,20 +60,38 @@ test('clôture : PnL avec frais, stats et messages', () => {
   });
 });
 
-test('or : indicateurs et signal de croisement', () => {
+test('or : indicateurs', () => {
+  const { ema, rsi, sma, supertrend, donchian } = require('../src/indicators');
   assert.deepStrictEqual(ema([1, 1, 1], 3), [1, 1, 1]);
+  assert.deepStrictEqual(sma([1, 2, 3, 4], 2), [null, 1.5, 2.5, 3.5]);
   const up = Array.from({ length: 40 }, (_, i) => 100 + i);
   assert.ok(rsi(up)[39] > 90, 'RSI haut en tendance haussière');
+  const candles = up.map((c, i) => ({ t: i * 3600, o: c, h: c + 1, l: c - 1, c }));
+  assert.strictEqual(supertrend(candles).dir[39], 1, 'supertrend haussier');
+  assert.strictEqual(donchian(candles, 5).hh[10], 110, 'plus haut des 5 bougies précédentes');
+});
 
-  // Baisse longue puis forte hausse → croisement haussier à un moment donné
-  const noise = (i) => (i % 2 ? 2.5 : -2.5);
-  const closes = [...Array.from({ length: 80 }, (_, i) => 200 - i * 0.5 + noise(i)), ...Array.from({ length: 60 }, (_, i) => 160 + i * 0.8 + noise(i))];
-  const candles = closes.map((c, i) => ({ t: i * 3600, o: c, h: c + 1, l: c - 1, c }));
-  let found = null;
-  for (let n = 60; n <= candles.length; n++) {
-    const s = signal(candles.slice(0, n));
-    if (s.side) { found = s; break; }
+test('or : chaque stratégie produit des trades cohérents en backtest', () => {
+  const { STRATEGIES } = require('../src/strategies');
+  const { backtest } = require('../src/gold');
+  // marché synthétique : tendances + oscillations
+  const closes = Array.from({ length: 600 }, (_, i) => 2000 + 80 * Math.sin(i / 40) + 15 * Math.sin(i / 3) + i * 0.2);
+  const candles = closes.map((c, i) => ({ t: i * 3600, o: c, h: c + 3, l: c - 3, c }));
+  for (const s of STRATEGIES) {
+    const r = backtest(s, candles, { size: 1000, feePct: 0.05 });
+    assert.ok(r.trades > 0, `${s.id} doit trader`);
+    for (const t of r.list) {
+      assert.ok(Number.isFinite(t.pnlUsd), `${s.id} PnL fini`);
+      assert.ok(t.exitT >= t.entryT, `${s.id} sortie après entrée`);
+      if (t.reason === 'stop loss' && !s.trail) assert.ok(t.pnlPct < 0.5, `${s.id} un stop initial ne gagne pas beaucoup`);
+    }
   }
-  assert.ok(found, 'un signal doit apparaître');
-  assert.strictEqual(found.side, 'long');
+});
+
+test('or : stop prioritaire sur objectif dans une même bougie', () => {
+  const { hitInCandle } = require('../src/gold');
+  const pos = { side: 'long', sl: 99, tp: 102 };
+  assert.deepStrictEqual(hitInCandle(pos, { h: 103, l: 98 }), { price: 99, reason: 'stop loss' });
+  assert.deepStrictEqual(hitInCandle(pos, { h: 103, l: 100 }), { price: 102, reason: 'take profit' });
+  assert.strictEqual(hitInCandle({ side: 'short', sl: 105, tp: 95 }, { h: 104, l: 96 }), null);
 });

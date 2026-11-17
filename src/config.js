@@ -42,7 +42,7 @@ const config = {
   watchHours: num('WATCH_HOURS', 48),
 
   // Paper trading des calls (simulation, aucun argent réel)
-  paperEnabled: num('PAPER_TRADING', 1) === 1,
+  paperEnabled: num('PAPER_TRADING', 0) === 1,
   paperSizeUsd: num('PAPER_SIZE_USD', 100),
   paperTpPct: num('PAPER_TP_PCT', 100),
   paperSlPct: num('PAPER_SL_PCT', 40),
@@ -54,9 +54,10 @@ const config = {
   // Paper trading de l'or (PAXG ≈ 1 once d'or)
   goldEnabled: num('GOLD_TRADING', 1) === 1,
   goldSizeUsd: num('GOLD_SIZE_USD', 1000),
-  goldAtrSl: num('GOLD_ATR_SL', 1.5),
-  goldAtrTp: num('GOLD_ATR_TP', 3),
-  goldFeePct: num('GOLD_FEE_PCT', 0.1),
+  goldFeePct: num('GOLD_FEE_PCT', 0.05),
+  goldStrategies: list('GOLD_STRATEGIES', 'all'),
+  // Alertes meme coins (scanner) : 0 pour ne garder que l'or
+  scannerEnabled: num('SCANNER', 1) === 1,
 
   searchQueries: list('SEARCH_QUERIES', 'pump,meme,sol,dog,cat,ai'),
   dataDir: path.resolve(process.env.DATA_DIR || path.join(__dirname, '..', 'data')),

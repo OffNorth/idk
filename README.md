@@ -1,6 +1,6 @@
-# 🔎 Meme Coin Scanner Bot
+# 🔎 Bot or + meme coins
 
-Bot Telegram qui cherche en continu les **meilleurs meme coins entre 100 k$ et 2 M$ de market cap**
+Bot Telegram qui **trade l'or en simulation** (5 stratégies) et cherche en continu les **meilleurs meme coins entre 100 k$ et 2 M$ de market cap**
 (Solana par défaut). Il les filtre, les note sur 100 et publie les meilleurs sur un canal Telegram.
 
 > ⚠️ **Ce n'est pas un conseil financier.** Le score mesure l'activité et le momentum d'un token,
@@ -37,36 +37,57 @@ Toutes les N minutes
 | Traders | 5 | Nombre de transactions sur 24 h |
 | Risque | −25 max | Pénalité selon le rapport RugCheck |
 
-## Paper trading (simulation)
+## 🥇 Paper trading de l'or (simulation)
 
-Pour mesurer si les calls valent quelque chose, le bot **simule** des trades et publie les résultats sur le canal.
-Aucun ordre réel n'est passé, aucun wallet n'est utilisé.
+Le bot trade l'or **en simulation** avec **5 stratégies en parallèle**. Chacune a son propre compte, on peut donc
+comparer leurs résultats. Aucun ordre réel n'est passé, aucun compte de trading n'est utilisé.
 
-### Sur ses propres calls
-- Chaque alerte publiée = **achat simulé de 100 $** au prix du moment.
-- À chaque passage, la position est réévaluée et vendue (simulé) dès qu'une règle se déclenche :
+- Prix : **PAXG/USD** (1 PAXG = 1 once d'or) via Coinbase, secours Kraken. Gratuit, sans clé API.
+- Signaux sur les **bougies 1 h clôturées** ; stops et objectifs vérifiés sur les **bougies 5 min**.
+- **1 000 $ simulés** par trade et par stratégie, **long ou short**, frais/spread 0,05 % à l'entrée et à la sortie.
+- Chaque ouverture et clôture est publiée sur le canal, et un **bilan** par stratégie toutes les `TOP_SUMMARY_HOURS`.
 
-| Règle | Défaut |
-|---|---|
-| Take profit | +100 % (x2) |
-| Stop loss | −40 % |
-| Trailing stop | après +50 %, vend si le prix recule de 30 % depuis son plus haut |
-| Durée max | 48 h |
-| Rug | liquidité < 1 000 $ ou paire disparue → −100 % |
-| Frais + slippage | 2 % à l'achat et 2 % à la vente |
+| Stratégie | Type | Entrée | Sortie |
+|---|---|---|---|
+| **Tendance EMA 20/50** | suivi de tendance | croisement EMA 20 / EMA 50 (filtre RSI) | SL 1,5 ATR · TP 3 ATR · croisement inverse |
+| **Cassure Donchian 20** | breakout | cassure du plus haut / plus bas des 20 dernières heures | stop suiveur 2,5 ATR · canal 10 h opposé |
+| **Retour à la moyenne** | contre-tendance | sortie des bandes de Bollinger + RSI < 30 / > 70 | retour sur la moyenne 20 h · SL 1,5 ATR |
+| **MACD + EMA 200** | momentum | croisement MACD / signal dans le sens de l'EMA 200 | SL 2 ATR · TP 4 ATR · croisement inverse |
+| **Supertrend (10, 3)** | suivi de tendance | changement de direction du Supertrend | stop sur la ligne du Supertrend |
 
-- Chaque clôture est publiée (🟢 / 🔴) avec le résultat en % et en $.
+### Résultats passés (backtest du 17/11/2026)
 
-### Sur l'or (PAXG/USD, 1 PAXG = 1 once d'or)
-- Bougies 1 h (Coinbase, secours Kraken), positions de 1 000 $ simulées, **long ou short**.
-- **Achat** quand l'EMA 20 croise au-dessus de l'EMA 50 (et RSI < 70), **vente à découvert** au croisement inverse (RSI > 30).
-- Stop loss = 1,5 × ATR, take profit = 3 × ATR ; un croisement inverse retourne la position.
-- C'est une stratégie de suivi de tendance lente : quelques trades par semaine seulement.
-  Sur un test des 15 derniers jours (oct.–nov. 2026) : 4 trades, −2,3 % au total. **Rien ne garantit qu'elle soit rentable.**
+Sur **90 jours** (or de 4 485 $ à 3 862 $, soit −14 %), avec 1 000 $ par trade :
 
-Le **bilan** (PnL, % de trades gagnants, positions ouvertes) est publié avec le résumé du top toutes les `TOP_SUMMARY_HOURS`,
-et disponible avec la commande `/paper` en mode serveur. Tous les paramètres sont dans `.env.example`
-(ou dans l'onglet **Variables** de GitHub : `PAPER_SIZE_USD`, `PAPER_TP_PCT`, `PAPER_SL_PCT`, `GOLD_TRADING`…).
+| Stratégie | Trades | Gagnants | PnL |
+|---|---|---|---|
+| Tendance EMA 20/50 | 39 | 26 % | −76 $ |
+| Cassure Donchian 20 | 86 | 22 % | −97 $ |
+| Retour à la moyenne | 66 | 39 % | −44 $ |
+| MACD + EMA 200 | 73 | 27 % | −107 $ |
+| Supertrend | 60 | 22 % | −135 $ |
+
+Sur 180 jours, seul le Supertrend finit légèrement positif (+28 $). **Aucune de ces stratégies n'a montré d'avantage
+fiable** : c'est justement ce que le paper trading en direct sert à vérifier dans le temps.
+Pour refaire le test : `npm run backtest` (90 jours) ou `npm run backtest -- 180`, ou `/backtest 180` dans Telegram.
+
+### Ce dont le bot a besoin
+
+| Besoin | Pourquoi | Statut |
+|---|---|---|
+| Un hébergement allumé 24h/24 | vérifier les stops toutes les 3 min | Bot-Hosting (renouveler tous les 4 jours) |
+| Node.js 20 ou plus | faire tourner le code | fourni par le serveur Node.js |
+| Token du bot + canal Telegram | publier les trades | dans `.env` |
+| Accès internet à Coinbase / Kraken | prix de l'or | gratuit, sans clé |
+| ~100 Mo de RAM, quelques Mo de disque | mémoire des positions (`data/gold.json`) | OK |
+
+Pour passer un jour en **argent réel**, il faudrait en plus : un compte chez un broker qui propose l'or avec une API
+(CFD XAU/USD ou PAXG sur un exchange), des clés API, du capital, et des règles de risque (taille de position, perte
+max par jour). Ce n'est pas branché : le bot ne fait que simuler.
+
+### Paper trading des calls meme coins (désactivé par défaut)
+Avec `PAPER_TRADING=1`, chaque alerte meme coin ouvre aussi un achat simulé de 100 $ (TP +100 %, SL −40 %,
+trailing stop, durée max 48 h, rug = −100 %, 2 % de frais par côté).
 
 ## Commandes Telegram
 
@@ -77,7 +98,8 @@ et disponible avec la commande `/paper` en mode serveur. Tous les paramètres so
 | `/scan` | Force un scan et publie les alertes tout de suite |
 | `/topcanal` | Publie le top 10 actuel sur le canal |
 | `/testcanal` | Envoie un message de test sur le canal (pour vérifier la config) |
-| `/paper` | Bilan du paper trading (calls + or) |
+| `/gold` | Bilan du paper trading de l'or, stratégie par stratégie |
+| `/backtest [jours]` | Backtest des stratégies or sur l'historique (90 jours par défaut) |
 | `/settings` | Affiche les paramètres actifs |
 | `/pause` / `/resume` | Coupe / relance les alertes automatiques du canal |
 
@@ -191,7 +213,10 @@ src/scanner.js    Pipeline complet d'un scan
 src/format.js     Messages Telegram / console
 src/cycle.js      Cycle complet : paper trades, alertes, or, résumé
 src/paper.js      Paper trading des calls meme coins
-src/gold.js       Paper trading de l'or (EMA 20/50, RSI, ATR)
+src/gold.js       Paper trading de l'or (moteur, backtest)
+src/strategies.js Les 5 stratégies or
+src/indicators.js EMA, RSI, ATR, Bollinger, MACD, Donchian, Supertrend
+backtest.js       Backtest des stratégies or en console
 src/channel.js    Publication sur le canal Telegram
 src/store.js      Tokens suivis et historique des alertes (dossier data/)
 ```

@@ -1,5 +1,5 @@
 /**
- * bot.js — Bot Telegram de détection de meme coins (MC entre MIN_MARKET_CAP et MAX_MARKET_CAP)
+ * bot.js — Bot Telegram : paper trading de l'or (plusieurs stratégies) + scanner de meme coins (optionnel)
  *
  * Commandes :
  *   /start           — aide
@@ -7,13 +7,17 @@
  *   /check <adresse> — analyse détaillée d'un token (option : /check <adresse> <chaîne>)
  *   /settings        — paramètres actifs
  *   /pause, /resume  — coupe / relance les alertes automatiques sur le canal
- *   /scan            — force un scan + alertes immédiatement
+ *   /scan            — force un passage immédiatement
+ *   /gold            — bilan du paper trading de l'or
+ *   /backtest [j]    — backtest des stratégies or
  */
 const cfg = require('./src/config');
 const { Bot } = require('grammy');
 const { Store } = require('./src/store');
 const { scan, analyze } = require('./src/scanner');
-const { tokenMessage, topMessage, esc } = require('./src/format');
+const { tokenMessage, topMessage, backtestMessage, esc } = require('./src/format');
+const { backtest, fetchHistory } = require('./src/gold');
+const { selectStrategies } = require('./src/strategies');
 const { fmtUsd } = require('./src/scoring');
 const { createChannel, explainTelegramError, HTML } = require('./src/channel');
 const { runCycle, portfolio } = require('./src/cycle');
@@ -56,14 +60,14 @@ const checkChannel = () => channel.check();
 
 async function tick() {
   try {
-    const res = await runScan();
+    const res = cfg.scannerEnabled ? await runScan() : null;
     const out = await runCycle({ cfg, store, channel, res, alertsEnabled: !paused });
     const sent = out.sent;
-    console.log(
-      `[${new Date().toISOString()}] ${res.watched} suivis · ${res.inRange} dans la fourchette · ` +
-        `${res.ranked.length} retenus · meilleur ${res.ranked[0] ? Math.round(res.ranked[0].result.total) : '-'} · ${sent} alerte(s) · ` +
-        `${out.paperClosed} paper clôturé(s) · ${out.goldEvents} événement(s) or`,
-    );
+    const memes = res
+      ? `${res.watched} suivis · ${res.inRange} dans la fourchette · ${res.ranked.length} retenus · ` +
+        `meilleur ${res.ranked[0] ? Math.round(res.ranked[0].result.total) : '-'} · ${sent} alerte(s) · `
+      : '';
+    console.log(`[${new Date().toISOString()}] ${memes}${out.goldEvents} événement(s) or`);
     return { res, sent };
   } catch (err) {
     console.error('[scan] échec :', err);
@@ -94,7 +98,8 @@ bot.command('start', (ctx) =>
       '/scan — forcer un scan + alertes',
       '/topcanal — publier le top sur le canal',
       '/testcanal — vérifier que je peux publier sur le canal',
-      '/paper — bilan du paper trading (calls + or)',
+      '/gold — bilan du paper trading de l’or (toutes stratégies)',
+      '/backtest [jours] — tester les stratégies or sur l’historique',
       '/settings — paramètres',
       '/pause · /resume — alertes automatiques du canal',
       '',
@@ -118,7 +123,7 @@ bot.command('scan', async (ctx) => {
   const wait = await ctx.reply('⏳ Scan forcé en cours…');
   const out = await tick();
   const txt = out
-    ? `✅ Scan terminé : ${out.res.ranked.length} tokens retenus, ${out.sent} alerte(s) publiée(s).` +
+    ? `✅ Passage terminé${out.res ? ` : ${out.res.ranked.length} tokens retenus, ${out.sent} alerte(s) publiée(s)` : ''}.` +
       (!cfg.channelId ? '\n(TELEGRAM_CHANNEL_ID non défini : pas d’alertes canal)' : '') +
       (paused ? '\n(alertes en pause)' : '')
     : '❌ Le scan a échoué, voir les logs.';
@@ -190,7 +195,26 @@ bot.command('topcanal', async (ctx) => {
   }
 });
 
-bot.command('paper', (ctx) => ctx.reply(portfolio(cfg, store), HTML));
+bot.command(['paper', 'gold'], (ctx) => ctx.reply(portfolio(cfg, store), HTML));
+
+bot.command('backtest', async (ctx) => {
+  const days = Math.min(Math.max(Number(ctx.match.trim()) || 90, 20), 365);
+  const wait = await ctx.reply(`⏳ Backtest des stratégies or sur ${days} jours…`);
+  try {
+    const candles = await fetchHistory(days);
+    if (candles.length < 250) throw new Error('historique insuffisant');
+    const results = selectStrategies(cfg.goldStrategies).map((strategy) => ({
+      strategy,
+      r: backtest(strategy, candles, { size: cfg.goldSizeUsd, feePct: cfg.goldFeePct }),
+    }));
+    const from = candles[0].c;
+    const to = candles[candles.length - 1].c;
+    const txt = backtestMessage(results, { days, from, to, buyHold: (to / from - 1) * 100 }, cfg);
+    await ctx.api.editMessageText(ctx.chat.id, wait.message_id, txt, HTML);
+  } catch (err) {
+    await ctx.api.editMessageText(ctx.chat.id, wait.message_id, `❌ Backtest impossible : ${esc(err.message)}`);
+  }
+});
 
 bot.command('pause', (ctx) => {
   paused = true;
@@ -215,7 +239,8 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
     { command: 'scan', description: 'Forcer un scan + alertes' },
     { command: 'topcanal', description: 'Publier le top sur le canal' },
     { command: 'testcanal', description: 'Tester la publication sur le canal' },
-    { command: 'paper', description: 'Bilan du paper trading (calls + or)' },
+    { command: 'gold', description: 'Bilan du paper trading de l’or' },
+    { command: 'backtest', description: 'Tester les stratégies or : /backtest 90' },
     { command: 'settings', description: 'Paramètres actifs' },
     { command: 'pause', description: 'Mettre les alertes en pause' },
     { command: 'resume', description: 'Relancer les alertes' },

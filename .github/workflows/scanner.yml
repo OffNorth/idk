@@ -57,6 +57,8 @@ jobs:
           PAPER_TRAIL_PCT: ${{ vars.PAPER_TRAIL_PCT }}
           PAPER_MAX_HOLD_HOURS: ${{ vars.PAPER_MAX_HOLD_HOURS }}
           GOLD_TRADING: ${{ vars.GOLD_TRADING }}
+          GOLD_STRATEGIES: ${{ vars.GOLD_STRATEGIES }}
+          SCANNER: ${{ vars.SCANNER }}
           GOLD_SIZE_USD: ${{ vars.GOLD_SIZE_USD }}
           # Les tokens suivis ne sont revus qu'aux passages : on les garde plus longtemps
           WATCH_HOURS: ${{ vars.WATCH_HOURS || '72' }}

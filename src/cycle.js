@@ -1,9 +1,9 @@
 /**
  * Un cycle complet, partagé par bot.js (serveur) et once.js (GitHub Actions) :
- *   1. clôture des paper trades meme coins selon leurs règles
- *   2. publication des nouvelles alertes + ouverture d'un paper trade par alerte
- *   3. paper trading de l'or
- *   4. résumé du top + bilan paper trading si c'est l'heure
+ *   1. paper trades meme coins (si PAPER_TRADING=1)
+ *   2. alertes meme coins (si SCANNER=1)
+ *   3. paper trading de l'or, toutes stratégies
+ *   4. résumé + bilan paper trading si c'est l'heure
  */
 const { PaperBook } = require('./paper');
 const { GoldTrader } = require('./gold');
@@ -18,13 +18,13 @@ async function safeSend(channel, text) {
   }
 }
 
+/** res = résultat du scan meme coins, ou null si le scanner est désactivé. */
 async function runCycle({ cfg, store, channel, res, alertsEnabled = true }) {
-  const book = new PaperBook(store, cfg);
-  const gold = new GoldTrader(store, cfg);
   const out = { sent: 0, paperClosed: 0, goldEvents: 0 };
+  const book = cfg.paperEnabled ? new PaperBook(store, cfg) : null;
 
   // 1. Paper trades meme coins
-  if (cfg.paperEnabled) {
+  if (book) {
     for (const trade of await book.update()) {
       out.paperClosed++;
       console.log(`[paper] ${trade.symbol} clôturé ${trade.pnlPct.toFixed(1)}% (${trade.reason})`);
@@ -32,23 +32,25 @@ async function runCycle({ cfg, store, channel, res, alertsEnabled = true }) {
     }
   }
 
-  // 2. Alertes (+ ouverture des paper trades)
-  if (alertsEnabled) {
+  // 2. Alertes meme coins
+  if (alertsEnabled && res) {
     out.sent = await channel.postAlerts(res, {
       extra: (item) =>
-        cfg.paperEnabled && !book.isOpen(`${item.token.chain}:${item.token.address}`) && item.token.priceUsd > 0
+        book && !book.isOpen(`${item.token.chain}:${item.token.address}`) && item.token.priceUsd > 0
           ? paperOpenLine({ size: cfg.paperSizeUsd, entryPrice: item.token.priceUsd }, cfg)
           : '',
-      onSent: (item) => book.open(item),
+      onSent: (item) => book && book.open(item),
     });
   }
 
   // 3. Or
   if (cfg.goldEnabled) {
     try {
-      for (const ev of await gold.run()) {
+      for (const ev of await new GoldTrader(store, cfg).run()) {
         out.goldEvents++;
-        console.log(`[or] ${ev.type === 'open' ? `ouverture ${ev.pos.side} à ${ev.pos.entry}` : `clôture ${ev.trade.pnlPct.toFixed(2)}%`}`);
+        console.log(
+          `[or] ${ev.strategy.id} : ${ev.type === 'open' ? `ouverture ${ev.pos.side} à ${ev.pos.entry.toFixed(2)}` : `clôture ${ev.trade.pnlPct.toFixed(2)}% (${ev.trade.reason})`}`,
+        );
         if (alertsEnabled) await safeSend(channel, goldEventMessage(ev));
       }
     } catch (err) {
@@ -59,7 +61,8 @@ async function runCycle({ cfg, store, channel, res, alertsEnabled = true }) {
   // 4. Résumé périodique
   if (alertsEnabled && channel.topSummaryDue()) {
     try {
-      await channel.postTop(res);
+      if (res) await channel.postTop(res);
+      else store.setMeta('lastTopSummaryAt', Date.now());
       if (cfg.paperEnabled || cfg.goldEnabled) await safeSend(channel, portfolio(cfg, store));
     } catch (err) {
       console.error(`[canal] résumé impossible : ${explainTelegramError(err)}`);
