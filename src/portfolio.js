@@ -94,18 +94,61 @@ async function historyChart(cfg, { marketId = 'gold', fromYear, cacheDir = CACHE
     { baseline: market.startCapital },
   );
   const last = data['1d'][data['1d'].length - 1];
+  const years = Math.max(0.1, (last.t + 86400 - fromT) / (365.25 * 86400));
   const fees = `frais ${market.feePct} %/côté${market.financingPct ? ` + financement ${market.financingPct} %/an` : ''}`;
-  const lines = [
+  for (const x of results) x.stats = tradeStats(x.r, market.startCapital, years);
+  results.sort((a, b) => b.r.equity - a.r.equity);
+
+  // Légende de la photo (≤ 1 024 caractères) : valeur finale + rendement annuel
+  const caption = [
     `<b>🕰 ${market.emoji} ${esc(market.name)} · historique simulé ${year} → ${date(last.t)}</b>`,
     `<i>Gains réinvestis, ${fees}. Chaque stratégie part de ${money(market.startCapital)} · ${data.source}</i>`,
     '',
-    ...results
-      .sort((a, b) => b.r.equity - a.r.equity)
-      .map(({ s, r, color, dd }) => `${color.emoji} ${esc(s.name)} — <b>${money(r.equity)}</b> (${pct((r.equity / market.startCapital - 1) * 100)}) · pire baisse −${(dd * 100).toFixed(0)} %`),
+    ...results.map(({ s, r, color, stats }) =>
+      `${color.emoji} ${esc(s.name)} — <b>${money(r.equity)}</b> (${pct((r.equity / market.startCapital - 1) * 100)}) · <b>${pct(stats.perYear)}/an</b>`),
     '',
-    '<i>Résultats passés ≠ résultats futurs.</i>',
-  ];
-  return { png, caption: lines.join('\n').slice(0, 1024), results };
+    '<i>Détail par trade dans le message suivant. Résultats passés ≠ résultats futurs.</i>',
+  ].join('\n').slice(0, 1024);
+
+  // Message détaillé : statistiques par trade et par an
+  const details = [
+    `<b>📊 ${market.emoji} ${esc(market.name)} · détail ${year} → ${date(last.t)}</b> <i>(${years.toFixed(1)} ans)</i>`,
+    ...results.map(({ s, r, color, dd, stats: st }) => {
+      const head = `\n${color.emoji} <b>${esc(s.name)}</b> — ${money(r.equity)} · <b>${pct(st.perYear)}/an</b> · pire baisse −${(dd * 100).toFixed(0)} %`;
+      if (s.id === 'hold') return `${head}\n   acheté au départ et gardé, sans trade`;
+      if (!st.trades) return `${head}\n   aucun trade sur la période`;
+      return [
+        head,
+        `   ${st.trades} trades (${st.perYearTrades.toFixed(0)}/an) · gain moyen <b>${pct(st.avg)}</b> par trade · durée moyenne ${st.days.toFixed(0)} j`,
+        `   ${st.winRate.toFixed(0)} % gagnants (moy. ${pct(st.avgWin)}) · perdants moy. ${pct(st.avgLoss)}${st.best ? ` · meilleur ${pct(st.best)}, pire ${pct(st.worst)}` : ''}`,
+      ].join('\n');
+    }),
+    '',
+    '<i>« par an » = rendement annuel moyen composé. Gain moyen par trade = frais inclus.</i>',
+  ].join('\n');
+  return { png, caption, details, results };
+}
+
+/** Statistiques par trade et rendement annuel composé d'un backtest. */
+function tradeStats(r, startCapital, years) {
+  const list = r.list;
+  const n = list.length;
+  const mean = (arr) => (arr.length ? arr.reduce((a, t) => a + t.pnlPct, 0) / arr.length : 0);
+  const wins = list.filter((t) => t.pnlPct > 0);
+  const losses = list.filter((t) => t.pnlPct <= 0);
+  const pcts = list.map((t) => t.pnlPct);
+  return {
+    trades: n,
+    perYearTrades: n / years,
+    avg: mean(list),
+    winRate: n ? (wins.length / n) * 100 : 0,
+    avgWin: mean(wins),
+    avgLoss: mean(losses),
+    best: n ? Math.max(...pcts) : 0,
+    worst: n ? Math.min(...pcts) : 0,
+    days: n ? list.reduce((a, t) => a + (t.exitT - t.entryT) / 86400, 0) / n : 0,
+    perYear: (Math.pow(Math.max(r.equity, 0.01) / startCapital, 1 / years) - 1) * 100,
+  };
 }
 
 module.exports = { liveChart, historyChart, colorize };

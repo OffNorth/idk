@@ -98,8 +98,9 @@ bot.command(['nasdaq', 'nas100', 'nas'], (ctx) => ctx.reply(portfolio(cfg, store
 async function replyChart(ctx, build, waitText) {
   const wait = await ctx.reply(waitText);
   try {
-    const { png, caption } = await build();
+    const { png, caption, details } = await build();
     await ctx.replyWithPhoto(new InputFile(png, 'portefeuille.png'), { caption, parse_mode: 'HTML' });
+    if (details) await ctx.reply(details.slice(0, 4096), HTML);
     await ctx.api.deleteMessage(ctx.chat.id, wait.message_id).catch(() => {});
   } catch (err) {
     await ctx.api.editMessageText(ctx.chat.id, wait.message_id, `❌ Graphique impossible : ${esc(err.message)}`);
