@@ -28,7 +28,7 @@ test('or : chaque stratégie produit des trades cohérents en backtest', () => {
   const candles = closes.map((c, i) => ({ t: i * 3600, o: c, h: c + 3, l: c - 3, c, v: 10 + (i % 7) }));
   for (const s of STRATEGIES) {
     const r = backtest(s, candles, { size: 1000, feePct: 0.05 });
-    if (!['hold', 'fibo'].includes(s.id)) assert.ok(r.trades > 0, `${s.id} doit trader`);
+    if (!['hold', 'fibo', 'insidebar', 'dollar'].includes(s.id)) assert.ok(r.trades > 0, `${s.id} doit trader`);
     for (const t of r.list) {
       assert.ok(Number.isFinite(t.pnlUsd), `${s.id} PnL fini`);
       assert.ok(t.exitT >= t.entryT, `${s.id} sortie après entrée`);

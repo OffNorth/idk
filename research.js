@@ -36,6 +36,7 @@ function exposure(list, from, to) {
 (async () => {
   console.log('Chargement de l’historique PAXG 1 h (archive Binance)…');
   const hourly = await loadHourly(path.join(__dirname, 'data', 'research'), { log: console.log });
+  const fx = aggregate(await loadHourly(path.join(__dirname, 'data', 'research'), { log: console.log, symbol: 'EURUSDT' }), TF_SEC['1d']);
   const series = { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': aggregate(hourly, TF_SEC['1d']) };
   const daily = series['1d'];
   const split = Date.parse(SPLIT) / 1000;
@@ -58,7 +59,7 @@ function exposure(list, from, to) {
       const candles = series[tf];
       const barSec = TF_SEC[tf];
       const cut = candles.findIndex((c) => c.t >= split);
-      const opts = { size: SIZE, feePct: FEE, daily, barSec };
+      const opts = { size: SIZE, feePct: FEE, daily, barSec, fx };
       const train = backtest(s, candles.slice(0, cut), opts);
       const test = backtest(s, candles, { ...opts, from: cut });
       const ys = Object.entries(yearly(train.list));

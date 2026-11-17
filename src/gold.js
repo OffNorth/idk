@@ -54,6 +54,18 @@ async function cachedHistory(granularity, days, ttlSec) {
   return hit ? hit.data : fetchCandles(granularity);
 }
 
+/** EUR/USD journalier (Kraken, ~2 ans), gardé 1 h en mémoire. Sert de mesure de la force du dollar. */
+async function fetchEurUsd() {
+  const hit = cache.get('eurusd');
+  if (hit && Date.now() - hit.at < 3_600_000) return hit.data;
+  const kr = await getJson('https://api.kraken.com/0/public/OHLC?pair=EURUSD&interval=1440', { quiet: true });
+  const rows = kr?.result && Object.values(kr.result).find(Array.isArray);
+  if (!rows?.length) return hit ? hit.data : null;
+  const data = rows.map(([t, o, h, l, c]) => ({ t, o: +o, h: +h, l: +l, c: +c }));
+  cache.set('eurusd', { at: Date.now(), data });
+  return data;
+}
+
 /** Bougies 1 h + bougies jour (avec 220 jours de marge pour la MM200 journalière). */
 async function fetchBacktestData(days = 90) {
   const [hourly, daily] = await Promise.all([fetchHistory(days, 3600), fetchHistory(days + 220, 86400)]);
@@ -130,8 +142,8 @@ function summarize(trades) {
 /* Backtest (bougies 1 h uniquement)                                   */
 /* ------------------------------------------------------------------ */
 
-function backtest(strategy, candles, { size = 1000, feePct = 0.05, daily = null, from = 0, barSec = 3600 } = {}) {
-  const ind = computeAll(candles, daily, barSec);
+function backtest(strategy, candles, { size = 1000, feePct = 0.05, daily = null, from = 0, barSec = 3600, fx = null } = {}) {
+  const ind = computeAll(candles, daily, barSec, fx);
   const trades = [];
   let pos = null;
   for (let i = Math.max(strategy.warmup, 1, from); i < candles.length; i++) {
@@ -188,9 +200,11 @@ class GoldTrader {
   async run() {
     if (!this.cfg.goldEnabled) return [];
     const tfs = [...new Set(this.strategies.map(tfOf))];
-    const [m5, d1, ...series] = await Promise.all([
+    const needsFx = this.strategies.some((s) => s.needsFx);
+    const [m5, d1, fx, ...series] = await Promise.all([
       fetchCandles(300),
       cachedHistory(86400, 500, 3600),
+      needsFx ? fetchEurUsd() : null,
       ...tfs.map((tf) => (tf === '1d' ? null : tf === '6h' ? cachedHistory(21600, 150, 1800) : fetchCandles(3600))),
     ]);
     const now = Math.floor(Date.now() / 1000);
@@ -206,7 +220,7 @@ class GoldTrader {
       const raw = tf === '1d' ? d1 : series[k];
       if (!raw) return;
       const closed = raw.filter((c) => c.t + sec <= now);
-      byTf[tf] = { closed, ind: computeAll(closed, d1, sec) };
+      byTf[tf] = { closed, ind: computeAll(closed, d1, sec, fx) };
     });
     const fee = this.cfg.goldFeePct;
     const events = [];

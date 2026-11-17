@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 
-const BASE = 'https://data.binance.vision/data/spot/monthly/klines/PAXGUSDT/1h';
+const BASE = 'https://data.binance.vision/data/spot/monthly/klines';
 const FIRST_MONTH = '2020-09';
 
 /** Extrait le premier fichier d'un .zip (lecture du répertoire central, sans dépendance). */
@@ -51,25 +51,25 @@ function months(from, to) {
   return list;
 }
 
-/** Bougies 1 h de FIRST_MONTH jusqu'au dernier mois complet (cache disque). */
-async function loadHourly(cacheDir, { log = () => {} } = {}) {
+/** Bougies 1 h de FIRST_MONTH jusqu'au dernier mois complet (cache disque). symbol : PAXGUSDT, EURUSDT… */
+async function loadHourly(cacheDir, { log = () => {}, symbol = 'PAXGUSDT' } = {}) {
   fs.mkdirSync(cacheDir, { recursive: true });
   const now = new Date();
   const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
   const lastMonth = `${last.getUTCFullYear()}-${String(last.getUTCMonth() + 1).padStart(2, '0')}`;
   const all = [];
   for (const mo of months(FIRST_MONTH, lastMonth)) {
-    const file = path.join(cacheDir, `PAXGUSDT-1h-${mo}.json`);
+    const file = path.join(cacheDir, `${symbol}-1h-${mo}.json`);
     let rows;
     if (fs.existsSync(file)) {
       rows = JSON.parse(fs.readFileSync(file, 'utf8'));
     } else {
-      const res = await fetch(`${BASE}/PAXGUSDT-1h-${mo}.zip`, { signal: AbortSignal.timeout(30_000) });
+      const res = await fetch(`${BASE}/${symbol}/1h/${symbol}-1h-${mo}.zip`, { signal: AbortSignal.timeout(30_000) });
       if (res.status === 404) continue;
       if (!res.ok) throw new Error(`archive Binance ${mo} : HTTP ${res.status}`);
       rows = parseCsv(unzipFirst(Buffer.from(await res.arrayBuffer())).toString('utf8'));
       fs.writeFileSync(file, JSON.stringify(rows));
-      log(`  ${mo} : ${rows.length} bougies`);
+      log(`  ${symbol} ${mo} : ${rows.length} bougies`);
     }
     all.push(...rows);
   }

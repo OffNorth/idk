@@ -231,16 +231,113 @@ function asiaRange(candles) {
   return { hi, lo };
 }
 
+/** Ichimoku : tenkan (9), kijun (26) et nuage projeté de 26 bougies (valeurs applicables à la bougie i). */
+function ichimoku(candles) {
+  const mid = (n, i) => {
+    if (i < n - 1) return null;
+    let h = -Infinity;
+    let l = Infinity;
+    for (let j = i - n + 1; j <= i; j++) {
+      h = Math.max(h, candles[j].h);
+      l = Math.min(l, candles[j].l);
+    }
+    return (h + l) / 2;
+  };
+  const tenkan = candles.map((_, i) => mid(9, i));
+  const kijun = candles.map((_, i) => mid(26, i));
+  const spanA = candles.map((_, i) => (tenkan[i] !== null && kijun[i] !== null ? (tenkan[i] + kijun[i]) / 2 : null));
+  const spanB = candles.map((_, i) => mid(52, i));
+  const top = candles.map((_, i) => (i >= 26 && spanA[i - 26] !== null && spanB[i - 26] !== null ? Math.max(spanA[i - 26], spanB[i - 26]) : null));
+  const bottom = candles.map((_, i) => (i >= 26 && spanA[i - 26] !== null && spanB[i - 26] !== null ? Math.min(spanA[i - 26], spanB[i - 26]) : null));
+  return { tenkan, kijun, top, bottom };
+}
+
+/** ADX (Wilder) avec +DI / −DI. */
+function adx(candles, n = 14) {
+  const len = candles.length;
+  const pdi = new Array(len).fill(null);
+  const mdi = new Array(len).fill(null);
+  const out = new Array(len).fill(null);
+  let tr = 0;
+  let pdm = 0;
+  let mdm = 0;
+  let dxAvg = null;
+  for (let i = 1; i < len; i++) {
+    const c = candles[i];
+    const p = candles[i - 1];
+    const up = c.h - p.h;
+    const down = p.l - c.l;
+    const t = Math.max(c.h - c.l, Math.abs(c.h - p.c), Math.abs(c.l - p.c));
+    const pm = up > down && up > 0 ? up : 0;
+    const mm = down > up && down > 0 ? down : 0;
+    if (i <= n) {
+      tr += t;
+      pdm += pm;
+      mdm += mm;
+    } else {
+      tr = tr - tr / n + t;
+      pdm = pdm - pdm / n + pm;
+      mdm = mdm - mdm / n + mm;
+    }
+    if (i >= n && tr > 0) {
+      pdi[i] = (100 * pdm) / tr;
+      mdi[i] = (100 * mdm) / tr;
+      const s = pdi[i] + mdi[i];
+      const dx = s > 0 ? (100 * Math.abs(pdi[i] - mdi[i])) / s : 0;
+      dxAvg = dxAvg === null ? dx : (dxAvg * (n - 1) + dx) / n;
+      if (i >= 2 * n) out[i] = dxAvg;
+    }
+  }
+  return { adx: out, pdi, mdi };
+}
+
+/** Bougies Heikin-Ashi. */
+function heikinAshi(candles) {
+  const out = [];
+  candles.forEach((c, i) => {
+    const hc = (c.o + c.h + c.l + c.c) / 4;
+    const ho = i === 0 ? (c.o + c.c) / 2 : (out[i - 1].o + out[i - 1].c) / 2;
+    out.push({ o: ho, c: hc, h: Math.max(c.h, ho, hc), l: Math.min(c.l, ho, hc) });
+  });
+  return out;
+}
+
+/**
+ * Signal dollar pour chaque bougie, à partir de l'EUR/USD journalier (dernier jour clôturé) :
+ * +1 = euro au-dessus de sa moyenne 50 jours (dollar faible, favorable à l'or), −1 = l'inverse, 0 = inconnu.
+ */
+function dollarSignal(candles, fxDaily, barSec) {
+  const out = new Array(candles.length).fill(0);
+  if (!fxDaily || fxDaily.length < 60) return out;
+  const closes = fxDaily.map((d) => d.c);
+  const m50 = sma(closes, 50);
+  let j = -1;
+  for (let i = 0; i < candles.length; i++) {
+    const end = candles[i].t + barSec;
+    while (j + 1 < fxDaily.length && fxDaily[j + 1].t + 86400 <= end) j++;
+    if (j >= 0 && m50[j] !== null) out[i] = closes[j] > m50[j] ? 1 : -1;
+  }
+  return out;
+}
+
 /** Rendement sur n bougies (null au début). */
 function roc(closes, n) {
   return closes.map((c, i) => (i >= n ? c / closes[i - n] - 1 : null));
 }
 
 /** Calcule tous les indicateurs utilisés par les stratégies, une seule fois. barSec = durée d'une bougie. */
-function computeAll(candles, daily = null, barSec = 3600) {
+function computeAll(candles, daily = null, barSec = 3600, fx = null) {
   const closes = candles.map((c) => c.c);
   const p = pvt(candles);
+  const bb = bollinger(closes, 20, 2);
+  const bandwidth = closes.map((_, i) => (bb.mid[i] ? (bb.upper[i] - bb.lower[i]) / bb.mid[i] : null));
   return {
+    ema10: ema(closes, 10),
+    ichi: ichimoku(candles),
+    adx: adx(candles, 14),
+    ha: heikinAshi(candles),
+    bandwidth,
+    dollar: dollarSignal(candles, fx, barSec),
     candles,
     closes,
     barSec,
@@ -258,7 +355,7 @@ function computeAll(candles, daily = null, barSec = 3600) {
     ema200: ema(closes, 200),
     rsi: rsi(closes, 14),
     atr: atr(candles, 14),
-    bb: bollinger(closes, 20, 2),
+    bb,
     macd: macd(closes),
     dc20: donchian(candles, 20),
     dc10: donchian(candles, 10),
@@ -272,5 +369,6 @@ function computeAll(candles, daily = null, barSec = 3600) {
 }
 
 module.exports = {
-  sma, ema, rsi, atr, bollinger, macd, donchian, supertrend, pvt, dailyTrend, candlePattern, swings, asiaRange, roc, computeAll,
+  sma, ema, rsi, atr, bollinger, macd, donchian, supertrend, pvt, dailyTrend, candlePattern, swings, asiaRange, roc,
+  ichimoku, adx, heikinAshi, dollarSignal, computeAll,
 };

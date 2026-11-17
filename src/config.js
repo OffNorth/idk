@@ -25,7 +25,7 @@ module.exports = {
   goldSizeUsd: num('GOLD_SIZE_USD', 1000),
   goldFeePct: num('GOLD_FEE_PCT', 0.05),
   // Par défaut : les combinaisons retenues par le banc d'essai (npm run research) + la référence
-  goldStrategies: list('GOLD_STRATEGIES', 'macd@1d,tsmom,sma1060@1d,ema@1d,fibo@6h,hold'),
+  goldStrategies: list('GOLD_STRATEGIES', 'macd@1d,vote,dollar,tsmom,sma1060@1d,ema@1d,fibo@6h,hold'),
 
   // Fréquence des passages (minutes) et du bilan publié sur le canal (heures, 0 = jamais)
   checkIntervalMin: num('CHECK_INTERVAL_MINUTES', 3),

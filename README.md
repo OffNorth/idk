@@ -29,6 +29,8 @@ Toutes les 3 minutes
 | Stratégie | Bougies | Origine | Idée |
 |---|---|---|---|
 | **MACD + filtre EMA 200** (`macd@1d`) | 1 jour | classique | croisement MACD / signal dans le sens de l'EMA 200 · SL 2 ATR · TP 4 ATR |
+| **Vote de 5 signaux** (`vote`) | 1 jour | maison | 5 indicateurs de tendance votent ; entrée quand ≥ 4 sont d'accord, sortie quand le vote redevient neutre |
+| **Dollar + or** (`dollar`) | 1 jour | maison | intermarché : achat quand le dollar est faible (EUR/USD > moyenne 50 j) ET l'or au-dessus de son EMA 50, vente à découvert dans le cas inverse |
 | **Momentum de tendance** (`tsmom`) | 1 jour | maison | achat si prix > moyenne 200 j ET hausse sur 3 mois, sinon rien · jamais à découvert |
 | **Croisement MM 10/60** (`sma1060@1d`) | 1 jour | guide FOREX.com | moyenne 10 vs 60, toujours en position |
 | **Tendance EMA 20/50** (`ema@1d`) | 1 jour | classique | croisement EMA 20 / 50 (filtre RSI) · SL 1,5 ATR · TP 3 ATR |
@@ -36,12 +38,14 @@ Toutes les 3 minutes
 | Référence (`hold`) | — | — | achète une fois et garde |
 
 Toutes les autres restent disponibles (`GOLD_STRATEGIES`, voir Réglages) : `breakout`, `meanrev`, `supertrend`, `pvt`,
-`tsmom_ls`, `turtle`, `rsi2`, `pullback`, `keltner`, `asia`, et n'importe laquelle sur une autre unité (`ema@6h`…).
+`tsmom_ls`, `turtle`, `rsi2`, `pullback`, `keltner`, `asia`, `ichimoku`, `adx`, `squeeze`, `ribbon`, `insidebar`, `heikin`,
+et n'importe laquelle sur une autre unité (`ema@6h`…).
 
 ## Banc d'essai (`npm run research`)
 
 **Données** : PAXG/USDT en 1 h depuis l'archive publique de Binance, **sept. 2020 → oct. 2026** (54 000 bougies),
-agrégées en 6 h et en journalier. **16 stratégies × 3 unités de temps = 43 combinaisons** testées.
+agrégées en 6 h et en journalier, + EUR/USD (même archive) pour la stratégie dollar.
+**23 stratégies × 3 unités de temps = 67 combinaisons** testées.
 
 **Méthode** : les combinaisons sont **choisies** sur sept. 2020 → juin 2024 avec une règle fixée à l'avance
 (gain > 0, profit factor ≥ 1,15, ≥ 20 trades, positive ≥ 60 % des années), puis **vérifiées** sur juil. 2024 → oct. 2026,
@@ -54,6 +58,9 @@ période qu'on ne regarde pas pour choisir. Test répété avec des frais doubl�
    (frais 0,05 % et 0,1 %, coupures 2023, 2024, 2025) et reste positive en vérification à chaque fois :
    **MACD + EMA 200 en journalier**. Elle gagne **chaque année de 2021 à 2026**, à l'achat (+435 $) comme à la vente
    (+78 $), avec une perte maximale de 68 $ sur 6 ans.
+   Le **vote de 5 signaux** (journalier) est retenu dans 3 variantes sur 4 et toujours positif en vérification ;
+   **dollar + or** est positif en vérification à chaque fois mais plus sensible aux frais.
+   Ichimoku, ADX, Heikin-Ashi, compression de Bollinger, alignement de moyennes et inside bar ne sont pas retenus.
 3. Elles font **moins que l'achat-conservation** en valeur absolue (l'or a doublé sur la période), mais avec beaucoup
    moins de temps en position et des pertes maximales bien plus faibles.
 
@@ -62,6 +69,8 @@ période qu'on ne regarde pas pour choisir. Test répété avec des frais doubl�
 | Combinaison | Choix 2020→mi-2024 | Vérif mi-2024→2026 | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
 |---|---|---|---|---|---|---|---|---|
 | **MACD + EMA 200 (1 j)** | **+243 $** | **+232 $** | +20 | +71 | +116 | +42 | +151 | +74 |
+| **Vote de 5 signaux (1 j)** | +128 $ | +496 $ | −158 | +98 | +55 | +127 | +188 | +313 |
+| Dollar + or (1 j) | +75 $ | +374 $ | −39 | +80 | +121 | +53 | +87 | +237 |
 | Momentum de tendance (1 j) | +64 $ | +606 $ | −71 | −34 | +38 | +228 | +508 | +1 |
 | MM 10/60 (1 j) | +73 $ | +665 $ | −92 | −4 | +3 | +193 | +146 | +482 |
 | EMA 20/50 (1 j) | +221 $ | +65 $ | +97 | +18 | +63 | −58 | +41 | +95 |
@@ -69,7 +78,7 @@ période qu'on ne regarde pas pour choisir. Test répété avec des frais doubl�
 | *Achat-conservation* | *+168 $* | *+688 $* | | | | | | |
 
 Attention : la période de vérification est une forte hausse de l'or, qui avantage les stratégies acheteuses.
-Avec 43 combinaisons testées, quelques-unes peuvent sembler bonnes par hasard : c'est pour ça que le paper trading
+Avec 67 combinaisons testées, quelques-unes peuvent sembler bonnes par hasard : c'est pour ça que le paper trading
 en direct continue de les départager. **Résultats passés ≠ résultats futurs.**
 
 Pour relancer : `npm run research` (frais 0,05 %), `npm run research -- 0.1` (frais 0,1 %),
@@ -94,7 +103,7 @@ Pour relancer : `npm run research` (frais 0,05 %), `npm run research -- 0.1` (fr
 | Un hébergement allumé 24h/24 (ex : Bot-Hosting, serveur **Node.js**) | vérifier les stops toutes les 3 min |
 | Node.js 20 ou plus | faire tourner le code |
 | Token du bot (@BotFather) + canal / groupe Telegram où le bot peut publier | publier les trades |
-| Accès internet à Coinbase / Kraken | prix de l'or (gratuit, sans clé) |
+| Accès internet à Coinbase / Kraken | prix de l'or et EUR/USD (gratuit, sans clé) |
 | ~100 Mo de RAM, quelques Mo de disque | mémoire des positions |
 
 Les stratégies journalières tradent peu : quelques trades par mois au total. C'est normal.
@@ -125,7 +134,7 @@ double. Secrets à créer : `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `GOLD_STRATEGIES` | `macd@1d,tsmom,sma1060@1d,ema@1d,fibo@6h,hold` | Stratégies actives (`id` ou `id@1h/6h/1d`, ou `all`) |
+| `GOLD_STRATEGIES` | `macd@1d,vote,dollar,tsmom,sma1060@1d,ema@1d,fibo@6h,hold` | Stratégies actives (`id` ou `id@1h/6h/1d`, ou `all`) |
 | `GOLD_SIZE_USD` | 1000 | Montant simulé par trade et par stratégie |
 | `GOLD_FEE_PCT` | 0.05 | Frais / spread par côté (%) |
 | `CHECK_INTERVAL_MINUTES` | 3 | Fréquence de vérification |

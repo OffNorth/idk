@@ -317,6 +317,196 @@ STRATEGIES.push(
 );
 
 /* ------------------------------------------------------------------ */
+/* Lot 2 : autres familles (classiques + maison)                       */
+/* ------------------------------------------------------------------ */
+
+/** Vrai quand la condition devient vraie sur la bougie i (fausse sur i − 1). */
+const became = (cond, i) => cond(i) && !cond(i - 1);
+const sign = (x) => (x > 0 ? 1 : x < 0 ? -1 : 0);
+
+STRATEGIES.push(
+  {
+    id: 'ichimoku',
+    tf: '1d',
+    name: 'Ichimoku (nuage + tenkan/kijun)',
+    desc: 'Classique japonais : achat quand le prix est au-dessus du nuage ET la tenkan au-dessus de la kijun, vente à découvert dans le cas inverse. Sortie quand le prix repasse la kijun. Stop 2,5 ATR.',
+    warmup: 80,
+    evaluate(ind, i) {
+      const { tenkan, kijun, top, bottom } = ind.ichi;
+      const c = ind.closes;
+      const bull = (k) => top[k] !== null && c[k] > top[k] && tenkan[k] > kijun[k];
+      const bear = (k) => bottom[k] !== null && c[k] < bottom[k] && tenkan[k] < kijun[k];
+      return {
+        entry: became(bull, i) ? 'long' : became(bear, i) ? 'short' : null,
+        exitLong: c[i] < kijun[i],
+        exitShort: c[i] > kijun[i],
+        sl: 2.5 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    id: 'adx',
+    tf: '1d',
+    name: 'Tendance forte ADX',
+    desc: 'Classique (Wilder) : n’entre que si la tendance est forte (ADX > 25), dans le sens du +DI / −DI. Sortie quand les DI se croisent ou que l’ADX retombe sous 20. Stop suiveur 3 ATR.',
+    warmup: 40,
+    evaluate(ind, i) {
+      const { adx: a, pdi, mdi } = ind.adx;
+      const bull = (k) => a[k] > 25 && pdi[k] > mdi[k];
+      const bear = (k) => a[k] > 25 && mdi[k] > pdi[k];
+      return {
+        entry: became(bull, i) ? 'long' : became(bear, i) ? 'short' : null,
+        exitLong: pdi[i] < mdi[i] || a[i] < 20,
+        exitShort: mdi[i] < pdi[i] || a[i] < 20,
+        sl: 2.5 * ind.atr[i],
+        tp: null,
+      };
+    },
+    trail(pos, ind, i) {
+      const d = 3 * ind.atr[i];
+      return pos.side === 'long' ? pos.best - d : pos.best + d;
+    },
+  },
+  {
+    id: 'squeeze',
+    tf: '1d',
+    name: 'Compression puis explosion (Bollinger squeeze)',
+    desc: 'Maison, d’après John Bollinger : quand les bandes sont les plus serrées depuis 6 mois (marché endormi), entrer dans le sens de la première clôture hors des bandes. Stop suiveur 2,5 ATR, sortie si le prix repasse la moyenne 20.',
+    warmup: 140,
+    evaluate(ind, i) {
+      const bw = ind.bandwidth;
+      let min120 = Infinity;
+      for (let k = i - 120; k < i; k++) if (bw[k] !== null) min120 = Math.min(min120, bw[k]);
+      let recent = Infinity;
+      for (let k = i - 5; k < i; k++) if (bw[k] !== null) recent = Math.min(recent, bw[k]);
+      const squeezed = recent <= min120 * 1.05;
+      const c = ind.closes[i];
+      return {
+        entry: squeezed && c > ind.bb.upper[i] ? 'long' : squeezed && c < ind.bb.lower[i] ? 'short' : null,
+        exitLong: c < ind.bb.mid[i],
+        exitShort: c > ind.bb.mid[i],
+        sl: 2.5 * ind.atr[i],
+        tp: null,
+      };
+    },
+    trail(pos, ind, i) {
+      const d = 2.5 * ind.atr[i];
+      return pos.side === 'long' ? pos.best - d : pos.best + d;
+    },
+  },
+  {
+    id: 'ribbon',
+    tf: '1d',
+    name: 'Alignement des moyennes 10/20/50',
+    desc: 'Maison : achat quand les EMA 10, 20 et 50 s’alignent dans l’ordre haussier (10 > 20 > 50), vente à découvert dans l’ordre baissier. Sortie quand l’EMA 10 repasse l’EMA 20. Stop 2 ATR.',
+    warmup: 60,
+    evaluate(ind, i) {
+      const { ema10: a, ema20: b, ema50: c } = ind;
+      const bull = (k) => a[k] > b[k] && b[k] > c[k];
+      const bear = (k) => a[k] < b[k] && b[k] < c[k];
+      return {
+        entry: became(bull, i) ? 'long' : became(bear, i) ? 'short' : null,
+        exitLong: a[i] < b[i],
+        exitShort: a[i] > b[i],
+        sl: 2 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    id: 'insidebar',
+    tf: '1d',
+    name: 'Inside bar dans la tendance',
+    desc: 'Price action : une bougie « inside » (contenue dans la précédente) marque une pause ; on entre à la cassure de la bougie mère, seulement dans le sens de la tendance (prix vs moyenne 200 et EMA 20 vs 50). Stop de l’autre côté de la bougie mère, objectif 2 fois le risque.',
+    warmup: 210,
+    evaluate(ind, i) {
+      const k = ind.candles;
+      const none = { entry: null, exitLong: false, exitShort: false, sl: 0, tp: null };
+      const mother = k[i - 2];
+      const inside = k[i - 1].h < mother.h && k[i - 1].l > mother.l;
+      if (!inside) return none;
+      const c = ind.closes[i];
+      const up = c > ind.sma200[i] && ind.ema20[i] > ind.ema50[i];
+      const down = c < ind.sma200[i] && ind.ema20[i] < ind.ema50[i];
+      if (up && c > mother.h) {
+        const risk = Math.max(c - mother.l, 0.5 * ind.atr[i]);
+        return { ...none, entry: 'long', sl: risk, tp: 2 * risk };
+      }
+      if (down && c < mother.l) {
+        const risk = Math.max(mother.h - c, 0.5 * ind.atr[i]);
+        return { ...none, entry: 'short', sl: risk, tp: 2 * risk };
+      }
+      return none;
+    },
+  },
+  {
+    id: 'heikin',
+    tf: '1d',
+    name: 'Heikin-Ashi + EMA 50',
+    desc: 'Classique : achat sur une bougie Heikin-Ashi verte « franche » (sans mèche basse) au-dessus de l’EMA 50, vente à découvert sur une rouge sans mèche haute sous l’EMA 50. Sortie au premier changement de couleur. Stop 2 ATR.',
+    warmup: 60,
+    evaluate(ind, i) {
+      const h = ind.ha[i];
+      const green = h.c > h.o;
+      const strongUp = green && Math.min(h.o, h.c) - h.l <= (h.h - h.l) * 0.05;
+      const strongDown = !green && h.h - Math.max(h.o, h.c) <= (h.h - h.l) * 0.05;
+      const c = ind.closes[i];
+      return {
+        entry: strongUp && c > ind.ema50[i] ? 'long' : strongDown && c < ind.ema50[i] ? 'short' : null,
+        exitLong: !green,
+        exitShort: green,
+        sl: 2 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    id: 'vote',
+    tf: '1d',
+    name: 'Vote de 5 signaux de tendance',
+    desc: 'Maison : 5 indicateurs de tendance votent (prix vs moyenne 200, moyenne 10 vs 60, EMA 20 vs 50, MACD vs signal, hausse sur 3 mois). Achat quand au moins 4 votent « hausse », vente à découvert quand au moins 4 votent « baisse », sortie quand le vote redevient neutre ou contraire. Stop 4 ATR. Diversifier les signaux rend en général plus robuste.',
+    warmup: 210,
+    evaluate(ind, i) {
+      const score = (k) =>
+        sign(ind.closes[k] - ind.sma200[k]) +
+        sign(ind.sma10[k] - ind.sma60[k]) +
+        sign(ind.ema20[k] - ind.ema50[k]) +
+        sign(ind.macd.line[k] - ind.macd.signal[k]) +
+        sign(ind.roc63[k]);
+      const s = score(i);
+      return {
+        entry: became((k) => score(k) >= 3, i) && s >= 3 ? 'long' : became((k) => score(k) <= -3, i) && s <= -3 ? 'short' : null,
+        exitLong: s <= 0,
+        exitShort: s >= 0,
+        sl: 4 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    id: 'dollar',
+    tf: '1d',
+    needsFx: true,
+    name: 'Dollar + or (intermarché)',
+    desc: 'Maison : l’or monte souvent quand le dollar baisse. Achat quand l’EUR/USD est au-dessus de sa moyenne 50 jours (dollar faible) ET l’or au-dessus de son EMA 50 ; vente à découvert quand le dollar est fort ET l’or sous son EMA 50. Sortie dès qu’une des deux conditions tombe. Stop 3 ATR.',
+    warmup: 60,
+    evaluate(ind, i) {
+      const c = ind.closes;
+      const bull = (k) => ind.dollar[k] === 1 && c[k] > ind.ema50[k];
+      const bear = (k) => ind.dollar[k] === -1 && c[k] < ind.ema50[k];
+      return {
+        entry: became(bull, i) ? 'long' : became(bear, i) ? 'short' : null,
+        exitLong: !bull(i),
+        exitShort: !bear(i),
+        sl: 3 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+);
+
+/* ------------------------------------------------------------------ */
 /* Unités de temps                                                     */
 /* ------------------------------------------------------------------ */
 
