@@ -50,6 +50,9 @@ function goldMarket(cfg) {
   };
 }
 
+/** En direct : 2 essais de 15 s au plus, pour ne pas bloquer le passage si Yahoo répond mal. */
+const LIVE = { attempts: 2, timeoutMs: 15_000 };
+
 function nasMarket(cfg) {
   return {
     id: 'nas100',
@@ -65,9 +68,9 @@ function nasMarket(cfg) {
     async fetch(tfs) {
       const needIntraday = tfs.some((tf) => tf !== '1d');
       const [m5, d1, h1] = await Promise.all([
-        cached('ndx5m', 120, () => fetchYahoo('^NDX', '5m', { range: '5d' })),
-        cached('ndx1d', 3600, () => fetchYahoo('^NDX', '1d', { range: '2y' })),
-        needIntraday ? cached('ndx1h', 900, () => fetchYahoo('^NDX', '1h', { range: '730d' })) : null,
+        cached('ndx5m', 120, () => fetchYahoo('^NDX', '5m', { range: '5d', ...LIVE })),
+        cached('ndx1d', 3600, () => fetchYahoo('^NDX', '1d', { range: '2y', ...LIVE })),
+        needIntraday ? cached('ndx1h', 900, () => fetchYahoo('^NDX', '1h', { range: '730d', ...LIVE })) : null,
       ]);
       const series = { '1d': d1, '1h': h1, '6h': h1 ? aggregate(h1, 21600) : null };
       return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx: null, series };

@@ -20,11 +20,12 @@ async function fetchYahoo(symbol, interval, opts = {}) {
     params.set('period2', String(opts.period2 ?? Math.floor(Date.now() / 1000)));
   }
   let lastErr;
-  for (let attempt = 0; attempt < 4; attempt++) {
+  const attempts = opts.attempts ?? 4;
+  for (let attempt = 0; attempt < attempts; attempt++) {
     try {
       const res = await fetch(`${BASE}${encodeURIComponent(symbol)}?${params}`, {
         headers: { 'user-agent': 'Mozilla/5.0', accept: 'application/json' },
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(opts.timeoutMs ?? 30_000),
       });
       if (res.status === 429 || res.status >= 500) throw new Error(`HTTP ${res.status}`);
       if (!res.ok) throw new Error(`Yahoo ${symbol} : HTTP ${res.status}`);
@@ -44,7 +45,7 @@ async function fetchYahoo(symbol, interval, opts = {}) {
       return [...byT.values()].sort((a, b) => a.t - b.t);
     } catch (err) {
       lastErr = err;
-      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      if (attempt < attempts - 1) await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
     }
   }
   throw lastErr;
