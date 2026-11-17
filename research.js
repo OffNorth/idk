@@ -15,6 +15,7 @@
 const path = require('path');
 const { loadHourly, aggregate } = require('./src/history');
 const { cachedYahoo } = require('./src/yahoo');
+const { loadAux } = require('./src/aux');
 const { backtest } = require('./src/gold');
 const { STRATEGIES, withTf, tfOf, TF_SEC } = require('./src/strategies');
 
@@ -31,7 +32,7 @@ const MARKETS = {
       const hourly = await loadHourly(CACHE, { log: console.log });
       const fx = aggregate(await loadHourly(CACHE, { log: console.log, symbol: 'EURUSDT' }), TF_SEC['1d']);
       const daily = aggregate(hourly, TF_SEC['1d']);
-      const aux = { tnx: await cachedYahoo(CACHE, '^TNX', '1d'), dxy: await cachedYahoo(CACHE, 'DX-Y.NYB', '1d') };
+      const aux = await loadAux(CACHE, 'gold');
       return { series: { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': daily }, daily, fx, vix: await cachedYahoo(CACHE, '^VIX', '1d'), aux };
     },
   },
@@ -44,7 +45,7 @@ const MARKETS = {
     market: 'gold',
     async load() {
       const d = await cachedYahoo(CACHE, 'GC=F', '1d');
-      const aux = { tnx: await cachedYahoo(CACHE, '^TNX', '1d'), dxy: await cachedYahoo(CACHE, 'DX-Y.NYB', '1d') };
+      const aux = await loadAux(CACHE, 'gold');
       return { series: { '1d': d }, daily: d, fx: await cachedYahoo(CACHE, 'EURUSD=X', '1d'), vix: await cachedYahoo(CACHE, '^VIX', '1d'), aux };
     },
   },
@@ -57,7 +58,7 @@ const MARKETS = {
       const daily = await cachedYahoo(CACHE, '^NDX', '1d');
       const hourly = await cachedYahoo(CACHE, 'NQ=F', '1h', { range: '730d' });
       const vix = await cachedYahoo(CACHE, '^VIX', '1d');
-      const aux = { tnx: await cachedYahoo(CACHE, '^TNX', '1d'), dxy: await cachedYahoo(CACHE, 'DX-Y.NYB', '1d') };
+      const aux = await loadAux(CACHE, 'nas100');
       return { series: { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': daily }, daily, fx: null, vix, aux };
     },
   },
@@ -69,6 +70,7 @@ const M = MARKETS[MARKET];
 const FEE = Number(args[0]) || M.fee;
 const SPLITS = args[1] ? { '1h': args[1], '6h': args[1], '1d': args[1] } : M.splits;
 const SIZE = 1000;
+const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null; // ex. ONLY=golden,trendmix
 
 const usd = (v) => `${v >= 0 ? '+' : ''}${v.toFixed(0)}$`;
 const iso = (t) => new Date(t * 1000).toISOString().slice(0, 10);
@@ -113,6 +115,7 @@ function exposure(list, from, to) {
     if (base.id === 'hold' || base.scalp || M.exclude.includes(base.id)) continue; // scalp : voir scalp.js
     if (base.markets && !base.markets.includes(M.market || MARKET)) continue; // stratégie propre à un autre marché
     if (base.intraday) continue; // intraday : voir nas-intraday.js
+    if (ONLY && !ONLY.includes(base.id)) continue;
     for (const tf of (base.onlyTf || ['1h', '6h', '1d']).filter((x) => !M.tfs || M.tfs.includes(x))) {
       const s = withTf(base, tf);
       const candles = series[tf];

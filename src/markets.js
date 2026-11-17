@@ -6,9 +6,20 @@
 const { MarketTrader, fetchCandles, cachedHistory, fetchEurUsd } = require('./gold');
 const { fetchYahoo } = require('./yahoo');
 const { aggregate } = require('./history');
+const { auxSymbol } = require('./aux');
 
 /** En direct : 2 essais de 15 s au plus, pour ne pas bloquer le passage si Yahoo répond mal. */
 const LIVE = { attempts: 2, timeoutMs: 15_000 };
+
+/** Séries externes journalières demandées par les stratégies (taux, dollar, argent, SOX, autre marché). */
+async function fetchAux(marketId, keys = []) {
+  const out = {};
+  await Promise.all(keys.map(async (k) => {
+    const sym = auxSymbol(k, marketId);
+    if (sym) out[k] = await cached(`aux:${sym}`, 3600, () => fetchYahoo(sym, '1d', { range: '2y', ...LIVE })).catch(() => null);
+  }));
+  return out;
+}
 
 /** Cache mémoire avec durée de vie ; en cas d'erreur, renvoie la dernière valeur connue. */
 const memo = new Map();
@@ -37,22 +48,21 @@ function goldMarket(cfg) {
     positionPct: cfg.goldPositionPct,
     feePct: cfg.goldFeePct,
     financingPct: cfg.goldFinancingPct,
-    async fetch(tfs, { needsFx, needsVix, needsTnx, needsDxy } = {}) {
+    async fetch(tfs, { needsFx, needsVix, aux: auxList = [] } = {}) {
       const yahoo = (key, sym) => cached(key, 3600, () => fetchYahoo(sym, '1d', { range: '2y', ...LIVE })).catch(() => null);
-      const [m5, d1, fx, vix, tnx, dxy, ...more] = await Promise.all([
+      const [m5, d1, fx, vix, aux, ...more] = await Promise.all([
         fetchCandles(300),
         cachedHistory(86400, 500, 3600),
         needsFx ? fetchEurUsd() : null,
         needsVix ? yahoo('vix1d', '^VIX') : null,
-        needsTnx ? yahoo('tnx1d', '^TNX') : null,
-        needsDxy ? yahoo('dxy1d', 'DX-Y.NYB') : null,
+        fetchAux('gold', auxList),
         ...tfs.map((tf) => (tf === '1d' ? null : tf === '6h' ? cachedHistory(21600, 150, 1800) : fetchCandles(3600))),
       ]);
       const series = {};
       tfs.forEach((tf, k) => {
         series[tf] = tf === '1d' ? d1 : more[k];
       });
-      return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx, vix, aux: { tnx, dxy }, series };
+      return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx, vix, aux, series };
     },
   };
 }
@@ -69,19 +79,18 @@ function nasMarket(cfg) {
     positionPct: cfg.nasPositionPct,
     feePct: cfg.nasFeePct,
     financingPct: cfg.nasFinancingPct,
-    async fetch(tfs, { needsVix, needsTnx, needsDxy } = {}) {
+    async fetch(tfs, { needsVix, aux: auxList = [] } = {}) {
       const needIntraday = tfs.some((tf) => tf === '1h' || tf === '6h');
       const yahoo = (key, sym) => cached(key, 3600, () => fetchYahoo(sym, '1d', { range: '2y', ...LIVE })).catch(() => null);
-      const [m5, d1, h1, vix, tnx, dxy] = await Promise.all([
+      const [m5, d1, h1, vix, aux] = await Promise.all([
         cached('ndx5m', 120, () => fetchYahoo('^NDX', '5m', { range: '5d', ...LIVE })),
         cached('ndx1d', 3600, () => fetchYahoo('^NDX', '1d', { range: '2y', ...LIVE })),
         needIntraday ? cached('ndx1h', 900, () => fetchYahoo('^NDX', '1h', { range: '730d', ...LIVE })) : null,
         needsVix ? yahoo('vix1d', '^VIX') : null,
-        needsTnx ? yahoo('tnx1d', '^TNX') : null,
-        needsDxy ? yahoo('dxy1d', 'DX-Y.NYB') : null,
+        fetchAux('nas100', auxList),
       ]);
       const series = { '1d': d1, '1h': h1, '6h': h1 ? aggregate(h1, 21600) : null, '5m': m5 };
-      return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx: null, vix, aux: { tnx, dxy }, series };
+      return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx: null, vix, aux, series };
     },
   };
 }

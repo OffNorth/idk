@@ -278,11 +278,10 @@ class MarketTrader {
     const tfs = [...new Set(this.strategies.map(tfOf))];
     const needsFx = this.strategies.some((s) => s.needsFx);
     const needsVix = this.strategies.some((s) => s.needsVix);
-    const needsTnx = this.strategies.some((s) => s.needsTnx);
-    const needsDxy = this.strategies.some((s) => s.needsDxy);
+    const auxList = require('./aux').auxKeys(this.strategies);
     let data;
     try {
-      data = await M.fetch(tfs, { needsFx, needsVix, needsTnx, needsDxy });
+      data = await M.fetch(tfs, { needsFx, needsVix, aux: auxList });
     } catch (err) {
       console.warn(`[${M.id}] données indisponibles (${err.message}), passage ignoré`);
       return [];

@@ -975,6 +975,148 @@ STRATEGIES.push(
 );
 
 /* ------------------------------------------------------------------ */
+/* Lot 4 : tendance multi-horizons, momentum relatif, marchés liés      */
+/* ------------------------------------------------------------------ */
+
+const BOTH = { tf: '1d', markets: ['gold', 'nas100'], warmup: 260 };
+const pos = (x) => x !== null && x > 0;
+
+STRATEGIES.push(
+  {
+    ...BOTH,
+    id: 'golden',
+    name: 'Croix dorée (moyennes 50 / 200)',
+    desc: 'Le signal de tendance le plus suivi : investi tant que la moyenne 50 jours est au-dessus de la moyenne 200 jours (« croix dorée »), dehors après la « croix de la mort ». Stop de protection 5 ATR.',
+    evaluate(ind, i) {
+      const up = ind.sma50[i] !== null && ind.sma200[i] !== null && ind.sma50[i] > ind.sma200[i];
+      return { entry: up ? 'long' : null, exitLong: !up, exitShort: true, sl: 5 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...BOTH,
+    id: 'trendmix',
+    name: 'Tendance sur 4 horizons',
+    desc: 'Maison, inspirée des fonds « trend following » : on regarde si le prix a monté sur 1, 3, 6 et 12 mois. Investi quand au moins 3 horizons sur 4 sont en hausse, sortie quand il n’en reste qu’un ou aucun. Stop 5 ATR.',
+    evaluate(ind, i) {
+      const score = [ind.roc21[i], ind.roc63[i], ind.roc126[i], ind.roc252[i]].filter(pos).length;
+      return { entry: score >= 3 ? 'long' : null, exitLong: score <= 1, exitShort: true, sl: 5 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...BOTH,
+    id: 'mom12_1',
+    name: 'Momentum 12 mois sauf le dernier',
+    desc: 'Variante académique du momentum (Jegadeesh & Titman) : la hausse des 12 derniers mois en ignorant le dernier mois, souvent trompeur à court terme. Investi si elle est positive, dehors sinon. Stop 5 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes;
+      const up = i >= 252 && c[i - 21] / c[i - 252] > 1;
+      return { entry: up ? 'long' : null, exitLong: !up, exitShort: true, sl: 5 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...BOTH,
+    id: 'dualmom',
+    needsAux: ['peer'],
+    name: 'Double momentum or / Nasdaq',
+    desc: 'Antonacci (« Dual Momentum ») : chaque mois, on compare la hausse sur 12 mois de l’or et du Nasdaq. Investi dans ce marché seulement s’il a monté ET s’il fait mieux que l’autre ; les deux comptes se passent donc le relais. Stop 5 ATR.',
+    evaluate(ind, i) {
+      const own = ind.roc252[i];
+      const other = ind.peer.r252[i];
+      const best = own !== null && own > 0 && (other === null || own > other);
+      return { entry: best ? 'long' : null, exitLong: !best, exitShort: true, sl: 5 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...GOLD,
+    id: 'season200',
+    name: 'Saison de l’or + tendance',
+    desc: 'Combinaison de deux stratégies retenues : investi d’août à février (saison) SEULEMENT si l’or est au-dessus de sa moyenne 200 jours. Moins de temps sur le marché, moins de baisses subies. Stop 4 ATR.',
+    evaluate(ind, i) {
+      const m = ind.month[i];
+      const on = (m >= 8 || m <= 2) && ind.closes[i] > ind.sma200[i];
+      return { entry: on ? 'long' : null, exitLong: !on, exitShort: true, sl: 4 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...GOLD,
+    id: 'seasonplus',
+    name: 'Saison de l’or OU tendance',
+    desc: 'Investi d’août à février (saison), et aussi le reste de l’année quand l’or est nettement au-dessus de sa moyenne 200 jours (+2 %). Garde la saison et profite des grandes hausses de printemps. Stop 4 ATR.',
+    evaluate(ind, i) {
+      const m = ind.month[i];
+      const c = ind.closes[i];
+      const s200 = ind.sma200[i];
+      const inSeason = m >= 8 || m <= 2;
+      return {
+        entry: inSeason || c > 1.02 * s200 ? 'long' : null,
+        exitLong: !inSeason && c < 0.98 * s200,
+        exitShort: true,
+        sl: 4 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...GOLD,
+    id: 'silver',
+    needsAux: ['silver'],
+    name: 'Argent en tête (ratio or / argent)',
+    desc: 'Quand l’argent monte plus vite que l’or (le ratio or / argent passe sous sa moyenne 50 jours), c’est souvent le début d’un mouvement haussier de tous les métaux. Achat de l’or si en plus il est au-dessus de sa moyenne 50 ; sortie dès qu’une condition tombe. Stop 3 ATR.',
+    evaluate(ind, i) {
+      const g = ind.gsr;
+      const on = (k) => g.r[k] !== null && g.avg[k] !== null && g.r[k] < g.avg[k] && ind.closes[k] > ind.sma50[k];
+      return { entry: became(on, i) ? 'long' : null, exitLong: !on(i), exitShort: true, sl: 3 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...GOLD,
+    id: 'riskoff',
+    needsAux: ['peer'],
+    name: 'Refuge quand la Bourse baisse',
+    desc: 'L’or est acheté quand les actions vont mal : investi quand le Nasdaq 100 est sous sa moyenne 50 jours ET l’or au-dessus de la sienne ; sortie quand le Nasdaq repasse au-dessus ou que l’or casse sa moyenne. Stop 3 ATR.',
+    evaluate(ind, i) {
+      const p = ind.peer;
+      const on = (k) => p.c[k] !== null && p.sma50[k] !== null && p.c[k] < p.sma50[k] && ind.closes[k] > ind.sma50[k];
+      return { entry: became(on, i) ? 'long' : null, exitLong: !on(i), exitShort: true, sl: 3 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...NAS2,
+    id: 'macro',
+    needsVix: true,
+    needsTnx: true,
+    name: 'Feu vert macro (tendance, peur, taux)',
+    desc: 'Maison : trois feux — Nasdaq au-dessus de sa moyenne 200 jours, VIX sous sa moyenne 50 jours, taux 10 ans US sous sa moyenne 50 jours. Investi quand au moins 2 feux sur 3 sont verts, dehors quand il en reste un ou aucun. Stop 5 ATR.',
+    evaluate(ind, i) {
+      const score = (ind.closes[i] > ind.sma200[i]) + belowAvg(ind.vix, i) + belowAvg(ind.tnx, i);
+      return { entry: score >= 2 ? 'long' : null, exitLong: score <= 1, exitShort: true, sl: 5 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...NAS2,
+    id: 'sox',
+    needsAux: ['sox'],
+    name: 'Les semi-conducteurs montrent la voie',
+    desc: 'Les puces (indice SOX) anticipent souvent le reste de la tech : investi quand le SOX ET le Nasdaq sont au-dessus de leur moyenne 50 jours, sortie dès que l’un passe en dessous. Stop 4 ATR.',
+    evaluate(ind, i) {
+      const on = (k) => aboveAvg(ind.sox, k) && ind.closes[k] > ind.sma50[k];
+      return { entry: on(i) ? 'long' : null, exitLong: !on(i), exitShort: true, sl: 4 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...NAS2,
+    id: 'dollarweak',
+    needsDxy: true,
+    name: 'Dollar faible',
+    desc: 'Un dollar qui baisse aide les grandes entreprises tech (revenus à l’étranger) : investi quand l’indice du dollar (DXY) est sous sa moyenne 50 jours ET le Nasdaq au-dessus de la sienne ; sortie dès qu’une condition tombe. Stop 4 ATR.',
+    evaluate(ind, i) {
+      const on = (k) => belowAvg(ind.dxy, k) && ind.closes[k] > ind.sma50[k];
+      return { entry: on(i) ? 'long' : null, exitLong: !on(i), exitShort: true, sl: 4 * ind.atr[i], tp: null };
+    },
+  },
+);
+
+/* ------------------------------------------------------------------ */
 /* Versions « achat seul » (indices actions : les ventes à découvert    */
 /* y font perdre sur le long terme)                                    */
 /* ------------------------------------------------------------------ */

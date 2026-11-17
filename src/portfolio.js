@@ -27,7 +27,7 @@ function liveChart(store, cfg, marketId = 'gold') {
   const curves = trader.curves();
   const colors = colorize(curves.map((c) => c.strategy));
   const png = renderEquityChart(
-    curves.map((c, k) => ({ points: downsample(c.points), rgb: colors[k].rgb, reference: c.strategy.id === 'hold' })),
+    curves.map((c, k) => ({ points: downsample(c.points), rgb: colors[k].rgb, dash: colors[k].dash, reference: c.strategy.id === 'hold' })),
     { baseline: market.startCapital },
   );
   const st = trader.stats();
@@ -49,38 +49,40 @@ function liveChart(store, cfg, marketId = 'gold') {
 
 /** Historique long : or = archive Binance (PAXG, depuis 2020) ; Nasdaq = Yahoo (^NDX journalier, depuis 1985). */
 async function loadHistory(marketId, cacheDir, fromYear = 2021) {
+  const { loadAux } = require('./aux');
   const { loadHourly, aggregate } = require('./history');
   if (marketId === 'gold' && fromYear < 2021) {
     // Avant 2021 : future sur l'or GC=F (Yahoo, journalier depuis 2000) — stratégies journalières seulement
     const { cachedYahoo } = require('./yahoo');
     const y = (s) => cachedYahoo(cacheDir, s, '1d').catch(() => null);
     const d = await cachedYahoo(cacheDir, 'GC=F', '1d');
-    return { '1d': d, daily: d, fx: await y('EURUSD=X'), vix: await y('^VIX'), aux: { tnx: await y('^TNX'), dxy: await y('DX-Y.NYB') }, source: 'future GC=F, Yahoo Finance' };
+    return { '1d': d, daily: d, fx: await y('EURUSD=X'), vix: await y('^VIX'), aux: await loadAux(cacheDir, 'gold'), source: 'future GC=F, Yahoo Finance' };
   }
   if (marketId === 'nas100') {
     const { cachedYahoo } = require('./yahoo');
     const d = await cachedYahoo(cacheDir, '^NDX', '1d');
     const y = (s) => cachedYahoo(cacheDir, s, '1d').catch(() => null);
-    return { '1d': d, daily: d, fx: null, vix: await y('^VIX'), aux: { tnx: await y('^TNX'), dxy: await y('DX-Y.NYB') }, source: 'indice ^NDX, Yahoo Finance' };
+    return { '1d': d, daily: d, fx: null, vix: await y('^VIX'), aux: await loadAux(cacheDir, 'nas100'), source: 'indice ^NDX, Yahoo Finance' };
   }
   const hourly = await loadHourly(cacheDir);
   const fx = aggregate(await loadHourly(cacheDir, { symbol: 'EURUSDT' }), TF_SEC['1d']);
   const d = aggregate(hourly, TF_SEC['1d']);
   const { cachedYahoo } = require('./yahoo');
   const y = (s) => cachedYahoo(cacheDir, s, '1d').catch(() => null);
-  const aux = { tnx: await y('^TNX'), dxy: await y('DX-Y.NYB') };
+  const aux = await loadAux(cacheDir, 'gold');
   return { aux, vix: await y('^VIX'), '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': d, daily: d, fx, source: 'PAXG, archive Binance' };
 }
 
 /**
- * Simulation des stratégies actives d'un marché sur l'historique, gains réinvestis.
- * @param {number} fromYear  année de départ (or : 2021 au plus tôt, Nasdaq : 1986 au plus tôt)
+ * Simulation de stratégies d'un marché sur l'historique, gains réinvestis.
+ * @param {number} fromYear  année de départ (or : 2001 au plus tôt, Nasdaq : 1986 au plus tôt)
+ * @param {string[]} ids     stratégies à simuler (par défaut : celles du marché)
  */
-async function historyChart(cfg, { marketId = 'gold', fromYear, cacheDir = CACHE } = {}) {
+async function simulateHistory(cfg, { marketId = 'gold', fromYear, ids = null, cacheDir = CACHE } = {}) {
   const market = marketById(cfg, marketId);
   const year = fromYear || (marketId === 'nas100' ? 2010 : 2021);
   const data = await loadHistory(marketId, cacheDir, year);
-  const strategies = selectStrategies(market.strategies).filter((s) => data[tfOf(s)]);
+  const strategies = selectStrategies(ids || market.strategies).filter((s) => data[tfOf(s)]);
   const colors = colorize(strategies);
   const fromT = Date.UTC(year, 0, 1) / 1000;
   const results = strategies.map((s, k) => {
@@ -100,14 +102,21 @@ async function historyChart(cfg, { marketId = 'gold', fromYear, cacheDir = CACHE
     }
     return { s, r, color: colors[k], dd };
   });
-  const png = renderEquityChart(
-    results.map(({ s, r, color }) => ({ points: downsample(r.curve), rgb: color.rgb, reference: s.id === 'hold' })),
-    { baseline: market.startCapital },
-  );
   const last = data['1d'][data['1d'].length - 1];
   const years = Math.max(0.1, (last.t + 86400 - fromT) / (365.25 * 86400));
   const fees = `frais ${market.feePct} %/côté${market.financingPct ? ` + financement ${market.financingPct} %/an` : ''}`;
   for (const x of results) x.stats = tradeStats(x.r, market.startCapital, years);
+  return { market, year, last, years, fees, source: data.source, results };
+}
+
+/** Simulation des stratégies actives d'un marché : graphique PNG + légende + détail par trade. */
+async function historyChart(cfg, opts = {}) {
+  const { market, year, last, years, fees, source, results } = await simulateHistory(cfg, opts);
+  const png = renderEquityChart(
+    results.map(({ s, r, color }) => ({ points: downsample(r.curve), rgb: color.rgb, dash: color.dash, reference: s.id === 'hold' })),
+    { baseline: market.startCapital },
+  );
+  const data = { source };
   results.sort((a, b) => b.r.equity - a.r.equity);
 
   // Légende de la photo (≤ 1 024 caractères) : valeur finale + rendement annuel
@@ -162,4 +171,4 @@ function tradeStats(r, startCapital, years) {
   };
 }
 
-module.exports = { liveChart, historyChart, colorize };
+module.exports = { liveChart, historyChart, simulateHistory, tradeStats, colorize };

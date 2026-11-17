@@ -10,6 +10,7 @@
  *   /backtest [j]   — backtest des stratégies sur l'historique
  *   /bilan          — publie le bilan sur le canal
  *   /testcanal      — vérifie la publication sur le canal
+ *   /app            — mini-app de suivi (page web servie par le bot)
  *   /settings       — paramètres actifs
  *   /pause, /resume — coupe / relance les publications sur le canal
  */
@@ -24,6 +25,7 @@ const { runCycle, portfolio } = require('./src/cycle');
 const { liveChart, historyChart } = require('./src/portfolio');
 const { activeMarkets, marketById } = require('./src/markets');
 const { InputFile } = require('grammy');
+const { startWeb } = require('./src/web');
 
 if (!cfg.telegramToken) throw new Error('TELEGRAM_BOT_TOKEN manquant (voir .env.example)');
 
@@ -32,6 +34,7 @@ const store = new Store(cfg.dataDir);
 const channel = createChannel(bot.api, cfg, store);
 
 let paused = false;
+let appUrl = null; // adresse publique de la mini-app
 let running = null; // évite deux passages simultanés
 
 /* ------------------------------------------------------------------ */
@@ -76,6 +79,7 @@ bot.command('start', (ctx) =>
       '',
       '/gold — bilan de l’or',
       '/nasdaq — bilan du Nasdaq 100',
+      '/app — 📱 mini-app pour suivre les stratégies',
       '/portfolio — graphiques de l’évolution des portefeuilles',
       '/historique [or|nasdaq] [année] — simulation sur l’historique (gains réinvestis)',
       '/strategies — comment fonctionne chaque stratégie',
@@ -174,6 +178,71 @@ bot.command('testcanal', async (ctx) => {
   }
 });
 
+/* ------------------------------------------------------------------ */
+/* Mini-app                                                            */
+/* ------------------------------------------------------------------ */
+
+const withKey = (url) => (cfg.webToken ? `${url}/?k=${encodeURIComponent(cfg.webToken)}` : `${url}/`);
+
+bot.command('app', async (ctx) => {
+  if (!cfg.webEnabled) return ctx.reply('La mini-app est désactivée (WEB_APP=0 dans le .env).');
+  if (!appUrl) return ctx.reply('⏳ La mini-app démarre, réessaie dans quelques secondes. Si ça dure, mets son adresse dans WEB_URL (voir le README).');
+  const url = withKey(appUrl);
+  const https = url.startsWith('https://');
+  // Bouton « mini-app » (s'ouvre DANS Telegram) : HTTPS et conversation privée uniquement ; sinon lien classique
+  const button = https && ctx.chat.type === 'private' ? { text: '📊 Ouvrir l’app', web_app: { url } } : { text: '📊 Ouvrir l’app', url };
+  return ctx.reply(
+    [
+      '<b>📱 Mini-app de suivi</b>',
+      'Portefeuilles en direct, positions ouvertes, historique des trades, simulation sur l’historique et catalogue de toutes les stratégies.',
+      '',
+      https ? '' : '<i>Adresse en http : elle s’ouvre dans le navigateur. Pour l’ouvrir dans Telegram, il faut une adresse https (WEB_TUNNEL=1, voir le README).</i>',
+      `<code>${esc(url)}</code>`,
+    ].filter(Boolean).join('\n'),
+    { ...HTML, reply_markup: { inline_keyboard: [[button]] }, link_preview_options: { is_disabled: true } },
+  );
+});
+
+/** Adresse publique : WEB_URL, sinon IP publique du serveur + port. */
+async function guessPublicUrl() {
+  if (cfg.webUrl) return cfg.webUrl;
+  let ip = process.env.SERVER_IP && process.env.SERVER_IP !== '0.0.0.0' ? process.env.SERVER_IP : null;
+  if (!ip) {
+    ip = await fetch('https://api.ipify.org', { signal: AbortSignal.timeout(10_000) }).then((r) => (r.ok ? r.text() : null)).catch(() => null);
+  }
+  return ip && /^[\d.]+$/.test(ip.trim()) ? `http://${ip.trim()}:${cfg.webPort}` : null;
+}
+
+/** Bouton du menu Telegram (à gauche du champ de saisie) qui ouvre la mini-app — HTTPS obligatoire. */
+async function setMenuButton(url) {
+  if (!url.startsWith('https://')) return;
+  await bot.api.setChatMenuButton({ menu_button: { type: 'web_app', text: '📊 App', web_app: { url: withKey(url) } } })
+    .then(() => console.log(`Mini-app dans le menu Telegram : ${url}`))
+    .catch((err) => console.warn('[app] bouton du menu :', err.message));
+}
+
+async function startApp() {
+  if (!cfg.webEnabled) return;
+  startWeb({ cfg, store });
+  if (cfg.webTunnel && !cfg.webUrl) {
+    const { startTunnel } = require('./src/tunnel');
+    startTunnel({
+      port: cfg.webPort,
+      dataDir: cfg.dataDir,
+      onUrl: async (url) => {
+        appUrl = url;
+        await setMenuButton(url);
+      },
+    }).catch((err) => console.warn(`[tunnel] impossible : ${err.message} — lien http utilisé à la place`));
+  }
+  const guessed = await guessPublicUrl();
+  if (!appUrl) appUrl = guessed;
+  if (appUrl) {
+    console.log(`Mini-app : ${appUrl}/ (commande /app)`);
+    await setMenuButton(appUrl);
+  }
+}
+
 bot.command('settings', (ctx) =>
   ctx.reply(
     [
@@ -183,6 +252,7 @@ bot.command('settings', (ctx) =>
       `Vérification toutes les ${cfg.checkIntervalMin} min`,
       `Bilan sur le canal : ${cfg.summaryHours > 0 ? `toutes les ${cfg.summaryHours} h` : 'désactivé'}`,
       `Canal : ${cfg.channelId ? esc(cfg.channelId) : 'non défini'} · publications ${paused ? '⏸ en pause' : '▶️ actives'}`,
+      `Mini-app : ${cfg.webEnabled ? (appUrl ? esc(appUrl) : `port ${cfg.webPort}`) : 'désactivée'}`,
     ].join('\n'),
     HTML,
   ),
@@ -208,6 +278,7 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
   await bot.api.setMyCommands([
     { command: 'gold', description: 'Bilan de l’or' },
     { command: 'nasdaq', description: 'Bilan du Nasdaq 100' },
+    { command: 'app', description: '📱 Mini-app pour suivre les stratégies' },
     { command: 'portfolio', description: 'Graphiques de l’évolution des portefeuilles' },
     { command: 'historique', description: 'Simulation : /historique or 2021 · /historique nasdaq 2010' },
     { command: 'strategies', description: 'Comment fonctionne chaque stratégie' },
@@ -219,6 +290,7 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
     { command: 'resume', description: 'Relancer les publications' },
   ]);
   await channel.check();
+  await startApp().catch((err) => console.warn('[app]', err.message));
 
   tick();
   setInterval(tick, cfg.checkIntervalMin * 60_000);

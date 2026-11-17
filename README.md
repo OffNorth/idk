@@ -31,12 +31,16 @@ Choisies par le banc d'essai sur **25 ans d'or** (future GC=F, 2000 → 2026 : c
 
 | Stratégie | Idée | 2001 → 2026 (réinvesti) | Pire baisse |
 |---|---|---|---|
-| **Saison de l'or** (`season`) | investi d'août à février (demande physique : Inde, Nouvel An chinois), dehors de mars à juillet | **+9,5 %/an** | **−22 %** |
-| **Filtre moyenne 200 jours** (`sma200`) | investi au-dessus de la moyenne 200 j (marge 2 %) | +7,6 %/an | −39 % |
-| **Momentum 12 mois** (`mom12`) | investi tant que l'or a monté sur 12 mois (Antonacci) | +7,2 %/an | −40 % |
+| 🆕 **Saison OU tendance** (`seasonplus`) | saison d'août à février, et le reste de l'année si l'or est 2 % au-dessus de sa moyenne 200 j | **+10,5 %/an** | −30 % |
+| **Saison de l'or** (`season`) | investi d'août à février (demande physique : Inde, Nouvel An chinois), dehors de mars à juillet | **+9,6 %/an** | **−22 %** |
+| 🆕 Momentum 12 mois sauf le dernier (`mom12_1`) | hausse sur 12 mois en ignorant le dernier mois (Jegadeesh & Titman) | +8,4 %/an | −34 % |
+| 🆕 Croix dorée (`golden`) | investi tant que la moyenne 50 j est au-dessus de la moyenne 200 j | +8,1 %/an | −35 % |
+| 🆕 Tendance sur 4 horizons (`trendmix`) | investi si l'or a monté sur au moins 3 des horizons 1, 3, 6 et 12 mois | +8,0 %/an | −31 % |
+| **Filtre moyenne 200 jours** (`sma200`) | investi au-dessus de la moyenne 200 j (marge 2 %) | +7,7 %/an | −39 % |
+| **Momentum 12 mois** (`mom12`) | investi tant que l'or a monté sur 12 mois (Antonacci) | +7,3 %/an | −40 % |
 | Momentum de tendance (`tsmom`) | prix > moyenne 200 j et hausse sur 3 mois | +5,9 %/an | −30 % |
 | Nouveau plus haut annuel (`high52`) | achat au plus haut de 52 semaines, revente au plus bas de 50 jours | +5,1 %/an | −18 % |
-| MACD + EMA 200 (`macd@1d`) | croisement MACD dans le sens de l'EMA 200 | +1,7 %/an | −38 % |
+| MACD + EMA 200 (`macd@1d`) | croisement MACD dans le sens de l'EMA 200 | +1,8 %/an | −38 % |
 | *Référence : garder l'or* (`hold`) | achète une fois et garde | *+10,8 %/an* | *−44 %* |
 
 ![Évolution simulée des stratégies or depuis 2001](docs/historique-or-2001.png)
@@ -46,6 +50,9 @@ et fait mieux sur 2021–2026 (+12,9 %/an contre +12,7 %). Les stratégies chois
 (Dollar + or, MM 10/60, Vote, EMA 20/50) **ne tiennent pas sur 25 ans** (entre −1 et +1 %/an) : elles restent
 disponibles mais ne sont plus actives. Les filtres « taux US 10 ans », « indice du dollar » et « valeur refuge (VIX) »
 ont été testés et sont perdants sur 2000–2015.
+
+Nouvelles testées mais non activées : `season200` (saison ET tendance, +6,6 %/an), `dualmom` (double momentum or /
+Nasdaq, +4,2 %/an mais −43 %), `silver` (argent en tête, +2,9 %/an), `riskoff` (refuge quand la Bourse baisse, perdante).
 
 Toutes les autres restent disponibles (`GOLD_STRATEGIES`, voir Réglages) : `vote`, `dollar`, `sma1060@1d`, `ema@1d`,
 `fibo@6h`, `vixcalm`, `yields`, `dxy`, `fear`, `breakout`, `meanrev`, `supertrend`, `pvt`, `turtle`, `ichimoku`…,
@@ -130,10 +137,14 @@ Le bot trade aussi le **Nasdaq 100** en simulation, comme un CFD NAS100 :
 
 | Stratégie | Idée | CFD (financement 6 %/an) | Sans financement |
 |---|---|---|---|
-| **Momentum 12 mois** (`mom12`) | investi tant que l'indice a monté sur 12 mois | **+8,0 %/an**, pire baisse −36 % | +12,3 %/an |
+| 🆕 **Croix dorée** (`golden`) | moyenne 50 j au-dessus de la moyenne 200 j | **+10,1 %/an**, pire baisse −30 % | |
+| 🆕 **Momentum 12 mois sauf le dernier** (`mom12_1`) | hausse sur 12 mois en ignorant le dernier mois | +9,6 %/an, −33 % | |
+| 🆕 **Feu vert macro** (`macro`) | au moins 2 feux verts sur 3 : indice > moyenne 200 j, VIX bas, taux 10 ans en baisse | +8,8 %/an, **−21 %** | |
+| 🆕 Tendance sur 4 horizons (`trendmix`) | hausse sur au moins 3 des horizons 1, 3, 6 et 12 mois | +8,6 %/an, −30 % | |
+| **Momentum 12 mois** (`mom12`) | investi tant que l'indice a monté sur 12 mois | +8,0 %/an, −36 % | +12,3 %/an |
 | **Filtre moyenne 200 jours** (`sma200`) | investi au-dessus de la moyenne 200 j (marge 2 %) | +7,0 %/an, −32 % | +11,3 %/an |
 | **Volatilité basse** (`lowvol`) | volatilité 20 j sous sa moyenne d'un an + tendance haussière | +5,5 %/an, −31 % | +9,1 %/an |
-| **Marché calme (VIX)** (`vixcalm`) | VIX sous sa moyenne 50 j + indice au-dessus de sa moyenne 50 | +5,3 %/an, −22 % | +9,0 %/an |
+| **Marché calme (VIX)** (`vixcalm`) | VIX sous sa moyenne 50 j + indice au-dessus de sa moyenne 50 | +5,4 %/an, −22 % | +9,0 %/an |
 | **« Sell in May »** (`halloween`) | investi de novembre à avril (Bouman & Jacobsen 2002) | +5,1 %/an, −31 % | +8,0 %/an |
 | **Taux US en baisse** (`rates`) | taux 10 ans sous sa moyenne 50 j + indice au-dessus de sa moyenne 50 | +4,4 %/an, **−20 %** | +6,4 %/an |
 | Momentum de tendance (`tsmom`) | prix > moyenne 200 et hausse sur 3 mois | +3,9 %/an, −28 % | +8,2 %/an |
@@ -141,6 +152,7 @@ Le bot trade aussi le **Nasdaq 100** en simulation, comme un CFD NAS100 :
 | Chasse aux stops (`sweep`, intraday 5 min) | formation TradingView, stratégie C | à l'essai | |
 | *Référence : garder l'indice* | | *+17,0 %/an, −36 %* | |
 
+  Nouvelles testées mais non activées : `sox` (semi-conducteurs, +3,5 %/an), `dualmom` (+3,0 %/an), `dollarweak` (+1,2 %/an).
   Aussi disponibles (`NAS_STRATEGIES`) : `rsi2`, `cumrsi`, `double7`, `tom` (≈ +3 %/an), `high52`, `dip5`, `ibs`,
   `down3`, `vixspike`, `ema_long`, et `tuesday` / `pctb` (≈ 0 %/an, non retenues). Données VIX et taux 10 ans : Yahoo.
 - Coûts : 0,01 % par côté **+ financement de nuit 6 %/an** (`NAS_FINANCING_PCT`) au prorata des jours en position.
@@ -218,10 +230,31 @@ toutes les 3 minutes ne reproduit pas. À noter : le PAXG sur Binance est moins 
 Avec des frais de broker (0,01 %), les stratégies en 1 h restent elles aussi presque toutes perdantes ;
 les stratégies journalières restent les meilleures (`npm run research -- 0.01`).
 
+## 📱 Mini-app de suivi (`/app`)
+
+Le bot sert une **page web** pour suivre les stratégies depuis le téléphone :
+- **Portefeuille** : valeur totale, courbe de chaque stratégie (touche une courbe pour lire les valeurs), position en cours ;
+  touche une stratégie pour voir sa position (entrée, stop, gain latent), ses derniers trades et son fonctionnement.
+- **Activité** : fil des achats et des clôtures avec leur résultat.
+- **Historique** : simulation des stratégies actives depuis 2001 / 2010 / 2016… (gains réinvestis), avec gain par an et pire baisse.
+- **Stratégies** : les 65 stratégies codées, filtrables (actives / disponibles / rejetées), avec leur résultat au banc
+  d'essai et un bouton **« Tester »** qui simule n'importe laquelle sur l'historique.
+
+Elle démarre avec le bot. La commande **`/app`** envoie le lien.
+
+**Sur Bot-Hosting** : le bot écoute sur le port attribué au serveur (`SERVER_PORT`, affiché à côté de l'adresse IP du serveur,
+ex. `51.75.x.x:25565`). Le lien est donc `http://IP:PORT/` : il s'ouvre dans le navigateur.
+Pour l'ouvrir **dans Telegram** (vraie mini-app, bouton « 📊 App » à côté du champ de saisie), Telegram exige une adresse
+**https** : mettre `WEB_TUNNEL=1` dans le `.env` (tunnel gratuit Cloudflare, sans compte : le bot télécharge le programme
+`cloudflared` une fois, ~40 Mo, et met le bouton à jour à chaque redémarrage), ou indiquer sa propre adresse https dans `WEB_URL`.
+
+Les données sont en lecture seule. Pour que seul toi puisses les voir, mets une clé dans `WEB_TOKEN` : le lien de `/app` la contient.
+
 ## Commandes Telegram
 
 | Commande | Rôle |
 |---|---|
+| `/app` | 📱 Lien de la mini-app de suivi |
 | `/nasdaq` | Bilan du Nasdaq 100 |
 | `/gold` | Bilan de chaque stratégie (valeur du compte, trades, % gagnants, position en cours) |
 | `/portfolio` | Graphique de l'évolution du portefeuille depuis le lancement |
@@ -271,7 +304,13 @@ double. Secrets à créer : `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `GOLD_STRATEGIES` | `season,sma200,mom12,tsmom,high52,macd@1d,hold` | Stratégies actives (`id` ou `id@1h/6h/1d`, ou `all`) |
+| `GOLD_STRATEGIES` | `season,seasonplus,golden,trendmix,sma200,mom12_1,mom12,tsmom,high52,macd@1d,hold` | Stratégies actives (`id` ou `id@1h/6h/1d`, ou `all`) |
+| `NAS_STRATEGIES` | `golden,mom12_1,macro,trendmix,mom12,sma200,lowvol,vixcalm,halloween,rates,tsmom,macd_long,sweep,hold` | Stratégies actives sur le Nasdaq |
+| `WEB_APP` | 1 | Mini-app de suivi (0 = désactivée) |
+| `WEB_PORT` | `SERVER_PORT`, sinon 8080 | Port de la mini-app |
+| `WEB_URL` | (devinée : IP publique + port) | Adresse publique de la mini-app |
+| `WEB_TUNNEL` | 0 | 1 = lien https gratuit (Cloudflare) pour l'ouvrir dans Telegram |
+| `WEB_TOKEN` | (vide) | Clé exigée pour voir les données |
 | `GOLD_START_CAPITAL` | 1000 | Capital de départ de chaque stratégie (gains réinvestis) |
 | `GOLD_POSITION_PCT` | 100 | Part du capital misée à chaque trade (%) |
 | `CHART_HOURS` | 24 | Graphique du portefeuille sur le canal (0 = jamais) |
@@ -298,6 +337,11 @@ src/portfolio.js   Graphique du portefeuille en direct et historique simulé (pa
 src/intraday.js    Indicateurs et stratégies intraday NAS100 (VWAP, range d'ouverture, sweep…)
 src/markets.js     Marchés : or (Coinbase/Kraken) et Nasdaq 100 (Yahoo), stratégies, frais, financement
 src/chart.js       Rendu PNG des courbes (sans dépendance)
+src/web.js         Mini-app : serveur web + API JSON (état, catalogue, simulation)
+src/catalog.js     Catalogue des stratégies : famille, verdict du banc d'essai, résultat
+src/aux.js         Séries externes (taux, dollar, argent, SOX, autre marché) pour certaines stratégies
+src/tunnel.js      Lien https gratuit (Cloudflare) pour ouvrir la mini-app dans Telegram
+web/index.html     La mini-app (une seule page, sans dépendance)
 src/channel.js     Publication Telegram
 src/format.js      Messages Telegram
 src/store.js       Fichiers JSON du dossier data/

@@ -347,22 +347,34 @@ function calendar(candles) {
 /** Série journalière externe (VIX, taux 10 ans, dollar…) alignée sur les bougies (dernière valeur connue) + moyennes. */
 function alignVix(candles, vix) {
   const n = candles.length;
-  const out = { c: new Array(n).fill(null), sma10: new Array(n).fill(null), sma20: new Array(n).fill(null), sma50: new Array(n).fill(null) };
+  const col = () => new Array(n).fill(null);
+  const out = { c: col(), sma10: col(), sma20: col(), sma50: col(), sma200: col(), r21: col(), r126: col(), r252: col() };
   if (!vix || vix.length < 60) return out;
   const closes = vix.map((v) => v.c);
-  const s10 = sma(closes, 10);
-  const s20 = sma(closes, 20);
-  const s50 = sma(closes, 50);
+  const src = { sma10: sma(closes, 10), sma20: sma(closes, 20), sma50: sma(closes, 50), sma200: sma(closes, 200), r21: roc(closes, 21), r126: roc(closes, 126), r252: roc(closes, 252) };
   let j = -1;
   for (let i = 0; i < n; i++) {
     while (j + 1 < vix.length && vix[j + 1].t <= candles[i].t) j++;
     if (j < 0) continue;
     out.c[i] = closes[j];
-    out.sma10[i] = s10[j];
-    out.sma20[i] = s20[j];
-    out.sma50[i] = s50[j];
+    for (const k of Object.keys(src)) out[k][i] = src[k][j];
   }
   return out;
+}
+
+/** Rapport prix / série externe (ex. or / argent) et sa moyenne sur n bougies. */
+function ratioSeries(closes, other, n = 50) {
+  const r = closes.map((c, i) => (other.c[i] ? c / other.c[i] : null));
+  const avg = r.map((_, i) => {
+    if (i < n - 1) return null;
+    let s = 0;
+    for (let j = i - n + 1; j <= i; j++) {
+      if (r[j] === null) return null;
+      s += r[j];
+    }
+    return s / n;
+  });
+  return { r, avg };
 }
 
 /** Plus bas / plus haut des clôtures sur n bougies (courante incluse) — fenêtre glissante en O(n). */
@@ -418,6 +430,11 @@ function computeAll(candles, daily = null, barSec = 3600, fx = null, vix = null,
     vix: alignVix(candles, vix),
     tnx: alignVix(candles, aux.tnx),
     dxy: alignVix(candles, aux.dxy),
+    peer: alignVix(candles, aux.peer),
+    sox: alignVix(candles, aux.sox),
+    gsr: (() => { const sil = alignVix(candles, aux.silver); return ratioSeries(closes, sil, 50); })(),
+    roc21: roc(closes, 21),
+    roc126: roc(closes, 126),
     roc252: roc(closes, 252),
     c50: rollingCloses(closes, 50),
     c252: rollingCloses(closes, 252),

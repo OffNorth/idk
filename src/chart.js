@@ -15,6 +15,14 @@ const PALETTE = [
   { rgb: [133, 77, 14], emoji: '🟫' },
   { rgb: [236, 72, 153], emoji: '🩷' },
   { rgb: [6, 182, 212], emoji: '🩵' },
+  // 2e série : mêmes teintes plus foncées, en pointillés (légende en ronds)
+  { rgb: [153, 27, 27], emoji: '🔴', dash: 9 },
+  { rgb: [30, 64, 175], emoji: '🔵', dash: 9 },
+  { rgb: [21, 128, 61], emoji: '🟢', dash: 9 },
+  { rgb: [194, 65, 12], emoji: '🟠', dash: 9 },
+  { rgb: [107, 33, 168], emoji: '🟣', dash: 9 },
+  { rgb: [161, 98, 7], emoji: '🟡', dash: 9 },
+  { rgb: [120, 53, 15], emoji: '🟤', dash: 9 },
 ];
 const REFERENCE = { rgb: [90, 90, 90], emoji: '⬛' };
 
@@ -119,7 +127,7 @@ function niceStep(range, target = 5) {
 const fmtMoney = (v) => (Math.abs(v) >= 10_000 ? `$${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`);
 
 /**
- * @param {Array<{points: Array<{t:number, v:number}>, rgb:number[], reference?:boolean}>} series
+ * @param {Array<{points: Array<{t:number, v:number}>, rgb:number[], reference?:boolean, dash?:number}>} series
  * @param {{width?:number, height?:number, baseline?:number}} opts  baseline = capital de départ (ligne pointillée)
  * @returns {Buffer} PNG
  */
@@ -169,7 +177,7 @@ function renderEquityChart(series, { width = 900, height = 500, baseline = null 
   // courbes : la référence d'abord (en dessous), puis les stratégies
   for (const s of [...series].sort((a, b) => (b.reference ? 1 : 0) - (a.reference ? 1 : 0))) {
     const p = s.points;
-    for (let i = 1; i < p.length; i++) cv.line(X(p[i - 1].t), Y(p[i - 1].v), X(p[i].t), Y(p[i].v), s.rgb, s.reference ? 2 : 3, s.reference ? 5 : 0);
+    for (let i = 1; i < p.length; i++) cv.line(X(p[i - 1].t), Y(p[i - 1].v), X(p[i].t), Y(p[i].v), s.rgb, s.reference ? 2 : 3, s.reference ? 5 : s.dash || 0);
     if (p.length === 1) cv.line(X(p[0].t) - 2, Y(p[0].v), X(p[0].t) + 2, Y(p[0].v), s.rgb, 3);
   }
   return cv.png();
