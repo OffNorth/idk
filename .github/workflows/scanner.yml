@@ -41,7 +41,9 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           DATA_DIR: data
-          GOLD_SIZE_USD: ${{ vars.GOLD_SIZE_USD }}
+          GOLD_START_CAPITAL: ${{ vars.GOLD_START_CAPITAL }}
+          GOLD_POSITION_PCT: ${{ vars.GOLD_POSITION_PCT }}
+          CHART_HOURS: ${{ vars.CHART_HOURS }}
           GOLD_FEE_PCT: ${{ vars.GOLD_FEE_PCT }}
           GOLD_STRATEGIES: ${{ vars.GOLD_STRATEGIES }}
           SUMMARY_HOURS: ${{ vars.SUMMARY_HOURS }}

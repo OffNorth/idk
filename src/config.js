@@ -22,7 +22,13 @@ module.exports = {
 
   // Paper trading de l'or (PAXG/USD) — simulation, aucun argent réel
   goldEnabled: num('GOLD_TRADING', 1) === 1,
-  goldSizeUsd: num('GOLD_SIZE_USD', 1000),
+  // Capital de départ de chaque stratégie ; chaque trade mise GOLD_POSITION_PCT % du capital du moment
+  // (les gains sont réinvestis). GOLD_SIZE_USD reste accepté pour compatibilité.
+  goldStartCapital: num('GOLD_START_CAPITAL', num('GOLD_SIZE_USD', 1000)),
+  goldPositionPct: num('GOLD_POSITION_PCT', 100),
+  get goldSizeUsd() {
+    return this.goldStartCapital;
+  },
   goldFeePct: num('GOLD_FEE_PCT', 0.05),
   // Par défaut : les combinaisons retenues par le banc d'essai (npm run research) + la référence
   goldStrategies: list('GOLD_STRATEGIES', 'macd@1d,vote,dollar,tsmom,sma1060@1d,ema@1d,fibo@6h,hold'),
@@ -30,6 +36,8 @@ module.exports = {
   // Fréquence des passages (minutes) et du bilan publié sur le canal (heures, 0 = jamais)
   checkIntervalMin: num('CHECK_INTERVAL_MINUTES', 3),
   summaryHours: num('SUMMARY_HOURS', 4),
+  // Graphique du portefeuille publié sur le canal toutes les X heures (0 = jamais)
+  chartHours: num('CHART_HOURS', 24),
 
   dataDir: path.resolve(process.env.DATA_DIR || path.join(__dirname, '..', 'data')),
 };

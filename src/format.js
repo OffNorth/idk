@@ -37,25 +37,34 @@ function goldEventMessage(ev) {
     `🥇 ${t.pnlUsd >= 0 ? '🟢' : '🔴'} <b>Or · ${name}</b> — ${t.side === 'long' ? 'long' : 'short'} clôturé`,
     `$${t.entry.toFixed(2)} → $${t.exit.toFixed(2)} · <b>${signedPct(t.pnlPct)}</b> (${signedUsd(t.pnlUsd)} sur $${t.size})`,
     `Raison : ${esc(t.reason)} · durée ${fmtDuration((t.exitT - t.entryT) * 1000)} · <i>paper trading, frais inclus</i>`,
+    ...(ev.capital !== undefined
+      ? [`Capital de la stratégie : <b>${money(ev.capital)}</b> (${signedPct((ev.capital / ev.start - 1) * 100)} depuis le départ)`]
+      : []),
   ].join('\n');
 }
 
-/** Bilan de toutes les stratégies. */
-function portfolioMessage(gold, cfg) {
+const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
+
+/** Bilan de toutes les stratégies (gains réinvestis : valeur de chaque compte). */
+function portfolioMessage(gold) {
+  const strat = gold.rows.filter((r) => r.strategy.id !== 'hold');
+  const ref = gold.rows.find((r) => r.strategy.id === 'hold');
+  const total = strat.reduce((s, r) => s + r.equity, 0);
+  const start = gold.start * strat.length;
   const lines = [
-    '<b>📒 Bilan paper trading — Or</b> <i>(simulation, aucun argent réel)</i>',
-    `Prix : ${gold.price ? `$${gold.price.toFixed(2)}` : '?'} · $${cfg.goldSizeUsd} par trade`,
-    `PnL total : <b>${signedUsd(gold.totalPnl)}</b>`,
+    '<b>📒 Bilan paper trading — Or</b> <i>(simulation, gains réinvestis)</i>',
+    `Prix : ${gold.price ? `$${gold.price.toFixed(2)}` : '?'} · ${strat.length} stratégies × ${money(gold.start)}`,
+    `Valeur du portefeuille : <b>${money(total)}</b> (${signedPct((total / start - 1) * 100)})`,
   ];
-  for (const r of gold.rows) {
+  if (ref) lines.push(`Référence achat-conservation : ${money(ref.equity)} (${signedPct(ref.returnPct)})`);
+  for (const r of [...strat].sort((a, b) => b.equity - a.equity)) {
     const pos = r.position
       ? `${r.position.side === 'long' ? '📈 long' : '📉 short'} depuis $${r.position.entry.toFixed(2)} (${signedUsd(r.unrealized)})`
       : 'pas de position';
     lines.push(
       '',
-      `<b>${esc(r.strategy.name)}</b>`,
-      `  ${r.trades} trades · ${r.winRate.toFixed(0)}% gagnants · PnL <b>${signedUsd(r.pnlUsd)}</b>${r.profitFactor ? ` · PF ${r.profitFactor.toFixed(2)}` : ''}`,
-      `  ${pos}`,
+      `<b>${esc(r.strategy.name)}</b> — ${money(r.equity)} (${signedPct(r.returnPct)})`,
+      `  ${r.trades} trades · ${r.winRate.toFixed(0)}% gagnants${r.profitFactor ? ` · PF ${r.profitFactor.toFixed(2)}` : ''} · ${pos}`,
     );
   }
   return lines.join('\n');

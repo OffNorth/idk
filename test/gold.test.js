@@ -45,6 +45,30 @@ test('or : stop prioritaire sur objectif dans une même bougie', () => {
   assert.strictEqual(hitInCandle({ side: 'short', sl: 105, tp: 95 }, { h: 104, l: 96 }), null);
 });
 
+test('or : réinvestissement des gains en backtest', () => {
+  const { STRATEGIES } = require('../src/strategies');
+  const { backtest } = require('../src/gold');
+  const closes = Array.from({ length: 800 }, (_, i) => 2000 * (1 + i / 800) + 60 * Math.sin(i / 25));
+  const candles = closes.map((c, i) => ({ t: i * 3600, o: c, h: c + 3, l: c - 3, c, v: 10 }));
+  const s = STRATEGIES.find((x) => x.id === 'meanrev');
+  const fixed = backtest(s, candles, { size: 1000 });
+  const comp = backtest(s, candles, { compound: true, capital: 1000, curveEvery: 24 });
+  assert.ok(comp.trades > 2);
+  // capital final = départ + somme des gains, et chaque trade mise le capital du moment
+  assert.ok(Math.abs(comp.capital - (1000 + comp.list.reduce((a, t) => a + t.pnlUsd, 0))) < 1e-6);
+  for (let k = 1; k < comp.list.length; k++) assert.ok(Math.abs(comp.list[k].size - comp.list[k - 1].capital) < 1e-6);
+  assert.strictEqual(fixed.trades, comp.trades, 'mêmes signaux');
+  assert.ok(comp.curve.length > 10 && comp.curve.every((p) => Number.isFinite(p.v)));
+});
+
+test('graphique PNG valide', () => {
+  const { renderEquityChart, PALETTE } = require('../src/chart');
+  const png = renderEquityChart([{ points: [{ t: 0, v: 1000 }, { t: 86400, v: 1100 }], rgb: PALETTE[0].rgb }], { width: 300, height: 200, baseline: 1000 });
+  assert.deepStrictEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.strictEqual(png.readUInt32BE(16), 300);
+  assert.strictEqual(png.readUInt32BE(20), 200);
+});
+
 test('or : bilan et messages', () => {
   const store = new Store(fs.mkdtempSync(path.join(os.tmpdir(), 'gold-')));
   const trader = new GoldTrader(store, cfg);

@@ -36,6 +36,23 @@ function createChannel(api, cfg, store) {
     store.setMeta('lastSummaryAt', Date.now());
   }
 
+  /** Image PNG (Buffer) avec légende HTML. */
+  async function sendPhoto(png, caption) {
+    if (!cfg.channelId) return null;
+    const { InputFile } = require('grammy');
+    return api.sendPhoto(cfg.channelId, new InputFile(png, 'portefeuille.png'), { caption, parse_mode: 'HTML' });
+  }
+
+  /** Le graphique du portefeuille est-il dû (selon CHART_HOURS) ? */
+  function chartDue() {
+    if (!cfg.channelId || cfg.chartHours <= 0) return false;
+    return Date.now() - (store.getMeta('lastChartAt') || 0) >= cfg.chartHours * 3_600_000;
+  }
+
+  function markChart() {
+    store.setMeta('lastChartAt', Date.now());
+  }
+
   /** Vérifie que le bot peut publier sur le canal / groupe. */
   async function check() {
     if (!cfg.channelId) {
@@ -68,7 +85,7 @@ function createChannel(api, cfg, store) {
     }
   }
 
-  return { sendText, summaryDue, markSummary, check };
+  return { sendText, sendPhoto, summaryDue, markSummary, chartDue, markChart, check };
 }
 
 module.exports = { createChannel, explainTelegramError, HTML };

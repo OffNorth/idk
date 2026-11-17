@@ -4,6 +4,8 @@
  * Commandes :
  *   /start          — aide
  *   /gold           — bilan de chaque stratégie
+ *   /portfolio      — graphique de l'évolution du portefeuille (gains réinvestis)
+ *   /historique [a] — simulation des stratégies actives depuis l'année a (2021 par défaut)
  *   /strategies     — description des stratégies
  *   /backtest [j]   — backtest des stratégies sur l'historique
  *   /bilan          — publie le bilan sur le canal
@@ -19,6 +21,8 @@ const { selectStrategies } = require('./src/strategies');
 const { backtestMessage, esc } = require('./src/format');
 const { createChannel, explainTelegramError, HTML } = require('./src/channel');
 const { runCycle, portfolio } = require('./src/cycle');
+const { liveChart, historyChart } = require('./src/portfolio');
+const { InputFile } = require('grammy');
 
 if (!cfg.telegramToken) throw new Error('TELEGRAM_BOT_TOKEN manquant (voir .env.example)');
 
@@ -70,6 +74,8 @@ bot.command('start', (ctx) =>
       `$${cfg.goldSizeUsd} par trade et par stratégie. Chaque entrée / sortie est publiée sur le canal.`,
       '',
       '/gold — bilan de chaque stratégie',
+      '/portfolio — graphique de l’évolution du portefeuille',
+      '/historique [année] — simulation depuis 2021 (gains réinvestis)',
       '/strategies — comment fonctionne chaque stratégie',
       '/backtest [jours] — tester les stratégies sur l’historique',
       '/bilan — publier le bilan sur le canal',
@@ -84,6 +90,25 @@ bot.command('start', (ctx) =>
 );
 
 bot.command(['gold', 'paper'], (ctx) => ctx.reply(portfolio(cfg, store), HTML));
+
+/** Envoie un graphique PNG en réponse (ou un message d'erreur). */
+async function replyChart(ctx, build, waitText) {
+  const wait = await ctx.reply(waitText);
+  try {
+    const { png, caption } = await build();
+    await ctx.replyWithPhoto(new InputFile(png, 'portefeuille.png'), { caption, parse_mode: 'HTML' });
+    await ctx.api.deleteMessage(ctx.chat.id, wait.message_id).catch(() => {});
+  } catch (err) {
+    await ctx.api.editMessageText(ctx.chat.id, wait.message_id, `❌ Graphique impossible : ${esc(err.message)}`);
+  }
+}
+
+bot.command('portfolio', (ctx) => replyChart(ctx, async () => liveChart(store, cfg), '⏳ Graphique du portefeuille…'));
+
+bot.command('historique', (ctx) => {
+  const year = Math.min(Math.max(Number(ctx.match.trim()) || 2021, 2021), new Date().getUTCFullYear() - 1);
+  return replyChart(ctx, () => historyChart(cfg, { fromYear: year }), `⏳ Simulation depuis ${year} (le premier appel télécharge ~6 ans d’historique, ~1 min)…`);
+});
 
 bot.command('strategies', (ctx) =>
   ctx.reply(
@@ -168,6 +193,8 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
 (async () => {
   await bot.api.setMyCommands([
     { command: 'gold', description: 'Bilan de chaque stratégie' },
+    { command: 'portfolio', description: 'Graphique de l’évolution du portefeuille' },
+    { command: 'historique', description: 'Simulation depuis 2021 : /historique 2021' },
     { command: 'strategies', description: 'Comment fonctionne chaque stratégie' },
     { command: 'backtest', description: 'Tester les stratégies : /backtest 90' },
     { command: 'bilan', description: 'Publier le bilan sur le canal' },

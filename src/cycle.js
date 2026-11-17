@@ -2,6 +2,7 @@
  * Un passage, partagé par bot.js (serveur) et once.js (GitHub Actions) :
  *   1. paper trading de l'or, toutes stratégies (ouvertures / clôtures publiées)
  *   2. bilan publié sur le canal si c'est l'heure
+ *   3. graphique de l'évolution du portefeuille si c'est l'heure
  */
 const { GoldTrader } = require('./gold');
 const { goldEventMessage, portfolioMessage } = require('./format');
@@ -31,6 +32,18 @@ async function runCycle({ cfg, store, channel, publish = true }) {
   if (publish && channel.summaryDue()) {
     await safeSend(channel, portfolio(cfg, store));
     channel.markSummary();
+  }
+
+  // Graphique de l'évolution du portefeuille (une fois par jour par défaut)
+  if (publish && cfg.goldEnabled && channel.chartDue()) {
+    try {
+      const { liveChart } = require('./portfolio');
+      const { png, caption } = liveChart(store, cfg);
+      await channel.sendPhoto(png, caption);
+    } catch (err) {
+      console.error(`[canal] graphique impossible : ${explainTelegramError(err)}`);
+    }
+    channel.markChart();
   }
   return out;
 }

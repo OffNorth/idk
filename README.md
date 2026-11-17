@@ -41,6 +41,33 @@ Toutes les autres restent disponibles (`GOLD_STRATEGIES`, voir Réglages) : `bre
 `tsmom_ls`, `turtle`, `rsi2`, `pullback`, `keltner`, `asia`, `ichimoku`, `adx`, `squeeze`, `ribbon`, `insidebar`, `heikin`,
 et n'importe laquelle sur une autre unité (`ema@6h`…).
 
+## 📈 Portefeuille (gains réinvestis)
+
+Chaque stratégie a **son propre compte**, qui démarre avec `GOLD_START_CAPITAL` (1 000 $) et **mise tout son capital**
+(`GOLD_POSITION_PCT` = 100 %) à chaque trade : les gains sont réinvestis, les pertes aussi.
+
+- La valeur de chaque compte est enregistrée **toutes les heures** (`data/gold.json`).
+- Un **graphique de l'évolution** est publié sur le canal chaque jour (`CHART_HOURS`), et à la demande avec `/portfolio`.
+- `/historique [année]` rejoue les stratégies actives sur l'historique (archive Binance) avec réinvestissement.
+
+### Historique simulé 2021 → oct. 2026 (1 000 $ au départ par stratégie, frais inclus)
+
+![Évolution simulée des stratégies actives depuis 2021](docs/historique-2021.png)
+
+| | Stratégie | Valeur finale | Pire baisse |
+|---|---|---|---|
+| 🟪 | Croisement MM 10/60 | 2 037 $ (+104 %) | −23 % |
+| ⬛ | *Référence achat-conservation* | *2 019 $ (+102 %)* | *−30 %* |
+| 🟦 | Vote de 5 signaux | 1 819 $ (+82 %) | −24 % |
+| 🟧 | Momentum de tendance | 1 804 $ (+80 %) | −22 % |
+| 🟥 | **MACD + EMA 200** | 1 682 $ (+68 %) | **−9 %** |
+| 🟩 | Dollar + or | 1 623 $ (+62 %) | −16 % |
+| 🟫 | Convergence Fibonacci | 1 388 $ (+39 %) | −16 % |
+| 🟨 | EMA 20/50 | 1 196 $ (+20 %) | −10 % |
+
+Toutes gagnent, **aucune ne bat nettement le simple achat-conservation** sur une période où l'or a doublé,
+mais elles subissent des baisses bien plus faibles (MACD + EMA 200 : −9 % au pire, contre −30 %).
+
 ## Banc d'essai (`npm run research`)
 
 **Données** : PAXG/USDT en 1 h depuis l'archive publique de Binance, **sept. 2020 → oct. 2026** (54 000 bougies),
@@ -135,7 +162,9 @@ les stratégies journalières restent les meilleures (`npm run research -- 0.01`
 
 | Commande | Rôle |
 |---|---|
-| `/gold` | Bilan de chaque stratégie (trades, % gagnants, PnL, position en cours) |
+| `/gold` | Bilan de chaque stratégie (valeur du compte, trades, % gagnants, position en cours) |
+| `/portfolio` | Graphique de l'évolution du portefeuille depuis le lancement |
+| `/historique [année]` | Simulation des stratégies actives depuis 2021 (gains réinvestis), avec graphique |
 | `/strategies` | Description des stratégies actives |
 | `/backtest [jours]` | Backtest récent sur Coinbase (90 jours par défaut, 365 max) |
 | `/bilan` | Publie le bilan sur le canal maintenant |
@@ -182,7 +211,9 @@ double. Secrets à créer : `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`.
 | Variable | Défaut | Rôle |
 |---|---|---|
 | `GOLD_STRATEGIES` | `macd@1d,vote,dollar,tsmom,sma1060@1d,ema@1d,fibo@6h,hold` | Stratégies actives (`id` ou `id@1h/6h/1d`, ou `all`) |
-| `GOLD_SIZE_USD` | 1000 | Montant simulé par trade et par stratégie |
+| `GOLD_START_CAPITAL` | 1000 | Capital de départ de chaque stratégie (gains réinvestis) |
+| `GOLD_POSITION_PCT` | 100 | Part du capital misée à chaque trade (%) |
+| `CHART_HOURS` | 24 | Graphique du portefeuille sur le canal (0 = jamais) |
 | `GOLD_FEE_PCT` | 0.05 | Frais / spread par côté (%) |
 | `CHECK_INTERVAL_MINUTES` | 3 | Fréquence de vérification |
 | `SUMMARY_HOURS` | 4 | Bilan sur le canal (0 = jamais) |
@@ -200,7 +231,9 @@ src/strategies.js  Toutes les stratégies (guides, classiques, maison) + référ
 src/indicators.js  EMA, SMA, RSI, ATR, Bollinger, MACD, Donchian, Supertrend, PVT, chandeliers, sessions…
 src/history.js     Téléchargement / cache de l'archive Binance, agrégation 6 h / 1 j
 src/yahoo.js       Données Yahoo Finance (Nasdaq 100 et autres indices)
-src/cycle.js       Un passage : trading + bilan
+src/cycle.js       Un passage : trading + bilan + graphique
+src/portfolio.js   Graphique du portefeuille en direct et historique simulé
+src/chart.js       Rendu PNG des courbes (sans dépendance)
 src/channel.js     Publication Telegram
 src/format.js      Messages Telegram
 src/store.js       Fichiers JSON du dossier data/

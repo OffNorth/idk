@@ -142,34 +142,57 @@ function summarize(trades) {
 /* Backtest (bougies 1 h uniquement)                                   */
 /* ------------------------------------------------------------------ */
 
-function backtest(strategy, candles, { size = 1000, feePct = 0.05, daily = null, from = 0, to = Infinity, barSec = 3600, fx = null, ind: pre = null } = {}) {
+/** Gain / perte latent d'une position au prix `price`. */
+function unrealized(pos, price) {
+  if (!pos || !price) return 0;
+  return pos.size * (pos.side === 'long' ? 1 : -1) * (price / pos.entry - 1);
+}
+
+/**
+ * Backtest d'une stratégie.
+ *  compound : true → chaque trade mise `positionPct` % du capital du moment (gains réinvestis),
+ *             false → taille fixe `size` par trade.
+ *  curveEvery : > 0 → enregistre la valeur du compte toutes les N bougies (courbe de capital).
+ */
+function backtest(strategy, candles, {
+  size = 1000, feePct = 0.05, daily = null, from = 0, to = Infinity, barSec = 3600, fx = null, ind: pre = null,
+  compound = false, capital: startCapital = size, positionPct = 100, curveEvery = 0,
+} = {}) {
   const ind = pre || (strategy.scalp ? computeScalp(candles, barSec) : computeAll(candles, daily, barSec, fx));
   const trades = [];
+  const curve = [];
   let pos = null;
+  let capital = startCapital;
+  const close = (price, reason, t) => {
+    const trade = closePos(pos, price, reason, t, feePct);
+    capital += trade.pnlUsd;
+    trade.capital = capital;
+    trades.push(trade);
+    pos = null;
+  };
+  const start = Math.max(strategy.warmup, 1, from);
   const end = Math.min(candles.length, to);
-  for (let i = Math.max(strategy.warmup, 1, from); i < end; i++) {
+  for (let i = start; i < end; i++) {
     const c = candles[i];
     if (pos && pos.openIdx < i) {
       const hit = hitInCandle(pos, c);
-      if (hit) {
-        trades.push(closePos(pos, hit.price, hit.reason, c.t, feePct));
-        pos = null;
-      }
+      if (hit) close(hit.price, hit.reason, c.t);
     }
     const sig = strategy.evaluate(ind, i);
     if (pos) {
       trailStop(strategy, pos, ind, i);
-      if ((pos.side === 'long' && sig.exitLong) || (pos.side === 'short' && sig.exitShort)) {
-        trades.push(closePos(pos, c.c, 'signal de sortie', c.t, feePct));
-        pos = null;
-      }
+      if ((pos.side === 'long' && sig.exitLong) || (pos.side === 'short' && sig.exitShort)) close(c.c, 'signal de sortie', c.t);
     }
-    if (!pos && sig.entry && i < end - 1) {
-      pos = openPos(sig.entry, c.c, sig, size, c.t);
+    if (!pos && sig.entry && i < end - 1 && capital > 0) {
+      pos = openPos(sig.entry, c.c, sig, compound ? (capital * positionPct) / 100 : size, c.t);
       pos.openIdx = i;
     }
+    if (curveEvery > 0 && ((i - start) % curveEvery === 0 || i === end - 1)) {
+      curve.push({ t: c.t + barSec, v: capital + unrealized(pos, c.c) });
+    }
   }
-  return { ...summarize(trades), open: pos, list: trades };
+  const lastPrice = candles[end - 1]?.c;
+  return { ...summarize(trades), open: pos, list: trades, capital, equity: capital + unrealized(pos, lastPrice), curve };
 }
 
 /* ------------------------------------------------------------------ */
@@ -193,8 +216,46 @@ class GoldTrader {
   }
 
   account(id) {
-    if (!this.state.accounts[id]) this.state.accounts[id] = { position: null, closed: [], lastEvalT: 0 };
-    return this.state.accounts[id];
+    const start = this.cfg.goldStartCapital;
+    if (!this.state.accounts[id]) this.state.accounts[id] = { position: null, closed: [], lastEvalT: 0, capital: start };
+    const acc = this.state.accounts[id];
+    // anciens comptes (avant le réinvestissement) : capital = départ + gains déjà réalisés
+    if (acc.capital === undefined) acc.capital = start + acc.closed.reduce((s, t) => s + t.pnlUsd, 0);
+    return acc;
+  }
+
+  /** Valeur du compte : capital + gain / perte latent de la position ouverte. */
+  equity(acc, price = this.state.lastPrice) {
+    return acc.capital + unrealized(acc.position, price);
+  }
+
+  /** Enregistre la valeur de chaque compte (au plus une fois par heure ; une par jour après 90 jours). */
+  snapshot(now) {
+    const curve = (this.state.curve ||= []);
+    const last = curve[curve.length - 1];
+    if (last && now - last.t < 3600) return;
+    const eq = {};
+    for (const strat of this.strategies) eq[strat.id] = Math.round(this.equity(this.account(strat.id)) * 100) / 100;
+    curve.push({ t: now, eq });
+    const old = now - 90 * 86400;
+    const seen = new Set();
+    this.state.curve = curve.filter((p) => {
+      if (p.t >= old) return true;
+      const day = Math.floor(p.t / 86400);
+      if (seen.has(day)) return false;
+      seen.add(day);
+      return true;
+    });
+  }
+
+  /** Courbes de capital par stratégie active (pour le graphique), point actuel inclus. */
+  curves() {
+    const now = Math.floor(Date.now() / 1000);
+    return this.strategies.map((strat) => {
+      const points = (this.state.curve || []).filter((p) => p.eq[strat.id] !== undefined).map((p) => ({ t: p.t, v: p.eq[strat.id] }));
+      points.push({ t: now, v: this.equity(this.account(strat.id)) });
+      return { strategy: strat, points };
+    });
   }
 
   /** Un passage pour toutes les stratégies. Retourne les événements à publier. */
@@ -259,32 +320,53 @@ class GoldTrader {
         }
       }
       if (!acc.position && sig.entry) {
-        acc.position = openPos(sig.entry, price, sig, this.cfg.goldSizeUsd, now);
+        const size = Math.max(0, (acc.capital * this.cfg.goldPositionPct) / 100);
+        if (size <= 0) continue;
+        acc.position = openPos(sig.entry, price, sig, size, now);
         events.push({ type: 'open', strategy: strat, pos: acc.position, rsi: ind.rsi[i] });
       }
     }
+    this.snapshot(now);
     this.save();
     return events;
   }
 
   #close(strat, acc, price, reason, t, fee) {
     const trade = closePos(acc.position, price, reason, t, fee);
+    acc.capital += trade.pnlUsd;
+    trade.capital = acc.capital;
     acc.position = null;
     acc.closed.push(trade);
-    return { type: 'close', strategy: strat, trade };
+    return { type: 'close', strategy: strat, trade, capital: acc.capital, start: this.cfg.goldStartCapital };
   }
 
   stats() {
     const price = this.state.lastPrice;
+    const start = this.cfg.goldStartCapital;
     const rows = this.strategies.map((strat) => {
       const acc = this.account(strat.id);
-      const p = acc.position;
-      let unrealized = 0;
-      if (p && price) unrealized = p.size * (p.side === 'long' ? 1 : -1) * (price / p.entry - 1);
-      return { strategy: strat, ...summarize(acc.closed), position: p, unrealized };
+      const equity = this.equity(acc, price);
+      return {
+        strategy: strat,
+        ...summarize(acc.closed),
+        position: acc.position,
+        unrealized: unrealized(acc.position, price),
+        capital: acc.capital,
+        equity,
+        returnPct: (equity / start - 1) * 100,
+      };
     });
-    return { price, rows, totalPnl: rows.reduce((s, r) => s + r.pnlUsd, 0) };
+    const totalEquity = rows.reduce((s, r) => s + r.equity, 0);
+    return {
+      price,
+      rows,
+      start,
+      totalStart: start * rows.length,
+      totalEquity,
+      totalPnl: rows.reduce((s, r) => s + r.pnlUsd, 0),
+      since: (this.state.curve || [])[0]?.t || null,
+    };
   }
 }
 
-module.exports = { GoldTrader, backtest, fetchHistory, fetchBacktestData, fetchCandles, hitInCandle };
+module.exports = { GoldTrader, backtest, unrealized, fetchHistory, fetchBacktestData, fetchCandles, hitInCandle };
