@@ -833,6 +833,7 @@ STRATEGIES.push(
   },
   {
     ...GOLD,
+    markets: ['gold', 'nas100'],
     id: 'mom12',
     name: 'Momentum 12 mois',
     desc: 'Momentum « absolu » classique (Antonacci) : investi tant que l’or a monté sur les 12 derniers mois, dehors sinon. Stop de protection 5 ATR.',
@@ -843,6 +844,7 @@ STRATEGIES.push(
   },
   {
     ...GOLD,
+    markets: ['gold', 'nas100'],
     id: 'high52',
     name: 'Nouveau plus haut annuel',
     desc: 'Maison : acheter quand l’or clôture à son plus haut de 52 semaines (les nouveaux sommets attirent les acheteurs), revendre à son plus bas de 50 jours. Stop suiveur 4 ATR.',
@@ -852,6 +854,122 @@ STRATEGIES.push(
     },
     trail(pos, ind, i) {
       return pos.best - 4 * ind.atr[i];
+    },
+  },
+);
+
+/* ------------------------------------------------------------------ */
+/* Lot Nasdaq 2 : saisonnalité, retours à la moyenne courts, régimes    */
+/* ------------------------------------------------------------------ */
+
+const NAS2 = { tf: '1d', markets: ['nas100'], warmup: 280 };
+
+STRATEGIES.push(
+  {
+    ...NAS2,
+    id: 'halloween',
+    name: '« Sell in May » (novembre → avril)',
+    desc: 'Effet Halloween (Bouman & Jacobsen 2002), observé sur la plupart des marchés actions depuis des décennies : investi de novembre à fin avril, dehors de mai à octobre. Stop de protection 5 ATR.',
+    evaluate(ind, i) {
+      const m = ind.month[i];
+      const on = m >= 11 || m <= 4;
+      return { entry: on ? 'long' : null, exitLong: !on, exitShort: true, sl: 5 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...NAS2,
+    id: 'cumrsi',
+    name: 'RSI cumulé (Connors)',
+    desc: 'Larry Connors : au-dessus de la moyenne 200 jours, acheter quand la somme des RSI 2 des deux derniers jours passe sous 35 ; revendre quand le RSI 2 dépasse 65. Stop 3 ATR.',
+    evaluate(ind, i) {
+      const s = ind.rsi2sum[i];
+      return {
+        entry: s !== null && s < 35 && ind.closes[i] > ind.sma200[i] ? 'long' : null,
+        exitLong: ind.rsi2[i] > 65,
+        exitShort: true,
+        sl: 3 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...NAS2,
+    id: 'pctb',
+    name: 'Bollinger %b sous 0 dans la tendance',
+    desc: 'Retour à la moyenne : au-dessus de la moyenne 200 jours, acheter une clôture sous la bande de Bollinger basse (%b < 0) ; revendre au retour sur la moyenne 20 jours. Stop 3 ATR.',
+    evaluate(ind, i) {
+      const b = ind.pctB[i];
+      return {
+        entry: b !== null && b < 0 && ind.closes[i] > ind.sma200[i] ? 'long' : null,
+        exitLong: ind.closes[i] >= ind.bb.mid[i],
+        exitShort: true,
+        sl: 3 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...NAS2,
+    id: 'lowvol',
+    name: 'Régime de volatilité basse',
+    desc: 'Les krachs arrivent quand la volatilité explose : investi quand la volatilité des 20 derniers jours est sous sa moyenne d’un an ET l’indice au-dessus de sa moyenne 200 jours ; sortie si la volatilité dépasse de 10 % sa moyenne ou si l’indice passe 2 % sous sa moyenne 200. Stop 5 ATR.',
+    evaluate(ind, i) {
+      const v = ind.rv20[i];
+      const a = ind.rv20avg[i];
+      const c = ind.closes[i];
+      const ok = v !== null && a !== null;
+      return {
+        entry: ok && v < a && c > ind.sma200[i] ? 'long' : null,
+        exitLong: !ok || v > 1.1 * a || c < 0.98 * ind.sma200[i],
+        exitShort: true,
+        sl: 5 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...NAS2,
+    id: 'rates',
+    needsTnx: true,
+    name: 'Taux US en baisse',
+    desc: 'Les valeurs de croissance (tech) profitent de la baisse des taux : investi quand le taux 10 ans US est sous sa moyenne 50 jours ET le Nasdaq au-dessus de sa moyenne 50 jours ; sortie dès qu’une condition tombe. Stop 4 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes;
+      const on = (k) => belowAvg(ind.tnx, k) && c[k] > ind.sma50[k];
+      return { entry: became(on, i) ? 'long' : null, exitLong: !on(i), exitShort: true, sl: 4 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...NAS2,
+    id: 'dip5',
+    name: 'Repli de 5 % dans la tendance',
+    desc: 'Maison : au-dessus de la moyenne 200 jours, acheter quand l’indice clôture 5 % sous son plus haut de 20 jours ; revendre quand il retrouve son plus haut de 20 jours. Stop 3 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes[i];
+      return {
+        entry: c <= 0.95 * ind.c20.max[i] && c > ind.sma200[i] ? 'long' : null,
+        exitLong: c >= ind.c20.max[i],
+        exitShort: true,
+        sl: 3 * ind.atr[i],
+        tp: null,
+      };
+    },
+  },
+  {
+    ...NAS2,
+    id: 'tuesday',
+    name: '« Turnaround Tuesday »',
+    desc: 'Effet de calendrier connu des traders : un lundi en baisse est souvent suivi d’un mardi en hausse. Achat à la clôture d’un lundi baissier (au-dessus de la moyenne 200 jours), revente à la clôture suivante. Stop 2 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes;
+      const monday = ind.weekday[i] === 1;
+      return {
+        entry: monday && c[i] < c[i - 1] && c[i] > ind.sma200[i] ? 'long' : null,
+        exitLong: !monday,
+        exitShort: true,
+        sl: 2 * ind.atr[i],
+        tp: null,
+      };
     },
   },
 );

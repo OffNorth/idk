@@ -57,7 +57,8 @@ const MARKETS = {
       const daily = await cachedYahoo(CACHE, '^NDX', '1d');
       const hourly = await cachedYahoo(CACHE, 'NQ=F', '1h', { range: '730d' });
       const vix = await cachedYahoo(CACHE, '^VIX', '1d');
-      return { series: { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': daily }, daily, fx: null, vix };
+      const aux = { tnx: await cachedYahoo(CACHE, '^TNX', '1d'), dxy: await cachedYahoo(CACHE, 'DX-Y.NYB', '1d') };
+      return { series: { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': daily }, daily, fx: null, vix, aux };
     },
   },
 };

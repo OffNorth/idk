@@ -60,8 +60,8 @@ async function loadHistory(marketId, cacheDir, fromYear = 2021) {
   if (marketId === 'nas100') {
     const { cachedYahoo } = require('./yahoo');
     const d = await cachedYahoo(cacheDir, '^NDX', '1d');
-    const vix = await cachedYahoo(cacheDir, '^VIX', '1d').catch(() => null);
-    return { '1d': d, daily: d, fx: null, vix, source: 'indice ^NDX, Yahoo Finance' };
+    const y = (s) => cachedYahoo(cacheDir, s, '1d').catch(() => null);
+    return { '1d': d, daily: d, fx: null, vix: await y('^VIX'), aux: { tnx: await y('^TNX'), dxy: await y('DX-Y.NYB') }, source: 'indice ^NDX, Yahoo Finance' };
   }
   const hourly = await loadHourly(cacheDir);
   const fx = aggregate(await loadHourly(cacheDir, { symbol: 'EURUSDT' }), TF_SEC['1d']);

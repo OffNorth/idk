@@ -384,6 +384,22 @@ function rollingCloses(closes, n) {
   return { min, max };
 }
 
+/** Volatilité réalisée sur 20 bougies (écart-type des rendements) et sa moyenne sur 252 bougies. */
+function realizedVol(closes) {
+  const ret = closes.map((c, i) => (i ? Math.log(c / closes[i - 1]) : 0));
+  const rv20 = ret.map((_, i) => {
+    if (i < 20) return null;
+    let m = 0;
+    for (let j = i - 19; j <= i; j++) m += ret[j];
+    m /= 20;
+    let v = 0;
+    for (let j = i - 19; j <= i; j++) v += (ret[j] - m) ** 2;
+    return Math.sqrt(v / 19);
+  });
+  const avg = sma(rv20.map((x) => x ?? 0), 252).map((x, i) => (i >= 272 ? x : null));
+  return { rv20, rv20avg: avg };
+}
+
 /** Rendement sur n bougies (null au début). */
 function roc(closes, n) {
   return closes.map((c, i) => (i >= n ? c / closes[i - n] - 1 : null));
@@ -406,6 +422,11 @@ function computeAll(candles, daily = null, barSec = 3600, fx = null, vix = null,
     c50: rollingCloses(closes, 50),
     c252: rollingCloses(closes, 252),
     month: candles.map((c) => new Date(c.t * 1000).getUTCMonth() + 1),
+    weekday: candles.map((c) => new Date(c.t * 1000).getUTCDay()),
+    rsi2sum: (() => { const r = rsi(closes, 2); return r.map((v, i) => (i > 0 && v !== null && r[i - 1] !== null ? v + r[i - 1] : null)); })(),
+    pctB: closes.map((c, i) => (bb.upper[i] !== null && bb.upper[i] > bb.lower[i] ? (c - bb.lower[i]) / (bb.upper[i] - bb.lower[i]) : null)),
+    c20: rollingCloses(closes, 20),
+    ...realizedVol(closes),
     ema10: ema(closes, 10),
     ichi: ichimoku(candles),
     adx: adx(candles, 14),
