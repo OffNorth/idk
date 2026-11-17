@@ -95,4 +95,95 @@ function consoleRow({ token: t, result: r, rug }, i) {
   ].join('  ');
 }
 
-module.exports = { tokenMessage, topMessage, consoleRow, esc };
+/* ------------------------------------------------------------------ */
+/* Paper trading                                                       */
+/* ------------------------------------------------------------------ */
+
+function fmtPrice(p) {
+  if (!Number.isFinite(p) || p <= 0) return '$0';
+  if (p >= 1) return `$${p.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  return `$${p.toPrecision(4)}`;
+}
+
+const signedUsd = (v) => `${v >= 0 ? '+' : '−'}$${Math.abs(v).toFixed(2)}`;
+const signedPct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}%`;
+const dur = (ms) => fmtAge(ms / 3_600_000);
+
+/** Ligne ajoutée sous une alerte quand un paper trade est ouvert. */
+function paperOpenLine(pos, cfg) {
+  return (
+    `\n\n📝 <b>Paper trade</b> : achat simulé de $${pos.size} à ${fmtPrice(pos.entryPrice)} ` +
+    `(TP +${cfg.paperTpPct}% · SL −${cfg.paperSlPct}% · trailing −${cfg.paperTrailPct}% après +${cfg.paperTrailStartPct}%)`
+  );
+}
+
+function paperCloseMessage(t) {
+  const icon = t.pnlUsd >= 0 ? '🟢' : '🔴';
+  return [
+    `${icon} <b>Paper trade clôturé — $${esc(t.symbol)}</b>`,
+    `Entrée ${fmtPrice(t.entryPrice)} (MC ${fmtUsd(t.entryMc)}) → sortie ${fmtPrice(t.exitPrice)}${t.lastMc ? ` (MC ${fmtUsd(t.lastMc)})` : ''}`,
+    `Résultat : <b>${signedPct(t.pnlPct)}</b> (${signedUsd(t.pnlUsd)} sur $${t.size}) · plus haut ${signedPct(t.peakPct)}`,
+    `Raison : ${esc(t.reason)} · durée ${dur(t.exitAt - t.entryAt)} · score d'entrée ${t.score}/100`,
+    `<a href="${esc(t.url)}">chart</a> · <i>simulation, frais inclus</i>`,
+  ].join('\n');
+}
+
+function goldEventMessage(ev) {
+  if (ev.type === 'open') {
+    const p = ev.pos;
+    return [
+      `🥇 <b>Or — ${p.side === 'long' ? '📈 ACHAT (long)' : '📉 VENTE (short)'} simulé</b>`,
+      `Entrée : $${p.entry.toFixed(2)} · taille $${p.size}`,
+      `Stop loss : $${p.sl.toFixed(2)} · Take profit : $${p.tp.toFixed(2)}`,
+      `<i>Signal : croisement EMA 20/50 en 1 h · RSI ${p.rsi.toFixed(0)} · paper trading</i>`,
+    ].join('\n');
+  }
+  const t = ev.trade;
+  return [
+    `🥇 ${t.pnlUsd >= 0 ? '🟢' : '🔴'} <b>Or — position ${t.side === 'long' ? 'long' : 'short'} clôturée</b>`,
+    `$${t.entry.toFixed(2)} → $${t.exit.toFixed(2)} · <b>${signedPct(t.pnlPct)}</b> (${signedUsd(t.pnlUsd)} sur $${t.size})`,
+    `Raison : ${esc(t.reason)} · durée ${dur(t.exitAt - t.entryAt)} · <i>paper trading</i>`,
+  ].join('\n');
+}
+
+/** Bilan complet du paper trading (memes + or). */
+function portfolioMessage(memes, gold, cfg) {
+  const lines = ['<b>📒 Bilan paper trading</b> <i>(simulation, aucun argent réel)</i>', ''];
+  if (memes) {
+    lines.push(
+      `<b>Calls meme coins</b> ($${cfg.paperSizeUsd} par call)`,
+      `Trades clôturés : ${memes.trades} · gagnants ${memes.wins} (${memes.winRate.toFixed(0)}%)`,
+      `PnL réalisé : <b>${signedUsd(memes.realized)}</b>${memes.invested ? ` (${signedPct((memes.realized / memes.invested) * 100)} du capital engagé)` : ''}`,
+      `Positions ouvertes : ${memes.open.length} · latent ${signedUsd(memes.unrealized)}`,
+    );
+    if (memes.best) {
+      lines.push(`Meilleur : $${esc(memes.best.symbol)} ${signedPct(memes.best.pnlPct)} · Pire : $${esc(memes.worst.symbol)} ${signedPct(memes.worst.pnlPct)}`);
+    }
+    for (const p of memes.open.slice(0, 8)) {
+      lines.push(`  • $${esc(p.symbol)} ${signedPct((p.last / p.entryPrice - 1) * 100)} depuis ${dur(Date.now() - p.entryAt)}`);
+    }
+    lines.push('');
+  }
+  if (gold) {
+    lines.push(
+      `<b>Or</b> ($${cfg.goldSizeUsd} par trade) · prix ${gold.lastPrice ? `$${gold.lastPrice.toFixed(2)}` : '?'}`,
+      `Trades clôturés : ${gold.trades} · gagnants ${gold.wins} (${gold.winRate.toFixed(0)}%) · PnL <b>${signedUsd(gold.realized)}</b>`,
+      gold.position
+        ? `Position : ${gold.position.side} depuis $${gold.position.entry.toFixed(2)} · latent ${signedUsd(gold.unrealized)}`
+        : "Position : aucune (attente d'un croisement EMA 20/50)",
+    );
+  }
+  return lines.join('\n');
+}
+
+module.exports = {
+  tokenMessage,
+  topMessage,
+  consoleRow,
+  esc,
+  fmtPrice,
+  paperOpenLine,
+  paperCloseMessage,
+  goldEventMessage,
+  portfolioMessage,
+};

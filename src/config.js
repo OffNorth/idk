@@ -41,6 +41,23 @@ const config = {
   alertCooldownHours: num('ALERT_COOLDOWN_HOURS', 12),
   watchHours: num('WATCH_HOURS', 48),
 
+  // Paper trading des calls (simulation, aucun argent réel)
+  paperEnabled: num('PAPER_TRADING', 1) === 1,
+  paperSizeUsd: num('PAPER_SIZE_USD', 100),
+  paperTpPct: num('PAPER_TP_PCT', 100),
+  paperSlPct: num('PAPER_SL_PCT', 40),
+  paperTrailStartPct: num('PAPER_TRAIL_START_PCT', 50),
+  paperTrailPct: num('PAPER_TRAIL_PCT', 30),
+  paperMaxHoldHours: num('PAPER_MAX_HOLD_HOURS', 48),
+  paperFeePct: num('PAPER_FEE_PCT', 2),
+
+  // Paper trading de l'or (PAXG ≈ 1 once d'or)
+  goldEnabled: num('GOLD_TRADING', 1) === 1,
+  goldSizeUsd: num('GOLD_SIZE_USD', 1000),
+  goldAtrSl: num('GOLD_ATR_SL', 1.5),
+  goldAtrTp: num('GOLD_ATR_TP', 3),
+  goldFeePct: num('GOLD_FEE_PCT', 0.1),
+
   searchQueries: list('SEARCH_QUERIES', 'pump,meme,sol,dog,cat,ai'),
   dataDir: path.resolve(process.env.DATA_DIR || path.join(__dirname, '..', 'data')),
 };

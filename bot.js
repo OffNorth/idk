@@ -16,6 +16,7 @@ const { scan, analyze } = require('./src/scanner');
 const { tokenMessage, topMessage, esc } = require('./src/format');
 const { fmtUsd } = require('./src/scoring');
 const { createChannel, explainTelegramError, HTML } = require('./src/channel');
+const { runCycle, portfolio } = require('./src/cycle');
 
 if (!cfg.telegramToken) throw new Error('TELEGRAM_BOT_TOKEN manquant (voir .env.example)');
 
@@ -51,26 +52,17 @@ async function getRanking(maxAgeMs = 60_000) {
 
 const channel = createChannel(bot.api, cfg, store);
 
-const postAlerts = (res) => (paused ? 0 : channel.postAlerts(res));
 const checkChannel = () => channel.check();
-
-/** Résumé périodique du top sur le canal. */
-async function postTopSummary() {
-  if (!cfg.channelId || paused) return;
-  try {
-    await channel.postTop(await getRanking(5 * 60_000));
-  } catch (err) {
-    console.error(`[canal] résumé impossible : ${explainTelegramError(err)}`);
-  }
-}
 
 async function tick() {
   try {
     const res = await runScan();
-    const sent = await postAlerts(res);
+    const out = await runCycle({ cfg, store, channel, res, alertsEnabled: !paused });
+    const sent = out.sent;
     console.log(
       `[${new Date().toISOString()}] ${res.watched} suivis · ${res.inRange} dans la fourchette · ` +
-        `${res.ranked.length} retenus · meilleur ${res.ranked[0] ? Math.round(res.ranked[0].result.total) : '-'} · ${sent} alerte(s)`,
+        `${res.ranked.length} retenus · meilleur ${res.ranked[0] ? Math.round(res.ranked[0].result.total) : '-'} · ${sent} alerte(s) · ` +
+        `${out.paperClosed} paper clôturé(s) · ${out.goldEvents} événement(s) or`,
     );
     return { res, sent };
   } catch (err) {
@@ -102,6 +94,7 @@ bot.command('start', (ctx) =>
       '/scan — forcer un scan + alertes',
       '/topcanal — publier le top sur le canal',
       '/testcanal — vérifier que je peux publier sur le canal',
+      '/paper — bilan du paper trading (calls + or)',
       '/settings — paramètres',
       '/pause · /resume — alertes automatiques du canal',
       '',
@@ -197,6 +190,8 @@ bot.command('topcanal', async (ctx) => {
   }
 });
 
+bot.command('paper', (ctx) => ctx.reply(portfolio(cfg, store), HTML));
+
 bot.command('pause', (ctx) => {
   paused = true;
   return ctx.reply('⏸ Alertes automatiques en pause.');
@@ -220,6 +215,7 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
     { command: 'scan', description: 'Forcer un scan + alertes' },
     { command: 'topcanal', description: 'Publier le top sur le canal' },
     { command: 'testcanal', description: 'Tester la publication sur le canal' },
+    { command: 'paper', description: 'Bilan du paper trading (calls + or)' },
     { command: 'settings', description: 'Paramètres actifs' },
     { command: 'pause', description: 'Mettre les alertes en pause' },
     { command: 'resume', description: 'Relancer les alertes' },
@@ -228,7 +224,6 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
 
   tick();
   setInterval(tick, cfg.scanIntervalMin * 60_000);
-  if (cfg.topSummaryHours > 0) setInterval(postTopSummary, cfg.topSummaryHours * 3_600_000);
 
   bot.start({ onStart: (me) => console.log(`Bot @${me.username} démarré.`) });
 })().catch((err) => {

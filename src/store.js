@@ -9,12 +9,23 @@ const HOUR = 3_600_000;
 class Store {
   constructor(dir) {
     fs.mkdirSync(dir, { recursive: true });
+    this.dir = dir;
     this.watchFile = path.join(dir, 'watchlist.json');
     this.alertFile = path.join(dir, 'alerts.json');
     this.watch = load(this.watchFile); // key → { chain, address, sources, firstSeen }
     this.alerts = load(this.alertFile); // key → { at, score, marketCap }
     this.metaFile = path.join(dir, 'meta.json');
     this.meta = load(this.metaFile); // divers (date du dernier résumé…)
+  }
+
+  /** Lecture / écriture d'un fichier JSON quelconque du dossier data (ex : paper.json). */
+  loadJson(name, fallback) {
+    const data = load(path.join(this.dir, name));
+    return Object.keys(data).length ? data : fallback;
+  }
+
+  saveJson(name, data) {
+    save(path.join(this.dir, name), data);
   }
 
   getMeta(key) {

@@ -49,6 +49,15 @@ jobs:
           MIN_ALERT_SCORE: ${{ vars.MIN_ALERT_SCORE }}
           MAX_ALERTS_PER_SCAN: ${{ vars.MAX_ALERTS_PER_SCAN }}
           TOP_SUMMARY_HOURS: ${{ vars.TOP_SUMMARY_HOURS }}
+          PAPER_TRADING: ${{ vars.PAPER_TRADING }}
+          PAPER_SIZE_USD: ${{ vars.PAPER_SIZE_USD }}
+          PAPER_TP_PCT: ${{ vars.PAPER_TP_PCT }}
+          PAPER_SL_PCT: ${{ vars.PAPER_SL_PCT }}
+          PAPER_TRAIL_START_PCT: ${{ vars.PAPER_TRAIL_START_PCT }}
+          PAPER_TRAIL_PCT: ${{ vars.PAPER_TRAIL_PCT }}
+          PAPER_MAX_HOLD_HOURS: ${{ vars.PAPER_MAX_HOLD_HOURS }}
+          GOLD_TRADING: ${{ vars.GOLD_TRADING }}
+          GOLD_SIZE_USD: ${{ vars.GOLD_SIZE_USD }}
           # Les tokens suivis ne sont revus qu'aux passages : on les garde plus longtemps
           WATCH_HOURS: ${{ vars.WATCH_HOURS || '72' }}
 

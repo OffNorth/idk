@@ -9,6 +9,7 @@ const { Api } = require('grammy');
 const { Store } = require('./src/store');
 const { scan } = require('./src/scanner');
 const { createChannel, explainTelegramError } = require('./src/channel');
+const { runCycle, portfolio } = require('./src/cycle');
 
 (async () => {
   if (!cfg.telegramToken) throw new Error('TELEGRAM_BOT_TOKEN manquant');
@@ -19,19 +20,16 @@ const { createChannel, explainTelegramError } = require('./src/channel');
   if (!(await channel.check())) process.exit(1);
 
   const res = await scan(cfg, store);
-  const sent = await channel.postAlerts(res);
+  const out = await runCycle({ cfg, store, channel, res });
   console.log(
     `${res.watched} suivis · ${res.inRange} dans la fourchette · ${res.ranked.length} retenus · ` +
-      `meilleur ${res.ranked[0] ? Math.round(res.ranked[0].result.total) : '-'} · ${sent} alerte(s) publiée(s)`,
+      `meilleur ${res.ranked[0] ? Math.round(res.ranked[0].result.total) : '-'} · ${out.sent} alerte(s) publiée(s) · ` +
+      `${out.paperClosed} paper trade(s) clôturé(s) · ${out.goldEvents} événement(s) or`,
   );
   res.ranked.slice(0, 5).forEach((x, i) =>
     console.log(`  ${i + 1}. ${x.token.symbol} — ${Math.round(x.result.total)}/100 — ${x.token.url}`),
   );
-
-  if (channel.topSummaryDue()) {
-    await channel.postTop(res);
-    console.log('Résumé du top publié sur le canal.');
-  }
+  console.log('\n' + portfolio(cfg, store).replace(/<[^>]+>/g, ''));
 })().catch((err) => {
   console.error(`❌ ${explainTelegramError(err)}`);
   process.exit(1);

@@ -36,7 +36,7 @@ function createChannel(api, cfg, store) {
   }
 
   /** Publie les nouveaux tokens au-dessus du score minimum (sans doublon). */
-  async function postAlerts(res) {
+  async function postAlerts(res, { extra = () => '', onSent = () => {} } = {}) {
     if (!cfg.channelId) return 0;
     let sent = 0;
     for (const item of res.ranked) {
@@ -45,8 +45,9 @@ function createChannel(api, cfg, store) {
       const key = `${item.token.chain}:${item.token.address}`;
       if (!store.canAlert(key, cfg.alertCooldownHours)) continue;
       try {
-        await send(tokenMessage(item, { title: '🚨 Nouveau meme coin détecté' }), item.token.imageUrl);
+        await send(tokenMessage(item, { title: '🚨 Nouveau meme coin détecté' }) + extra(item), item.token.imageUrl);
         store.markAlerted(key, { score: Math.round(item.result.total), marketCap: item.token.marketCap });
+        onSent(item);
         sent++;
       } catch (err) {
         console.error(`[canal] envoi impossible pour ${item.token.symbol} : ${explainTelegramError(err)}`);
@@ -102,7 +103,10 @@ function createChannel(api, cfg, store) {
     }
   }
 
-  return { send, postAlerts, postTop, topSummaryDue, check };
+  /** Message texte simple sur le canal. */
+  const sendText = (text) => api.sendMessage(cfg.channelId, text, HTML);
+
+  return { send, sendText, postAlerts, postTop, topSummaryDue, check };
 }
 
 module.exports = { createChannel, explainTelegramError, HTML };

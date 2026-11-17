@@ -5,7 +5,7 @@ Bot Telegram qui cherche en continu les **meilleurs meme coins entre 100 k$ et 2
 
 > ⚠️ **Ce n'est pas un conseil financier.** Le score mesure l'activité et le momentum d'un token,
 > il ne prédit pas son prix. La plupart des meme coins finissent à zéro. N'investis que ce que tu peux perdre.
-> Le bot **n'achète rien** : il ne fait qu'analyser et alerter.
+> Le bot **n'achète rien** : il analyse, alerte et fait du **paper trading** (trades simulés, sans argent réel).
 
 ## Fonctionnement
 
@@ -37,6 +37,37 @@ Toutes les N minutes
 | Traders | 5 | Nombre de transactions sur 24 h |
 | Risque | −25 max | Pénalité selon le rapport RugCheck |
 
+## Paper trading (simulation)
+
+Pour mesurer si les calls valent quelque chose, le bot **simule** des trades et publie les résultats sur le canal.
+Aucun ordre réel n'est passé, aucun wallet n'est utilisé.
+
+### Sur ses propres calls
+- Chaque alerte publiée = **achat simulé de 100 $** au prix du moment.
+- À chaque passage, la position est réévaluée et vendue (simulé) dès qu'une règle se déclenche :
+
+| Règle | Défaut |
+|---|---|
+| Take profit | +100 % (x2) |
+| Stop loss | −40 % |
+| Trailing stop | après +50 %, vend si le prix recule de 30 % depuis son plus haut |
+| Durée max | 48 h |
+| Rug | liquidité < 1 000 $ ou paire disparue → −100 % |
+| Frais + slippage | 2 % à l'achat et 2 % à la vente |
+
+- Chaque clôture est publiée (🟢 / 🔴) avec le résultat en % et en $.
+
+### Sur l'or (PAXG/USD, 1 PAXG = 1 once d'or)
+- Bougies 1 h (Coinbase, secours Kraken), positions de 1 000 $ simulées, **long ou short**.
+- **Achat** quand l'EMA 20 croise au-dessus de l'EMA 50 (et RSI < 70), **vente à découvert** au croisement inverse (RSI > 30).
+- Stop loss = 1,5 × ATR, take profit = 3 × ATR ; un croisement inverse retourne la position.
+- C'est une stratégie de suivi de tendance lente : quelques trades par semaine seulement.
+  Sur un test des 15 derniers jours (oct.–nov. 2026) : 4 trades, −2,3 % au total. **Rien ne garantit qu'elle soit rentable.**
+
+Le **bilan** (PnL, % de trades gagnants, positions ouvertes) est publié avec le résumé du top toutes les `TOP_SUMMARY_HOURS`,
+et disponible avec la commande `/paper` en mode serveur. Tous les paramètres sont dans `.env.example`
+(ou dans l'onglet **Variables** de GitHub : `PAPER_SIZE_USD`, `PAPER_TP_PCT`, `PAPER_SL_PCT`, `GOLD_TRADING`…).
+
 ## Commandes Telegram
 
 | Commande | Rôle |
@@ -46,6 +77,7 @@ Toutes les N minutes
 | `/scan` | Force un scan et publie les alertes tout de suite |
 | `/topcanal` | Publie le top 10 actuel sur le canal |
 | `/testcanal` | Envoie un message de test sur le canal (pour vérifier la config) |
+| `/paper` | Bilan du paper trading (calls + or) |
 | `/settings` | Affiche les paramètres actifs |
 | `/pause` / `/resume` | Coupe / relance les alertes automatiques du canal |
 
@@ -157,6 +189,9 @@ src/rugcheck.js   Vérification de sécurité (Solana)
 src/scoring.js    Filtres éliminatoires et score
 src/scanner.js    Pipeline complet d'un scan
 src/format.js     Messages Telegram / console
+src/cycle.js      Cycle complet : paper trades, alertes, or, résumé
+src/paper.js      Paper trading des calls meme coins
+src/gold.js       Paper trading de l'or (EMA 20/50, RSI, ATR)
 src/channel.js    Publication sur le canal Telegram
 src/store.js      Tokens suivis et historique des alertes (dossier data/)
 ```
