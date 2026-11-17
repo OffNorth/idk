@@ -51,19 +51,20 @@ Toutes les N minutes
 
 ## Hébergement gratuit sans carte bancaire : GitHub Actions
 
-GitHub lance le scan tout seul toutes les 30 minutes et publie sur ton canal. Pas de serveur, pas de carte.
+GitHub lance le scan tout seul toutes les 10 minutes et publie sur ton canal. Pas de serveur, pas de carte.
 
 1. Sur GitHub, ouvre le dépôt → **Settings** → **Secrets and variables** → **Actions** → **New repository secret** :
    - `TELEGRAM_BOT_TOKEN` = le token donné par @BotFather
    - `TELEGRAM_CHANNEL_ID` = `@ton_canal` (ou `-100…`)
 2. Onglet **Actions** → si demandé, clique sur **« I understand my workflows, go ahead and enable them »**.
 3. Clique sur **Scanner meme coins** → **Run workflow** pour un premier essai. Au bout d'environ 1 min, les alertes arrivent sur le canal.
-   Ensuite, ça tourne seul toutes les 30 min.
+   Ensuite, ça tourne seul toutes les 10 min.
 
 Limites de ce mode :
 - Pas de commandes (`/top`, `/check`…) : seulement les alertes et le résumé du top sur le canal.
-- Dépôt **privé** : 2000 min gratuites par mois → un scan toutes les 30 min (~1500 min/mois). Dépôt **public** : illimité,
-  tu peux passer à `*/10 * * * *` dans `.github/workflows/scanner.yml` (tes secrets restent cachés).
+- Un scan toutes les 10 min consomme ~4300 min/mois. Dépôt **public** : illimité, aucun souci (tes secrets restent cachés).
+  Dépôt **privé** : seulement 2000 min gratuites/mois → le quota est épuisé vers le 14 et les scans s'arrêtent jusqu'au mois
+  suivant. Pour rester en privé, remets `*/30 * * * *` dans `.github/workflows/scanner.yml`.
 - GitHub peut retarder les lancements de quelques minutes aux heures chargées.
 - Réglages optionnels dans l'onglet **Variables** (même page que les secrets) : `MIN_MARKET_CAP`, `MAX_MARKET_CAP`,
   `MIN_ALERT_SCORE`, `MAX_ALERTS_PER_SCAN`, `TOP_SUMMARY_HOURS`, `WATCH_HOURS`.

@@ -5,9 +5,10 @@ name: Scanner meme coins
 
 on:
   schedule:
-    # Toutes les 30 min. Dépôt privé : 2000 min gratuites/mois → ne pas descendre sous 30 min.
-    # Dépôt public : minutes illimitées → tu peux mettre '*/10 * * * *'.
-    - cron: '*/30 * * * *'
+    # Toutes les 10 min (~4300 min/mois).
+    # Dépôt privé : seulement 2000 min gratuites/mois → quota épuisé vers le 14 du mois.
+    # Dépôt public : minutes illimitées. Pour rester en privé sans dépasser : '*/30 * * * *'.
+    - cron: '*/10 * * * *'
   workflow_dispatch: # bouton « Run workflow » pour lancer à la main
 
 concurrency:
