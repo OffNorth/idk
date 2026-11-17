@@ -13,6 +13,17 @@ class Store {
     this.alertFile = path.join(dir, 'alerts.json');
     this.watch = load(this.watchFile); // key → { chain, address, sources, firstSeen }
     this.alerts = load(this.alertFile); // key → { at, score, marketCap }
+    this.metaFile = path.join(dir, 'meta.json');
+    this.meta = load(this.metaFile); // divers (date du dernier résumé…)
+  }
+
+  getMeta(key) {
+    return this.meta[key];
+  }
+
+  setMeta(key, value) {
+    this.meta[key] = value;
+    save(this.metaFile, this.meta);
   }
 
   /** Ajoute les candidats découverts et oublie ceux suivis depuis trop longtemps. */

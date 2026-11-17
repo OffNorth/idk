@@ -1,0 +1,59 @@
+# Lance le scanner automatiquement sur les serveurs de GitHub (gratuit, sans carte bancaire).
+# À configurer une fois : Settings → Secrets and variables → Actions →
+#   Secrets : TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
+name: Scanner meme coins
+
+on:
+  schedule:
+    # Toutes les 30 min. Dépôt privé : 2000 min gratuites/mois → ne pas descendre sous 30 min.
+    # Dépôt public : minutes illimitées → tu peux mettre '*/10 * * * *'.
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # bouton « Run workflow » pour lancer à la main
+
+concurrency:
+  group: scanner
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci --omit=dev
+
+      # Mémoire entre deux passages : tokens suivis + alertes déjà envoyées (anti-doublon)
+      - name: Restaurer la mémoire
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: scanner-data-${{ github.run_id }}
+          restore-keys: scanner-data-
+
+      - name: Scan et publication
+        run: node once.js
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          DATA_DIR: data
+          # Réglages optionnels : Settings → Secrets and variables → Actions → onglet Variables
+          MIN_MARKET_CAP: ${{ vars.MIN_MARKET_CAP }}
+          MAX_MARKET_CAP: ${{ vars.MAX_MARKET_CAP }}
+          MIN_ALERT_SCORE: ${{ vars.MIN_ALERT_SCORE }}
+          MAX_ALERTS_PER_SCAN: ${{ vars.MAX_ALERTS_PER_SCAN }}
+          TOP_SUMMARY_HOURS: ${{ vars.TOP_SUMMARY_HOURS }}
+          # Les tokens suivis ne sont revus qu'aux passages : on les garde plus longtemps
+          WATCH_HOURS: ${{ vars.WATCH_HOURS || '72' }}
+
+      - name: Sauvegarder la mémoire
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: scanner-data-${{ github.run_id }}

@@ -49,6 +49,27 @@ Toutes les N minutes
 | `/settings` | Affiche les paramètres actifs |
 | `/pause` / `/resume` | Coupe / relance les alertes automatiques du canal |
 
+## Hébergement gratuit sans carte bancaire : GitHub Actions
+
+GitHub lance le scan tout seul toutes les 30 minutes et publie sur ton canal. Pas de serveur, pas de carte.
+
+1. Sur GitHub, ouvre le dépôt → **Settings** → **Secrets and variables** → **Actions** → **New repository secret** :
+   - `TELEGRAM_BOT_TOKEN` = le token donné par @BotFather
+   - `TELEGRAM_CHANNEL_ID` = `@ton_canal` (ou `-100…`)
+2. Onglet **Actions** → si demandé, clique sur **« I understand my workflows, go ahead and enable them »**.
+3. Clique sur **Scanner meme coins** → **Run workflow** pour un premier essai. Au bout d'environ 1 min, les alertes arrivent sur le canal.
+   Ensuite, ça tourne seul toutes les 30 min.
+
+Limites de ce mode :
+- Pas de commandes (`/top`, `/check`…) : seulement les alertes et le résumé du top sur le canal.
+- Dépôt **privé** : 2000 min gratuites par mois → un scan toutes les 30 min (~1500 min/mois). Dépôt **public** : illimité,
+  tu peux passer à `*/10 * * * *` dans `.github/workflows/scanner.yml` (tes secrets restent cachés).
+- GitHub peut retarder les lancements de quelques minutes aux heures chargées.
+- Réglages optionnels dans l'onglet **Variables** (même page que les secrets) : `MIN_MARKET_CAP`, `MAX_MARKET_CAP`,
+  `MIN_ALERT_SCORE`, `MAX_ALERTS_PER_SCAN`, `TOP_SUMMARY_HOURS`, `WATCH_HOURS`.
+
+Pour un scan unique en local : `node once.js` (mêmes variables `.env`).
+
 ## Installation (Debian / Ubuntu)
 
 ```bash
@@ -124,7 +145,9 @@ Plus `MIN_ALERT_SCORE` est haut, moins il y a d'alertes, mais elles sont plus s�
 ## Structure
 
 ```
-bot.js            Bot Telegram + boucle de scan automatique
+bot.js            Bot Telegram + boucle de scan automatique (serveur allumé 24h/24)
+once.js           Un seul passage scan + publication (GitHub Actions / cron)
+.github/workflows/scanner.yml  Lancement automatique sur GitHub Actions
 scan.js           Scan unique en console
 src/config.js     Lecture du .env
 src/sources.js    Découverte des tokens (DexScreener, GeckoTerminal)
@@ -133,6 +156,7 @@ src/rugcheck.js   Vérification de sécurité (Solana)
 src/scoring.js    Filtres éliminatoires et score
 src/scanner.js    Pipeline complet d'un scan
 src/format.js     Messages Telegram / console
+src/channel.js    Publication sur le canal Telegram
 src/store.js      Tokens suivis et historique des alertes (dossier data/)
 ```
 

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node bot.js",
     "scan": "node scan.js",
-    "check": "node --check bot.js && node --check scan.js && for f in src/*.js; do node --check $f || exit 1; done",
+    "check": "node --check bot.js && node --check scan.js && node --check once.js && for f in src/*.js; do node --check $f || exit 1; done",
     "test": "node --test test/*.test.js"
   },
   "engines": {
