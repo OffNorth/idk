@@ -44,6 +44,8 @@ Toutes les N minutes
 | `/top` | Classement actuel des meilleurs tokens |
 | `/check <adresse>` | Analyse détaillée d'un token, avec les raisons s'il est rejeté |
 | `/scan` | Force un scan et publie les alertes tout de suite |
+| `/topcanal` | Publie le top 10 actuel sur le canal |
+| `/testcanal` | Envoie un message de test sur le canal (pour vérifier la config) |
 | `/settings` | Affiche les paramètres actifs |
 | `/pause` / `/resume` | Coupe / relance les alertes automatiques du canal |
 
@@ -61,9 +63,21 @@ cp .env.example .env
 nano .env   # renseigner TELEGRAM_BOT_TOKEN et TELEGRAM_CHANNEL_ID
 ```
 
-1. Crée un bot avec [@BotFather](https://t.me/BotFather) → copie le token dans `TELEGRAM_BOT_TOKEN`.
-2. Ajoute le bot **administrateur** de ton canal → mets `@nom_du_canal` (ou l'ID `-100…`) dans `TELEGRAM_CHANNEL_ID`.
-3. (Conseillé) Mets ton ID Telegram dans `ALLOWED_TELEGRAM_USER_IDS` pour être le seul à piloter le bot.
+### Brancher le canal Telegram
+
+1. Crée un bot avec [@BotFather](https://t.me/BotFather) (`/newbot`) → copie le token dans `TELEGRAM_BOT_TOKEN`.
+2. Crée ton canal (public ou privé).
+3. Canal → *Administrateurs* → *Ajouter un administrateur* → cherche ton bot → laisse le droit **« Publier des messages »** activé.
+4. Dans `.env`, mets `TELEGRAM_CHANNEL_ID` :
+   - canal public : `@nom_du_canal`
+   - canal privé : son ID `-100…` (transfère un message du canal à [@userinfobot](https://t.me/userinfobot) ou ouvre le canal sur web.telegram.org : l'ID est dans l'URL, ajoute `-100` devant).
+5. (Conseillé) Mets ton ID Telegram dans `ALLOWED_TELEGRAM_USER_IDS` pour être le seul à piloter le bot.
+6. Lance le bot : au démarrage il affiche `✅ Canal « … » : publication autorisée.` Sinon il dit précisément ce qui ne va pas.
+   Envoie `/testcanal` au bot en privé pour publier un message de test.
+
+Ce que le bot publie sur le canal :
+- une **alerte** par nouveau token qui dépasse `MIN_ALERT_SCORE`, avec l'image du token, la MC, la liquidité, le volume, les achats/ventes, le rapport RugCheck et les liens (DexScreener, Pump.fun, RugCheck, Solscan, X, Telegram, site) ;
+- un **résumé du top 10** toutes les `TOP_SUMMARY_HOURS` heures (4 h par défaut, `0` pour désactiver).
 
 ### Tester sans Telegram
 
@@ -101,6 +115,8 @@ Tous les paramètres sont dans [`.env.example`](.env.example). Les principaux :
 | `MIN_ALERT_SCORE` | 65 | Score minimum pour publier une alerte |
 | `SCAN_INTERVAL_MINUTES` | 3 | Fréquence des scans |
 | `ALERT_COOLDOWN_HOURS` | 12 | Pas de nouvelle alerte pour le même token avant ce délai |
+| `TOP_SUMMARY_HOURS` | 4 | Résumé du top 10 publié sur le canal (0 = désactivé) |
+| `ALERT_WITH_IMAGE` | 1 | Image du token affichée au-dessus de l'alerte |
 | `RUGCHECK_MAX_SCORE` | 50 | Risque RugCheck max accepté (0 = sûr, 100 = très risqué) |
 
 Plus `MIN_ALERT_SCORE` est haut, moins il y a d'alertes, mais elles sont plus sélectives.

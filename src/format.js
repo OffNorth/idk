@@ -64,7 +64,7 @@ function tokenMessage({ token: t, result: r, rug }, { rank, title } = {}) {
 }
 
 /** Résumé compact du classement (commande /top). */
-function topMessage(ranked, stats, cfg, limit = 10) {
+function topMessage(ranked, stats, cfg, limit = 10, { channel = false } = {}) {
   const head = `<b>🏆 Top meme coins ${fmtUsd(cfg.minMarketCap)} – ${fmtUsd(cfg.maxMarketCap)}</b>\n` +
     `<i>${stats.discovered} découverts · ${stats.watched} suivis · ${stats.inRange} dans la fourchette · ${ranked.length} retenus</i>\n`;
   if (!ranked.length) return `${head}\nAucun token ne passe les filtres pour le moment.`;
@@ -72,7 +72,10 @@ function topMessage(ranked, stats, cfg, limit = 10) {
     `${i + 1}. <b>${esc(t.symbol)}</b> — ${Math.round(r.total)}/100 · MC ${fmtUsd(t.marketCap)} · 1h ${pct(t.change.h1)} · Vol24h ${fmtUsd(t.vol.h24)}\n` +
     `    <a href="${esc(t.url)}">chart</a> · <code>${esc(t.address)}</code>`,
   );
-  return `${head}\n${rows.join('\n')}\n\nDétail d'un token : /check &lt;adresse&gt;`;
+  const footer = channel
+    ? '<i>⚠️ Pas un conseil financier. DYOR.</i>'
+    : 'Détail d\'un token : /check &lt;adresse&gt;';
+  return `${head}\n${rows.join('\n')}\n\n${footer}`;
 }
 
 /** Ligne console pour `npm run scan`. */

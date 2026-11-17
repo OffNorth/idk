@@ -34,6 +34,8 @@ const config = {
   rugcheckMaxScore: num('RUGCHECK_MAX_SCORE', 50),
 
   scanIntervalMin: num('SCAN_INTERVAL_MINUTES', 3),
+  topSummaryHours: num('TOP_SUMMARY_HOURS', 4),
+  alertWithImage: num('ALERT_WITH_IMAGE', 1) === 1,
   minAlertScore: num('MIN_ALERT_SCORE', 65),
   maxAlertsPerScan: num('MAX_ALERTS_PER_SCAN', 3),
   alertCooldownHours: num('ALERT_COOLDOWN_HOURS', 12),

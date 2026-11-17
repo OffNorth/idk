@@ -58,14 +58,71 @@ async function postAlerts(res) {
     const key = `${item.token.chain}:${item.token.address}`;
     if (!store.canAlert(key, cfg.alertCooldownHours)) continue;
     try {
-      await bot.api.sendMessage(cfg.channelId, tokenMessage(item, { title: '🚨 Nouveau meme coin détecté' }), HTML);
+      await sendToChannel(tokenMessage(item, { title: '🚨 Nouveau meme coin détecté' }), item.token.imageUrl);
       store.markAlerted(key, { score: Math.round(item.result.total), marketCap: item.token.marketCap });
       sent++;
     } catch (err) {
-      console.error(`[alerte] envoi impossible pour ${item.token.symbol} :`, err.message);
+      console.error(`[canal] envoi impossible pour ${item.token.symbol} : ${explainTelegramError(err)}`);
     }
   }
   return sent;
+}
+
+/** Envoie un message HTML sur le canal, avec l'image du token en aperçu si possible. */
+async function sendToChannel(text, imageUrl) {
+  const preview =
+    cfg.alertWithImage && imageUrl
+      ? { link_preview_options: { url: imageUrl, prefer_large_media: true, show_above_text: true } }
+      : {};
+  try {
+    return await bot.api.sendMessage(cfg.channelId, text, { ...HTML, ...preview });
+  } catch (err) {
+    if (!imageUrl || !cfg.alertWithImage) throw err;
+    return bot.api.sendMessage(cfg.channelId, text, HTML); // l'aperçu image a échoué → texte seul
+  }
+}
+
+function explainTelegramError(err) {
+  const d = err?.description || err?.message || String(err);
+  if (/chat not found/i.test(d)) return `${d} → TELEGRAM_CHANNEL_ID est faux (utilise @nom_du_canal ou l'ID -100…).`;
+  if (/not enough rights|need administrator|have no rights|not a member|kicked/i.test(d)) {
+    return `${d} → ajoute le bot comme ADMINISTRATEUR du canal avec le droit « Publier des messages ».`;
+  }
+  return d;
+}
+
+/** Vérifie au démarrage que le bot peut publier sur le canal. */
+async function checkChannel() {
+  if (!cfg.channelId) {
+    console.warn('⚠️  TELEGRAM_CHANNEL_ID non défini : aucune publication sur canal.');
+    return false;
+  }
+  try {
+    const chat = await bot.api.getChat(cfg.channelId);
+    const me = await bot.api.getMe();
+    const member = await bot.api.getChatMember(chat.id, me.id);
+    const canPost = member.status === 'creator' || (member.status === 'administrator' && member.can_post_messages !== false);
+    if (!canPost) {
+      console.error(`❌ Le bot n'est pas administrateur de « ${chat.title} » avec le droit de publier. Les alertes échoueront.`);
+      return false;
+    }
+    console.log(`✅ Canal « ${chat.title} » (${chat.id}) : publication autorisée.`);
+    return true;
+  } catch (err) {
+    console.error(`❌ Canal inaccessible : ${explainTelegramError(err)}`);
+    return false;
+  }
+}
+
+/** Résumé périodique du top sur le canal. */
+async function postTopSummary() {
+  if (!cfg.channelId || paused) return;
+  try {
+    const res = await getRanking(5 * 60_000);
+    await bot.api.sendMessage(cfg.channelId, topMessage(res.ranked, res, cfg, 10, { channel: true }), HTML);
+  } catch (err) {
+    console.error(`[canal] résumé impossible : ${explainTelegramError(err)}`);
+  }
 }
 
 async function tick() {
@@ -104,6 +161,8 @@ bot.command('start', (ctx) =>
       '/top — meilleurs tokens en ce moment',
       '/check &lt;adresse&gt; — analyse d’un token',
       '/scan — forcer un scan + alertes',
+      '/topcanal — publier le top sur le canal',
+      '/testcanal — vérifier que je peux publier sur le canal',
       '/settings — paramètres',
       '/pause · /resume — alertes automatiques du canal',
       '',
@@ -170,11 +229,34 @@ bot.command('settings', (ctx) =>
       '',
       `Scan toutes les ${cfg.scanIntervalMin} min · score min d’alerte ${cfg.minAlertScore}/100`,
       `Max ${cfg.maxAlertsPerScan} alertes / scan · cooldown ${cfg.alertCooldownHours} h`,
+      `Résumé du top sur le canal : ${cfg.topSummaryHours > 0 ? `toutes les ${cfg.topSummaryHours} h` : 'désactivé'}`,
       `Canal : ${cfg.channelId ? esc(cfg.channelId) : 'non défini'} · alertes ${paused ? '⏸ en pause' : '▶️ actives'}`,
     ].join('\n'),
     HTML,
   ),
 );
+
+bot.command('testcanal', async (ctx) => {
+  if (!cfg.channelId) return ctx.reply('❌ TELEGRAM_CHANNEL_ID n’est pas défini dans le .env.');
+  try {
+    await bot.api.sendMessage(cfg.channelId, '✅ <b>Test</b> : le scanner de meme coins peut publier sur ce canal.', HTML);
+    await ctx.reply('✅ Message de test publié sur le canal.');
+  } catch (err) {
+    await ctx.reply(`❌ ${explainTelegramError(err)}`);
+  }
+});
+
+bot.command('topcanal', async (ctx) => {
+  if (!cfg.channelId) return ctx.reply('❌ TELEGRAM_CHANNEL_ID n’est pas défini dans le .env.');
+  const wait = await ctx.reply('⏳ Publication du top sur le canal…');
+  try {
+    const res = await getRanking();
+    await bot.api.sendMessage(cfg.channelId, topMessage(res.ranked, res, cfg, 10, { channel: true }), HTML);
+    await ctx.api.editMessageText(ctx.chat.id, wait.message_id, '✅ Top publié sur le canal.');
+  } catch (err) {
+    await ctx.api.editMessageText(ctx.chat.id, wait.message_id, `❌ ${explainTelegramError(err)}`);
+  }
+});
 
 bot.command('pause', (ctx) => {
   paused = true;
@@ -197,16 +279,22 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
     { command: 'top', description: 'Meilleurs meme coins en ce moment' },
     { command: 'check', description: 'Analyser un token : /check <adresse>' },
     { command: 'scan', description: 'Forcer un scan + alertes' },
+    { command: 'topcanal', description: 'Publier le top sur le canal' },
+    { command: 'testcanal', description: 'Tester la publication sur le canal' },
     { command: 'settings', description: 'Paramètres actifs' },
     { command: 'pause', description: 'Mettre les alertes en pause' },
     { command: 'resume', description: 'Relancer les alertes' },
   ]);
-  if (!cfg.channelId) console.warn('TELEGRAM_CHANNEL_ID non défini : alertes automatiques désactivées.');
+  await checkChannel();
 
   tick();
   setInterval(tick, cfg.scanIntervalMin * 60_000);
+  if (cfg.topSummaryHours > 0) setInterval(postTopSummary, cfg.topSummaryHours * 3_600_000);
 
   bot.start({ onStart: (me) => console.log(`Bot @${me.username} démarré.`) });
-})();
+})().catch((err) => {
+  console.error(`❌ Démarrage impossible : ${err?.error_code === 401 ? 'TELEGRAM_BOT_TOKEN invalide (vérifie le token donné par @BotFather).' : explainTelegramError(err)}`);
+  process.exit(1);
+});
 
 for (const sig of ['SIGINT', 'SIGTERM']) process.once(sig, () => bot.stop().then(() => process.exit(0)));
