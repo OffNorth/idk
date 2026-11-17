@@ -647,7 +647,8 @@ STRATEGIES.push(
 /* Lot Nasdaq : effets connus des indices actions (achat seul)          */
 /* ------------------------------------------------------------------ */
 
-const EQUITY = { tf: '1d', markets: ['nas100'], warmup: 210 };
+// Testées aussi sur l'or (même logique : repli dans la tendance, calendrier, VIX)
+const EQUITY = { tf: '1d', markets: ['nas100', 'gold'], warmup: 210 };
 
 STRATEGIES.push(
   {
@@ -767,6 +768,90 @@ STRATEGIES.push(
         sl: 4 * ind.atr[i],
         tp: null,
       };
+    },
+  },
+);
+
+/* ------------------------------------------------------------------ */
+/* Lot or : effets propres à l'or (saison, taux, dollar, peur)          */
+/* ------------------------------------------------------------------ */
+
+const GOLD = { tf: '1d', markets: ['gold'], warmup: 260 };
+/** Croisement d'état d'une série externe (taux, dollar, VIX) avec sa moyenne 50 jours. */
+const aboveAvg = (s, k, mult = 1) => s.c[k] !== null && s.sma50[k] !== null && s.c[k] > mult * s.sma50[k];
+const belowAvg = (s, k, mult = 1) => s.c[k] !== null && s.sma50[k] !== null && s.c[k] < mult * s.sma50[k];
+
+STRATEGIES.push(
+  {
+    ...GOLD,
+    id: 'season',
+    name: 'Saison de l’or (août → février)',
+    desc: 'Effet saisonnier souvent cité : la demande physique d’or monte d’août à février (saison des mariages et fêtes en Inde, Nouvel An chinois). Investi d’août à fin février, dehors de mars à juillet. Stop de protection 4 ATR.',
+    evaluate(ind, i) {
+      const m = ind.month[i];
+      const inSeason = m >= 8 || m <= 2;
+      return { entry: inSeason ? 'long' : null, exitLong: !inSeason, exitShort: true, sl: 4 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...GOLD,
+    id: 'yields',
+    needsTnx: true,
+    name: 'Taux US 10 ans + or',
+    desc: 'L’or ne rapporte pas d’intérêts : il monte souvent quand les taux baissent. Achat quand le taux 10 ans US est sous sa moyenne 50 jours (taux en baisse) ET l’or au-dessus de son EMA 50 ; vente à découvert dans le cas inverse. Sortie dès qu’une condition tombe. Stop 3 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes;
+      const bull = (k) => belowAvg(ind.tnx, k) && c[k] > ind.ema50[k];
+      const bear = (k) => aboveAvg(ind.tnx, k) && c[k] < ind.ema50[k];
+      return { entry: became(bull, i) ? 'long' : became(bear, i) ? 'short' : null, exitLong: !bull(i), exitShort: !bear(i), sl: 3 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...GOLD,
+    id: 'dxy',
+    needsDxy: true,
+    name: 'Indice du dollar (DXY) + or',
+    desc: 'Comme « Dollar + or », mais avec le vrai indice du dollar (DXY, 6 devises) : achat quand le DXY est sous sa moyenne 50 jours ET l’or au-dessus de son EMA 50 ; vente à découvert dans le cas inverse. Stop 3 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes;
+      const bull = (k) => belowAvg(ind.dxy, k) && c[k] > ind.ema50[k];
+      const bear = (k) => aboveAvg(ind.dxy, k) && c[k] < ind.ema50[k];
+      return { entry: became(bull, i) ? 'long' : became(bear, i) ? 'short' : null, exitLong: !bull(i), exitShort: !bear(i), sl: 3 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...GOLD,
+    id: 'fear',
+    needsVix: true,
+    name: 'Valeur refuge (VIX élevé)',
+    desc: 'L’or sert de refuge quand les marchés ont peur : achat quand le VIX dépasse de 10 % sa moyenne 50 jours ET l’or est au-dessus de sa moyenne 50 jours ; sortie quand le VIX repasse sous sa moyenne ou l’or sous sa moyenne 50. Stop 3 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes;
+      const on = (k) => aboveAvg(ind.vix, k, 1.1) && c[k] > ind.sma50[k];
+      return { entry: became(on, i) ? 'long' : null, exitLong: belowAvg(ind.vix, i) || c[i] < ind.sma50[i], exitShort: true, sl: 3 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...GOLD,
+    id: 'mom12',
+    name: 'Momentum 12 mois',
+    desc: 'Momentum « absolu » classique (Antonacci) : investi tant que l’or a monté sur les 12 derniers mois, dehors sinon. Stop de protection 5 ATR.',
+    evaluate(ind, i) {
+      const up = ind.roc252[i] !== null && ind.roc252[i] > 0;
+      return { entry: up ? 'long' : null, exitLong: !up, exitShort: true, sl: 5 * ind.atr[i], tp: null };
+    },
+  },
+  {
+    ...GOLD,
+    id: 'high52',
+    name: 'Nouveau plus haut annuel',
+    desc: 'Maison : acheter quand l’or clôture à son plus haut de 52 semaines (les nouveaux sommets attirent les acheteurs), revendre à son plus bas de 50 jours. Stop suiveur 4 ATR.',
+    evaluate(ind, i) {
+      const c = ind.closes[i];
+      return { entry: c >= ind.c252.max[i] ? 'long' : null, exitLong: c <= ind.c50.min[i], exitShort: true, sl: 4 * ind.atr[i], tp: null };
+    },
+    trail(pos, ind, i) {
+      return pos.best - 4 * ind.atr[i];
     },
   },
 );

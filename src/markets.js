@@ -7,6 +7,9 @@ const { MarketTrader, fetchCandles, cachedHistory, fetchEurUsd } = require('./go
 const { fetchYahoo } = require('./yahoo');
 const { aggregate } = require('./history');
 
+/** En direct : 2 essais de 15 s au plus, pour ne pas bloquer le passage si Yahoo répond mal. */
+const LIVE = { attempts: 2, timeoutMs: 15_000 };
+
 /** Cache mémoire avec durée de vie ; en cas d'erreur, renvoie la dernière valeur connue. */
 const memo = new Map();
 async function cached(key, ttlSec, load) {
@@ -34,24 +37,25 @@ function goldMarket(cfg) {
     positionPct: cfg.goldPositionPct,
     feePct: cfg.goldFeePct,
     financingPct: cfg.goldFinancingPct,
-    async fetch(tfs, { needsFx } = {}) {
-      const [m5, d1, fx, ...more] = await Promise.all([
+    async fetch(tfs, { needsFx, needsVix, needsTnx, needsDxy } = {}) {
+      const yahoo = (key, sym) => cached(key, 3600, () => fetchYahoo(sym, '1d', { range: '2y', ...LIVE })).catch(() => null);
+      const [m5, d1, fx, vix, tnx, dxy, ...more] = await Promise.all([
         fetchCandles(300),
         cachedHistory(86400, 500, 3600),
         needsFx ? fetchEurUsd() : null,
+        needsVix ? yahoo('vix1d', '^VIX') : null,
+        needsTnx ? yahoo('tnx1d', '^TNX') : null,
+        needsDxy ? yahoo('dxy1d', 'DX-Y.NYB') : null,
         ...tfs.map((tf) => (tf === '1d' ? null : tf === '6h' ? cachedHistory(21600, 150, 1800) : fetchCandles(3600))),
       ]);
       const series = {};
       tfs.forEach((tf, k) => {
         series[tf] = tf === '1d' ? d1 : more[k];
       });
-      return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx, vix: null, series };
+      return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx, vix, aux: { tnx, dxy }, series };
     },
   };
 }
-
-/** En direct : 2 essais de 15 s au plus, pour ne pas bloquer le passage si Yahoo répond mal. */
-const LIVE = { attempts: 2, timeoutMs: 15_000 };
 
 function nasMarket(cfg) {
   return {

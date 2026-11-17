@@ -24,21 +24,31 @@ Toutes les 3 minutes
 - Une **référence achat-conservation** (acheter et garder) sert de point de comparaison dans le bilan.
 - Les positions sont gardées dans `data/gold.json` (elles survivent à un redémarrage).
 
-## Stratégies actives par défaut
+## Stratégies actives par défaut (or)
 
-| Stratégie | Bougies | Origine | Idée |
+Choisies par le banc d'essai sur **25 ans d'or** (future GC=F, 2000 → 2026 : choix sur 2000–2015, vérification sur
+2016–2026, `npm run research -- goldlong`) et confirmées sur le PAXG 2020–2026.
+
+| Stratégie | Idée | 2001 → 2026 (réinvesti) | Pire baisse |
 |---|---|---|---|
-| **MACD + filtre EMA 200** (`macd@1d`) | 1 jour | classique | croisement MACD / signal dans le sens de l'EMA 200 · SL 2 ATR · TP 4 ATR |
-| **Vote de 5 signaux** (`vote`) | 1 jour | maison | 5 indicateurs de tendance votent ; entrée quand ≥ 4 sont d'accord, sortie quand le vote redevient neutre |
-| **Dollar + or** (`dollar`) | 1 jour | maison | intermarché : achat quand le dollar est faible (EUR/USD > moyenne 50 j) ET l'or au-dessus de son EMA 50, vente à découvert dans le cas inverse |
-| **Momentum de tendance** (`tsmom`) | 1 jour | maison | achat si prix > moyenne 200 j ET hausse sur 3 mois, sinon rien · jamais à découvert |
-| **Croisement MM 10/60** (`sma1060@1d`) | 1 jour | guide FOREX.com | moyenne 10 vs 60, toujours en position |
-| **Tendance EMA 20/50** (`ema@1d`) | 1 jour | classique | croisement EMA 20 / 50 (filtre RSI) · SL 1,5 ATR · TP 3 ATR |
-| **Convergence Fibonacci** (`fibo@6h`) | 6 h | guide UK Gold Trading Experts | tendance jour + repli 38–62 % + chandelier · point mort à +1R |
-| Référence (`hold`) | — | — | achète une fois et garde |
+| **Saison de l'or** (`season`) | investi d'août à février (demande physique : Inde, Nouvel An chinois), dehors de mars à juillet | **+9,5 %/an** | **−22 %** |
+| **Filtre moyenne 200 jours** (`sma200`) | investi au-dessus de la moyenne 200 j (marge 2 %) | +7,6 %/an | −39 % |
+| **Momentum 12 mois** (`mom12`) | investi tant que l'or a monté sur 12 mois (Antonacci) | +7,2 %/an | −40 % |
+| Momentum de tendance (`tsmom`) | prix > moyenne 200 j et hausse sur 3 mois | +5,9 %/an | −30 % |
+| Nouveau plus haut annuel (`high52`) | achat au plus haut de 52 semaines, revente au plus bas de 50 jours | +5,1 %/an | −18 % |
+| MACD + EMA 200 (`macd@1d`) | croisement MACD dans le sens de l'EMA 200 | +1,7 %/an | −38 % |
+| *Référence : garder l'or* (`hold`) | achète une fois et garde | *+10,8 %/an* | *−44 %* |
 
-Toutes les autres restent disponibles (`GOLD_STRATEGIES`, voir Réglages) : `breakout`, `meanrev`, `supertrend`, `pvt`,
-`tsmom_ls`, `turtle`, `rsi2`, `pullback`, `keltner`, `asia`, `ichimoku`, `adx`, `squeeze`, `ribbon`, `insidebar`, `heikin`,
+![Évolution simulée des stratégies or depuis 2001](docs/historique-or-2001.png)
+
+**À retenir** : sur 25 ans, la **saison de l'or** fait presque aussi bien que garder l'or avec **deux fois moins de baisse**,
+et fait mieux sur 2021–2026 (+12,9 %/an contre +12,7 %). Les stratégies choisies au départ sur seulement 4 ans de PAXG
+(Dollar + or, MM 10/60, Vote, EMA 20/50) **ne tiennent pas sur 25 ans** (entre −1 et +1 %/an) : elles restent
+disponibles mais ne sont plus actives. Les filtres « taux US 10 ans », « indice du dollar » et « valeur refuge (VIX) »
+ont été testés et sont perdants sur 2000–2015.
+
+Toutes les autres restent disponibles (`GOLD_STRATEGIES`, voir Réglages) : `vote`, `dollar`, `sma1060@1d`, `ema@1d`,
+`fibo@6h`, `vixcalm`, `yields`, `dxy`, `fear`, `breakout`, `meanrev`, `supertrend`, `pvt`, `turtle`, `ichimoku`…,
 et n'importe laquelle sur une autre unité (`ema@6h`…).
 
 ## 📈 Portefeuille (gains réinvestis)
@@ -48,7 +58,7 @@ Chaque stratégie a **son propre compte**, qui démarre avec `GOLD_START_CAPITAL
 
 - La valeur de chaque compte est enregistrée **toutes les heures** (`data/gold.json`).
 - Un **graphique de l'évolution** est publié sur le canal chaque jour (`CHART_HOURS`), et à la demande avec `/portfolio`.
-- `/historique [année]` rejoue les stratégies actives sur l'historique (archive Binance) avec réinvestissement.
+- `/historique [or|nasdaq] [année]` rejoue les stratégies actives sur l'historique avec réinvestissement (or : depuis 2001 avec le future GC=F, depuis 2021 avec le PAXG).
 
 ### Historique simulé 2021 → oct. 2026 (1 000 $ au départ par stratégie, frais inclus)
 
@@ -258,7 +268,7 @@ double. Secrets à créer : `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `GOLD_STRATEGIES` | `macd@1d,vote,dollar,tsmom,sma1060@1d,ema@1d,fibo@6h,hold` | Stratégies actives (`id` ou `id@1h/6h/1d`, ou `all`) |
+| `GOLD_STRATEGIES` | `season,sma200,mom12,tsmom,high52,macd@1d,hold` | Stratégies actives (`id` ou `id@1h/6h/1d`, ou `all`) |
 | `GOLD_START_CAPITAL` | 1000 | Capital de départ de chaque stratégie (gains réinvestis) |
 | `GOLD_POSITION_PCT` | 100 | Part du capital misée à chaque trade (%) |
 | `CHART_HOURS` | 24 | Graphique du portefeuille sur le canal (0 = jamais) |

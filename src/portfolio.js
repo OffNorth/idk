@@ -48,8 +48,15 @@ function liveChart(store, cfg, marketId = 'gold') {
 }
 
 /** Historique long : or = archive Binance (PAXG, depuis 2020) ; Nasdaq = Yahoo (^NDX journalier, depuis 1985). */
-async function loadHistory(marketId, cacheDir) {
+async function loadHistory(marketId, cacheDir, fromYear = 2021) {
   const { loadHourly, aggregate } = require('./history');
+  if (marketId === 'gold' && fromYear < 2021) {
+    // Avant 2021 : future sur l'or GC=F (Yahoo, journalier depuis 2000) — stratégies journalières seulement
+    const { cachedYahoo } = require('./yahoo');
+    const y = (s) => cachedYahoo(cacheDir, s, '1d').catch(() => null);
+    const d = await cachedYahoo(cacheDir, 'GC=F', '1d');
+    return { '1d': d, daily: d, fx: await y('EURUSD=X'), vix: await y('^VIX'), aux: { tnx: await y('^TNX'), dxy: await y('DX-Y.NYB') }, source: 'future GC=F, Yahoo Finance' };
+  }
   if (marketId === 'nas100') {
     const { cachedYahoo } = require('./yahoo');
     const d = await cachedYahoo(cacheDir, '^NDX', '1d');
@@ -59,7 +66,10 @@ async function loadHistory(marketId, cacheDir) {
   const hourly = await loadHourly(cacheDir);
   const fx = aggregate(await loadHourly(cacheDir, { symbol: 'EURUSDT' }), TF_SEC['1d']);
   const d = aggregate(hourly, TF_SEC['1d']);
-  return { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': d, daily: d, fx, source: 'PAXG, archive Binance' };
+  const { cachedYahoo } = require('./yahoo');
+  const y = (s) => cachedYahoo(cacheDir, s, '1d').catch(() => null);
+  const aux = { tnx: await y('^TNX'), dxy: await y('DX-Y.NYB') };
+  return { aux, vix: await y('^VIX'), '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': d, daily: d, fx, source: 'PAXG, archive Binance' };
 }
 
 /**
@@ -69,7 +79,7 @@ async function loadHistory(marketId, cacheDir) {
 async function historyChart(cfg, { marketId = 'gold', fromYear, cacheDir = CACHE } = {}) {
   const market = marketById(cfg, marketId);
   const year = fromYear || (marketId === 'nas100' ? 2010 : 2021);
-  const data = await loadHistory(marketId, cacheDir);
+  const data = await loadHistory(marketId, cacheDir, year);
   const strategies = selectStrategies(market.strategies).filter((s) => data[tfOf(s)]);
   const colors = colorize(strategies);
   const fromT = Date.UTC(year, 0, 1) / 1000;
@@ -78,7 +88,7 @@ async function historyChart(cfg, { marketId = 'gold', fromYear, cacheDir = CACHE
     const candles = data[tf];
     const from = Math.max(0, candles.findIndex((c) => c.t >= fromT));
     const r = backtest(s, candles, {
-      daily: data.daily, fx: data.fx, vix: data.vix, barSec: TF_SEC[tf], feePct: market.feePct, financingPct: market.financingPct, from,
+      daily: data.daily, fx: data.fx, vix: data.vix, aux: data.aux || {}, barSec: TF_SEC[tf], feePct: market.feePct, financingPct: market.financingPct, from,
       compound: true, capital: market.startCapital, positionPct: market.positionPct,
       curveEvery: Math.max(1, Math.round(86400 / TF_SEC[tf])), // un point par jour
     });

@@ -31,7 +31,8 @@ module.exports = {
   },
   goldFeePct: num('GOLD_FEE_PCT', 0.05),
   // Par défaut : les combinaisons retenues par le banc d'essai (npm run research) + la référence
-  goldStrategies: list('GOLD_STRATEGIES', 'macd@1d,vote,dollar,tsmom,sma1060@1d,ema@1d,fibo@6h,hold'),
+  // Retenues par le banc d'essai sur 25 ans d'or (npm run research -- goldlong) + référence
+  goldStrategies: list('GOLD_STRATEGIES', 'season,sma200,mom12,tsmom,high52,macd@1d,hold'),
 
   // Financement de nuit annuel (%) — 0 pour le PAXG (pas de levier)
   goldFinancingPct: num('GOLD_FINANCING_PCT', 0),

@@ -344,7 +344,7 @@ function calendar(candles) {
   return { tdom, bizLeft };
 }
 
-/** VIX aligné sur les bougies (dernière valeur connue à la date de la bougie) + moyennes. */
+/** Série journalière externe (VIX, taux 10 ans, dollar…) alignée sur les bougies (dernière valeur connue) + moyennes. */
 function alignVix(candles, vix) {
   const n = candles.length;
   const out = { c: new Array(n).fill(null), sma10: new Array(n).fill(null), sma20: new Array(n).fill(null), sma50: new Array(n).fill(null) };
@@ -365,19 +365,21 @@ function alignVix(candles, vix) {
   return out;
 }
 
-/** Plus bas / plus haut des clôtures sur n bougies (courante incluse). */
+/** Plus bas / plus haut des clôtures sur n bougies (courante incluse) — fenêtre glissante en O(n). */
 function rollingCloses(closes, n) {
   const min = [];
   const max = [];
+  const qMin = [];
+  const qMax = [];
   for (let i = 0; i < closes.length; i++) {
-    let lo = Infinity;
-    let hi = -Infinity;
-    for (let j = Math.max(0, i - n + 1); j <= i; j++) {
-      lo = Math.min(lo, closes[j]);
-      hi = Math.max(hi, closes[j]);
-    }
-    min.push(lo);
-    max.push(hi);
+    while (qMin.length && closes[qMin[qMin.length - 1]] >= closes[i]) qMin.pop();
+    while (qMax.length && closes[qMax[qMax.length - 1]] <= closes[i]) qMax.pop();
+    qMin.push(i);
+    qMax.push(i);
+    while (qMin[0] <= i - n) qMin.shift();
+    while (qMax[0] <= i - n) qMax.shift();
+    min.push(closes[qMin[0]]);
+    max.push(closes[qMax[0]]);
   }
   return { min, max };
 }
@@ -388,7 +390,7 @@ function roc(closes, n) {
 }
 
 /** Calcule tous les indicateurs utilisés par les stratégies, une seule fois. barSec = durée d'une bougie. */
-function computeAll(candles, daily = null, barSec = 3600, fx = null, vix = null) {
+function computeAll(candles, daily = null, barSec = 3600, fx = null, vix = null, aux = {}) {
   const closes = candles.map((c) => c.c);
   const p = pvt(candles);
   const bb = bollinger(closes, 20, 2);
@@ -398,6 +400,12 @@ function computeAll(candles, daily = null, barSec = 3600, fx = null, vix = null)
     c7: rollingCloses(closes, 7),
     cal: barSec === 86400 ? calendar(candles) : null,
     vix: alignVix(candles, vix),
+    tnx: alignVix(candles, aux.tnx),
+    dxy: alignVix(candles, aux.dxy),
+    roc252: roc(closes, 252),
+    c50: rollingCloses(closes, 50),
+    c252: rollingCloses(closes, 252),
+    month: candles.map((c) => new Date(c.t * 1000).getUTCMonth() + 1),
     ema10: ema(closes, 10),
     ichi: ichimoku(candles),
     adx: adx(candles, 14),

@@ -161,11 +161,11 @@ function unrealized(pos, price) {
  *  curveEvery : > 0 → enregistre la valeur du compte toutes les N bougies (courbe de capital).
  */
 function backtest(strategy, candles, {
-  size = 1000, feePct = 0.05, daily = null, from = 0, to = Infinity, barSec = 3600, fx = null, vix = null, ind: pre = null,
+  size = 1000, feePct = 0.05, daily = null, from = 0, to = Infinity, barSec = 3600, fx = null, vix = null, aux = {}, ind: pre = null,
   compound = false, capital: startCapital = size, positionPct = 100, curveEvery = 0, financingPct = 0,
 } = {}) {
   const ind = pre || (strategy.intraday ? require('./intraday').computeIntraday(candles, barSec)
-    : strategy.scalp ? computeScalp(candles, barSec) : computeAll(candles, daily, barSec, fx, vix));
+    : strategy.scalp ? computeScalp(candles, barSec) : computeAll(candles, daily, barSec, fx, vix, aux));
   const trades = [];
   const curve = [];
   let pos = null;
@@ -278,14 +278,16 @@ class MarketTrader {
     const tfs = [...new Set(this.strategies.map(tfOf))];
     const needsFx = this.strategies.some((s) => s.needsFx);
     const needsVix = this.strategies.some((s) => s.needsVix);
+    const needsTnx = this.strategies.some((s) => s.needsTnx);
+    const needsDxy = this.strategies.some((s) => s.needsDxy);
     let data;
     try {
-      data = await M.fetch(tfs, { needsFx, needsVix });
+      data = await M.fetch(tfs, { needsFx, needsVix, needsTnx, needsDxy });
     } catch (err) {
       console.warn(`[${M.id}] données indisponibles (${err.message}), passage ignoré`);
       return [];
     }
-    const { price, stops, daily, fx, vix, series } = data;
+    const { price, stops, daily, fx, vix, aux = {}, series } = data;
     if (!price) {
       console.warn(`[${M.id}] prix indisponible, passage ignoré`);
       return [];
@@ -299,7 +301,7 @@ class MarketTrader {
       if (!raw) continue;
       const closed = raw.filter((c) => c.t + sec <= now);
       const intraday = this.strategies.some((s) => s.intraday && tfOf(s) === tf);
-      const ind = intraday ? require('./intraday').computeIntraday(closed, sec, series['1h']) : computeAll(closed, daily, sec, fx, vix);
+      const ind = intraday ? require('./intraday').computeIntraday(closed, sec, series['1h']) : computeAll(closed, daily, sec, fx, vix, aux);
       byTf[tf] = { closed, ind };
     }
     const events = [];

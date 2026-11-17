@@ -31,7 +31,21 @@ const MARKETS = {
       const hourly = await loadHourly(CACHE, { log: console.log });
       const fx = aggregate(await loadHourly(CACHE, { log: console.log, symbol: 'EURUSDT' }), TF_SEC['1d']);
       const daily = aggregate(hourly, TF_SEC['1d']);
-      return { series: { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': daily }, daily, fx };
+      const aux = { tnx: await cachedYahoo(CACHE, '^TNX', '1d'), dxy: await cachedYahoo(CACHE, 'DX-Y.NYB', '1d') };
+      return { series: { '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': daily }, daily, fx, vix: await cachedYahoo(CACHE, '^VIX', '1d'), aux };
+    },
+  },
+  goldlong: {
+    name: 'Or long terme (future GC=F, journalier depuis 2000)',
+    fee: 0.05,
+    tfs: ['1d'],
+    splits: { '1d': '2016-01-01' },
+    exclude: [],
+    market: 'gold',
+    async load() {
+      const d = await cachedYahoo(CACHE, 'GC=F', '1d');
+      const aux = { tnx: await cachedYahoo(CACHE, '^TNX', '1d'), dxy: await cachedYahoo(CACHE, 'DX-Y.NYB', '1d') };
+      return { series: { '1d': d }, daily: d, fx: await cachedYahoo(CACHE, 'EURUSD=X', '1d'), vix: await cachedYahoo(CACHE, '^VIX', '1d'), aux };
     },
   },
   nas100: {
@@ -76,12 +90,12 @@ function exposure(list, from, to) {
 
 (async () => {
   console.log(`Chargement des données : ${M.name}…`);
-  const { series, daily, fx, vix = null } = await M.load();
+  const { series, daily, fx, vix = null, aux = {} } = await M.load();
   const step = (series['1d'][series['1d'].length - 1].t - series['1d'][0].t) / (365 * 86400) > 15 ? 5 : 1;
 
   console.log(`\n${M.name} · frais ${FEE} % par côté · 1 000 $ par trade`);
   const hold = {};
-  for (const tf of ['1h', '6h', '1d']) {
+  for (const tf of M.tfs || ['1h', '6h', '1d']) {
     const c = series[tf];
     const split = Date.parse(SPLITS[tf]) / 1000;
     const k = c.findIndex((x) => x.t >= split);
@@ -96,14 +110,15 @@ function exposure(list, from, to) {
   const rows = [];
   for (const base of STRATEGIES) {
     if (base.id === 'hold' || base.scalp || M.exclude.includes(base.id)) continue; // scalp : voir scalp.js
-    if (base.markets && !base.markets.includes(MARKET)) continue; // stratégie propre à un autre marché
-    for (const tf of base.onlyTf || ['1h', '6h', '1d']) {
+    if (base.markets && !base.markets.includes(M.market || MARKET)) continue; // stratégie propre à un autre marché
+    if (base.intraday) continue; // intraday : voir nas-intraday.js
+    for (const tf of (base.onlyTf || ['1h', '6h', '1d']).filter((x) => !M.tfs || M.tfs.includes(x))) {
       const s = withTf(base, tf);
       const candles = series[tf];
       const barSec = TF_SEC[tf];
       const split = Date.parse(SPLITS[tf]) / 1000;
       const cut = candles.findIndex((c) => c.t >= split);
-      const opts = { size: SIZE, feePct: FEE, daily, barSec, fx, vix };
+      const opts = { size: SIZE, feePct: FEE, daily, barSec, fx, vix, aux };
       const train = backtest(s, candles.slice(0, cut), opts);
       const test = backtest(s, candles, { ...opts, from: cut });
       const ys = Object.entries(buckets(train.list, 1));
@@ -140,7 +155,7 @@ function exposure(list, from, to) {
   for (const r of sel) {
     console.log(`  ${r.s.id}${r.tf === tfOf(r.s) ? '' : ''} [${r.tf}] : ${usd(r.test.pnlUsd)} (PF ${pf(r.test)}, ${r.test.trades} trades, exposition ${(r.expTest * 100).toFixed(0)} %)`);
   }
-  console.log(`  (achat-conservation en vérification : 1 j ${usd(hold['1d'].test)} · 6 h / 1 h ${usd(hold['1h'].test)})`);
+  console.log(`  (achat-conservation en vérification : 1 j ${usd(hold['1d'].test)}${hold['1h'] ? ` · 6 h / 1 h ${usd(hold['1h'].test)}` : ''})`);
   console.log('\nPnL en $ pour 1 000 $ par trade, frais inclus. Résultats passés ≠ résultats futurs.');
 })().catch((e) => {
   console.error(e);

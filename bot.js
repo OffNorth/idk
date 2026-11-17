@@ -114,7 +114,7 @@ bot.command('portfolio', async (ctx) => {
 bot.command('historique', (ctx) => {
   const args = ctx.match.trim().toLowerCase().split(/\s+/);
   const marketId = args.some((a) => a.startsWith('nas')) ? 'nas100' : 'gold';
-  const minYear = marketId === 'nas100' ? 1987 : 2021;
+  const minYear = marketId === 'nas100' ? 1987 : 2001;
   const asked = Number(args.find((a) => /^\d{4}$/.test(a)));
   const year = Math.min(Math.max(asked || (marketId === 'nas100' ? 2010 : 2021), minYear), new Date().getUTCFullYear() - 1);
   const m = marketById(cfg, marketId);
