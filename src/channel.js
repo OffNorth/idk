@@ -80,9 +80,18 @@ function createChannel(api, cfg, store) {
       const chat = await api.getChat(cfg.channelId);
       const me = await api.getMe();
       const member = await api.getChatMember(chat.id, me.id);
-      const canPost = member.status === 'creator' || (member.status === 'administrator' && member.can_post_messages !== false);
+      const isGroup = chat.type === 'group' || chat.type === 'supergroup';
+      const canPost =
+        member.status === 'creator' ||
+        (member.status === 'administrator' && (isGroup || member.can_post_messages !== false)) ||
+        (isGroup && member.status === 'member') ||
+        (isGroup && member.status === 'restricted' && member.can_send_messages);
       if (!canPost) {
-        console.error(`❌ Le bot n'est pas administrateur de « ${chat.title} » avec le droit de publier. Les alertes échoueront.`);
+        const where = isGroup ? 'du groupe' : 'du canal';
+        console.error(
+          `❌ Le bot ne peut pas publier dans « ${chat.title} » (type : ${chat.type}, statut du bot : ${member.status}). ` +
+            `Ajoute-le comme ADMINISTRATEUR ${where} avec le droit « Publier des messages ».`,
+        );
         return false;
       }
       console.log(`✅ Canal « ${chat.title} » (${chat.id}) : publication autorisée.`);
