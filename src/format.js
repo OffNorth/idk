@@ -16,6 +16,13 @@ function fmtDuration(ms) {
 /** Ouverture ou clôture d'une position simulée. */
 function goldEventMessage(ev) {
   const name = esc(ev.strategy.name);
+  if (ev.type === 'open' && ev.strategy.id === 'hold') {
+    return [
+      `🥇 <b>Or · ${name}</b>`,
+      `Achat de référence simulé à <b>$${ev.pos.entry.toFixed(2)}</b> · taille $${ev.pos.size}, gardé sans limite de durée`,
+      '<i>Sert à comparer : une stratégie doit faire mieux que simplement détenir l’or.</i>',
+    ].join('\n');
+  }
   if (ev.type === 'open') {
     const p = ev.pos;
     return [

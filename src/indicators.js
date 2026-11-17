@@ -125,11 +125,89 @@ function supertrend(candles, n = 10, mult = 3) {
   return { line, dir };
 }
 
+/** Price Volume Trend : cumul de (variation % du prix × volume). */
+function pvt(candles) {
+  const out = [0];
+  for (let i = 1; i < candles.length; i++) {
+    const prev = candles[i - 1].c;
+    out.push(out[i - 1] + (prev ? ((candles[i].c - prev) / prev) * (candles[i].v || 0) : 0));
+  }
+  return out;
+}
+
+/**
+ * Tendance journalière pour chaque bougie 1 h (dernière bougie jour CLÔTURÉE avant la fin de l'heure) :
+ *  +1 = haussière (clôture > MM200 et MM20 > MM50), −1 = baissière (l'inverse), 0 = neutre / inconnue.
+ */
+function dailyTrend(hourly, daily) {
+  const out = new Array(hourly.length).fill(0);
+  if (!daily || daily.length < 200) return out;
+  const closes = daily.map((d) => d.c);
+  const m20 = sma(closes, 20);
+  const m50 = sma(closes, 50);
+  const m200 = sma(closes, 200);
+  let j = -1;
+  for (let i = 0; i < hourly.length; i++) {
+    const end = hourly[i].t + 3600;
+    while (j + 1 < daily.length && daily[j + 1].t + 86400 <= end) j++;
+    if (j < 0 || m200[j] === null) continue;
+    if (closes[j] > m200[j] && m20[j] > m50[j]) out[i] = 1;
+    else if (closes[j] < m200[j] && m20[j] < m50[j]) out[i] = -1;
+  }
+  return out;
+}
+
+/** Chandeliers de retournement : +1 haussier (marteau / avalement), −1 baissier (étoile filante / avalement). */
+function candlePattern(candles) {
+  return candles.map((c, i) => {
+    const body = Math.abs(c.c - c.o);
+    const range = c.h - c.l;
+    if (range <= 0) return 0;
+    const upper = c.h - Math.max(c.o, c.c);
+    const lower = Math.min(c.o, c.c) - c.l;
+    const p = candles[i - 1];
+    const bullEngulf = p && p.c < p.o && c.c > c.o && c.c >= p.o && c.o <= p.c;
+    const bearEngulf = p && p.c > p.o && c.c < c.o && c.c <= p.o && c.o >= p.c;
+    const hammer = lower >= 2 * body && upper <= Math.max(body, range * 0.1) && body > 0;
+    const star = upper >= 2 * body && lower <= Math.max(body, range * 0.1) && body > 0;
+    if (bullEngulf || hammer) return 1;
+    if (bearEngulf || star) return -1;
+    return 0;
+  });
+}
+
+/** Plus haut / plus bas des n dernières bougies (courante incluse) et position de chacun. */
+function swings(candles, n) {
+  const hi = [];
+  const lo = [];
+  const hiIdx = [];
+  const loIdx = [];
+  for (let i = 0; i < candles.length; i++) {
+    let h = -Infinity;
+    let l = Infinity;
+    let hI = i;
+    let lI = i;
+    for (let j = Math.max(0, i - n + 1); j <= i; j++) {
+      if (candles[j].h > h) { h = candles[j].h; hI = j; }
+      if (candles[j].l < l) { l = candles[j].l; lI = j; }
+    }
+    hi.push(h);
+    lo.push(l);
+    hiIdx.push(hI);
+    loIdx.push(lI);
+  }
+  return { hi, lo, hiIdx, loIdx };
+}
+
 /** Calcule tous les indicateurs utilisés par les stratégies, une seule fois. */
-function computeAll(candles) {
+function computeAll(candles, daily = null) {
   const closes = candles.map((c) => c.c);
+  const p = pvt(candles);
   return {
+    candles,
     closes,
+    sma10: sma(closes, 10),
+    sma60: sma(closes, 60),
     ema20: ema(closes, 20),
     ema50: ema(closes, 50),
     ema200: ema(closes, 200),
@@ -140,7 +218,12 @@ function computeAll(candles) {
     dc20: donchian(candles, 20),
     dc10: donchian(candles, 10),
     st: supertrend(candles, 10, 3),
+    pvt: p,
+    pvtSig: ema(p, 21),
+    dTrend: dailyTrend(candles, daily),
+    pattern: candlePattern(candles),
+    sw48: swings(candles, 48),
   };
 }
 
-module.exports = { sma, ema, rsi, atr, bollinger, macd, donchian, supertrend, computeAll };
+module.exports = { sma, ema, rsi, atr, bollinger, macd, donchian, supertrend, pvt, dailyTrend, candlePattern, swings, computeAll };

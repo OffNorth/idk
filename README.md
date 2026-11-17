@@ -1,6 +1,6 @@
 # 🥇 Gold Paper Bot
 
-Bot Telegram qui **trade l'or en simulation** (paper trading) avec **5 stratégies en parallèle** et publie chaque
+Bot Telegram qui **trade l'or en simulation** (paper trading) avec **8 stratégies en parallèle** (+ une référence achat-conservation) et publie chaque
 entrée, chaque sortie et un bilan régulier sur un canal Telegram.
 
 > ⚠️ **Simulation uniquement.** Aucun ordre réel n'est passé, aucun compte de trading n'est utilisé.
@@ -22,7 +22,7 @@ Toutes les 3 minutes
 - Frais / spread simulés : 0,05 % à l'entrée et à la sortie.
 - Les positions sont gardées dans `data/gold.json` (elles survivent à un redémarrage).
 
-## Les 5 stratégies
+## Les stratégies
 
 | Stratégie | Type | Entrée | Sortie |
 |---|---|---|---|
@@ -31,24 +31,35 @@ Toutes les 3 minutes
 | **Retour à la moyenne** (`meanrev`) | contre-tendance | sortie des bandes de Bollinger + RSI < 30 / > 70 | retour sur la moyenne 20 h · SL 1,5 ATR |
 | **MACD + EMA 200** (`macd`) | momentum | croisement MACD / signal dans le sens de l'EMA 200 | SL 2 ATR · TP 4 ATR · croisement inverse |
 | **Supertrend (10, 3)** (`supertrend`) | suivi de tendance | changement de direction du Supertrend | stop sur la ligne du Supertrend |
+| **Croisement MM 10/60** (`sma1060`) — *guide FOREX.com* | suivi de tendance | croisement moyenne 10 h / 60 h, toujours en position | croisement inverse · stop de protection 3 ATR |
+| **PVT + EMA 50** (`pvt`) — *guide PVT* | volume / momentum | PVT croise sa moyenne 21, prix du bon côté de l'EMA 50 | SL 1,5 ATR · TP 3 ATR · croisement inverse |
+| **Convergence** (`fibo`) — *guide UK Gold Trading Experts* | repli dans la tendance | tendance jour (MM 200/50/20) + repli Fibonacci 38,2–61,8 % + marteau / avalement | stop 78,6 % · objectif 127,2 % · point mort à +1R puis suiveur |
+| **Référence** (`hold`) | — | achète une fois et garde | jamais : sert de comparaison |
 
 Pour n'en garder que certaines : `GOLD_STRATEGIES=ema,supertrend`.
 
-## Résultats passés (backtest du 17/11/2026)
+## Résultats passés (backtests du 17/11/2026, 1 000 $ par trade, frais 0,05 % par côté)
 
-Sur **90 jours** (or de 4 485 $ à 3 862 $, soit −14 %), 1 000 $ par trade :
+**Choix puis vérification** — stratégies jugées sur nov. 2025 → août 2026, puis vérifiées sur les 3 derniers mois :
 
-| Stratégie | Trades | Gagnants | PnL |
+| Stratégie | Période de choix | 3 derniers mois | 12 mois |
 |---|---|---|---|
-| Tendance EMA 20/50 | 39 | 26 % | −76 $ |
-| Cassure Donchian 20 | 86 | 22 % | −97 $ |
-| Retour à la moyenne | 66 | 39 % | −44 $ |
-| MACD + EMA 200 | 73 | 27 % | −107 $ |
-| Supertrend | 60 | 22 % | −135 $ |
+| Tendance EMA 20/50 | −58 $ | −76 $ | −134 $ |
+| Cassure Donchian 20 | −62 $ | −112 $ | −158 $ |
+| Retour à la moyenne | −340 $ | −51 $ | −399 $ |
+| MACD + EMA 200 | −189 $ | −137 $ | −326 $ |
+| Supertrend | **+149 $** | −127 $ | +27 $ |
+| **Croisement MM 10/60** | **+57 $** | **+19 $** | **+106 $** |
+| PVT + EMA 50 | −255 $ | −144 $ | −399 $ |
+| Convergence Fibonacci | −84 $ | −31 $ | −114 $ |
 
-Sur 180 jours, seul le Supertrend finit légèrement positif (+28 $). **Aucune stratégie n'a montré d'avantage fiable** :
-le paper trading en direct sert à vérifier dans le temps. Pour refaire le test : `npm run backtest`
-(90 jours), `npm run backtest -- 180`, ou `/backtest 180` dans Telegram.
+**Sur 18 mois** (mai 2025 → nov. 2026, or +15 %), plus aucune n'est positive : MM 10/60 −98 $, Supertrend −94 $,
+les autres entre −114 $ et −637 $. Les réglages voisins de la 10/60 (8/50 … 20/100) oscillent autour de zéro, et avec
+0,1 % de frais par côté elle perd 429 $.
+
+**Conclusion honnête : aucune de ces stratégies n'a d'avantage démontré.** Elles tournent en paper trading pour être
+départagées en conditions réelles ; le bilan les compare à la référence achat-conservation.
+Pour refaire les tests : `npm run backtest -- 365`, ou `/backtest 365` dans Telegram.
 
 ## Commandes Telegram
 
@@ -111,7 +122,7 @@ bot.js             Bot Telegram + passage toutes les CHECK_INTERVAL_MINUTES
 once.js            Un seul passage (GitHub Actions / cron)
 backtest.js        Backtest des stratégies en console
 src/gold.js        Moteur de paper trading + backtest
-src/strategies.js  Les 5 stratégies
+src/strategies.js  Les stratégies (+ référence)
 src/indicators.js  EMA, RSI, ATR, Bollinger, MACD, Donchian, Supertrend
 src/cycle.js       Un passage : trading + bilan
 src/channel.js     Publication Telegram

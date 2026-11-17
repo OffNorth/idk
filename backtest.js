@@ -5,12 +5,12 @@
  *   npm run backtest -- 180   → 180 jours
  */
 const cfg = require('./src/config');
-const { backtest, fetchHistory } = require('./src/gold');
+const { backtest, fetchBacktestData } = require('./src/gold');
 const { selectStrategies } = require('./src/strategies');
 
 (async () => {
   const days = Number(process.argv[2]) || 90;
-  const candles = await fetchHistory(days);
+  const { hourly: candles, daily } = await fetchBacktestData(days);
   if (candles.length < 250) throw new Error(`Historique insuffisant (${candles.length} bougies)`);
   const first = candles[0];
   const last = candles[candles.length - 1];
@@ -23,7 +23,8 @@ const { selectStrategies } = require('./src/strategies');
   console.log(`Taille $${cfg.goldSizeUsd} par trade · frais ${cfg.goldFeePct} % par côté\n`);
   console.log('STRATÉGIE                                TRADES  GAGNANTS   PnL $     PnL %   PF    DD max');
   for (const s of selectStrategies(cfg.goldStrategies)) {
-    const r = backtest(s, candles, { size: cfg.goldSizeUsd, feePct: cfg.goldFeePct });
+    const r = backtest(s, candles, { size: cfg.goldSizeUsd, feePct: cfg.goldFeePct, daily });
+    if (s.id === 'hold' && r.open) r.pnlUsd = cfg.goldSizeUsd * (last.c / r.open.entry - 1);
     console.log(
       [
         s.name.padEnd(40),

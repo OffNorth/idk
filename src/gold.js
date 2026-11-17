@@ -15,30 +15,36 @@ const FILE = 'gold.json';
 const H = 3600;
 const CB = 'https://api.exchange.coinbase.com/products/PAXG-USD/candles';
 
-const parseCb = (rows) => rows.map(([t, l, h, o, c]) => ({ t, o, h, l, c })).sort((a, b) => a.t - b.t);
+const parseCb = (rows) => rows.map(([t, l, h, o, c, v]) => ({ t, o, h, l, c, v })).sort((a, b) => a.t - b.t);
 
-/** Bougies récentes (granularité en secondes : 3600 ou 300). Coinbase, secours Kraken. */
+/** Bougies récentes (granularité en secondes : 300, 3600 ou 86400). Coinbase, secours Kraken. */
 async function fetchCandles(granularity = 3600) {
   const cb = await getJson(`${CB}?granularity=${granularity}`, { quiet: true });
   if (Array.isArray(cb) && cb.length > 50) return parseCb(cb);
   const kr = await getJson(`https://api.kraken.com/0/public/OHLC?pair=PAXGUSD&interval=${granularity / 60}`, { quiet: true });
   const rows = kr?.result && Object.values(kr.result).find(Array.isArray);
-  if (rows?.length > 50) return rows.map(([t, o, h, l, c]) => ({ t, o: +o, h: +h, l: +l, c: +c }));
+  if (rows?.length > 50) return rows.map(([t, o, h, l, c, , v]) => ({ t, o: +o, h: +h, l: +l, c: +c, v: +v }));
   return null;
 }
 
-/** Historique 1 h sur N jours (pages de 300 bougies Coinbase), pour le backtest. */
-async function fetchHistory(days = 90) {
+/** Historique sur N jours (pages de 300 bougies Coinbase), pour le backtest. */
+async function fetchHistory(days = 90, granularity = 3600) {
   const now = Math.floor(Date.now() / 1000);
   const byT = new Map();
-  for (let end = now; end > now - days * 86400; end -= 300 * H) {
-    const start = Math.max(end - 300 * H, now - days * 86400);
+  for (let end = now; end > now - days * 86400; end -= 300 * granularity) {
+    const start = Math.max(end - 300 * granularity, now - days * 86400);
     const iso = (s) => new Date(s * 1000).toISOString();
-    const rows = await getJson(`${CB}?granularity=3600&start=${iso(start)}&end=${iso(end)}`);
+    const rows = await getJson(`${CB}?granularity=${granularity}&start=${iso(start)}&end=${iso(end)}`);
     if (!Array.isArray(rows)) break;
     for (const c of parseCb(rows)) byT.set(c.t, c);
   }
   return [...byT.values()].sort((a, b) => a.t - b.t);
+}
+
+/** Bougies 1 h + bougies jour (avec 220 jours de marge pour la MM200 journalière). */
+async function fetchBacktestData(days = 90) {
+  const [hourly, daily] = await Promise.all([fetchHistory(days, 3600), fetchHistory(days + 220, 86400)]);
+  return { hourly, daily };
 }
 
 /* ------------------------------------------------------------------ */
@@ -51,6 +57,7 @@ function openPos(side, price, sig, size, t) {
     side,
     entry: price,
     sl: price - dir * sig.sl,
+    initSl: price - dir * sig.sl,
     tp: sig.tp ? price + dir * sig.tp : null,
     size,
     best: price,
@@ -110,11 +117,11 @@ function summarize(trades) {
 /* Backtest (bougies 1 h uniquement)                                   */
 /* ------------------------------------------------------------------ */
 
-function backtest(strategy, candles, { size = 1000, feePct = 0.05 } = {}) {
-  const ind = computeAll(candles);
+function backtest(strategy, candles, { size = 1000, feePct = 0.05, daily = null, from = 0 } = {}) {
+  const ind = computeAll(candles, daily);
   const trades = [];
   let pos = null;
-  for (let i = Math.max(strategy.warmup, 1); i < candles.length; i++) {
+  for (let i = Math.max(strategy.warmup, 1, from); i < candles.length; i++) {
     const c = candles[i];
     if (pos && pos.openIdx < i) {
       const hit = hitInCandle(pos, c);
@@ -167,7 +174,7 @@ class GoldTrader {
   /** Un passage pour toutes les stratégies. Retourne les événements à publier. */
   async run() {
     if (!this.cfg.goldEnabled) return [];
-    const [h1, m5] = await Promise.all([fetchCandles(3600), fetchCandles(300)]);
+    const [h1, m5, d1] = await Promise.all([fetchCandles(3600), fetchCandles(300), fetchCandles(86400)]);
     if (!h1) {
       console.warn('[or] prix indisponible, passage ignoré');
       return [];
@@ -175,7 +182,7 @@ class GoldTrader {
     const now = Math.floor(Date.now() / 1000);
     const price = (m5 && m5[m5.length - 1].c) || h1[h1.length - 1].c;
     const closed = h1.filter((c) => c.t + H <= now);
-    const ind = computeAll(closed);
+    const ind = computeAll(closed, d1);
     const i = closed.length - 1;
     const fee = this.cfg.goldFeePct;
     const events = [];
@@ -237,4 +244,4 @@ class GoldTrader {
   }
 }
 
-module.exports = { GoldTrader, backtest, fetchHistory, fetchCandles, hitInCandle };
+module.exports = { GoldTrader, backtest, fetchHistory, fetchBacktestData, fetchCandles, hitInCandle };

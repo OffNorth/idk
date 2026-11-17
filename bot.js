@@ -14,7 +14,7 @@
 const cfg = require('./src/config');
 const { Bot } = require('grammy');
 const { Store } = require('./src/store');
-const { backtest, fetchHistory } = require('./src/gold');
+const { backtest, fetchBacktestData } = require('./src/gold');
 const { selectStrategies } = require('./src/strategies');
 const { backtestMessage, esc } = require('./src/format');
 const { createChannel, explainTelegramError, HTML } = require('./src/channel');
@@ -98,14 +98,15 @@ bot.command('backtest', async (ctx) => {
   const days = Math.min(Math.max(Number(ctx.match.trim()) || 90, 20), 365);
   const wait = await ctx.reply(`⏳ Backtest des stratégies sur ${days} jours…`);
   try {
-    const candles = await fetchHistory(days);
+    const { hourly: candles, daily } = await fetchBacktestData(days);
     if (candles.length < 250) throw new Error('historique insuffisant');
-    const results = selectStrategies(cfg.goldStrategies).map((strategy) => ({
-      strategy,
-      r: backtest(strategy, candles, { size: cfg.goldSizeUsd, feePct: cfg.goldFeePct }),
-    }));
     const from = candles[0].c;
     const to = candles[candles.length - 1].c;
+    const results = selectStrategies(cfg.goldStrategies).map((strategy) => {
+      const r = backtest(strategy, candles, { size: cfg.goldSizeUsd, feePct: cfg.goldFeePct, daily });
+      if (strategy.id === 'hold' && r.open) r.pnlUsd = cfg.goldSizeUsd * (to / r.open.entry - 1);
+      return { strategy, r };
+    });
     const txt = backtestMessage(results, { days, from, to, buyHold: (to / from - 1) * 100 }, cfg);
     await ctx.api.editMessageText(ctx.chat.id, wait.message_id, txt, HTML);
   } catch (err) {
