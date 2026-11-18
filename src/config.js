@@ -72,6 +72,8 @@ module.exports = {
   get goldSizeUsd() {
     return this.goldStartCapital;
   },
+  // Source des cours de l'or : future (GC=F Yahoo, comme l'or au comptant d'un compte FTMO, défaut) ou paxg (ancien)
+  goldFeed: process.env.GOLD_FEED || 'future',
   goldFeePct: num('GOLD_FEE_PCT', 0.05),
   goldScalpFeePct: num('GOLD_SCALP_FEE_PCT', 0.005), // stratégies 1 / 5 / 15 min (CFD)
   // Par défaut : les combinaisons retenues par le banc d'essai (npm run research) + la référence

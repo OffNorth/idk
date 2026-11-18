@@ -51,6 +51,30 @@ function goldMarket(cfg) {
     financingPct: cfg.goldFinancingPct,
     async fetch(tfs, { needsFx, needsVix, aux: auxList = [] } = {}) {
       const yahoo = (key, sym) => cached(key, 3600, () => fetchYahoo(sym, '1d', { range: '2y', ...LIVE })).catch(() => null);
+      if (cfg.goldFeed !== 'paxg') {
+        // Or « réel » (GOLD_FEED=future, par défaut) : future GC=F de Yahoo, qui suit l'or au comptant que trade un compte
+        // FTMO. PAXG (jeton Binance / Coinbase) cote différemment en intraday (marché peu liquide, faux retours à la moyenne).
+        const [m5, d1, fx, vix, aux, h1] = await Promise.all([
+          cached('gc5m', 120, () => fetchYahoo('GC=F', '5m', { range: '5d', ...LIVE })),
+          cached('gc1d', 3600, () => fetchYahoo('GC=F', '1d', { range: '2y', ...LIVE })),
+          needsFx ? fetchEurUsd() : null,
+          needsVix ? yahoo('vix1d', '^VIX') : null,
+          fetchAux('gold', auxList),
+          tfs.some((tf) => tf === '1h' || tf === '6h') ? cached('gc1h', 900, () => fetchYahoo('GC=F', '1h', { range: '730d', ...LIVE })) : null,
+        ]);
+        const series = { '1d': d1, '1h': h1, '6h': h1 ? aggregate(h1, 21600) : null, '5m': m5 };
+        if (tfs.some((tf) => tf === '5m' || tf === '15m')) {
+          const long = await cached('gc5m60', 1800, () => fetchYahoo('GC=F', '5m', { range: '60d', ...LIVE })).catch(() => null);
+          if (long?.length) {
+            const byT = new Map(long.map((c) => [c.t, c]));
+            for (const c of m5 || []) byT.set(c.t, c);
+            series['5m'] = [...byT.values()].sort((x, y) => x.t - y.t);
+          }
+          series['15m'] = series['5m'] ? aggregate(series['5m'], 900, 300) : null;
+        }
+        if (tfs.includes('1m')) series['1m'] = await cached('gc1m', 60, () => fetchYahoo('GC=F', '1m', { range: '5d', ...LIVE })).catch(() => null);
+        return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx, vix, aux, series };
+      }
       const [m5, d1, fx, vix, aux, ...more] = await Promise.all([
         fetchCandles(300),
         cachedHistory(86400, 500, 3600),
