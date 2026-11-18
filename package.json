@@ -38,7 +38,8 @@
     "ftmo-long": "node --max-old-space-size=8192 ftmo-long.js",
     "dukascopy": "python3 scripts/dukascopy.py",
     "histdata": "python3 scripts/histdata.py",
-    "ftmo-real": "node --max-old-space-size=12288 ftmo-real.js"
+    "ftmo-real": "node --max-old-space-size=12288 ftmo-real.js",
+    "ftmo-spx": "node --max-old-space-size=8192 ftmo-spx.js"
   },
   "engines": {
     "node": ">=20"
