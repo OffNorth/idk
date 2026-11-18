@@ -65,6 +65,10 @@ module.exports = {
   // Graphique du portefeuille publié sur le canal toutes les X heures (0 = jamais)
   chartHours: num('CHART_HOURS', 24),
 
+  // Trades de scalp (bougies 1 / 5 / 15 min) : 1 = un seul résumé par jour à DIGEST_HOUR_UTC, 0 = un message par trade
+  scalpDigest: num('SCALP_DIGEST', 1) === 1,
+  digestHourUtc: Math.min(23, Math.max(0, num('DIGEST_HOUR_UTC', 21))),
+
   // Compte FTMO simulé : suit les trades des stratégies listées (marché:id) avec une taille au risque
   ftmoEnabled: num('FTMO', 1) === 1,
   ftmoStrategies: list('FTMO_STRATEGIES', 'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m'),

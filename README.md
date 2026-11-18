@@ -333,6 +333,10 @@ aucune dépendance à installer).
 - **Sous chaque ouverture / clôture** : 🧾 carte du trade (résultat, entrée, sortie, stop, durée, cours pendant le trade),
   🕯 cours avec les niveaux (entrée, stop, objectif, sortie), ℹ️ fiche de la stratégie, 🎛 menu.
 - **Sous le bilan** : graphique, classement, positions.
+- **Résumé du jour** : les trades des stratégies de scalp (bougies 1, 5 et 15 min) ne sont pas publiés un par un mais dans
+  **un seul message par jour** à `DIGEST_HOUR_UTC` (21 h UTC, après la clôture de New York) : trades, % gagnants et gain par
+  marché et par stratégie, positions ouvertes, état du compte FTMO simulé. `SCALP_DIGEST=0` pour revenir à un message par trade.
+  Les stratégies journalières (quelques trades par mois) gardent leurs messages.
 - **🎯 Pronostic du jour** (jeu entre membres, sans argent) : chaque jour de semaine à `GAME_HOUR_UTC` (13 h UTC par défaut),
   le bot publie le cours de l'or et du Nasdaq avec les boutons ▲ Hausse / ▼ Baisse. On vote pendant `GAME_VOTE_HOURS` heures
   (vote modifiable). Au jour de bourse suivant, même heure, le bot compare les cours, donne 1 point par bonne réponse, publie
