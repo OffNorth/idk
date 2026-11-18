@@ -292,6 +292,17 @@ La seule stratégie qui passait (`x_rsi2`) est un retour à la moyenne court dan
 risque 0,5 % par trade → **80 % de réussite, 42 jours médians** (période récente 53 %) ; 0,75 % → 72 % (27 j) ;
 1 % → 64 % (20 j, plus d'échecs sur la perte du jour). Le compte FTMO simulé suit donc ces 4 stratégies à **0,5 %**.
 
+### Nasdaq (`npm run ftmo-nas`) — rien ne passe avec les données gratuites
+
+Données disponibles gratuitement : ^NDX journalier depuis 1985, NQ=F en 1 h sur 2 ans, en 5 / 15 min sur 60 jours seulement.
+- **Journalier** (retours à la moyenne « Connors » : IBS, RSI cumulé, Double 7, RSI 2, 3 jours de baisse, repli de 5 %, %b,
+  début de mois, mardi, pic de VIX ; stop d'origine et stop serré 1,5 ATR) : espérance positive pour plusieurs
+  (repli de 5 % +0,26 R, pic de VIX +0,21 R, RSI cumulé +0,16 R en 2010–2026), mais **moins de 2 trades par mois** :
+  0 % de challenges réussis en moins de 6 mois, même à 1,5 % de risque et en portefeuille.
+- **1 h** (famille de retour à la moyenne) : 0 à 21 % de réussite, rien de retenu.
+- Pour aller plus loin il faut plusieurs années de bougies 1 / 5 min (payant : FirstRate Data, Databento ; ou clé gratuite
+  d'une API de données comme Polygon, ~2 ans de minutes sur QQQ).
+
 Sources des règles : pages de comparatifs 2026 (ex. propfirm-escape-pod, tradetanto) ; le levier FTMO n'a pas été confirmé
 (réglable avec `FTMO_LEVERAGE`).
 
