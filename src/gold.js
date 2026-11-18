@@ -54,6 +54,30 @@ async function cachedHistory(granularity, days, ttlSec) {
   return hit ? hit.data : fetchCandles(granularity);
 }
 
+/**
+ * Historique glissant (scalp) : téléchargé une fois sur `days` jours, puis complété à chaque passage
+ * par les 300 dernières bougies (une seule requête), au lieu de tout re-télécharger.
+ */
+const rolling = new Map();
+async function rollingHistory(granularity, days) {
+  const key = `${granularity}:${days}`;
+  let hit = rolling.get(key);
+  if (!hit || Date.now() - hit.full > 6 * 3_600_000) {
+    const data = await fetchHistory(days, granularity);
+    if (data.length > 50) {
+      hit = { full: Date.now(), map: new Map(data.map((c) => [c.t, c])) };
+      rolling.set(key, hit);
+    }
+  } else {
+    const recent = await fetchCandles(granularity);
+    for (const c of recent || []) hit.map.set(c.t, c);
+  }
+  if (!hit) return fetchCandles(granularity);
+  const from = Math.floor(Date.now() / 1000) - days * 86400;
+  for (const t of hit.map.keys()) if (t < from) hit.map.delete(t);
+  return [...hit.map.values()].sort((a, b) => a.t - b.t);
+}
+
 /** EUR/USD journalier (Kraken, ~2 ans), gardé 1 h en mémoire. Sert de mesure de la force du dollar. */
 async function fetchEurUsd() {
   const hit = cache.get('eurusd');
@@ -162,10 +186,11 @@ function unrealized(pos, price) {
  */
 function backtest(strategy, candles, {
   size = 1000, feePct = 0.05, daily = null, from = 0, to = Infinity, barSec = 3600, fx = null, vix = null, aux = {}, ind: pre = null,
-  compound = false, capital: startCapital = size, positionPct = 100, curveEvery = 0, financingPct = 0,
+  compound = false, capital: startCapital = size, positionPct = 100, curveEvery = 0, financingPct = 0, market = null,
 } = {}) {
-  const ind = pre || (strategy.intraday ? require('./intraday').computeIntraday(candles, barSec)
-    : strategy.scalp ? computeScalp(candles, barSec) : computeAll(candles, daily, barSec, fx, vix, aux));
+  const ind = pre || (strategy.compute ? strategy.compute(candles, barSec, market || strategy.markets?.[0])
+    : strategy.intraday ? require('./intraday').computeIntraday(candles, barSec)
+      : strategy.scalp ? computeScalp(candles, barSec) : computeAll(candles, daily, barSec, fx, vix, aux));
   const trades = [];
   const curve = [];
   let pos = null;
@@ -292,16 +317,19 @@ class MarketTrader {
       return [];
     }
     const now = Math.floor(Date.now() / 1000);
-    // Indicateurs calculés une fois par unité de temps, sur les bougies clôturées
+    // Indicateurs calculés une fois par unité de temps et par famille de stratégies, sur les bougies clôturées
+    const kindOf = (s) => (s.compute ? 'scalp2' : s.intraday ? 'intraday' : 'all');
     const byTf = {};
-    for (const tf of tfs) {
+    for (const strat of this.strategies) {
+      const tf = tfOf(strat);
+      const key = `${tf}:${kindOf(strat)}`;
+      if (byTf[key] || !series[tf]) continue;
       const sec = TF_SEC[tf];
-      const raw = series[tf];
-      if (!raw) continue;
-      const closed = raw.filter((c) => c.t + sec <= now);
-      const intraday = this.strategies.some((s) => s.intraday && tfOf(s) === tf);
-      const ind = intraday ? require('./intraday').computeIntraday(closed, sec, series['1h']) : computeAll(closed, daily, sec, fx, vix, aux);
-      byTf[tf] = { closed, ind };
+      const closed = series[tf].filter((c) => c.t + sec <= now);
+      const ind = strat.compute ? strat.compute(closed, sec, M.id)
+        : strat.intraday ? require('./intraday').computeIntraday(closed, sec, series['1h'])
+          : computeAll(closed, daily, sec, fx, vix, aux);
+      byTf[key] = { closed, ind };
     }
     const events = [];
     this.state.lastPrice = price;
@@ -323,7 +351,7 @@ class MarketTrader {
       }
 
       // 2. Nouvelle bougie clôturée sur l'unité de temps de la stratégie → évaluation
-      const d = byTf[tfOf(strat)];
+      const d = byTf[`${tfOf(strat)}:${kindOf(strat)}`];
       if (!d) continue;
       const { closed, ind } = d;
       const i = closed.length - 1;
@@ -388,4 +416,4 @@ class MarketTrader {
   }
 }
 
-module.exports = { MarketTrader, backtest, unrealized, fetchHistory, fetchBacktestData, fetchCandles, cachedHistory, fetchEurUsd, hitInCandle, closePos };
+module.exports = { MarketTrader, backtest, unrealized, fetchHistory, fetchBacktestData, fetchCandles, cachedHistory, rollingHistory, fetchEurUsd, hitInCandle, closePos };

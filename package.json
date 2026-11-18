@@ -11,7 +11,8 @@
     "test": "node --test test/*.test.js",
     "research": "node research.js",
     "scalp": "node --max-old-space-size=3072 scalp.js",
-    "nas-intraday": "node nas-intraday.js"
+    "nas-intraday": "node nas-intraday.js",
+    "scalp2": "node --max-old-space-size=4096 scalp2.js"
   },
   "engines": {
     "node": ">=20"

@@ -3,7 +3,7 @@
  *   gold   : or via PAXG/USD (Coinbase, secours Kraken) — EUR/USD Kraken pour la stratégie dollar
  *   nas100 : Nasdaq 100 via l'indice ^NDX (Yahoo Finance)
  */
-const { MarketTrader, fetchCandles, cachedHistory, fetchEurUsd } = require('./gold');
+const { MarketTrader, fetchCandles, cachedHistory, rollingHistory, fetchEurUsd } = require('./gold');
 const { fetchYahoo } = require('./yahoo');
 const { aggregate } = require('./history');
 const { auxSymbol } = require('./aux');
@@ -56,7 +56,8 @@ function goldMarket(cfg) {
         needsFx ? fetchEurUsd() : null,
         needsVix ? yahoo('vix1d', '^VIX') : null,
         fetchAux('gold', auxList),
-        ...tfs.map((tf) => (tf === '1d' ? null : tf === '6h' ? cachedHistory(21600, 150, 1800) : fetchCandles(3600))),
+        ...tfs.map((tf) => (tf === '1d' ? null : tf === '6h' ? cachedHistory(21600, 150, 1800)
+          : tf === '5m' ? rollingHistory(300, 5) : tf === '1m' ? rollingHistory(60, 2) : fetchCandles(3600))),
       ]);
       const series = {};
       tfs.forEach((tf, k) => {

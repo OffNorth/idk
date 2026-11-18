@@ -206,7 +206,31 @@ août 2025). Frais 0,01 % par côté (CFD NAS100).
 - Les montants sont en « 1 000 $ par trade » (sans réinvestissement), donc non comparables directement à
   l'achat-conservation de l'indice, qui a été multiplié par ~100 depuis 1985.
 
-## Scalp (bougies 1 et 5 min) — testé, non retenu (`npm run scalp`)
+## Scalp, 2e série (bougies 1 et 5 min, or + Nasdaq) — `npm run scalp2`
+
+9 nouvelles idées, pensées pour viser des mouvements plus amples que la 1re série (objectif ≥ 1,5–2 fois le risque),
+aux heures où le marché bouge (or : Londres + New York ; Nasdaq : séance de New York, heure d'été gérée), dans le sens
+de la tendance 1 h quand c'est pertinent. Code : `src/scalp2.js`. Frais par côté réalistes : or 0,004 %, Nasdaq 0,003 %.
+
+| Stratégie | Idée | Résultat |
+|---|---|---|
+| **RSI 2 dans la tendance 1 h** (`x_rsi2`) | tendance 1 h haussière + RSI 2 < 5 sur 5 min → achat, sortie RSI 2 > 60, stop 1,5 ATR (et l'inverse) | ✅ **Or 5 min, 6 ans** : 2,7 trades/jour, 64 % gagnants, PF 1,70 (choix) / 1,27 (vérification), positive chaque année 2020–2026 (2025 ≈ 0), robuste aux réglages, supporte jusqu'à 0,01 % de frais. **Active sur l'or.** Nulle en 1 min (trop de trades → frais) et non validée sur le Nasdaq |
+| Repli sur EMA 20 dans la tendance (`x_trendpb`) | contact de l'EMA 20 puis reprise, stop sous les 5 dernières bougies, objectif 2R | ❌ perdante en 5 min, ≈ 0 en 1 min |
+| Rebond sur le VWAP (`x_vwapbounce`) | tendance au-dessus du VWAP, retour au VWAP | ❌ trop rare |
+| Chasse aux stops du range de nuit (`x_rangesweep`) | range asiatique (or) / pré-ouverture (Nasdaq) dépassé puis réintégré | ❌ perdante |
+| Faux départ sur la veille (`x_pdsweep`) | dépassement du plus haut / bas de la veille puis retour, objectif VWAP | ❌ ≈ 0 après frais |
+| Cassure des 5 premières minutes (`x_orb5`) | 1re bougie de la séance, cassure avec volume dans la tendance | ❌ perdante sur l'or, trop peu de trades Nasdaq |
+| Momentum de la dernière demi-heure (`x_lasthalf`) | effet Gao et al. (2018) : le sens de la journée continue de 15 h 30 à 16 h | ❌ perdante (6 ans d'or, 60 jours de Nasdaq) |
+| Compression puis cassure (`x_squeeze`) | bandes de Bollinger au plus serré sur 100 bougies, cassure | ❌ perdante |
+| Cassure du plus haut des 20 bougies (`x_break20`) | cassure avec volume dans la tendance | ❌ perdante sur l'or ; Nasdaq 1 min retenue au choix puis perdante en vérification |
+
+**Nasdaq** : Yahoo ne donne gratuitement que 60 jours en 5 min et ~30 jours en 1 min (future NQ=F) : trop court pour valider
+un scalp. Aucune stratégie n'y passe le test choix → vérification ; aucune n'est activée sur le Nasdaq.
+
+En direct, `x_rsi2` trade le PAXG sur des bougies 5 min Coinbase (historique glissant de 5 jours) ; quand une stratégie
+1 / 5 min est active, le bot vérifie chaque minute pour entrer juste après la clôture de la bougie.
+
+## Scalp (bougies 1 et 5 min) — 1re série, testée, non retenue (`npm run scalp`)
 
 6 stratégies de scalp testées, uniquement pendant les séances de Londres et New York (7 h–20 h UTC), tout fermé le soir :
 EMA 9/21 + VWAP, retour au VWAP (±2 écarts-types + RSI 7), Bollinger + RSI 7, cassure du range d'ouverture

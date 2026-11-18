@@ -44,7 +44,7 @@ const iso = (t) => new Date(t * 1000).toISOString().slice(0, 10);
         'trades/an  brut/trade  frais max | ' +
         FEES.filter((f) => f > 0).map((f) => `frais ${f}% : choix / vérif`.padEnd(28)).join(' | '),
     );
-    for (const base of STRATEGIES.filter((s) => s.scalp)) {
+    for (const base of STRATEGIES.filter((s) => s.scalp && !s.scalp2)) { // 2e série : scalp2.js
       const s = withTf(base, tf);
       const run = (fee, range) => backtest(s, candles, { size: SIZE, feePct: fee, barSec: TF_SEC[tf], ind, ...range });
       const gross = run(0, {});

@@ -15,6 +15,7 @@ const FAMILIES = [
   ['Spécifiques au Nasdaq', ['sma200', 'macro', 'lowvol', 'vixcalm', 'halloween', 'rates', 'macd_long', 'sox', 'dollarweak', 'ibs', 'cumrsi', 'ema_long', 'tom', 'double7', 'down3', 'dip5', 'vixspike', 'tuesday', 'pctb']],
   ['Intraday Nasdaq (5 min)', ['sweep', 'orb15', 'vwappb']],
   ['Scalp (1–5 min)', ['s_emavwap', 's_vwaprev', 's_bbrsi', 's_orb', 's_stoch', 's_burst']],
+  ['Scalp 2e série (or et Nasdaq, 1–5 min)', ['x_rsi2', 'x_trendpb', 'x_vwapbounce', 'x_rangesweep', 'x_pdsweep', 'x_orb5', 'x_lasthalf', 'x_squeeze', 'x_break20']],
   ['Référence', ['hold']],
 ];
 
@@ -84,6 +85,15 @@ const VERDICT = {
   s_orb: ['rejet', 'perd même avant frais'],
   s_stoch: ['rejet', 'perd même avant frais'],
   s_burst: ['rejet', 'perd même avant frais'],
+  x_rsi2: ['retenue', 'Or 5 min : 2,7 trades/jour, 64 % gagnants, positive chaque année 2020–2026 (frais 0,004 %) ; nulle en 1 min et sur le Nasdaq'],
+  x_trendpb: ['rejet', 'perdante en 5 min ; ≈ 0 en 1 min après frais'],
+  x_vwapbounce: ['rejet', 'trop rare, perdante'],
+  x_rangesweep: ['rejet', 'perdante (5 % de gagnants en 1 min)'],
+  x_pdsweep: ['rejet', '≈ 0 après frais'],
+  x_orb5: ['rejet', 'perdante sur l’or ; trop peu de trades sur le Nasdaq'],
+  x_lasthalf: ['rejet', 'perdante sur 6 ans d’or et sur 60 jours de Nasdaq'],
+  x_squeeze: ['rejet', 'perdante'],
+  x_break20: ['rejet', 'perdante sur l’or ; Nasdaq 1 min retenue au choix puis perdante en vérification'],
   hold: ['ref', 'Or +10,8 %/an (pire baisse −44 %) · Nasdaq +17,0 %/an (−36 %)'],
 };
 

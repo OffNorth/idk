@@ -268,8 +268,12 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
   await bot.api.setChatMenuButton({ menu_button: { type: 'commands' } }).catch(() => {});
   await channel.check();
 
+  // Stratégies de scalp (bougies 1 / 5 min) actives : vérification chaque minute pour entrer à la clôture de la bougie
+  const { tfOf } = require('./src/strategies');
+  const scalp = activeMarkets(cfg).some((m) => selectStrategies(m.strategies).some((s) => ['1m', '5m'].includes(tfOf(s))));
+  const every = scalp ? Math.min(cfg.checkIntervalMin, 1) : cfg.checkIntervalMin;
   tick();
-  setInterval(tick, cfg.checkIntervalMin * 60_000);
+  setInterval(tick, every * 60_000);
 
   bot.start({ onStart: (me) => console.log(`Bot @${me.username} démarré.`) });
 })().catch((err) => {

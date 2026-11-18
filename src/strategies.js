@@ -1137,6 +1137,12 @@ function longOnly(base, tf = base.tf) {
 
 STRATEGIES.push(longOnly(STRATEGIES.find((s) => s.id === 'macd'), '1d'), longOnly(STRATEGIES.find((s) => s.id === 'ema'), '1d'));
 
+/* Scalp 2e série (or et Nasdaq, bougies 1 / 5 min) : voir src/scalp2.js et npm run scalp2 */
+{
+  const { SCALP2, computeScalp2 } = require('./scalp2');
+  STRATEGIES.push(...SCALP2.map((s) => ({ ...s, compute: (candles, barSec, market) => computeScalp2(candles, barSec, market) })));
+}
+
 /* Intraday NAS100 (formation TradingView, module 5) : voir src/intraday.js */
 STRATEGIES.push(...require('./intraday').INTRADAY);
 
