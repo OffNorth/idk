@@ -95,3 +95,14 @@ test('compte FTMO unique or + Nasdaq : un risque par marché', () => {
   // risque Nasdaq 1 % de 100 000 $ sur un stop de 1 % → 100 000 $ engagés ; +1 % → +1 000 $ (moins les frais)
   assert.ok(Math.abs(acct.load().balance - 101000) < 20, String(acct.load().balance));
 });
+
+test('levier dynamique : risque divisé par 2 dès 2 positions ouvertes', () => {
+  const { cfg, store } = setup({ ftmoCombined: false, ftmoSizing: 'plusieurs positions → moins' });
+  const { createFtmo } = require('../src/ftmoAccount');
+  const acct = createFtmo({ cfg, store, account: 'gold' });
+  const mk = (k) => ({ type: 'open', market, strategy: { id: 'x_rsi2', name: 'Scalp' }, pos: { side: 'long', entry: 2000, sl: 1980, initSl: 1980, entryT: T0 + k } });
+  acct.onCycle([mk(0), mk(1), mk(2)], { gold: 2000 }, T0 + 2);
+  const n = Object.values(acct.load().open).map((p) => Math.round(p.notional));
+  // risque 1 % sur un stop de 1 % → 100 000 $ ; la 3e position (2 déjà ouvertes) → 50 000 $
+  assert.deepStrictEqual(n, [100000, 100000, 50000]);
+});

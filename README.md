@@ -398,6 +398,24 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > années, les scalps or rapportent moins : environ une évaluation sur deux réussit. `FTMO_COMBINED=0` pour revenir aux
 > deux comptes séparés.
 
+> **Levier dynamique (`npm run ftmo-sizing`, `src/sizing.js`, `FTMO_SIZING`)** : la taille de chaque trade est déjà
+> « risque ÷ distance au stop » (le levier varie donc avec le stop : un stop serré donne plus de levier, plafonné à 1:30).
+> 12 règles qui ajustent EN PLUS ce risque ont été testées (volatilité, forme récente de la stratégie, compte en perte,
+> perte du jour, proche de l'objectif, positions déjà ouvertes, combinaisons ; choix 2020–2024, vérification 2 ans) :
+>
+> | Règle | Choix | Vérification |
+> |---|---|---|
+> | Risque fixe (avant) | 97 % (4 échecs perte du jour) | 46 % (10) |
+> | **Risque ÷ 2 dès 2 positions déjà ouvertes (retenue)** | **100 %** (0) | **45 %** (0) |
+> | Moins de risque proche de l'objectif | 93 % | 50 % |
+> | Moins de risque si marché agité | 90 % | 30 % |
+> | Plus de risque quand la stratégie gagne | 90 % | 40 % |
+> | Plus de risque quand le compte gagne | 74 % | 35 % |
+>
+> Aucune règle n'augmente vraiment la réussite : les échecs récents viennent surtout de la perte maximale (les scalps or
+> rapportent moins), pas du levier. La règle retenue supprime les échecs sur la perte du jour, à réussite égale ; le
+> levier de chaque position est affiché sur l'image `/ftmo`.
+
 > **Stratégies tirées de la littérature (`npm run ftmo-papers`, `src/research2.js`)** — aucune retenue :
 > - effet de nuit de l'or (Blose, Gondhalekar & Kort 2014 / 2018 ; thèse CBS « Gold Price Dynamics Around the Clock ») :
 >   24 variantes d'horaires, toutes perdantes sur 2020–2022 puis gagnantes depuis → pas stable ;

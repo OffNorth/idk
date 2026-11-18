@@ -8,6 +8,7 @@
  * (data/ftmo-nas.json, stratégies FTMO_NAS_STRATEGIES).
  */
 const { ftmoDay } = require('./ftmo');
+const { RULES } = require('./sizing');
 
 /** Réglages d'un compte FTMO simulé : 'gold' (or) ou 'nas100' (Nasdaq). */
 function accountOf(cfg, id = 'gold') {
@@ -91,8 +92,12 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         const stopPct = (Math.abs(p.entry - (p.initSl ?? p.sl)) / p.entry) * 100;
         if (!(stopPct > 0)) continue;
         if (cfg.ftmoDayStop > 0 && s.balance <= s.dayStart - (s.capital * cfg.ftmoDayStop) / 100) continue; // stop du jour maison
-        const notional = Math.min((s.balance * A.riskOf(ev.market.id)) / stopPct, s.balance * cfg.ftmoLeverage);
-        s.open[key(ev.market.id, ev.strategy.id, p.entryT)] = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, notional, entryT: p.entryT };
+        // Levier dynamique (src/sizing.js, FTMO_SIZING) : le risque du trade est ajusté selon l'état du compte
+        const rule = RULES[cfg.ftmoSizing] || RULES.fixe;
+        const mul = rule({ ...p, sid: `${ev.market.id}:${ev.strategy.id}` }, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: TARGET[s.phase] || 5, open: Object.keys(s.open).length });
+        if (!(mul > 0)) continue;
+        const notional = Math.min((s.balance * A.riskOf(ev.market.id) * mul) / stopPct, s.balance * cfg.ftmoLeverage);
+        s.open[key(ev.market.id, ev.strategy.id, p.entryT)] = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, notional, entryT: p.entryT, lev: notional / s.balance, mul };
         if (!s.days.includes(s.day)) s.days.push(s.day);
       } else if (ev.type === 'close') {
         const k = key(ev.market.id, ev.strategy.id, ev.trade.entryT);

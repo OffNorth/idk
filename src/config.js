@@ -110,6 +110,9 @@ module.exports = {
   ftmoCapital: num('FTMO_CAPITAL', 100000),
   ftmoRisk: num('FTMO_RISK_PCT', 0.5), // % du solde risqué par trade (distance au stop)
   ftmoLeverage: num('FTMO_LEVERAGE', 30),
+  // Levier dynamique (src/sizing.js) : « plusieurs positions → moins » = risque ÷ 2 dès 2 positions déjà ouvertes
+  // (npm run ftmo-sizing : supprime les échecs sur la perte du jour, réussite égale) ; « fixe » = risque constant
+  ftmoSizing: process.env.FTMO_SIZING || 'plusieurs positions → moins',
   ftmoDayStop: num('FTMO_DAY_STOP_PCT', 2), // plus de nouveau trade dans la journée après −2 % (0 = jamais)
   ftmoFeeGold: num('FTMO_FEE_GOLD_PCT', 0.005),
   ftmoFeeNas: num('FTMO_FEE_NAS_PCT', 0.003),

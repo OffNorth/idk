@@ -342,7 +342,7 @@ function ftmoImage(st) {
   rows.forEach((r, i) => {
     const y = 450 + i * 26;
     cv.text(`${r.side === 'long' ? '▲' : '▼'} ${r.name}`, 48, y, { size: 15, color: THEME.text, maxWidth: 520 });
-    cv.text(`${price(r.entry)}${r.exit ? ` → ${price(r.exit)}` : ''} · ${money(r.notional)} engagés`, 760, y, { size: 15, color: THEME.muted, align: 'right' });
+    cv.text(`${price(r.entry)}${r.exit ? ` → ${price(r.exit)}` : ''} · ${money(r.notional)} engagés${r.lev ? ` (levier ${r.lev.toFixed(1)})` : ''}`, 760, y, { size: 15, color: THEME.muted, align: 'right' });
     if (r.pnl !== undefined) cv.text(`${r.pnl >= 0 ? '+' : '−'}${money(Math.abs(r.pnl))}`, 952, y, { style: 'b', size: 15, color: tone(r.pnl), align: 'right' });
   });
   footer(cv, 'Simulation d’un challenge FTMO · argent fictif · pas un conseil financier');
