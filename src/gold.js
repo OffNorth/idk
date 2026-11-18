@@ -372,7 +372,7 @@ class MarketTrader {
         const size = Math.max(0, (acc.capital * M.positionPct) / 100);
         if (size <= 0) continue;
         acc.position = openPos(sig.entry, price, sig, size, now);
-        events.push({ type: 'open', market: M, strategy: strat, pos: acc.position, rsi: ind.rsi[i] });
+        events.push({ type: 'open', market: M, strategy: strat, pos: acc.position, rsi: ind.rsi?.[i] ?? ind.rsi2?.[i] ?? null });
       }
     }
     this.snapshot(now);

@@ -11,9 +11,11 @@ function num(name, def) {
 
 // Anciennes listes par défaut (copiées depuis .env.example) : remplacées par la sélection actuelle
 const OLD_DEFAULTS = [
+  'gold:x_rsi2',
   'season,sma200,mom12,tsmom,high52,macd@1d,hold',
   'mom12,sma200,lowvol,vixcalm,halloween,rates,tsmom,macd_long,sweep,hold',
   'season,seasonplus,golden,trendmix,sma200,mom12_1,mom12,tsmom,high52,macd@1d,hold',
+  'season,seasonplus,golden,trendmix,sma200,mom12_1,mom12,tsmom,high52,macd@1d,x_rsi2,hold',
 ];
 
 function list(name, def) {
@@ -39,7 +41,7 @@ module.exports = {
   goldFeePct: num('GOLD_FEE_PCT', 0.05),
   // Par défaut : les combinaisons retenues par le banc d'essai (npm run research) + la référence
   // Retenues par le banc d'essai sur 25 ans d'or (npm run research -- goldlong) + référence
-  goldStrategies: list('GOLD_STRATEGIES', 'season,seasonplus,golden,trendmix,sma200,mom12_1,mom12,tsmom,high52,macd@1d,x_rsi2,hold'),
+  goldStrategies: list('GOLD_STRATEGIES', 'season,seasonplus,golden,trendmix,sma200,mom12_1,mom12,tsmom,high52,macd@1d,x_rsi2,m_bb@5m,m_ibs,m_rsi2x,hold'),
 
   // Financement de nuit annuel (%) — 0 pour le PAXG (pas de levier)
   goldFinancingPct: num('GOLD_FINANCING_PCT', 0),
@@ -62,9 +64,9 @@ module.exports = {
 
   // Compte FTMO simulé : suit les trades des stratégies listées (marché:id) avec une taille au risque
   ftmoEnabled: num('FTMO', 1) === 1,
-  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:x_rsi2'),
+  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x'),
   ftmoCapital: num('FTMO_CAPITAL', 100000),
-  ftmoRisk: num('FTMO_RISK_PCT', 1), // % du solde risqué par trade (distance au stop)
+  ftmoRisk: num('FTMO_RISK_PCT', 0.5), // % du solde risqué par trade (distance au stop)
   ftmoLeverage: num('FTMO_LEVERAGE', 30),
   ftmoDayStop: num('FTMO_DAY_STOP_PCT', 2), // plus de nouveau trade dans la journée après −2 % (0 = jamais)
   ftmoFeeGold: num('FTMO_FEE_GOLD_PCT', 0.005),

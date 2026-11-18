@@ -16,6 +16,7 @@ const FAMILIES = [
   ['Intraday Nasdaq (5 min)', ['sweep', 'orb15', 'vwappb']],
   ['Scalp (1–5 min)', ['s_emavwap', 's_vwaprev', 's_bbrsi', 's_orb', 's_stoch', 's_burst']],
   ['Style FTMO (stop clair, taille au risque)', ['f_pullback', 'f_pdbreak', 'f_nightbreak', 'f_insideday', 'f_nr7', 'f_weekbreak']],
+  ['Retour à la moyenne dans la tendance (FTMO)', ['m_bb', 'm_ibs', 'm_rsi2x', 'm_vwap', 'm_down3']],
   ['Scalp 2e série (or et Nasdaq, 1–5 min)', ['x_rsi2', 'x_trendpb', 'x_vwapbounce', 'x_rangesweep', 'x_pdsweep', 'x_orb5', 'x_lasthalf', 'x_squeeze', 'x_break20']],
   ['Référence', ['hold']],
 ];
@@ -101,6 +102,11 @@ const VERDICT = {
   f_insideday: ['rejet', 'or 1 jour +0,02 R/trade, Nasdaq perdante'],
   f_nr7: ['rejet', 'or et Nasdaq ≈ 0 ou perdante en vérification'],
   f_weekbreak: ['rejet', 'or 1 jour +0,08 R/trade (trop faible), Nasdaq perdante en vérification'],
+  m_bb: ['retenue', 'Or 5 min : challenge FTMO réussi 73 % (récent 53 %), 34 trades/mois'],
+  m_ibs: ['retenue', 'Or 15 min : challenge FTMO réussi 71 % (récent 48 %), 38 trades/mois'],
+  m_rsi2x: ['retenue', 'Or 15 min : retenue au test, mais challenge FTMO réussi 35 % seulement'],
+  m_vwap: ['dispo', 'Or 5 min : réussite FTMO 51 % (récent 61 %) mais pas retenue sur la période de choix'],
+  m_down3: ['rejet', 'Or : ≈ 0 en vérification'],
   hold: ['ref', 'Or +10,8 %/an (pire baisse −44 %) · Nasdaq +17,0 %/an (−36 %)'],
 };
 

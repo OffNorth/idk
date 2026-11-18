@@ -280,7 +280,7 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
 
   // Stratégies de scalp (bougies 1 / 5 min) actives : vérification chaque minute pour entrer à la clôture de la bougie
   const { tfOf } = require('./src/strategies');
-  const scalp = activeMarkets(cfg).some((m) => selectStrategies(m.strategies).some((s) => ['1m', '5m'].includes(tfOf(s))));
+  const scalp = activeMarkets(cfg).some((m) => selectStrategies(m.strategies).some((s) => ['1m', '5m', '15m'].includes(tfOf(s))));
   const every = scalp ? Math.min(cfg.checkIntervalMin, 1) : cfg.checkIntervalMin;
   tick();
   setInterval(tick, every * 60_000);

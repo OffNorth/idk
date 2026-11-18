@@ -274,6 +274,24 @@ trade** (taille = risque ÷ distance au stop, levier max 1:30), frais d'un CFD (
 | Tendances journalières (croix dorée, tendance 4 horizons, momentum 12 mois, moyenne 200 j) | 0 % | rentables, mais avec 1 % de risque sur un stop large il faut des années pour faire +10 % |
 | 6 nouvelles stratégies « style FTMO » : repli 1 h dans la tendance, cassure de la veille, cassure du range de nuit, jour intérieur, NR7, cassure de la semaine passée | 0 % | espérance nulle ou négative aux frais FTMO |
 
+### 2e recherche : retour à la moyenne dans la tendance (`npm run ftmo-mr`, `src/meanrev.js`)
+
+La seule stratégie qui passait (`x_rsi2`) est un retour à la moyenne court dans la tendance : 5 variantes testées en 5 min,
+15 min et 1 h, or et Nasdaq (tendance de l'unité supérieure : 1 h pour 5 / 15 min, jour pour 1 h ; stop 1,5 ATR).
+
+| Stratégie | Réussite FTMO < 6 mois, risque 1 % (tout / période récente) | |
+|---|---|---|
+| **`m_bb@5m`** : clôture sous la bande de Bollinger basse dans la tendance, sortie à la moyenne 20 (or 5 min) | **73 % / 53 %** | ✅ active |
+| **`m_ibs`** : clôture dans les 15 % bas de la bougie, sous l'EMA 20, dans la tendance (or 15 min) | **71 % / 48 %** | ✅ active |
+| `m_rsi2x` : RSI 2 < 10 + clôture basse (or 15 min) | 35 % / 34 % | ✅ active (diversification) |
+| `x_rsi2` (rappel, or 5 min) | 72 % / 43 % | ✅ active |
+| `m_vwap` (écart au VWAP, or 5 min) | 51 % / 61 % | non retenue sur la période de choix |
+| Les mêmes en 1 h, ou sur le Nasdaq (60 jours en 5 / 15 min, 2 ans en 1 h) | 0 % | trop lent ou pas assez de données |
+
+**Portefeuille des 4 sur un seul compte** (période 2020–2026, challenges lancés chaque semaine) :
+risque 0,5 % par trade → **80 % de réussite, 42 jours médians** (période récente 53 %) ; 0,75 % → 72 % (27 j) ;
+1 % → 64 % (20 j, plus d'échecs sur la perte du jour). Le compte FTMO simulé suit donc ces 4 stratégies à **0,5 %**.
+
 Sources des règles : pages de comparatifs 2026 (ex. propfirm-escape-pod, tradetanto) ; le levier FTMO n'a pas été confirmé
 (réglable avec `FTMO_LEVERAGE`).
 

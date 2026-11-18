@@ -1146,6 +1146,9 @@ STRATEGIES.push(longOnly(STRATEGIES.find((s) => s.id === 'macd'), '1d'), longOnl
 /* Stratégies « style FTMO » (stop clair, taille au risque) : voir src/ftmostrats.js et npm run ftmo */
 STRATEGIES.push(...require('./ftmostrats').FTMO);
 
+/* Retour à la moyenne dans la tendance (famille de x_rsi2) : voir src/meanrev.js et npm run ftmo-mr */
+STRATEGIES.push(...require('./meanrev').MEANREV);
+
 /* Intraday NAS100 (formation TradingView, module 5) : voir src/intraday.js */
 STRATEGIES.push(...require('./intraday').INTRADAY);
 
@@ -1153,7 +1156,7 @@ STRATEGIES.push(...require('./intraday').INTRADAY);
 /* Unités de temps                                                     */
 /* ------------------------------------------------------------------ */
 
-const TF_SEC = { '1m': 60, '5m': 300, '1h': 3600, '6h': 21600, '1d': 86400 };
+const TF_SEC = { '1m': 60, '5m': 300, '15m': 900, '1h': 3600, '6h': 21600, '1d': 86400 };
 const tfOf = (s) => s.tf || '1h';
 
 /** Copie d'une stratégie sur une autre unité de temps (id « ema@6h »). */

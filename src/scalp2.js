@@ -87,8 +87,10 @@ function computeScalp2(candles, barSec = 300, market = 'gold') {
   }
 
   // Tendance 1 h : EMA 20 et EMA 50 des bougies 1 h terminées
-  const h1e20 = htf(candles, 3600, (g) => ema(g.map((x) => x.c), 20));
-  const h1e50 = htf(candles, 3600, (g) => ema(g.map((x) => x.c), 50));
+  // (sur bougies 1 h et plus : tendance des JOURS terminés à la place)
+  const tSec = barSec >= 3600 ? 86400 : 3600;
+  const h1e20 = htf(candles, tSec, (g) => ema(g.map((x) => x.c), 20));
+  const h1e50 = htf(candles, tSec, (g) => ema(g.map((x) => x.c), 50));
 
   // Plus haut / bas de la veille, du jour, range asiatique (00 h–06 h UTC) / pré-ouverture (4 h–9 h 30 NY), range d'ouverture 5 min
   const pdh = new Array(n).fill(null);
@@ -150,6 +152,7 @@ function computeScalp2(candles, barSec = 300, market = 'gold') {
     candles, closes, barSec, market, min, day, wd, atr: a, vol, vAvg, vwap, h1e20, h1e50,
     pdh, pdl, dOpen, rHi, rLo, orHi, orLo, pClose, bb, bw, bwMin, hi20, lo20,
     ema20: ema(closes, 20), rsi2: rsi(closes, 2),
+    ibs: candles.map((c) => (c.h > c.l ? (c.c - c.l) / (c.h - c.l) : 0.5)),
     sess: nas ? { open: anchor, close: sessEnd } : { open: 7 * 60, close: 20 * 60 },
   };
 }
@@ -327,4 +330,4 @@ const SCALP2 = [
   },
 ];
 
-module.exports = { SCALP2, computeScalp2, nyOffset };
+module.exports = { SCALP2, computeScalp2, nyOffset, helpers: { active, flat, trendUp, trendDown, weekday } };

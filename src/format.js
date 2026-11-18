@@ -31,7 +31,7 @@ function goldEventMessage(ev) {
       `${mk} <b>${mn} · ${name}</b>`,
       `${p.side === 'long' ? '📈 <b>ACHAT</b> (long)' : '📉 <b>VENTE À DÉCOUVERT</b> (short)'} simulé à <b>$${p.entry.toFixed(2)}</b> · taille $${p.size}`,
       `Stop : $${p.sl.toFixed(2)}${ev.strategy.trail ? ' (suiveur)' : ''} · Objectif : ${p.tp ? `$${p.tp.toFixed(2)}` : 'signal de sortie'}`,
-      `<i>RSI ${Number(ev.rsi ?? 0).toFixed(0)} · paper trading, aucun argent réel</i>`,
+      `<i>${ev.rsi != null ? `RSI ${Number(ev.rsi).toFixed(0)} · ` : ""}paper trading, aucun argent réel</i>`,
     ].join('\n');
   }
   const t = ev.trade;
