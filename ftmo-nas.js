@@ -76,6 +76,32 @@ function judge(label, trades, split) {
     judge(s.name, r.list, hsplit);
   }
 
+  // 2 ans de bougies 1 min du QQQ (Polygon, clé gratuite) : toutes les stratégies intraday, en 5 min, 15 min et 1 h
+  try {
+    const { polygonBars } = require('./src/polygon');
+    const { aggregate } = require('./src/history');
+    const { computeIntraday } = require('./src/intraday');
+    const m1 = await polygonBars(CACHE, 'QQQ', 1, '2024-11-18', { log: () => {} });
+    const IDS = ['x_rsi2', 'm_ibs', 'm_bb', 'm_down3', 'm_vwap', 'm_rsi2x', 'x_trendpb', 'x_vwapbounce', 'x_rangesweep', 'x_pdsweep', 'x_orb5', 'x_lasthalf', 'x_squeeze', 'x_break20', 'orb15', 'vwappb', 'sweep'];
+    for (const tf of ['5m', '15m', '1h']) {
+      const c = aggregate(m1, TF_SEC[tf], 60);
+      const sp = c[Math.floor(c.length / 2)].t;
+      const xind = computeScalp2(c, TF_SEC[tf], 'nas100');
+      const iind = tf === '5m' ? computeIntraday(c, 300) : null;
+      console.log(`\n=== Nasdaq ${tf} (QQQ, Polygon) : ${iso(c[0].t)} → ${iso(c[c.length - 1].t)} · choix avant ${iso(sp)} · frais 0,003 % ===`);
+      for (const base of selectStrategies(IDS)) {
+        if (base.intraday && tf !== '5m') continue;
+        const s = withTf(base, tf);
+        const r = backtest(s, c, { size: 1000, feePct: 0.003, barSec: TF_SEC[tf], ind: base.intraday ? iind : xind, market: 'nas100' });
+        if (r.trades < 20) continue;
+        const j = judge(`${base.name} [${tf}]`, r.list, sp);
+        if (j.sel && j.sb.expR > 0.03) kept.push({ s, ...j, intraday: true });
+      }
+    }
+  } catch (err) {
+    console.log(`\n(QQQ Polygon indisponible : ${err.message})`);
+  }
+
   console.log(`\nRetenues (choix) et positives en vérification : ${kept.length}`);
   for (const k of kept) console.log(`  ${k.s.id} : ${f2(k.sb.expR)} R/trade 2010–2026`);
   // Une seule version par stratégie (la meilleure en vérification), sinon les mêmes signaux compteraient deux fois
