@@ -170,7 +170,10 @@ Le bot trade aussi le **Nasdaq 100** en simulation, comme un CFD NAS100 :
 | **Plus bas de 10 jours dans la tendance** (`n_low10`, journalier) | clôture au plus bas de 10 séances au-dessus de la moyenne 200 j → achat, revente au plus haut de 5 séances | ✅ +128 % cumulés 1985–2009, +62 % 2010–2026, 73 % gagnants. **Active** |
 | **Rebond après une forte baisse d'un jour** (`n_drop`) | −2,5 % en une séance au-dessus de la moyenne 200 j → achat, revente au-dessus du plus haut de la veille | ✅ +69 % puis +48 %, 73 % gagnants. **Active** |
 | **Chute rapide des taux** (`n_yieldfall`) | taux 10 ans −5 % en 5 séances et Nasdaq > moyenne 50 j → achat, revente quand les taux remontent au-dessus de leur moyenne 10 j | ✅ +52 % puis +74 %, 70 % gagnants. **Active** |
+| **Chute rapide du dollar** (`n_dollarfall`) | DXY −2 % en 10 séances et Nasdaq > moyenne 50 j → achat, revente quand le dollar repasse au-dessus de sa moyenne 10 j | ✅ +68 % puis +15 %, 55 % gagnants. **Active** |
 | Journée de retournement (`n_reversal`), vendre la panique du VIX (`n_vixfade`) | | ❌ perdante / trop faible sur 1985–2009 |
+| Nouveau plus haut d'un an (`n_ath`), semi-conducteurs en tête (`n_soxlead`) | suivi de tendance | ❌ ≈ 0 sur 1985–2009 (bonnes seulement depuis 2010) |
+| Très forte journée de hausse (`n_bigup`), repli d'un mois dans une forte tendance (`n_mompb`) | | ❌ perdantes sur 2010–2026 |
 | **Semaine d'expiration des options** (`n_opex`, journalier) | achat le vendredi d'avant, revente le 3e vendredi du mois | ✅ +34 % puis +25 %, 55 % gagnants. **Active** |
 | Rallye de Noël (`n_santa`) | 5 derniers jours de décembre + 2 premiers de janvier | ❌ +58 % 1985–2009 mais −2,6 % 2010–2026 |
 | 1re demi-heure → dernière (`n_halfhalf`), journée de tendance VWAP (`n_trendday`) | intraday QQQ | ❌ perdantes la 2e année |

@@ -245,6 +245,67 @@ const NAS2 = [
       return { entry: jump && x.closes[i] > x.sma200[i] ? 'long' : null, exitLong: calm, exitShort: true, sl: 3 * x.atr[i], tp: null };
     },
   },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 260,
+    id: 'n_ath',
+    name: 'Nasdaq : nouveau plus haut historique',
+    desc: 'Suivi de tendance : achat quand le Nasdaq clôture à un nouveau plus haut de 1 an (marché en pleine forme), revente si la baisse depuis le plus haut atteint 5 % (stop suiveur sur clôture). Stop de protection 3 ATR.',
+    evaluate(x, i) {
+      const c = x.closes[i];
+      return { entry: c >= x.c252.max[i] ? 'long' : null, exitLong: false, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+    trail(pos, x, i) {
+      return pos.best * 0.95;
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 260,
+    needsAux: ['sox'],
+    id: 'n_soxlead',
+    name: 'Nasdaq : les semi-conducteurs en tête',
+    desc: 'Les puces (indice SOX) anticipent souvent la tech : si le SOX a pris au moins 3 points de plus que le Nasdaq sur 10 séances et que le Nasdaq est au-dessus de sa moyenne 50 jours, achat ; revente au bout de 10 séances environ (quand l’avance du SOX disparaît) ou si le Nasdaq passe sous sa moyenne 50. Stop 3 ATR.',
+    evaluate(x, i) {
+      const sx = x.sox;
+      if (i < 12 || sx.c[i] === null || !sx.c[i - 10]) return { entry: null, exitLong: x.closes[i] < x.sma50[i], exitShort: true, sl: 3 * x.atr[i], tp: null };
+      const lead = (sx.c[i] / sx.c[i - 10] - 1) - (x.closes[i] / x.closes[i - 10] - 1);
+      return { entry: lead > 0.03 && x.closes[i] > x.sma50[i] ? 'long' : null, exitLong: lead < 0 || x.closes[i] < x.sma50[i], exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 260,
+    needsDxy: true,
+    id: 'n_dollarfall',
+    name: 'Nasdaq : chute rapide du dollar',
+    desc: 'Quand l’indice du dollar (DXY) baisse de plus de 2 % en 10 séances, les grandes entreprises tech (revenus à l’étranger) en profitent : achat du Nasdaq s’il est au-dessus de sa moyenne 50 jours, revente quand le dollar repasse au-dessus de sa moyenne 10 jours. Stop 3 ATR.',
+    evaluate(x, i) {
+      const d = x.dxy;
+      const fall = i >= 10 && d.c[i] !== null && d.c[i - 10] && d.c[i] / d.c[i - 10] - 1 < -0.02;
+      const up = d.c[i] !== null && d.sma10[i] !== null && d.c[i] > d.sma10[i];
+      return { entry: fall && x.closes[i] > x.sma50[i] ? 'long' : null, exitLong: up, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 260,
+    id: 'n_bigup',
+    name: 'Nasdaq : très forte journée de hausse',
+    desc: 'Une hausse de plus de 3 % en une séance, au-dessus de la moyenne 200 jours, montre l’arrivée d’acheteurs en masse : achat à la clôture, revente au bout de 10 séances (clôture sous la moyenne 10 jours) ou au stop 3 ATR.',
+    evaluate(x, i) {
+      const c = x.closes;
+      return { entry: c[i] / c[i - 1] - 1 > 0.03 && c[i] > x.sma200[i] ? 'long' : null, exitLong: c[i] < x.sma10[i], exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 260,
+    id: 'n_mompb',
+    name: 'Nasdaq : repli d’un mois dans une forte tendance',
+    desc: 'Le Nasdaq a pris plus de 10 % en 3 mois mais a baissé sur le dernier mois : achat de ce repli ; revente quand il retrouve son plus haut de 20 séances, ou si la hausse sur 3 mois disparaît. Stop 3 ATR.',
+    evaluate(x, i) {
+      const r63 = x.roc63[i];
+      const r21 = x.roc21 ? x.roc21[i] : (i >= 21 ? x.closes[i] / x.closes[i - 21] - 1 : null);
+      const ok = r63 !== null && r21 !== null && r63 > 0.10 && r21 < 0;
+      return { entry: ok ? 'long' : null, exitLong: x.closes[i] >= x.c20.max[i] || (r63 !== null && r63 < 0), exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
 ];
 
 module.exports = { NAS2, nyseHolidays, beforeHoliday };

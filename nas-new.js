@@ -67,9 +67,11 @@ function report(name, list, split) {
   console.log(`\n=== ^NDX journalier : ${iso(nd[0].t)} → ${iso(nd[nd.length - 1].t)} · choix avant 2010 ===`);
   const vix = await cachedYahoo(CACHE, '^VIX', '1d');
   const tnx = await cachedYahoo(CACHE, '^TNX', '1d');
-  const ind = computeAll(nd, nd, 86400, null, vix, { tnx });
+  const dxy = await cachedYahoo(CACHE, 'DX-Y.NYB', '1d');
+  const sox = await cachedYahoo(CACHE, '^SOX', '1d');
+  const ind = computeAll(nd, nd, 86400, null, vix, { tnx, dxy, sox });
   for (const s of selectStrategies((process.env.DAILY || 'n_preholiday,n_opex,n_santa,n_weekrev').split(','))) {
-    const r = backtest(s, nd, { size: 1000, feePct: 0.003, financingPct: 6, barSec: 86400, ind, daily: nd, vix, aux: { tnx } });
+    const r = backtest(s, nd, { size: 1000, feePct: 0.003, financingPct: 6, barSec: 86400, ind, daily: nd, vix, aux: { tnx, dxy, sox } });
     if (report(s.name, r.list, split)) kept.push(s.id);
   }
 
