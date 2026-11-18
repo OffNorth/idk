@@ -398,6 +398,13 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > années, les scalps or rapportent moins : environ une évaluation sur deux réussit. `FTMO_COMBINED=0` pour revenir aux
 > deux comptes séparés.
 
+> **Autres marchés (`npm run ftmo-markets`)** : 19 stratégies journalières sur S&P 500, Dow, DAX, argent, pétrole et
+> EUR/USD (depuis 1990 ou le début des données, règle des 3 périodes). Les retours à la moyenne tiennent sur le S&P 500
+> (17 sur 19) et le Dow ; peu sur le DAX, l'argent et le pétrole ; sur l'EUR/USD, seule `ibs` (+68 % · +85 % · +84 %,
+> 2003–2026). Ajoutées au compte FTMO, **aucune n'améliore la période de choix** (déjà à 100 %, et rien de mieux à 30,
+> 60 ou 90 jours) : rien n'est activé. La meilleure sur la vérification est `ibs` sur l'EUR/USD (45 → 53–55 %), mais la
+> choisir pour ce chiffre serait se servir des données de vérification pour choisir.
+
 > **Levier dynamique (`npm run ftmo-sizing`, `src/sizing.js`, `FTMO_SIZING`)** : la taille de chaque trade est déjà
 > « risque ÷ distance au stop » (le levier varie donc avec le stop : un stop serré donne plus de levier, plafonné à 1:30).
 > 12 règles qui ajustent EN PLUS ce risque ont été testées (volatilité, forme récente de la stratégie, compte en perte,
