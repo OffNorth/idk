@@ -15,6 +15,7 @@ const FAMILIES = [
   ['Tendance multi-horizons (or + Nasdaq)', ['golden', 'trendmix', 'mom12_1', 'dualmom']],
   ['Spécifiques au Nasdaq', ['sma200', 'macro', 'lowvol', 'vixcalm', 'halloween', 'rates', 'macd_long', 'sox', 'dollarweak', 'ibs', 'cumrsi', 'ema_long', 'tom', 'double7', 'down3', 'dip5', 'vixspike', 'tuesday', 'pctb']],
   ['Effets de calendrier Nasdaq', ['n_rsi4', 'n_rsspx', 'n_low10', 'n_weekrev', 'n_drop', 'n_2down', 'n_dollarfall', 'n_goldfall', 'n_yieldfall', 'n_rsi30', 'n_oilfall', 'n_opex', 'n_ath', 'n_soxlead', 'n_bigup', 'n_mompb', 'n_reversal', 'n_vixfade', 'n_overnight', 'n_preholiday', 'n_santa', 'n_gapfill', 'n_firsthour', 'n_halfhalf', 'n_trendday']],
+  ['Tirées de la littérature (recherche web)', ['g_night', 'n_noise', 'n_orbdir']],
   ['Intraday Nasdaq (5 min)', ['n_mom10', 'n_orb15', 'n_orb5s', 'sweep', 'orb15', 'vwappb']],
   ['Scalp (1–5 min)', ['s_emavwap', 's_vwaprev', 's_bbrsi', 's_orb', 's_stoch', 's_burst']],
   ['Style FTMO (stop clair, taille au risque)', ['f_pullback', 'f_pdbreak', 'f_nightbreak', 'f_insideday', 'f_nr7', 'f_weekbreak']],
@@ -24,6 +25,9 @@ const FAMILIES = [
 ];
 
 const VERDICT = {
+  g_night: ['rejet', 'Littérature (effet de nuit, Blose et al.) : PAXG 2020–2026, 24 variantes d’horaires toutes perdantes sur 2020–2022 (−7 à −39 %), gagnantes depuis : pas stable'],
+  n_noise: ['rejet', 'Zarattini, Aziz & Barbon 2024 : QQQ 2 ans, +4,5 % · −0,6 % · +8,3 % (3 tranches de 8 mois) ; proche mais échoue à la règle stricte'],
+  n_orbdir: ['rejet', 'Zarattini & Aziz 2023 : QQQ 2 ans, −0,5 % · +2,2 % · +3,2 % avec frais ; « brut reproduit, net nul » comme la réplication publiée'],
   n_mom10: ['essai', 'QQQ 5 min (test en masse, 131 variantes momentum) : +0,3 % · +0,9 % · +2,9 % sur 3 tranches de 8 mois, ≈ 0,5 trade/jour'],
   n_orb15: ['essai', 'QQQ 5 min : +3,5 % · +0,6 % · +2,0 % sur 3 tranches de 8 mois, ≈ 0,4 trade/jour'],
   n_orb5s: ['essai', 'QQQ 5 min : +0,6 % · +8,5 % · +1,3 % sur 3 tranches de 8 mois, ≈ 0,7 trade/jour'],

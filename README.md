@@ -398,6 +398,15 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > années, les scalps or rapportent moins : environ une évaluation sur deux réussit. `FTMO_COMBINED=0` pour revenir aux
 > deux comptes séparés.
 
+> **Stratégies tirées de la littérature (`npm run ftmo-papers`, `src/research2.js`)** — aucune retenue :
+> - effet de nuit de l'or (Blose, Gondhalekar & Kort 2014 / 2018 ; thèse CBS « Gold Price Dynamics Around the Clock ») :
+>   24 variantes d'horaires, toutes perdantes sur 2020–2022 puis gagnantes depuis → pas stable ;
+> - zone de bruit (Zarattini, Aziz & Barbon, « Beat the Market », 2024) sur le Nasdaq : +4,5 % · −0,6 % · +8,3 % → échoue
+>   de peu ; la version or ne fonctionne pas ;
+> - sens de la 1re bougie de 5 min (Zarattini & Aziz, « Can Day Trading Really Be Profitable? », 2023) : quasi nul après
+>   frais, comme la réplication publiée.
+> Nos 112 variantes de scalps or (`npm run ftmo-grid`) n'améliorent pas non plus la vérification : 46 % reste le plafond.
+
 > **Mode FTMO seul (`FTMO_ONLY=1`, par défaut)** : le bot ne fait tourner que les stratégies des deux comptes FTMO
 > (or : `x_rsi2`, `m_bb@5m`, `m_ibs`, `m_rsi2x`, `m_keltner@5m` ; Nasdaq : `ibs`, `cumrsi`, `n_dollarfall`, `tom`,
 > `ema_long`, `rsi2`, `n_low10`, `n_rsi4`, `vixspike`), plus la référence `hold`. `GOLD_STRATEGIES` / `NAS_STRATEGIES` sont
