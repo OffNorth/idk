@@ -166,6 +166,11 @@ t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), INK), ('VALIGN', (0, 0), 
 story += [t, Spacer(1, 5), Paragraph(
     'Nasdaq : les stratégies journalières tradent trop rarement pour faire +10 % en un an à faible risque (0 % de réussite à 0,5 ou 1 %) ; à 3 %, environ '
     '6 challenges sur 10 échouent encore, surtout sur la perte du jour quand plusieurs positions perdent ensemble. Choix sur 1985–2009, vérification sur 2010–2026.', body)]
+story += [Spacer(1, 4), Paragraph(
+    '<b>Levier.</b> Chaque trade risque une part fixe du compte (taille = risque ÷ distance au stop, levier plafonné à 1:30) ; '
+    'en plus, le risque est divisé par 2 dès que 2 positions sont déjà ouvertes. Sur 12 règles de levier dynamique testées '
+    '(volatilité, forme des stratégies, état du compte), c’est la seule qui ne coûte rien : elle supprime les échecs sur la '
+    'perte du jour, à réussite égale (45 à 46 % sur les 2 dernières années). Aucune ne fait réussir plus souvent.', body)]
 
 story.append(PageBreak())
 story.append(Paragraph('Historiques simulés des stratégies actives', h2))
