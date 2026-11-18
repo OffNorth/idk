@@ -92,26 +92,39 @@ const DAILY = ['rsi2', 'ibs', 'double7', 'down3', 'cumrsi', 'dip5', 'pctb', 'tom
     { ...opts, horizonDays: h, ...(part === 'choix' ? { start: t0, end: SPLIT } : { start: SPLIT }) });
   const pr = (c) => (c ? c.passRate : 0);
   const fmt = (list) => ['choix', 'verif'].map((part) => { const a = st(list, part, 180); const b = st(list, part, 365); return `${part === 'choix' ? 'choix' : 'vérif'} ${pr(a).toFixed(0)} % / ${pr(b).toFixed(0)} % (${b?.medianDays?.toFixed(0) ?? '—'} j)`; }).join(' | ');
-  console.log(`\n=== 2. ${F.label} : ajout glouton (réussite < 1 an sur 2009–2019), vérification 2020–2026 ; « < 6 mois / < 1 an (médiane) » ===`);
-  let port = [];
-  let cur = 0;
-  const added = [];
-  for (let step = 0; step < 12; step++) {
+  // Doublons (même logique sur le même marché, ex. g_low10 = n_low10 sur le Nasdaq) : on garde la première
+  const seen = new Set();
+  for (const [k, l] of Object.entries(C)) {
+    const sig = `${l[0]?.market}:${l.map((t) => t.entryT).join(',')}`;
+    if (seen.has(sig)) delete C[k];
+    else seen.add(sig);
+  }
+  const scaled = (keys, mul) => keys.flatMap((k) => C[k].map((t) => ({ ...t, riskPct: t.riskPct * mul })));
+  console.log(`\n=== 2. ${F.label} : toutes les candidates ensemble (${Object.keys(C).length}), risque × 1 à 6 ; « < 6 mois / < 1 an (médiane) » ===`);
+  let all = Object.keys(C);
+  let best = null;
+  for (const mul of [1, 2, 3, 4, 6]) {
+    const l = scaled(all, mul);
+    const v = pr(st(l, 'choix', 365));
+    console.log(`  risque × ${mul} : ${fmt(l)}`);
+    if (!best || v > best.v + 0.5) best = { mul, v };
+  }
+  console.log(`\n  → risque × ${best.mul} retenu (meilleur sur 2009–2019). Retrait glouton des candidates qui gênent :`);
+  let cur = best.v;
+  for (;;) {
     let pick = null;
-    for (const [k, l] of Object.entries(C)) {
-      if (added.includes(k)) continue;
-      const v = pr(st([...port, ...l], 'choix', 365));
+    for (const k of all) {
+      const v = pr(st(scaled(all.filter((x) => x !== k), best.mul), 'choix', 365));
       if (v > cur + 0.5 && (!pick || v > pick.v)) pick = { k, v };
     }
     if (!pick) break;
-    added.push(pick.k);
-    port = [...port, ...C[pick.k]];
+    all = all.filter((x) => x !== pick.k);
     cur = pick.v;
-    console.log(`  + ${pick.k.padEnd(34)} ${fmt(port)}`);
+    console.log(`  − ${pick.k.padEnd(34)} ${fmt(scaled(all, best.mul))}`);
   }
-  console.log(`\nPortefeuille retenu : ${added.join(', ') || 'aucun'}`);
-  const curPort = [...strip(cfg.ftmoStrategies).map((id) => C[`or:${id}`]).filter(Boolean).flat()];
-  console.log(`Pour comparer — scalps or actuels encore valables sur l'or réel : ${curPort.length ? fmt(curPort) : 'aucun'}`);
+  console.log(`\nPortefeuille retenu (risque × ${best.mul}) : ${all.join(', ')}`);
+  console.log(`  → ${fmt(scaled(all, best.mul))}`);
+  console.log(`  risques : ${[...new Set(all.map((k) => `${C[k][0]?.market} ${(C[k][0]?.riskPct * best.mul).toFixed(2)} %`))].join(' · ')}`);
 })().catch((e) => {
   console.error(e);
   process.exit(1);
