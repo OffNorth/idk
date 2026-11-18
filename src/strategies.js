@@ -1152,6 +1152,9 @@ STRATEGIES.push(...require('./meanrev').MEANREV);
 /* Nasdaq : effets documentés (nuit, gap, première heure, veille de férié) : voir src/nas2.js */
 STRATEGIES.push(...require('./nas2').NAS2);
 
+/* Or : nouvelles stratégies (journalières + séance asiatique) : voir src/gold2.js et npm run gold-new */
+STRATEGIES.push(...require('./gold2').GOLD2);
+
 /* Intraday NAS100 (formation TradingView, module 5) : voir src/intraday.js */
 STRATEGIES.push(...require('./intraday').INTRADAY);
 

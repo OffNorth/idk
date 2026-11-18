@@ -11,6 +11,7 @@ function num(name, def) {
 
 // Anciennes listes par défaut (copiées depuis .env.example) : remplacées par la sélection actuelle
 const OLD_DEFAULTS = [
+  'season,seasonplus,golden,trendmix,sma200,mom12_1,mom12,tsmom,high52,macd@1d,x_rsi2,m_bb@5m,m_ibs,m_rsi2x,m_wr@5m,m_keltner@5m,hold',
   'golden,mom12_1,macro,trendmix,mom12,sma200,lowvol,vixcalm,halloween,rates,tsmom,macd_long,sweep,m_down3,x_lasthalf,x_orb5,n_overnight,n_preholiday,n_weekrev,n_opex,n_low10,n_drop,n_yieldfall,hold',
   'nas100:m_down3,nas100:x_lasthalf,nas100:x_orb5,nas100:sweep,nas100:n_overnight,nas100:n_weekrev,nas100:n_opex,nas100:n_low10,nas100:n_drop,nas100:n_yieldfall',
   'golden,mom12_1,macro,trendmix,mom12,sma200,lowvol,vixcalm,halloween,rates,tsmom,macd_long,sweep,m_down3,x_lasthalf,x_orb5,n_overnight,n_preholiday,n_weekrev,n_opex,hold',
@@ -51,7 +52,7 @@ module.exports = {
   goldFeePct: num('GOLD_FEE_PCT', 0.05),
   // Par défaut : les combinaisons retenues par le banc d'essai (npm run research) + la référence
   // Retenues par le banc d'essai sur 25 ans d'or (npm run research -- goldlong) + référence
-  goldStrategies: list('GOLD_STRATEGIES', 'season,seasonplus,golden,trendmix,sma200,mom12_1,mom12,tsmom,high52,macd@1d,x_rsi2,m_bb@5m,m_ibs,m_rsi2x,m_wr@5m,m_keltner@5m,hold'),
+  goldStrategies: list('GOLD_STRATEGIES', 'season,seasonplus,golden,trendmix,sma200,mom12_1,mom12,tsmom,high52,macd@1d,x_rsi2,m_bb@5m,m_ibs,m_rsi2x,m_wr@5m,m_keltner@5m,g_weekrev,g_low10,g_yieldfall,g_silverlead,g_asia,hold'),
 
   // Financement de nuit annuel (%) — 0 pour le PAXG (pas de levier)
   goldFinancingPct: num('GOLD_FINANCING_PCT', 0),

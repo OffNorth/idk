@@ -60,6 +60,19 @@ Toutes les autres restent disponibles (`GOLD_STRATEGIES`, voir Réglages) : `vot
 `fibo@6h`, `vixcalm`, `yields`, `dxy`, `fear`, `breakout`, `meanrev`, `supertrend`, `pvt`, `turtle`, `ichimoku`…,
 et n'importe laquelle sur une autre unité (`ema@6h`…).
 
+### Nouvelles stratégies or (`npm run gold-new`, `src/gold2.js`)
+
+| Stratégie | Idée | Résultat |
+|---|---|---|
+| **Rebond après une mauvaise semaine** (`g_weekrev`, journalier) | −3 % en 5 séances au-dessus de la moyenne 200 j → achat, revente au plus haut de 5 séances | ✅ +29 % cumulés 2000–2015, +63 % 2016–2026, 77 % gagnants |
+| **Plus bas de 10 jours** (`g_low10`) | clôture au plus bas de 10 séances au-dessus de la moyenne 200 j → achat | ✅ +35 % puis +56 %, 67 % gagnants |
+| **Chute rapide des taux** (`g_yieldfall`) | taux 10 ans −5 % en 5 séances et or > moyenne 50 j | ✅ +17 % puis +38 % |
+| L'argent prend de l'avance (`g_silverlead`) | l'argent fait 5 points de mieux que l'or sur 10 séances | ✅ +17 % puis +10 % (plus faible) |
+| **Séance asiatique** (`g_asia`, 5 min) | RSI 2 dans la tendance 1 h entre 0 h et 6 h UTC | ✅ +36 % 2020–2024 mais +2,7 % depuis ; pas ajoutée au compte FTMO (réussite récente 59 → 57 %) |
+| Chute rapide du dollar (`g_dollarfall`) | | ❌ −10 % sur 2000–2015 |
+
+Toutes actives sur le compte or (paper trading).
+
 ## 📈 Portefeuille (gains réinvestis)
 
 Chaque stratégie a **son propre compte**, qui démarre avec `GOLD_START_CAPITAL` (1 000 $) et **mise tout son capital**

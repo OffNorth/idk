@@ -10,6 +10,7 @@ const FAMILIES = [
   ['Premières stratégies (guides fournis)', ['macd', 'ema', 'breakout', 'meanrev', 'supertrend', 'sma1060', 'pvt', 'fibo']],
   ['Maison', ['tsmom', 'tsmom_ls', 'turtle', 'rsi2', 'pullback', 'keltner', 'asia']],
   ['Analyse technique classique', ['ichimoku', 'adx', 'squeeze', 'ribbon', 'insidebar', 'heikin', 'vote', 'dollar']],
+  ['Or : rebonds, taux, argent, séance asiatique', ['g_weekrev', 'g_low10', 'g_yieldfall', 'g_silverlead', 'g_asia', 'g_dollarfall']],
   ['Spécifiques à l’or', ['season', 'seasonplus', 'season200', 'mom12', 'high52', 'silver', 'riskoff', 'yields', 'dxy', 'fear']],
   ['Tendance multi-horizons (or + Nasdaq)', ['golden', 'trendmix', 'mom12_1', 'dualmom']],
   ['Spécifiques au Nasdaq', ['sma200', 'macro', 'lowvol', 'vixcalm', 'halloween', 'rates', 'macd_long', 'sox', 'dollarweak', 'ibs', 'cumrsi', 'ema_long', 'tom', 'double7', 'down3', 'dip5', 'vixspike', 'tuesday', 'pctb']],
@@ -132,6 +133,12 @@ const VERDICT = {
   n_trendday: ['rejet', 'QQQ : +1,3 % la 1re année, −6,8 % la 2e'],
   n_gapfill: ['rejet', 'QQQ : +2,6 % la 1re année, −9,5 % la 2e'],
   n_firsthour: ['rejet', 'QQQ : perdante les 2 années'],
+  g_weekrev: ['retenue', 'GC=F : +29 % cumulés 2000–2015, +63 % 2016–2026, 77 % gagnants'],
+  g_low10: ['retenue', 'GC=F : +35 % cumulés 2000–2015, +56 % 2016–2026, 67 % gagnants'],
+  g_yieldfall: ['retenue', 'GC=F : +17 % cumulés 2000–2015, +38 % 2016–2026'],
+  g_silverlead: ['retenue', 'GC=F : +17 % puis +10 % (plus faible), 37 % gagnants'],
+  g_asia: ['retenue', 'PAXG 5 min : +36 % 2020–2024, +2,7 % depuis (s’essouffle) ; FTMO seule 73 %, pas ajoutée au compte FTMO'],
+  g_dollarfall: ['rejet', 'GC=F : −10 % 2000–2015'],
   hold: ['ref', 'Or +10,8 %/an (pire baisse −44 %) · Nasdaq +17,0 %/an (−36 %)'],
 };
 
