@@ -299,6 +299,26 @@ toutes les 3 minutes ne reproduit pas. À noter : le PAXG sur Binance est moins 
 Avec des frais de broker (0,01 %), les stratégies en 1 h restent elles aussi presque toutes perdantes ;
 les stratégies journalières restent les meilleures (`npm run research -- 0.01`).
 
+## 🧪 Test en masse Nasdaq (`npm run nas-grid`)
+
+346 variantes de 11 familles, ^NDX 1985–2026, achat seul. Mesure : **alpha** = gain au-delà de ce qu'aurait rapporté le Nasdaq
+pendant les mêmes jours en position (donc ce que la stratégie apporte vraiment, pas juste « être investi dans un marché qui
+monte »). Choix sur 1985–1999 ET 2000–2009, vérification sur 2010–2026.
+
+| Famille | Testées | Choisies | Confirmées 2010–2026 |
+|---|---|---|---|
+| RSI (survente dans la tendance) | 72 | 18 | **15** |
+| Chutes (−x % en n jours) | 25 | 13 | **11** |
+| Replis (plus bas de n jours) | 54 | 9 | 5 |
+| Calendrier (tournant du mois) | 21 | 11 | 5 |
+| Moyennes, croisements, momentum, cassures, volatilité | 61 | 3 | **0** |
+| Autres marchés (taux, dollar, pétrole, or, VIX, S&P) | 108 | 8 | 2 |
+
+**À retenir** : acheter un excès de baisse court dans la tendance haussière apporte un vrai avantage sur les 3 périodes
+(62 % des choisies confirmées, concentrées dans cette famille). Le suivi de tendance ne choisit pas de meilleurs jours que le
+hasard : il sert à éviter les krachs, pas à battre l'indice. Ajoutées : **`n_rsi4`** (RSI 4 < 20 au-dessus de la moyenne
+200 j, sortie RSI 4 > 50) et **`tom`** (tournant du mois), toutes deux validées par l'audit des 3 périodes.
+
 ## 🔎 Audit des 3 périodes (`npm run audit`)
 
 Toutes les stratégies actives doivent être **positives sur chacune de 3 périodes** (frais inclus) : Nasdaq journalier

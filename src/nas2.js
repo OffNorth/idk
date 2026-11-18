@@ -369,6 +369,16 @@ const NAS2 = [
       return { entry: on ? 'long' : null, exitLong: !on, exitShort: true, sl: 4 * x.atr[i], tp: null };
     },
   },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    id: 'n_rsi4',
+    name: 'Nasdaq : RSI 4 sous 20 dans la tendance',
+    desc: 'Meilleure variante du test en masse (346 stratégies, npm run nas-grid) : au-dessus de la moyenne 200 jours, RSI 4 sous 20 → achat ; revente quand le RSI 4 repasse au-dessus de 50. Stop 3 ATR.',
+    evaluate(x, i) {
+      const r = (x._rsi4 ||= require('./indicators').rsi(x.closes, 4));
+      return { entry: r[i] !== null && r[i] < 20 && x.closes[i] > x.sma200[i] ? 'long' : null, exitLong: r[i] > 50, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
 ];
 
 module.exports = { NAS2, nyseHolidays, beforeHoliday };
