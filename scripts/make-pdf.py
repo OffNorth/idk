@@ -158,8 +158,8 @@ if fc['cb']:
     # Compte unique or + Nasdaq (npm run ftmo-combo)
     ft = [ft[0], [Paragraph('<b>Compte unique Or + Nasdaq</b> (celui du bot)', cell), Paragraph(esc(ids(fc['g'])) + ' · ' + esc(ids(fc['n'])), cell),
                   Paragraph(f'or {fc["gr"]:g} % · Nasdaq {fc["cnr"]:g} %', cell),
-                  Paragraph('sept. 2020 → 2026 : <b>74 % en moins de 6 mois, 80 % en moins d’un an</b> ; départs des 2 dernières années : 45 % / 54 % '
-                            '(or seul : 39 % / 48 %)', cell)]] + ft[1:]
+                  Paragraph('sept. 2020 → oct. 2024 : <b>97 % en moins de 6 mois</b> (46 j en médiane) ; 2 dernières années (vérification) : <b>46 %</b> (34 j). '
+                            'Les scalps or rapportent moins depuis 2024.', cell)]] + ft[1:]
 t = Table(ft, colWidths=[30 * mm, 62 * mm, 20 * mm, 68 * mm], repeatRows=1)
 t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), INK), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LINEBELOW', (0, 1), (-1, -1), 0.4, LINE),
                        ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4)]))

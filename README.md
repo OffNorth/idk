@@ -389,6 +389,11 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > | Nasdaq 3 % seul | 29 % | 39 % | 14 % / — |
 > | Or 0,75 % ou 1 %, ou Nasdaq à 2–3 % en plus | moins bien (plus d'échecs sur la perte du jour) | | |
 >
+> **Ajout (`npm run ftmo-more`)** : `g_asia` (séance asiatique) et `m_down3` (3 baisses de suite, 15 min) sur l'or. Choisies
+> parmi 38 candidates sur sept. 2020 → oct. 2024 : réussite < 6 mois **86 → 97 %** ; sur les 2 dernières années (vérification)
+> la réussite reste à **46 %**, mais en **34 jours** au lieu de 55. Aucune autre candidate, ni règle de risque (risque réduit à
+> l'étape 2, stop du jour à −1 ou −3 %), ne fait vraiment mieux sur la vérification.
+>
 > Le Nasdaq journalier, peu corrélé aux scalps or, lisse la courbe ; à 3 % il la rend trop risquée. Sur les 2 dernières
 > années, les scalps or rapportent moins : environ une évaluation sur deux réussit. `FTMO_COMBINED=0` pour revenir aux
 > deux comptes séparés.

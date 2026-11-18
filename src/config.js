@@ -11,6 +11,7 @@ function num(name, def) {
 
 // Anciennes listes par défaut (copiées depuis .env.example) : remplacées par la sélection actuelle
 const OLD_DEFAULTS = [
+  'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m',
   'golden,mom12_1,trendmix,mom12,sma200,lowvol,rates,n_weekrev,n_low10,n_drop,n_dollarfall,n_rsspx,n_2down,n_goldfall,n_rsi4,tom,rsi2,ibs,double7,down3,vixspike,vixcalm,halloween,cumrsi,dip5,dualmom,macro,sox,macd_long,ema_long,x_orb5,x_lasthalf,m_down3,m_vwap,n_overnight,n_preholiday,n_opex,n_yieldfall,sweep,hold',
   'nas100:n_weekrev,nas100:n_low10,nas100:n_drop,nas100:n_dollarfall,nas100:n_rsspx,nas100:n_2down,nas100:n_goldfall,nas100:n_rsi4,nas100:tom',
   'golden,mom12_1,trendmix,mom12,sma200,lowvol,rates,n_weekrev,n_low10,n_drop,n_dollarfall,n_rsspx,n_2down,n_goldfall,n_rsi4,tom,hold',
@@ -97,7 +98,7 @@ module.exports = {
 
   // Compte FTMO simulé : suit les trades des stratégies listées (marché:id) avec une taille au risque
   ftmoEnabled: num('FTMO', 1) === 1,
-  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m'),
+  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m,gold:g_asia,gold:m_down3'),
   // 2e compte FTMO simulé, 100 % Nasdaq (npm run ftmo-nas-port)
   // Compte FTMO UNIQUE or + Nasdaq (par défaut) : or au risque FTMO_RISK_PCT, Nasdaq au risque FTMO_COMBO_NAS_RISK_PCT.
   // npm run ftmo-combo : 74 % de réussite en < 6 mois (récent 45 %) contre 74 % / 39 % pour l'or seul.
