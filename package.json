@@ -26,7 +26,8 @@
     "gold-grid": "node nas-grid.js gold",
     "gold-scalp-grid": "node --max-old-space-size=4096 gold-scalp-grid.js",
     "ftmo-nas-port": "node --max-old-space-size=4096 ftmo-nas-port.js",
-    "nas-scalp-grid": "node --max-old-space-size=4096 gold-scalp-grid.js nas"
+    "nas-scalp-grid": "node --max-old-space-size=4096 gold-scalp-grid.js nas",
+    "ftmo-combo": "node --max-old-space-size=4096 ftmo-combo.js"
   },
   "engines": {
     "node": ">=20"
