@@ -377,6 +377,18 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 
 ## 🏦 Compte FTMO simulé (`/ftmo`) — banc d'essai `npm run ftmo`
 
+> ⚠️ **Découverte importante (`npm run ftmo-long`, or au comptant HistData 2009–2026)** : les scalps or ont été choisis
+> sur **PAXG** (jeton or de Binance), pas sur l'or au comptant que trade un compte FTMO (XAU/USD). Les deux ne se
+> comportent pas pareil en 5 min : PAXG a 19 % de bougies sans mouvement et une forte autocorrélation négative
+> (−0,19 en 2023 : chaque mouvement est en partie annulé au suivant, effet d'un marché peu liquide), l'or au comptant
+> presque aucune (+0,02) ; leurs rendements 5 min ne sont corrélés qu'à 0,11 (0,38 en 1 h).
+> Résultat sur l'or au comptant : les 7 scalps du compte FTMO **perdent** sur presque toutes les périodes (ex. `x_rsi2`
+> +10 % · −2 % · −8 % · −25 % sur 2009–2012 · 2013–2016 · 2017–2019 · 2020–2026), seules 2 variantes sur 112 tiennent
+> sur 2009–2019, et la partie or du challenge 1 étape ne réussit que 4 à 33 % selon la période (13 % sur 2020–2026).
+> **Le « retour à la moyenne » des scalps or venait surtout de la microstructure de PAXG** : les taux de réussite FTMO
+> calculés plus bas (≈ 45 %) sont donc trop optimistes pour un vrai compte FTMO.
+
+
 > **Objectif : réussir une évaluation FTMO.** Par défaut (`FTMO_COMBINED=1`), le bot tient **un seul compte FTMO qui trade
 > l'or ET le Nasdaq** (FTMO l'autorise) : scalps or à **0,5 %** de risque par trade, stratégies Nasdaq journalières à **1 %**
 > (`FTMO_COMBO_NAS_RISK_PCT`). `npm run ftmo-combo`, challenges lancés chaque semaine de sept. 2020 à aujourd'hui :
