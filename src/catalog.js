@@ -26,7 +26,7 @@ const FAMILIES = [
 
 const VERDICT = {
   g_night: ['rejet', 'Littérature (effet de nuit, Blose et al.) : PAXG 2020–2026, 24 variantes d’horaires toutes perdantes sur 2020–2022 (−7 à −39 %), gagnantes depuis : pas stable'],
-  n_noise: ['rejet', 'Zarattini, Aziz & Barbon 2024 : QQQ 2 ans, +4,5 % · −0,6 % · +8,3 % (3 tranches de 8 mois) ; proche mais échoue à la règle stricte'],
+  n_noise: ['essai', 'Zarattini, Aziz & Barbon 2024 : QQQ 2 ans, +4,5 % · −0,6 % · +8,3 % (3 tranches de 8 mois) ; échoue de peu à la règle stricte → à l’essai en paper trading, hors compte FTMO'],
   n_orbdir: ['rejet', 'Zarattini & Aziz 2023 : QQQ 2 ans, −0,5 % · +2,2 % · +3,2 % avec frais ; « brut reproduit, net nul » comme la réplication publiée'],
   n_mom10: ['essai', 'QQQ 5 min (test en masse, 131 variantes momentum) : +0,3 % · +0,9 % · +2,9 % sur 3 tranches de 8 mois, ≈ 0,5 trade/jour'],
   n_orb15: ['essai', 'QQQ 5 min : +3,5 % · +0,6 % · +2,0 % sur 3 tranches de 8 mois, ≈ 0,4 trade/jour'],

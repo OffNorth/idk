@@ -402,7 +402,7 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > - effet de nuit de l'or (Blose, Gondhalekar & Kort 2014 / 2018 ; thèse CBS « Gold Price Dynamics Around the Clock ») :
 >   24 variantes d'horaires, toutes perdantes sur 2020–2022 puis gagnantes depuis → pas stable ;
 > - zone de bruit (Zarattini, Aziz & Barbon, « Beat the Market », 2024) sur le Nasdaq : +4,5 % · −0,6 % · +8,3 % → échoue
->   de peu ; la version or ne fonctionne pas ;
+>   de peu ; **à l'essai** en paper trading (`n_noise`, `TRIAL_STRATEGIES`), pas sur le compte FTMO ; la version or ne fonctionne pas ;
 > - sens de la 1re bougie de 5 min (Zarattini & Aziz, « Can Day Trading Really Be Profitable? », 2023) : quasi nul après
 >   frais, comme la réplication publiée.
 > Nos 112 variantes de scalps or (`npm run ftmo-grid`) n'améliorent pas non plus la vérification : 46 % reste le plafond.

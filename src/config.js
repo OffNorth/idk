@@ -127,9 +127,11 @@ module.exports = {
 {
   const cfg = module.exports;
   cfg.ftmoOnly = num('FTMO_ONLY', 1) === 1;
+  // Stratégies à l'essai : suivies en paper trading (et publiées) mais PAS par le compte FTMO
+  cfg.trialStrategies = list('TRIAL_STRATEGIES', 'nas100:n_noise');
   if (cfg.ftmoOnly) {
     const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : [])];
-    const of = (m) => [...new Set(all.filter((x) => x.startsWith(`${m}:`)).map((x) => x.slice(m.length + 1))), 'hold'];
+    const of = (m) => [...new Set([...all, ...cfg.trialStrategies].filter((x) => x.startsWith(`${m}:`)).map((x) => x.slice(m.length + 1))), 'hold'];
     cfg.goldStrategies = of('gold');
     cfg.nasStrategies = of('nas100');
   }
