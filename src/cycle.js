@@ -31,8 +31,8 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
         console.log(
           `[${market.id}] ${ev.strategy.id} : ${ev.type === 'open' ? `ouverture ${ev.pos.side} à ${ev.pos.entry.toFixed(2)}` : `clôture ${ev.trade.pnlPct.toFixed(2)}% (${ev.trade.reason})`}`,
         );
-        // Scalp (bougies 1 / 5 / 15 min) : regroupé dans le résumé du jour au lieu d'un message par trade
-        if (publish && !(cfg.scalpDigest && isScalp(ev.strategy))) await safeSend(channel, goldEventMessage(ev), ui ? { reply_markup: ui.tradeKeyboard(ev) } : {});
+        // Trades regroupés dans le résumé du jour (tous si DIGEST_ALL=1, sinon seulement le scalp 1 / 5 / 15 min)
+        if (publish && !inDigest(cfg, ev.strategy)) await safeSend(channel, goldEventMessage(ev), ui ? { reply_markup: ui.tradeKeyboard(ev) } : {});
         all.push(ev);
       }
     } catch (err) {
@@ -106,27 +106,35 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
 
 const SCALP_TF = new Set(['1m', '5m', '15m']);
 const isScalp = (s) => SCALP_TF.has(s.tf || '1h');
+const inDigest = (cfg, s) => cfg.scalpDigest && (cfg.digestAll || isScalp(s));
 const usd = (v) => `${v >= 0 ? '+' : '−'}$${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 
-/** Résumé des trades de scalp clôturés depuis `sinceMs`, par marché et par stratégie (+ compte FTMO simulé). */
+/** Résumé des trades (clôtures et nouvelles positions) depuis `sinceMs`, par marché et par stratégie (+ compte FTMO simulé). */
 function scalpDigest(cfg, store, markets, sinceMs) {
   const since = Math.floor(sinceMs / 1000);
   const date = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
-  const lines = [`📋 <b>Résumé du jour — scalp</b> <i>(${date}, paper trading)</i>`];
+  const lines = [`📋 <b>Résumé du jour${cfg.digestAll ? '' : ' — scalp'}</b> <i>(${date}, paper trading)</i>`];
   let any = false;
   for (const market of markets) {
     const tr = new MarketTrader(market, store, cfg);
-    const strats = tr.strategies.filter(isScalp);
+    const strats = tr.strategies.filter((s) => inDigest(cfg, s));
     if (!strats.length) continue;
     const rows = [];
     let n = 0;
     let wins = 0;
     let pnl = 0;
     let open = 0;
+    let opened = 0;
     for (const s of strats) {
       const acc = tr.account(s.id);
       const done = acc.closed.filter((t) => t.exitT >= since);
+      const fresh = acc.position && acc.position.entryT >= since ? acc.position : null;
       if (acc.position) open++;
+      if (fresh && !isScalp(s)) {
+        // Stratégie journalière : la nouvelle position compte (elle est souvent gardée des semaines)
+        rows.push(`  • ${esc(s.name)} : ${fresh.side === 'long' ? '📈 achat' : '📉 vente'} à $${fresh.entry.toFixed(2)} (stop $${fresh.sl.toFixed(2)})`);
+        opened++;
+      }
       if (!done.length) continue;
       const p = done.reduce((a, t) => a + t.pnlUsd, 0);
       const w = done.filter((t) => t.pnlUsd > 0).length;
@@ -135,9 +143,9 @@ function scalpDigest(cfg, store, markets, sinceMs) {
       pnl += p;
       rows.push(`  • ${esc(s.name)} : ${done.length} trade${done.length > 1 ? 's' : ''}, ${w} gagnant${w > 1 ? 's' : ''}, <b>${usd(p)}</b> (${usd(acc.capital - market.startCapital)} depuis le début)`);
     }
-    lines.push('', `${market.emoji} <b>${esc(market.name)}</b> : ${n ? `${n} trade${n > 1 ? 's' : ''} · ${Math.round((wins / n) * 100)} % gagnants · <b>${usd(pnl)}</b>` : 'aucun trade clôturé'}${open ? ` · ${open} position${open > 1 ? 's' : ''} ouverte${open > 1 ? 's' : ''}` : ''}`);
+    lines.push('', `${market.emoji} <b>${esc(market.name)}</b> : ${n ? `${n} trade${n > 1 ? 's' : ''} clôturé${n > 1 ? 's' : ''} · ${Math.round((wins / n) * 100)} % gagnants · <b>${usd(pnl)}</b>` : 'aucun trade clôturé'}${opened ? ` · ${opened} nouvelle${opened > 1 ? 's' : ''} position${opened > 1 ? 's' : ''}` : ''}${open ? ` · ${open} position${open > 1 ? 's' : ''} ouverte${open > 1 ? 's' : ''} au total` : ''}`);
     lines.push(...rows);
-    if (n) any = true;
+    if (n || opened) any = true;
   }
   if (cfg.ftmoEnabled) {
     const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
@@ -155,4 +163,4 @@ function portfolio(cfg, store, marketId = 'gold') {
   return portfolioMessage(new MarketTrader(marketById(cfg, marketId), store, cfg).stats(), cfg);
 }
 
-module.exports = { runCycle, portfolio, scalpDigest, isScalp };
+module.exports = { runCycle, portfolio, scalpDigest, isScalp, inDigest };

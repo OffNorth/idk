@@ -336,7 +336,8 @@ aucune dépendance à installer).
 - **Résumé du jour** : les trades des stratégies de scalp (bougies 1, 5 et 15 min) ne sont pas publiés un par un mais dans
   **un seul message par jour** à `DIGEST_HOUR_UTC` (21 h UTC, après la clôture de New York) : trades, % gagnants et gain par
   marché et par stratégie, positions ouvertes, état du compte FTMO simulé. `SCALP_DIGEST=0` pour revenir à un message par trade.
-  Les stratégies journalières (quelques trades par mois) gardent leurs messages.
+  Avec `DIGEST_ALL=1` (par défaut), les stratégies journalières y sont aussi (clôtures et nouvelles positions) : plus aucun
+  message par trade ; `DIGEST_ALL=0` pour ne regrouper que le scalp.
 - **🎯 Pronostic du jour** (jeu entre membres, sans argent) : chaque jour de semaine à `GAME_HOUR_UTC` (13 h UTC par défaut),
   le bot publie le cours de l'or et du Nasdaq avec les boutons ▲ Hausse / ▼ Baisse. On vote pendant `GAME_VOTE_HOURS` heures
   (vote modifiable). Au jour de bourse suivant, même heure, le bot compare les cours, donne 1 point par bonne réponse, publie

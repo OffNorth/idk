@@ -68,6 +68,8 @@ module.exports = {
   // Trades de scalp (bougies 1 / 5 / 15 min) : 1 = un seul résumé par jour à DIGEST_HOUR_UTC, 0 = un message par trade
   scalpDigest: num('SCALP_DIGEST', 1) === 1,
   digestHourUtc: Math.min(23, Math.max(0, num('DIGEST_HOUR_UTC', 21))),
+  // 1 = toutes les stratégies dans le résumé (aussi les journalières), 0 = seulement le scalp
+  digestAll: num('DIGEST_ALL', 1) === 1,
 
   // Compte FTMO simulé : suit les trades des stratégies listées (marché:id) avec une taille au risque
   ftmoEnabled: num('FTMO', 1) === 1,

@@ -4,9 +4,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-test('résumé du jour : trades de scalp regroupés par stratégie, stratégies journalières ignorées', () => {
+test('résumé du jour : trades regroupés par stratégie (scalp seul, puis toutes)', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dig-'));
-  const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, nasEnabled: false, goldStrategies: ['season', 'x_rsi2', 'm_bb@5m'] };
+  const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, nasEnabled: false, digestAll: false, goldStrategies: ['season', 'x_rsi2', 'm_bb@5m'] };
   const { Store } = require('../src/store');
   const store = new Store(dir);
   const now = Math.floor(Date.now() / 1000);
@@ -25,9 +25,17 @@ test('résumé du jour : trades de scalp regroupés par stratégie, stratégies 
   assert.strictEqual(isScalp({ tf: '1d' }), false);
   const txt = scalpDigest(cfg, store, activeMarkets(cfg), Date.now() - 86_400_000);
   assert.match(txt, /Résumé du jour/);
-  assert.match(txt, /3 trades · 33 % gagnants · <b>\+\$0<\/b>/); // +8 −3 −5
+  assert.match(txt, /3 trades clôturés · 33 % gagnants · <b>\+\$0<\/b>/); // +8 −3 −5
   assert.match(txt, /1 position ouverte/);
   assert.match(txt, /Scalp RSI 2[^\n]*2 trades, 1 gagnant/);
   assert.doesNotMatch(txt, /Saison/);
   assert.match(txt, /Compte FTMO simulé/);
+  // Toutes les stratégies : la clôture de la stratégie journalière et sa nouvelle position apparaissent
+  const acc = store.loadJson('gold.json', {});
+  acc.accounts.season.position = { side: 'long', entry: 4010, sl: 3800, size: 1100, entryT: now - 300 };
+  store.saveJson('gold.json', acc);
+  const all = scalpDigest({ ...cfg, digestAll: true }, store, activeMarkets(cfg), Date.now() - 86_400_000);
+  assert.match(all, /Saison de l’or[^\n]*📈 achat à \$4010\.00/);
+  assert.match(all, /4 trades clôturés/);
+  assert.match(all, /1 nouvelle position/);
 });
