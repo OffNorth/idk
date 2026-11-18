@@ -36,7 +36,8 @@
     "gold-intraday-grid": "node --max-old-space-size=6144 nas-intraday-grid.js gold",
     "ftmo-formulas": "node --max-old-space-size=6144 ftmo-formulas.js",
     "ftmo-long": "node --max-old-space-size=8192 ftmo-long.js",
-    "dukascopy": "python3 scripts/dukascopy.py"
+    "dukascopy": "python3 scripts/dukascopy.py",
+    "histdata": "python3 scripts/histdata.py"
   },
   "engines": {
     "node": ">=20"

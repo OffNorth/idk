@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * L'or sur 22 ans (Dukascopy XAU/USD 2004 → 2026, `python3 scripts/dukascopy.py`) au lieu de 6 ans de PAXG :
+ * L'or sur 17 ans (HistData XAU/USD 1 min 2009 → 2026, `python3 scripts/histdata.py`) au lieu de 6 ans de PAXG :
  *   A. les scalps or du compte FTMO, période par période ;
- *   B. les 112 variantes de scalps (src/scalpgrid.js) : choix sur 2004–2019 (positives sur CHACUNE des 3 périodes),
+ *   B. les 112 variantes de scalps (src/scalpgrid.js) : choix sur 2009–2019 (positives sur CHACUNE des 3 périodes),
  *      vérification sur 2020–2026 ;
  *   C. réussite du challenge FTMO (formule FTMO_PROGRAM, partie or seule) : scalps actuels contre les meilleures
- *      variantes choisies sur 2004–2019, période par période.
+ *      variantes choisies sur 2009–2019, période par période.
  * Frais 0,005 % par côté.
  *
  *   npm run ftmo-long
@@ -24,13 +24,13 @@ const { annotate, RULES } = require('./src/sizing');
 
 const FILE = path.join(__dirname, 'data', 'research', 'xauusd-5m.json');
 const Y = (y) => Date.UTC(y, 0, 1) / 1000;
-const P = [['2004–2008', Y(2004), Y(2009)], ['2009–2013', Y(2009), Y(2014)], ['2014–2019', Y(2014), Y(2020)], ['2020–2026', Y(2020), Infinity]];
+const P = [['2009–2012', Y(2009), Y(2013)], ['2013–2016', Y(2013), Y(2017)], ['2017–2019', Y(2017), Y(2020)], ['2020–2026', Y(2020), Infinity]];
 const FEE = 0.005;
 const strip = (l) => l.map((x) => x.split(':').slice(1).join(':'));
 const pc = (v) => `${v >= 0 ? '+' : ''}${v.toFixed(0)} %`;
 
 (async () => {
-  if (!fs.existsSync(FILE)) throw new Error('lancer d’abord : python3 scripts/dukascopy.py');
+  if (!fs.existsSync(FILE)) throw new Error('lancer d’abord : python3 scripts/histdata.py');
   const g5 = JSON.parse(fs.readFileSync(FILE, 'utf8')).map(([t, o, h, l, c, v]) => ({ t, o, h, l, c, v }));
   const G = { '5m': { c: g5, sec: 300 }, '15m': { c: aggregate(g5, 900, 300), sec: 900 } };
   console.log(`XAU/USD 5 min : ${g5.length} bougies, ${new Date(g5[0].t * 1000).toISOString().slice(0, 10)} → ${new Date(g5[g5.length - 1].t * 1000).toISOString().slice(0, 10)}\n`);
@@ -50,7 +50,7 @@ const pc = (v) => `${v >= 0 ? '+' : ''}${v.toFixed(0)} %`;
   }
 
   // B. Variantes
-  console.log('\n=== B. 112 variantes : choix sur 2004–2019 (positives sur chacune des 3 périodes), vérification 2020–2026 ===');
+  console.log('\n=== B. 112 variantes : choix sur 2009–2019 (positives sur chacune des 3 périodes), vérification 2020–2026 ===');
   const res = [];
   for (const tf of ['5m', '15m']) {
     for (const v of variants(X[tf])) {
@@ -72,7 +72,7 @@ const pc = (v) => `${v >= 0 ? '+' : ''}${v.toFixed(0)} %`;
   const top = chosen.slice(0, 5);
   const ports = {
     'scalps actuels': cur,
-    '5 meilleures variantes (choix 2004–2019)': top.flatMap((r, k) => r.list.map((t) => ({ ...t, sid: `v${k}`, market: 'gold' }))),
+    '5 meilleures variantes (choix 2009–2019)': top.flatMap((r, k) => r.list.map((t) => ({ ...t, sid: `v${k}`, market: 'gold' }))),
     'actuels + 5 meilleures': [...cur, ...top.flatMap((r, k) => r.list.map((t) => ({ ...t, sid: `v${k}`, market: 'gold' })))],
   };
   console.log(`\n=== C. ${F.label} (partie or seule, risque ${cfg.ftmoRisk} %) : réussite en moins de 6 mois par période ===`);
