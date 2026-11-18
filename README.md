@@ -278,6 +278,10 @@ trade** (taille = risque ÷ distance au stop, levier max 1:30), frais d'un CFD (
 - Le compte suit les trades des stratégies de `FTMO_STRATEGIES` (par défaut `gold:x_rsi2`). Image d'état avec `/ftmo` ou le
   bouton « 🏦 » du panneau ; la réussite d'une étape ou un échec est publié dans le groupe.
 
+**2e compte, 100 % Nasdaq** (`/ftmo`, `/ftmo or` pour l'or ; `FTMO_NAS_STRATEGIES`, données `data/ftmo-nas.json`) :
+mêmes règles, risque 0,5 % par trade, il suit les stratégies Nasdaq à l'essai (`m_down3`, `x_lasthalf`, `x_orb5`, `sweep`,
+`n_overnight`). **Aucune n'est validée pour le challenge** (voir plus bas) : ce compte sert à voir en direct si le Nasdaq tient.
+
 **Banc d'essai** (`ftmo.js`, `src/ftmo.js`) : chaque stratégie est rejouée comme des challenges lancés chaque semaine ;
 « réussite » = les 2 étapes en moins de 6 mois (un challenge non fini compte comme raté).
 

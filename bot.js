@@ -90,7 +90,7 @@ bot.command(['start', 'aide', 'help'], (ctx) =>
       '',
       '/menu — 🎛 panneau interactif (images qui changent avec les boutons)',
       '/graphique [nasdaq|or] — 🕯 cours en bougies (Nasdaq par défaut)',
-      '/ftmo — 🏦 compte FTMO simulé (challenge +10 % puis +5 %)',
+      '/ftmo [nasdaq|or] — 🏦 comptes FTMO simulés (challenge +10 % puis +5 %)',
       '/jeu — 🎯 pronostic du jour · /classement — points des joueurs',
       '/nasdaq · /gold — bilan texte',
       '/portfolio — graphiques des portefeuilles',
@@ -168,7 +168,7 @@ bot.command('strategies', (ctx) =>
 
 bot.command('ftmo', async (ctx) => {
   try {
-    await sendPanel(ctx.api, ctx.chat.id, cfg, store, { view: 'f' });
+    await sendPanel(ctx.api, ctx.chat.id, cfg, store, { view: 'f', marketId: marketArg(ctx.match) });
   } catch (err) {
     await ctx.reply(`❌ ${esc(err.message)}`);
   }
@@ -266,7 +266,7 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
   await bot.api.setMyCommands([
     { command: 'menu', description: '🎛 Panneau interactif (Nasdaq ; /menu or pour l’or)' },
     { command: 'graphique', description: '🕯 Cours en bougies : /graphique (Nasdaq) · /graphique or' },
-    { command: 'ftmo', description: '🏦 Compte FTMO simulé (challenge)' },
+    { command: 'ftmo', description: '🏦 Comptes FTMO simulés : /ftmo (Nasdaq) · /ftmo or' },
     { command: 'jeu', description: '🎯 Pronostic du jour' },
     { command: 'classement', description: '🏆 Classement des joueurs' },
     { command: 'nasdaq', description: 'Bilan du Nasdaq 100' },

@@ -307,7 +307,7 @@ function ftmoImage(st) {
   const s = st.s;
   const cv = new Canvas(W, 600, THEME.bg);
   const phase = s.phase === 'funded' ? 'Compte financé' : `Étape ${s.phase} sur 2`;
-  header(cv, { market: null, title: `Compte FTMO simulé · ${phase}`, subtitle: `Challenge n° ${s.attempt} · capital ${money(s.capital)} · risque par trade selon le stop · depuis le ${date(s.startedAt)}` });
+  header(cv, { market: st.account ? { id: st.account.id, name: st.account.label } : null, title: `Compte FTMO simulé · ${phase}`, subtitle: `Challenge n° ${s.attempt} · capital ${money(s.capital)} · risque par trade selon le stop · depuis le ${date(s.startedAt)}` });
   const ret = (st.equity / s.capital - 1) * 100;
   cv.roundRect(24, 96, 952, 150, 16, THEME.surface);
   cv.text('VALEUR DU COMPTE', 48, 112, { style: 'b', size: 13, color: THEME.muted });

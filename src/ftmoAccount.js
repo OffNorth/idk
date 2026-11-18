@@ -4,14 +4,25 @@
  *   Étape 1 : +10 % · Étape 2 : +5 % · puis compte « financé » (on suit les gains mensuels, partage 80 %).
  *   Échec si la perte du jour atteint 5 % du capital initial (sous le solde de la veille, positions comprises)
  *   ou si le compte perd 10 % du capital initial. Après un échec, un nouveau challenge démarre le jour de trading suivant.
- * Données : data/ftmo.json.
+ * Deux comptes indépendants : « gold » (data/ftmo.json, stratégies FTMO_STRATEGIES) et « nas100 »
+ * (data/ftmo-nas.json, stratégies FTMO_NAS_STRATEGIES).
  */
 const { ftmoDay } = require('./ftmo');
 
-const FILE = 'ftmo.json';
+/** Réglages d'un compte FTMO simulé : 'gold' (or) ou 'nas100' (Nasdaq). */
+function accountOf(cfg, id = 'gold') {
+  if (id === 'nas100') {
+    return { id, label: 'Nasdaq', emoji: '🇺🇸', file: 'ftmo-nas.json', enabled: cfg.ftmoEnabled && cfg.ftmoNasEnabled, strategies: cfg.ftmoNasStrategies, risk: cfg.ftmoNasRisk };
+  }
+  return { id: 'gold', label: 'Or', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk };
+}
+/** Comptes FTMO actifs. */
+const ftmoAccounts = (cfg) => ['nas100', 'gold'].map((id) => accountOf(cfg, id)).filter((a) => a.enabled);
 const TARGET = { 1: 10, 2: 5 };
 
-function createFtmo({ cfg, store }) {
+function createFtmo({ cfg, store, account = 'gold' }) {
+  const A = accountOf(cfg, account);
+  const FILE = A.file;
   const fresh = (attempt = 1) => ({
     attempt, phase: 1, capital: cfg.ftmoCapital, balance: cfg.ftmoCapital, startedAt: Math.floor(Date.now() / 1000),
     day: null, dayStart: cfg.ftmoCapital, days: [], open: {}, closed: [], log: [], waitDay: null, funded: null,
@@ -21,7 +32,7 @@ function createFtmo({ cfg, store }) {
     return s && s.capital ? s : fresh();
   };
   const save = (s) => store.saveJson(FILE, s);
-  const follows = (ev) => cfg.ftmoStrategies.includes(`${ev.market.id}:${ev.strategy.id}`);
+  const follows = (ev) => A.strategies.includes(`${ev.market.id}:${ev.strategy.id}`);
   const key = (marketId, sid, entryT) => `${marketId}:${sid}:${entryT}`;
   const fee = (marketId) => (marketId === 'nas100' ? cfg.ftmoFeeNas : cfg.ftmoFeeGold);
 
@@ -58,7 +69,7 @@ function createFtmo({ cfg, store }) {
    * prices : { gold: cours, nas100: cours }
    */
   function onCycle(events, prices, t = Math.floor(Date.now() / 1000)) {
-    if (!cfg.ftmoEnabled) return [];
+    if (!A.enabled) return [];
     const s = load();
     const out = [];
     rollDay(s, t);
@@ -71,7 +82,7 @@ function createFtmo({ cfg, store }) {
         const stopPct = (Math.abs(p.entry - (p.initSl ?? p.sl)) / p.entry) * 100;
         if (!(stopPct > 0)) continue;
         if (cfg.ftmoDayStop > 0 && s.balance <= s.dayStart - (s.capital * cfg.ftmoDayStop) / 100) continue; // stop du jour maison
-        const notional = Math.min((s.balance * cfg.ftmoRisk) / stopPct, s.balance * cfg.ftmoLeverage);
+        const notional = Math.min((s.balance * A.risk) / stopPct, s.balance * cfg.ftmoLeverage);
         s.open[key(ev.market.id, ev.strategy.id, p.entryT)] = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, notional, entryT: p.entryT };
         if (!s.days.includes(s.day)) s.days.push(s.day);
       } else if (ev.type === 'close') {
@@ -138,6 +149,7 @@ function createFtmo({ cfg, store }) {
     const target = s.phase === 'funded' ? null : s.capital * (1 + TARGET[s.phase] / 100);
     return {
       s,
+      account: A,
       equity: eq,
       target,
       progress: target ? Math.max(0, (eq - s.capital) / (target - s.capital)) : null,
@@ -148,7 +160,7 @@ function createFtmo({ cfg, store }) {
     };
   }
 
-  return { onCycle, status, load, reset: () => save(fresh()) };
+  return { onCycle, status, load, account: A, reset: () => save(fresh()) };
 }
 
-module.exports = { createFtmo, TARGET };
+module.exports = { createFtmo, accountOf, ftmoAccounts, TARGET };

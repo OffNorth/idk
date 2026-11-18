@@ -75,6 +75,10 @@ module.exports = {
   // Compte FTMO simulé : suit les trades des stratégies listées (marché:id) avec une taille au risque
   ftmoEnabled: num('FTMO', 1) === 1,
   ftmoStrategies: list('FTMO_STRATEGIES', 'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m'),
+  // 2e compte FTMO simulé, 100 % Nasdaq (stratégies à l'essai : rien n'est validé pour le challenge sur le Nasdaq)
+  ftmoNasEnabled: num('FTMO_NAS', 1) === 1,
+  ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:m_down3,nas100:x_lasthalf,nas100:x_orb5,nas100:sweep,nas100:n_overnight'),
+  ftmoNasRisk: num('FTMO_NAS_RISK_PCT', 0.5),
   ftmoCapital: num('FTMO_CAPITAL', 100000),
   ftmoRisk: num('FTMO_RISK_PCT', 0.5), // % du solde risqué par trade (distance au stop)
   ftmoLeverage: num('FTMO_LEVERAGE', 30),

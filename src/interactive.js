@@ -42,7 +42,7 @@ function panelKeyboard(cfg, view, marketId, extra = []) {
   }
   rows.push([btn('📈 Portefeuille', `m:h:${k}`), btn('🏆 Classement', `m:r:${k}`), btn('📍 Positions', `m:o:${k}`)]);
   rows.push([btn('🕯 Cours', `m:c:${k}:1d`), btn('🕰 Historique', `m:y:${k}`), btn('📚 Stratégies', `m:l:${k}:0`)]);
-  if (cfg.ftmoEnabled) rows.push([btn('🏦 Compte FTMO simulé', `m:f:${k}`)]);
+  if (cfg.ftmoEnabled) rows.push([btn('🏦 FTMO 🇺🇸 Nasdaq', 'm:f:n'), btn('🏦 FTMO 🥇 Or', 'm:f:g')].filter((b) => b.callback_data !== 'm:f:n' || cfg.ftmoNasEnabled));
   return { inline_keyboard: [...extra, ...rows] };
 }
 
@@ -120,12 +120,13 @@ async function render(cfg, store, view, marketId, args = []) {
   if (view === 'f') {
     const { createFtmo } = require('./ftmoAccount');
     const prices = Object.fromEntries(activeMarkets(cfg).map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-    const fst = createFtmo({ cfg, store }).status(prices);
+    const acct = require('./ftmoAccount').accountOf(cfg, marketId);
+    const fst = createFtmo({ cfg, store, account: acct.enabled ? marketId : 'gold' }).status(prices);
     const s = fst.s;
     const lines = [
-      `🏦 <b>Compte FTMO simulé</b> · ${s.phase === 'funded' ? 'compte financé' : `étape ${s.phase} sur 2`} · challenge n° ${s.attempt}`,
+      `🏦 <b>Compte FTMO simulé ${fst.account.emoji} ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : `étape ${s.phase} sur 2`} · challenge n° ${s.attempt}`,
       `Valeur <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · objectif ${money(fst.target)}` : ''}`,
-      `Stratégies suivies : ${cfg.ftmoStrategies.map((x) => `<code>${esc(x)}</code>`).join(', ')} · risque ${cfg.ftmoRisk} % par trade`,
+      `Stratégies suivies : ${fst.account.strategies.map((x) => `<code>${esc(x.split(':')[1])}</code>`).join(', ')} · risque ${fst.account.risk} % par trade${fst.account.id === 'nas100' ? ' · <i>à l’essai : rien n’est validé pour le challenge sur le Nasdaq</i>' : ''}`,
       ...(s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt}, étape ${h.phase} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
     ];
     return { png: C.ftmoImage(fst), caption: lines.join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'f', marketId) };

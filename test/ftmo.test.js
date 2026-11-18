@@ -61,3 +61,24 @@ test('image et vue du panneau FTMO', async () => {
   assert.strictEqual(out.png.subarray(1, 4).toString(), 'PNG');
   assert.match(out.caption, /Compte FTMO simulé/);
 });
+
+test('2e compte FTMO (Nasdaq) : indépendant du compte or', async () => {
+  const { cfg, store } = setup({ ftmoNasEnabled: true, ftmoNasStrategies: ['nas100:x_orb5'], ftmoNasRisk: 0.5 });
+  const { createFtmo, ftmoAccounts } = require('../src/ftmoAccount');
+  assert.deepStrictEqual(ftmoAccounts(cfg).map((a) => a.id), ['nas100', 'gold']);
+  const nas = createFtmo({ cfg, store, account: 'nas100' });
+  const gold = createFtmo({ cfg, store, account: 'gold' });
+  const nasMarket = { id: 'nas100', name: 'Nasdaq 100' };
+  const pos = { side: 'long', entry: 20000, sl: 19900, initSl: 19900, entryT: T0 }; // stop 0,5 %
+  const evs = [{ type: 'open', market: nasMarket, strategy: { id: 'x_orb5', name: 'ORB' }, pos }];
+  nas.onCycle(evs, { nas100: 20000 }, T0);
+  gold.onCycle(evs, { nas100: 20000 }, T0);
+  nas.onCycle([{ type: 'close', market: nasMarket, strategy: { id: 'x_orb5' }, trade: { ...pos, exit: 20200, exitT: T0 + 600, reason: 'objectif' } }], { nas100: 20200 }, T0 + 600);
+  // risque 0,5 % de 100 000 $ sur un stop de 0,5 % → 100 000 $ engagés ; +1 % → +1 000 $
+  assert.strictEqual(Math.round(nas.load().balance), 101000);
+  assert.strictEqual(gold.load().balance, 100000, 'le compte or ne suit pas le Nasdaq');
+  assert.ok(fs.existsSync(path.join(cfg.dataDir, 'ftmo-nas.json')));
+  const { render } = require('../src/interactive');
+  const out = await render(cfg, store, 'f', 'nas100');
+  assert.match(out.caption, /FTMO simulé 🇺🇸 Nasdaq/);
+});
