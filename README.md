@@ -288,6 +288,12 @@ La seule stratégie qui passait (`x_rsi2`) est un retour à la moyenne court dan
 | `m_vwap` (écart au VWAP, or 5 min) | 51 % / 61 % | non retenue sur la période de choix |
 | Les mêmes en 1 h, ou sur le Nasdaq (60 jours en 5 / 15 min, 2 ans en 1 h) | 0 % | trop lent ou pas assez de données |
 
+**3e recherche (`npm run ftmo-gold`)** : 5 nouveaux signaux sur l'or 5 et 15 min. Retenues : **`m_wr@5m`** (Williams %R
+sous −95 dans la tendance, sortie au-dessus de −30 : 67 % de réussite seule, 27 jours médians, récent 48 %) et
+**`m_keltner@5m`** (clôture sous EMA 20 − 2 ATR, sortie à l'EMA 20 : 21 % seule, mais le portefeuille FTMO passe de 53 à
+**59 %** sur la période récente). Rejetées : CCI, stochastique rapide, « deux plus bas plus bas », et tout en 15 min.
+Les deux sont actives sur l'or ; seule `m_keltner` est ajoutée au compte FTMO (`m_wr` accélère mais baisse un peu la réussite).
+
 **Portefeuille des 4 sur un seul compte** (période 2020–2026, challenges lancés chaque semaine) :
 risque 0,5 % par trade → **80 % de réussite, 42 jours médians** (période récente 53 %) ; 0,75 % → 72 % (27 j) ;
 1 % → 64 % (20 j, plus d'échecs sur la perte du jour). Le compte FTMO simulé suit donc ces 4 stratégies à **0,5 %**.

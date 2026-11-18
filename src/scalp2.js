@@ -153,8 +153,36 @@ function computeScalp2(candles, barSec = 300, market = 'gold') {
     pdh, pdl, dOpen, rHi, rLo, orHi, orLo, pClose, bb, bw, bwMin, hi20, lo20,
     ema20: ema(closes, 20), rsi2: rsi(closes, 2),
     ibs: candles.map((c) => (c.h > c.l ? (c.c - c.l) / (c.h - c.l) : 0.5)),
+    ...oscillators(candles, closes, a),
     sess: nas ? { open: anchor, close: sessEnd } : { open: 7 * 60, close: 20 * 60 },
   };
+}
+
+/** Williams %R 10, CCI 20, stochastique rapide (14, 3), canal de Keltner (EMA 20 ± 2 ATR). */
+function oscillators(candles, closes, a) {
+  const n = candles.length;
+  const wr10 = new Array(n).fill(null);
+  const k14 = new Array(n).fill(null);
+  for (let i = 13; i < n; i++) {
+    let h = -Infinity, l = Infinity;
+    for (let j = i - 13; j <= i; j++) { h = Math.max(h, candles[j].h); l = Math.min(l, candles[j].l); if (j === i - 9) { /* rien */ } }
+    k14[i] = h > l ? ((closes[i] - l) / (h - l)) * 100 : 50;
+    let h10 = -Infinity, l10 = Infinity;
+    for (let j = i - 9; j <= i; j++) { h10 = Math.max(h10, candles[j].h); l10 = Math.min(l10, candles[j].l); }
+    wr10[i] = h10 > l10 ? ((h10 - closes[i]) / (h10 - l10)) * -100 : -50;
+  }
+  const stochK = sma(k14.map((v) => v ?? 50), 3);
+  const tp = candles.map((c) => (c.h + c.l + c.c) / 3);
+  const tpMa = sma(tp, 20);
+  const cci20 = tp.map((v, i) => {
+    if (i < 19 || tpMa[i] === null) return null;
+    let md = 0;
+    for (let j = i - 19; j <= i; j++) md += Math.abs(tp[j] - tpMa[i]);
+    md /= 20;
+    return md > 0 ? (v - tpMa[i]) / (0.015 * md) : 0;
+  });
+  const e20 = ema(closes, 20);
+  return { wr10, stochK, cci20, kUp: e20.map((v, i) => v + 2 * a[i]), kDn: e20.map((v, i) => v - 2 * a[i]) };
 }
 
 /* ------------------------------------------------------------------ */

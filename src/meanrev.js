@@ -98,6 +98,67 @@ const MEANREV = [
       });
     },
   },
+  {
+    ...BASE,
+    id: 'm_wr',
+    name: 'Williams %R au plancher, dans la tendance',
+    desc: 'Larry Williams : tendance haussière de l’unité supérieure et Williams %R (10) sous −95 (clôture tout en bas des 10 dernières bougies) → achat ; sortie quand il remonte au-dessus de −30. Stop 1,5 ATR. Inverse au-dessus de −5 en tendance baissière.',
+    evaluate(x, i) {
+      const w = x.wr10[i];
+      return mr(x, i, { buy: () => w !== null && w < -95, sell: () => w !== null && w > -5, exitL: () => w > -30, exitS: () => w < -70 });
+    },
+  },
+  {
+    ...BASE,
+    id: 'm_keltner',
+    name: 'Sous le canal de Keltner, dans la tendance',
+    desc: 'Tendance haussière de l’unité supérieure ; clôture sous le bas du canal de Keltner (EMA 20 − 2 ATR) → achat ; sortie au retour sur l’EMA 20. Stop 1,5 ATR. Inverse au-dessus du canal en tendance baissière.',
+    evaluate(x, i) {
+      const c = x.closes[i];
+      return mr(x, i, { buy: () => c < x.kDn[i], sell: () => c > x.kUp[i], exitL: () => c >= x.ema20[i], exitS: () => c <= x.ema20[i] });
+    },
+  },
+  {
+    ...BASE,
+    id: 'm_cci',
+    name: 'CCI très bas, dans la tendance',
+    desc: 'Tendance haussière de l’unité supérieure ; CCI (20) sous −150 (prix très en dessous de sa moyenne habituelle) → achat ; sortie quand le CCI repasse au-dessus de 0. Stop 1,5 ATR. Inverse au-dessus de +150 en tendance baissière.',
+    evaluate(x, i) {
+      const v = x.cci20[i];
+      return mr(x, i, { buy: () => v !== null && v < -150, sell: () => v !== null && v > 150, exitL: () => v === null || v > 0, exitS: () => v === null || v < 0 });
+    },
+  },
+  {
+    ...BASE,
+    id: 'm_stoch',
+    name: 'Stochastique rapide qui repart, dans la tendance',
+    desc: 'Tendance haussière de l’unité supérieure ; le stochastique rapide (14, 3) était sous 10 et repart à la hausse → achat ; sortie au-dessus de 70. Stop 1,5 ATR. Inverse en tendance baissière.',
+    evaluate(x, i) {
+      const k = x.stochK;
+      return mr(x, i, {
+        buy: () => k[i - 1] !== null && k[i - 1] < 10 && k[i] > k[i - 1],
+        sell: () => k[i - 1] !== null && k[i - 1] > 90 && k[i] < k[i - 1],
+        exitL: () => k[i] > 70,
+        exitS: () => k[i] < 30,
+      });
+    },
+  },
+  {
+    ...BASE,
+    id: 'm_2ll',
+    name: 'Deux plus bas plus bas, dans la tendance',
+    desc: 'Connors : tendance haussière de l’unité supérieure ; deux bougies d’affilée font un plus bas plus bas ET clôturent sous l’EMA 20 → achat ; sortie à la première clôture au-dessus du plus haut précédent. Stop 1,5 ATR. Inverse (deux plus hauts plus hauts) en tendance baissière.',
+    evaluate(x, i) {
+      const k = x.candles;
+      const c = x.closes[i];
+      return mr(x, i, {
+        buy: () => k[i].l < k[i - 1].l && k[i - 1].l < k[i - 2].l && c < x.ema20[i],
+        sell: () => k[i].h > k[i - 1].h && k[i - 1].h > k[i - 2].h && c > x.ema20[i],
+        exitL: () => c > k[i - 1].h,
+        exitS: () => c < k[i - 1].l,
+      });
+    },
+  },
 ];
 
 module.exports = { MEANREV };
