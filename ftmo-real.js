@@ -28,7 +28,9 @@ const CACHE = path.join(__dirname, 'data', 'research');
 const Y = (y) => Date.UTC(y, 0, 1) / 1000;
 const P = [['2009–2012', Y(2009), Y(2013)], ['2013–2016', Y(2013), Y(2017)], ['2017–2019', Y(2017), Y(2020)], ['2020–2026', Y(2020), Infinity]];
 const SPLIT = Y(2020);
-const RISK = { scalp: 0.35, gold: 0.5, nas100: 0.5, eurusd: 0.5 };
+const RISK = { scalp: 0.35, gold: 0.5, nas100: 0.5, eurusd: 0.5, spx: 0.5, dow: 0.5, dax: 0.5, silver: 0.5 };
+// EXTRA=1 : ajoute les marchés FTMO que le bot ne suit pas encore (S&P 500, Dow, DAX, argent)
+const EXTRA = process.env.EXTRA === '1';
 const GOLD_SCALPS = ['g_orb30', 'g_mom8', 'g_gap', 'x_rsi2', 'm_bb@5m', 'm_ibs', 'm_rsi2x', 'm_keltner@5m', 'm_wr@5m', 'g_ibsh@5m', 'g_asia', 'm_down3', 'm_vwap', 'x_lasthalf', 'x_orb5', 'n_orb5s'];
 const DAILY = ['rsi2', 'ibs', 'double7', 'down3', 'cumrsi', 'dip5', 'pctb', 'tom', 'n_rsi4', 'n_low10', 'n_weekrev', 'n_drop', 'n_2down', 'n_dollarfall', 'n_goldfall', 'n_rsspx', 'vixspike', 'golden', 'sma200', 'trendmix', 'mom12_1', 'mom12', 'ema_long', 'dualmom', 'lowvol', 'rates',
   'g_low10', 'g_weekrev', 'g_oilfall', 'g_yieldfall', 'g_dollarfall', 'season', 'high52'];
@@ -45,6 +47,10 @@ const DAILY = ['rsi2', 'ibs', 'double7', 'down3', 'cumrsi', 'dip5', 'pctb', 'tom
     nas100: { c: nd, ind: computeAll(nd, nd, 86400, null, vix, nasAux), aux: nasAux, fee: 0.003, fin: 6 },
     gold: { c: gc, ind: computeAll(gc, gc, 86400, null, vix, goldAux), aux: goldAux, fee: 0.005, fin: 4 },
     eurusd: { c: eu, ind: computeAll(eu, eu, 86400, null, vix, nasAux), aux: nasAux, fee: 0.002, fin: 3 },
+    ...(EXTRA ? Object.fromEntries(await Promise.all([['spx', '^GSPC', 0.003, 6], ['dow', '^DJI', 0.003, 6], ['dax', '^GDAXI', 0.005, 5], ['silver', 'SI=F', 0.01, 4]].map(async ([id, sym, fee, fin]) => {
+      const c = (await y(sym)).filter((k) => k.c > 0);
+      return [id, { c, ind: computeAll(c, c, 86400, null, vix, nasAux), aux: nasAux, fee, fin }];
+    }))) : {}),
   };
   const g5 = JSON.parse(fs.readFileSync(path.join(CACHE, 'xauusd-5m.json'), 'utf8')).map(([t, o, h, l, c, v]) => ({ t, o, h, l, c, v }));
   const G = { '5m': { c: g5, sec: 300 }, '15m': { c: aggregate(g5, 900, 300), sec: 900 } };
@@ -78,7 +84,7 @@ const DAILY = ['rsi2', 'ibs', 'double7', 'down3', 'cumrsi', 'dip5', 'pctb', 'tom
   for (const [m, d] of Object.entries(D)) for (const s of selectStrategies(DAILY)) {
     if (tfOf(s) !== '1d') continue;
     let r;
-    try { r = backtest(s, d.c, { size: 1000, feePct: d.fee, financingPct: d.fin, barSec: 86400, ind: d.ind, daily: d.c, vix, aux: d.aux, market: m === 'eurusd' ? 'nas100' : m }); } catch { continue; }
+    try { r = backtest(s, d.c, { size: 1000, feePct: d.fee, financingPct: d.fin, barSec: 86400, ind: d.ind, daily: d.c, vix, aux: d.aux, market: m === 'gold' ? 'gold' : 'nas100' }); } catch { continue; }
     const p = parts(r.list);
     if (okChoice(p, 3)) { add(`${m}:${s.id}`, r.list, m, RISK[m]); console.log(`  ✔ ${m.padEnd(6)} ${s.id.padEnd(12)} ${p.map((x) => `${x.sum.toFixed(0)} % (${x.n})`).join(' · ')}`); }
   }
