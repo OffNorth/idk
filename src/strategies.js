@@ -1155,6 +1155,7 @@ STRATEGIES.push(...require('./nas2').NAS2);
 /* Or : nouvelles stratégies (journalières + séance asiatique) : voir src/gold2.js et npm run gold-new */
 STRATEGIES.push(...require('./gold2').GOLD2);
 STRATEGIES.push(...require('./nasintra').NASINTRA);
+STRATEGIES.push(...require('./research2').RESEARCH2);
 
 /* Intraday NAS100 (formation TradingView, module 5) : voir src/intraday.js */
 STRATEGIES.push(...require('./intraday').INTRADAY);

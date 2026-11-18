@@ -29,7 +29,8 @@
     "nas-scalp-grid": "node --max-old-space-size=4096 gold-scalp-grid.js nas",
     "ftmo-combo": "node --max-old-space-size=4096 ftmo-combo.js",
     "ftmo-more": "node --max-old-space-size=6144 ftmo-more.js",
-    "ftmo-grid": "node --max-old-space-size=6144 ftmo-grid.js"
+    "ftmo-grid": "node --max-old-space-size=6144 ftmo-grid.js",
+    "ftmo-papers": "node --max-old-space-size=6144 ftmo-papers.js"
   },
   "engines": {
     "node": ">=20"
