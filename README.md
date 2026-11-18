@@ -178,11 +178,11 @@ Le bot trade aussi le **Nasdaq 100** en simulation, comme un CFD NAS100 :
 | Stratégie | Idée | Résultat |
 |---|---|---|
 | **Effet de nuit** (`n_overnight`, 5 min) | achat à la clôture de 16 h New York, revente sur la 1re bougie après l'ouverture, toutes les nuits | ✅ QQQ 2024–2026 : +8,9 % puis +3,9 % après frais et financement CFD (+13,8 % / +8,5 % sans financement). Sur 25 ans de ^NDX, la nuit rapporte ≈ +9,6 %/an contre +4 à +8 % pour la journée. **Active** |
-| **Veille de jour férié** (`n_preholiday`, journalier) | achat la veille de la veille d'un férié NYSE, revente la veille | ✅ +12,8 % cumulés 1985–2009, +16,3 % 2010–2026, 57 % gagnants. **Active** |
+| **Veille de jour férié** (`n_preholiday`, journalier) | achat la veille de la veille d'un férié NYSE, revente la veille | ✅ +12,8 % cumulés 1985–2009, +16,3 % 2010–2026, 57 % gagnants. Retirée (−3 % en 2000–2009) |
 | **Rebond après une mauvaise semaine** (`n_weekrev`, journalier) | −3 % sur 5 séances au-dessus de la moyenne 200 j → achat, revente au plus haut de 5 séances | ✅ +103 % cumulés 1985–2009, +58 % 2010–2026, 72 % gagnants. **Active** |
 | **Plus bas de 10 jours dans la tendance** (`n_low10`, journalier) | clôture au plus bas de 10 séances au-dessus de la moyenne 200 j → achat, revente au plus haut de 5 séances | ✅ +128 % cumulés 1985–2009, +62 % 2010–2026, 73 % gagnants. **Active** |
 | **Rebond après une forte baisse d'un jour** (`n_drop`) | −2,5 % en une séance au-dessus de la moyenne 200 j → achat, revente au-dessus du plus haut de la veille | ✅ +69 % puis +48 %, 73 % gagnants. **Active** |
-| **Chute rapide des taux** (`n_yieldfall`) | taux 10 ans −5 % en 5 séances et Nasdaq > moyenne 50 j → achat, revente quand les taux remontent au-dessus de leur moyenne 10 j | ✅ +52 % puis +74 %, 70 % gagnants. **Active** |
+| **Chute rapide des taux** (`n_yieldfall`) | taux 10 ans −5 % en 5 séances et Nasdaq > moyenne 50 j → achat, revente quand les taux remontent au-dessus de leur moyenne 10 j | ✅ +52 % puis +74 %, 70 % gagnants. Retirée (−4 % en 1985–1999) |
 | **Chute rapide du dollar** (`n_dollarfall`) | DXY −2 % en 10 séances et Nasdaq > moyenne 50 j → achat, revente quand le dollar repasse au-dessus de sa moyenne 10 j | ✅ +68 % puis +15 %, 55 % gagnants. **Active** |
 | **Nasdaq plus fort que le S&P 500** (`n_rsspx`) | investi quand le Nasdaq 100 bat le S&P 500 sur 3 mois et est au-dessus de sa moyenne 50 j | ✅ +213 % 1985–1999, +12 % 2000–2009, +63 % 2010–2026. **Active** |
 | **Deux fortes baisses de suite** (`n_2down`) | 2 séances à −1 % au-dessus de la moyenne 200 j → achat | ✅ +11 %, +12 %, +27 % sur les 3 périodes. **Active** |
@@ -192,10 +192,10 @@ Le bot trade aussi le **Nasdaq 100** en simulation, comme un CFD NAS100 :
 
 **Règle stricte des 3 périodes** (1985–1999, 2000–2009, 2010–2026 : positive sur chacune) : `n_rsspx`, `n_low10`, `n_weekrev`,
 `n_drop`, `n_2down`, `n_dollarfall` la passent ; `n_opex` (−22 % en 2000–2009), `n_preholiday` (−3 %) et `n_yieldfall`
-(−4 % en 1985–1999, 7 trades) échouent, mais restent actives (à surveiller).
+(−4 % en 1985–1999, 7 trades) échouent : **retirées** (toujours disponibles dans `NAS_STRATEGIES`).
 | Nouveau plus haut d'un an (`n_ath`), semi-conducteurs en tête (`n_soxlead`) | suivi de tendance | ❌ ≈ 0 sur 1985–2009 (bonnes seulement depuis 2010) |
 | Très forte journée de hausse (`n_bigup`), repli d'un mois dans une forte tendance (`n_mompb`) | | ❌ perdantes sur 2010–2026 |
-| **Semaine d'expiration des options** (`n_opex`, journalier) | achat le vendredi d'avant, revente le 3e vendredi du mois | ✅ +34 % puis +25 %, 55 % gagnants. **Active** |
+| **Semaine d'expiration des options** (`n_opex`, journalier) | achat le vendredi d'avant, revente le 3e vendredi du mois | ✅ +34 % puis +25 %, 55 % gagnants. Retirée (−22 % en 2000–2009) |
 | Rallye de Noël (`n_santa`) | 5 derniers jours de décembre + 2 premiers de janvier | ❌ +58 % 1985–2009 mais −2,6 % 2010–2026 |
 | 1re demi-heure → dernière (`n_halfhalf`), journée de tendance VWAP (`n_trendday`) | intraday QQQ | ❌ perdantes la 2e année |
 | Comblement de l'écart d'ouverture (`n_gapfill`) | gap de 0,4 à 1,5 % → retour vers la clôture de la veille | ❌ perdante la 2e année |
