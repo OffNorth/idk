@@ -162,12 +162,13 @@ function catalog(cfg) {
   const sel = {
     gold: selectStrategies(cfg.goldEnabled ? cfg.goldStrategies : []),
     nas100: selectStrategies(cfg.nasEnabled ? cfg.nasStrategies : []),
+    eurusd: selectStrategies(cfg.eurusdEnabled ? cfg.eurusdStrategies || [] : []),
   };
   const famOf = new Map(FAMILIES.flatMap(([f, ids]) => ids.map((id) => [id, f])));
   return STRATEGIES.map((s) => {
     const [verdict, note] = VERDICT[s.id] || ['dispo', ''];
     // Version active (ex. « macd@1d ») : on affiche son unité de temps et on teste celle-là
-    const live = [...sel.gold, ...sel.nas100].find((x) => x.id.split('@')[0] === s.id);
+    const live = [...sel.gold, ...sel.nas100, ...sel.eurusd].find((x) => x.id.split('@')[0] === s.id);
     const tf = tfOf(live || s);
     return {
       id: s.id,
@@ -177,7 +178,7 @@ function catalog(cfg) {
       tf,
       family: famOf.get(s.id) || 'Autres',
       markets: s.markets || ['gold', 'nas100'],
-      active: ['gold', 'nas100'].filter((m) => sel[m].some((x) => x.id.split('@')[0] === s.id)),
+      active: ['gold', 'nas100', 'eurusd'].filter((m) => sel[m].some((x) => x.id.split('@')[0] === s.id)),
       verdict,
       note,
       testable: tf === '1d' && !s.scalp && !s.intraday,

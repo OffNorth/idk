@@ -42,6 +42,9 @@ def status(s):
     a = s['active']
     if s['id'] == 'hold':
         return 'REF'
+    a = [m for m in a if m != 'eurusd']  # l'EUR/USD (à l'essai) est signalé à part dans le libellé
+    if s['active'] and not a:
+        return 'ESSAI'
     if a:
         if s['verdict'] == 'essai':
             return 'ESSAI'
@@ -56,6 +59,8 @@ def table_for(rows):
     for r, s in enumerate(rows, start=1):
         st = status(s)
         label, bg = STATUS[st]
+        if 'eurusd' in s['active']:
+            label += ' + EUR/USD (essai)' if st != 'ESSAI' else ' (EUR/USD)'
         on = st in ('OR+NAS', 'OR', 'NAS', 'ESSAI')
         data.append([Paragraph(esc(s['name']), cellb if on else cell), Paragraph(f'<font color="#4b5563">{esc(s["id"])}</font>', cell),
                      Paragraph(TF.get(s['tf'], s['tf']), cell), Paragraph(label, cellb if on else cell), Paragraph(esc(s['note'] or '—'), cell)])
@@ -85,6 +90,7 @@ strats = [s for s in cat if s['id'] != 'hold']
 active = [s for s in strats if s['active']]
 n_gold = sum('gold' in s['active'] for s in strats)
 n_nas = sum('nas100' in s['active'] for s in strats)
+n_eur = sum('eurusd' in s['active'] for s in strats)
 n_dispo = sum(status(s) == 'DISPO' for s in strats)
 n_rej = sum(status(s) == 'REJ' for s in strats)
 months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
@@ -93,10 +99,10 @@ d = datetime.date.today()
 doc = SimpleDocTemplate(OUT, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm, topMargin=15 * mm, bottomMargin=17 * mm,
                         title='Stratégies du bot de paper trading', author='Gold Paper Bot')
 story = [Paragraph('Stratégies du bot de paper trading', title),
-         Paragraph(f'Or (PAXG / future GC=F) et Nasdaq 100 (indice ^NDX) · état au {d.day} {months[d.month - 1]} {d.year}', sub), Spacer(1, 8)]
+         Paragraph(f'Or (PAXG / future GC=F), Nasdaq 100 (indice ^NDX) et EUR/USD (à l’essai) · état au {d.day} {months[d.month - 1]} {d.year}', sub), Spacer(1, 8)]
 summary = [
     (len(strats), 'stratégies codées et testées (+ la référence « garder le marché »)'),
-    (len(active), f'actives en direct : {n_gold} sur l’or, {n_nas} sur le Nasdaq (certaines sur les deux)'),
+    (len(active), f'actives en direct : {n_gold} sur l’or, {n_nas} sur le Nasdaq, {n_eur} sur l’EUR/USD à l’essai (certaines sur plusieurs marchés)'),
     (n_dispo, 'positives mais pas actives : activables dans le .env (GOLD_STRATEGIES, NAS_STRATEGIES)'),
     (n_rej, 'rejetées aux tests (perdantes ou nulles après frais)'),
 ]
