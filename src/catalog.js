@@ -93,7 +93,7 @@ const VERDICT = {
   x_rangesweep: ['rejet', 'perdante (5 % de gagnants en 1 min)'],
   x_pdsweep: ['rejet', '≈ 0 après frais'],
   x_orb5: ['essai', 'Nasdaq 5 min : 75 % de challenges FTMO réussis sur 2025–2026 mais perdante en 2024–2025 → à l’essai en direct ; perdante sur l’or'],
-  x_lasthalf: ['essai', 'Nasdaq 5 min : 75 % de challenges FTMO réussis sur 2025–2026 mais perdante en 2024–2025 → à l’essai en direct ; perdante sur l’or']
+  x_lasthalf: ['essai', 'Nasdaq 5 min : 75 % de challenges FTMO réussis sur 2025–2026 mais perdante en 2024–2025 → à l’essai en direct ; perdante sur l’or'],
   x_squeeze: ['rejet', 'perdante'],
   x_break20: ['rejet', 'perdante sur l’or ; Nasdaq 1 min retenue au choix puis perdante en vérification'],
   f_pullback: ['rejet', 'or 1 h −0,07 R/trade, Nasdaq 1 h ≈ 0'],
