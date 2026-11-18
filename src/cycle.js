@@ -31,8 +31,8 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
         console.log(
           `[${market.id}] ${ev.strategy.id} : ${ev.type === 'open' ? `ouverture ${ev.pos.side} à ${ev.pos.entry.toFixed(2)}` : `clôture ${ev.trade.pnlPct.toFixed(2)}% (${ev.trade.reason})`}`,
         );
-        // Trades regroupés dans le résumé du jour (tous si DIGEST_ALL=1, sinon seulement le scalp 1 / 5 / 15 min)
-        if (publish && !inDigest(cfg, ev.strategy)) await safeSend(channel, goldEventMessage(ev), ui ? { reply_markup: ui.tradeKeyboard(ev) } : {});
+        // Un message par trade (TRADE_MESSAGES=1) ; sinon trades regroupés dans le résumé du jour (DIGEST_ALL / SCALP_DIGEST)
+        if (publish && (cfg.tradeMessages || !inDigest(cfg, ev.strategy))) await safeSend(channel, goldEventMessage(ev), ui ? { reply_markup: ui.tradeKeyboard(ev) } : {});
         all.push(ev);
       }
     } catch (err) {
