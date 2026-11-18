@@ -299,6 +299,23 @@ toutes les 3 minutes ne reproduit pas. À noter : le PAXG sur Binance est moins 
 Avec des frais de broker (0,01 %), les stratégies en 1 h restent elles aussi presque toutes perdantes ;
 les stratégies journalières restent les meilleures (`npm run research -- 0.01`).
 
+## 🔎 Audit des 3 périodes (`npm run audit`)
+
+Toutes les stratégies actives doivent être **positives sur chacune de 3 périodes** (frais inclus) : Nasdaq journalier
+1985–1999 / 2000–2009 / 2010–2026 ; or journalier 2000–2008 / 2009–2016 / 2017–2026 ; scalp or (PAXG 2020–2026) et intraday
+Nasdaq (QQQ 2024–2026) en 3 tranches égales. Audit du 18/11/2026 — **12 stratégies retirées** (toujours disponibles) :
+
+| Marché | Retirées (période perdante) |
+|---|---|
+| Nasdaq journalier | `macro` (−76 % en 2000–2009), `vixcalm` (−24 %), `halloween` (−30 %), `tsmom` (−31 %), `macd_long` (−8 %) |
+| Nasdaq intraday (2 ans seulement, jugement plus fragile) | `sweep`, `m_down3`, `x_lasthalf`, `x_orb5`, `n_overnight` |
+| Or | `seasonplus` (−1 % en 2009–2016), `g_silverlead` (−8 % en 2000–2008) |
+
+Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lowvol`, `rates`, `n_weekrev`, `n_low10`, `n_drop`,
+`n_dollarfall`, `n_rsspx`, `n_2down`, `n_goldfall` ; or `season`, `golden`, `trendmix`, `sma200`, `mom12_1`, `mom12`, `tsmom`,
+`high52`, `macd@1d`, les 6 scalps (`x_rsi2`, `m_bb@5m`, `m_ibs`, `m_rsi2x`, `m_wr@5m`, `m_keltner@5m`), `g_asia`, `g_weekrev`,
+`g_low10`, `g_yieldfall`. Le compte FTMO Nasdaq ne garde que les stratégies journalières retenues.
+
 ## 🏦 Compte FTMO simulé (`/ftmo`) — banc d'essai `npm run ftmo`
 
 Le bot fait comme s'il avait un **compte FTMO** (challenge en 2 étapes, règles 2026) : 100 000 $, **1 % du solde risqué par

@@ -20,7 +20,8 @@
     "ftmo-gold": "node --max-old-space-size=4096 ftmo-gold.js",
     "nas-new": "node --max-old-space-size=4096 nas-new.js",
     "ftmo-night": "node ftmo-night.js",
-    "gold-new": "node --max-old-space-size=4096 gold-new.js"
+    "gold-new": "node --max-old-space-size=4096 gold-new.js",
+    "audit": "node --max-old-space-size=4096 audit.js"
   },
   "engines": {
     "node": ">=20"
