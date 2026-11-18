@@ -21,7 +21,9 @@ const CACHE = path.join(__dirname, 'data', 'research');
 const Y = (y) => Date.UTC(y, 0, 1) / 1000;
 const P = [['1985–1999', Y(1985), Y(2000)], ['2000–2009', Y(2000), Y(2010)], ['2010–2026', Y(2010), Infinity]];
 const IDS = (process.env.IDS || 'golden,mom12_1,trendmix,mom12,sma200,lowvol,rates,n_weekrev,n_low10,n_drop,n_dollarfall,n_rsspx,n_2down,n_goldfall,n_rsi4,tom,rsi2,ibs,double7,down3,cumrsi,dip5,vixspike,ema_long,dualmom').split(',');
-const RISKS = [0.5, 1, 1.5, 2];
+const RISKS = (process.env.RISKS || '0.5,1,1.5,2').split(',').map(Number);
+const MAXOPEN = Number(process.env.MAXOPEN || Infinity); // positions ouvertes en même temps au maximum
+const HORIZON = Number(process.env.HORIZON || 180); // jours pour réussir les 2 étapes (FTMO : pas de limite ; 180 = exigence maison)
 
 const tight = (s, k) => ({ ...s, id: `${s.id}~${k}`, evaluate(ind, i) { const r = s.evaluate(ind, i); return { ...r, sl: k * ind.atr[i] }; } });
 const pct = (c) => (c && c.tries ? (c.passed / c.tries) * 100 : 0);
@@ -39,8 +41,9 @@ const pct = (c) => (c && c.tries ? (c.passed / c.tries) * 100 : 0);
       if (r.list.length >= 20) T[s.id] = r.list;
     }
   }
-  const stats = (ids, risk, k) => challengeStats(ids.flatMap((id) => T[id]), { riskPct: risk, dayStopPct: 2, start: P[k][1], end: P[k][2] === Infinity ? null : P[k][2] });
-  const score = (ids, risk) => Math.min(pct(stats(ids, risk, 0)), pct(stats(ids, risk, 1)));
+  const stats = (ids, risk, k) => challengeStats(ids.flatMap((id) => T[id]), { riskPct: risk, dayStopPct: 2, horizonDays: HORIZON, maxOpen: MAXOPEN, start: P[k][1], end: P[k][2] === Infinity ? null : P[k][2] });
+  // Le pire des deux taux d'abord, puis leur somme (pour départager et démarrer quand tout est à 0 %)
+  const score = (ids, risk) => { const a = pct(stats(ids, risk, 0)); const b = pct(stats(ids, risk, 1)); return Math.min(a, b) * 1000 + a + b; };
 
   console.log(`=== ${Object.keys(T).length} candidates (${IDS.length} stratégies × 2 stops) · challenge FTMO 2 étapes en < 6 mois ===\n`);
   const best = [];
@@ -52,7 +55,7 @@ const pct = (c) => (c && c.tries ? (c.passed / c.tries) * 100 : 0);
       for (const id of Object.keys(T)) {
         if (port.some((p) => p.split('~')[0] === id.split('~')[0])) continue;
         const sc = score([...port, id], risk);
-        if (sc > cur + 1 && (!pick || sc > pick.sc)) pick = { id, sc };
+        if (sc > cur + 0.5 && (!pick || sc > pick.sc)) pick = { id, sc };
       }
       if (!pick) break;
       port = [...port, pick.id];
@@ -62,7 +65,7 @@ const pct = (c) => (c && c.tries ? (c.passed / c.tries) * 100 : 0);
     best.push({ risk, port, res });
     console.log(`Risque ${risk} % : ${port.join(', ') || '—'}`);
     console.log(`   réussite ${res.map((c, k) => `${P[k][0]} ${pct(c).toFixed(0)} %`).join(' · ')}`);
-    console.log(`   échecs (perte du jour / perte max / pas fini) : ${res.map((c) => `${c.failedDaily}/${c.failedMax}/${c.unfinished}`).join(' · ')}\n`);
+    console.log(`   échecs (perte du jour / perte max / pas fini) : ${res.map((c) => (c ? `${c.failedDaily}/${c.failedMax}/${c.unfinished}` : '—')).join(' · ')}\n`);
   }
   // Portefeuille actuel du compte FTMO Nasdaq, pour comparer
   const cur = ['n_weekrev', 'n_low10', 'n_drop', 'n_dollarfall', 'n_rsspx', 'n_2down', 'n_goldfall', 'n_rsi4', 'tom'].filter((id) => T[id]);

@@ -33,9 +33,10 @@ const rMultiple = (t) => t.pnlPct / Math.max(1e-9, stopPct(t));
  * trades : [{ entryT, exitT, entry, initSl|sl, pnlPct (frais inclus, en % du montant), worstPct? }]
  * dayStopPct > 0 : règle de prudence « maison » — plus de nouveau trade dans la journée une fois la perte du jour
  * (soldée) arrivée à dayStopPct % du capital initial.
+ * maxOpen : nombre maximal de positions ouvertes en même temps (les signaux suivants sont ignorés).
  * Retourne l'issue (target / daily / maxloss / open), le solde et le nombre de jours de trading.
  */
-function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0 } = {}) {
+function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity } = {}) {
   const events = [];
   for (const t of trades) {
     if (t.entryT < from) continue;
@@ -55,6 +56,7 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
     }
     if (e.kind === 'open') {
       if (dayStopPct > 0 && balance <= dayStart - (capital * dayStopPct) / 100) continue;
+      if (open.size >= maxOpen) continue; // pas plus de maxOpen positions en même temps (limite le risque d'un trou de cotation)
       const sp = stopPct(e.tr);
       if (!(sp > 0)) continue;
       const notional = Math.min((balance * riskPct) / sp, balance * leverage);
