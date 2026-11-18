@@ -11,6 +11,8 @@ function num(name, def) {
 
 // Anciennes listes par défaut (copiées depuis .env.example) : remplacées par la sélection actuelle
 const OLD_DEFAULTS = [
+  'golden,mom12_1,macro,trendmix,mom12,sma200,lowvol,vixcalm,halloween,rates,tsmom,macd_long,sweep,m_down3,x_lasthalf,x_orb5,n_overnight,n_preholiday,n_weekrev,n_opex,hold',
+  'nas100:m_down3,nas100:x_lasthalf,nas100:x_orb5,nas100:sweep,nas100:n_overnight,nas100:n_weekrev,nas100:n_opex',
   'golden,mom12_1,macro,trendmix,mom12,sma200,lowvol,vixcalm,halloween,rates,tsmom,macd_long,sweep,m_down3,x_lasthalf,x_orb5,n_overnight,n_preholiday,hold',
   'nas100:m_down3,nas100:x_lasthalf,nas100:x_orb5,nas100:sweep,nas100:n_overnight',
   'golden,mom12_1,macro,trendmix,mom12,sma200,lowvol,vixcalm,halloween,rates,tsmom,macd_long,sweep,m_down3,x_lasthalf,x_orb5,hold',
@@ -55,7 +57,7 @@ module.exports = {
   // Paper trading du Nasdaq 100 (indice ^NDX, Yahoo Finance) — CFD NAS100 simulé
   nasEnabled: num('NAS_TRADING', 1) === 1,
   // Retenues par le banc d'essai (npm run research -- nas100), en version achat seul + référence
-  nasStrategies: list('NAS_STRATEGIES', 'golden,mom12_1,macro,trendmix,mom12,sma200,lowvol,vixcalm,halloween,rates,tsmom,macd_long,sweep,m_down3,x_lasthalf,x_orb5,n_overnight,n_preholiday,n_weekrev,n_opex,hold'),
+  nasStrategies: list('NAS_STRATEGIES', 'golden,mom12_1,macro,trendmix,mom12,sma200,lowvol,vixcalm,halloween,rates,tsmom,macd_long,sweep,m_down3,x_lasthalf,x_orb5,n_overnight,n_preholiday,n_weekrev,n_opex,n_low10,n_drop,n_yieldfall,hold'),
   nasStartCapital: num('NAS_START_CAPITAL', num('GOLD_START_CAPITAL', num('GOLD_SIZE_USD', 1000))),
   nasPositionPct: num('NAS_POSITION_PCT', 100),
   nasFeePct: num('NAS_FEE_PCT', 0.01),
@@ -79,7 +81,7 @@ module.exports = {
   ftmoStrategies: list('FTMO_STRATEGIES', 'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m'),
   // 2e compte FTMO simulé, 100 % Nasdaq (stratégies à l'essai : rien n'est validé pour le challenge sur le Nasdaq)
   ftmoNasEnabled: num('FTMO_NAS', 1) === 1,
-  ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:m_down3,nas100:x_lasthalf,nas100:x_orb5,nas100:sweep,nas100:n_overnight,nas100:n_weekrev,nas100:n_opex'),
+  ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:m_down3,nas100:x_lasthalf,nas100:x_orb5,nas100:sweep,nas100:n_overnight,nas100:n_weekrev,nas100:n_opex,nas100:n_low10,nas100:n_drop,nas100:n_yieldfall'),
   ftmoNasRisk: num('FTMO_NAS_RISK_PCT', 0.5),
   ftmoCapital: num('FTMO_CAPITAL', 100000),
   ftmoRisk: num('FTMO_RISK_PCT', 0.5), // % du solde risqué par trade (distance au stop)

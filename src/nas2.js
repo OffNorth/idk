@@ -180,6 +180,71 @@ const NAS2 = [
       return none(flat);
     },
   },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    id: 'n_drop',
+    name: 'Nasdaq : rebond après une forte baisse d’un jour',
+    desc: 'Retour à la moyenne : le Nasdaq perd plus de 2,5 % en une séance tout en restant au-dessus de sa moyenne 200 jours → achat à la clôture ; revente à la première clôture au-dessus du plus haut de la veille, ou au bout de 5 séances. Stop 3 ATR.',
+    evaluate(x, i) {
+      const c = x.closes;
+      const k = x.candles;
+      const r = c[i] / c[i - 1] - 1;
+      return { entry: r < -0.025 && c[i] > x.sma200[i] ? 'long' : null, exitLong: c[i] > k[i - 1].h, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    id: 'n_reversal',
+    name: 'Nasdaq : journée de retournement',
+    desc: 'Le Nasdaq ouvre en baisse de plus de 0,7 % (gap) mais clôture au-dessus de son ouverture, dans une tendance haussière (prix > moyenne 200 jours) : les vendeurs du matin ont été absorbés. Achat à la clôture, revente à la clôture suivante au-dessus du plus haut du jour, ou au bout de 5 séances. Stop sous le plus bas du jour.',
+    evaluate(x, i) {
+      const k = x.candles;
+      const gap = k[i].o / k[i - 1].c - 1;
+      const ok = gap < -0.007 && k[i].c > k[i].o && k[i].c > x.sma200[i];
+      const risk = Math.max(k[i].c - k[i].l, 0.5 * x.atr[i]);
+      return { entry: ok ? 'long' : null, exitLong: k[i].c > k[i - 1].h, exitShort: true, sl: ok ? risk : 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    id: 'n_low10',
+    name: 'Nasdaq : plus bas de 10 jours dans la tendance',
+    desc: 'Au-dessus de la moyenne 200 jours, une clôture au plus bas des 10 dernières séances → achat ; revente à la clôture au plus haut des 5 dernières séances. Stop 3 ATR.',
+    evaluate(x, i) {
+      const c = x.closes;
+      if (i < 12) return { entry: null, exitLong: false, exitShort: true, sl: 0, tp: null };
+      const lo10 = Math.min(...c.slice(i - 9, i + 1));
+      const hi5 = Math.max(...c.slice(i - 4, i));
+      return { entry: c[i] <= lo10 && c[i] > x.sma200[i] ? 'long' : null, exitLong: c[i] >= hi5, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    needsTnx: true,
+    id: 'n_yieldfall',
+    name: 'Nasdaq : chute rapide des taux',
+    desc: 'Quand le taux 10 ans US baisse de plus de 5 % en 5 séances (ex. 4,40 % → 4,15 %), les valeurs de croissance en profitent : achat du Nasdaq s’il est au-dessus de sa moyenne 50 jours, revente au bout de 10 séances ou si les taux repassent au-dessus de leur moyenne 10 jours. Stop 3 ATR.',
+    evaluate(x, i) {
+      const t = x.tnx;
+      const ok = t.c[i] !== null && t.r21[i] !== undefined;
+      const fall = ok && i >= 5 && t.c[i - 5] && t.c[i] / t.c[i - 5] - 1 < -0.05;
+      const up = t.c[i] !== null && t.sma10[i] !== null && t.c[i] > t.sma10[i];
+      return { entry: fall && x.closes[i] > x.sma50[i] ? 'long' : null, exitLong: up, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    needsVix: true,
+    id: 'n_vixfade',
+    name: 'Nasdaq : vendre la panique (bond du VIX)',
+    desc: 'Le VIX (peur) bondit de plus de 30 % en 3 séances alors que le Nasdaq reste au-dessus de sa moyenne 200 jours → achat ; revente quand le VIX repasse sous sa moyenne 10 jours. Stop 3 ATR.',
+    evaluate(x, i) {
+      const v = x.vix;
+      const jump = i >= 3 && v.c[i] !== null && v.c[i - 3] && v.c[i] / v.c[i - 3] - 1 > 0.3;
+      const calm = v.c[i] !== null && v.sma10[i] !== null && v.c[i] < v.sma10[i];
+      return { entry: jump && x.closes[i] > x.sma200[i] ? 'long' : null, exitLong: calm, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
 ];
 
 module.exports = { NAS2, nyseHolidays, beforeHoliday };

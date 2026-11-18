@@ -167,6 +167,10 @@ Le bot trade aussi le **Nasdaq 100** en simulation, comme un CFD NAS100 :
 | **Effet de nuit** (`n_overnight`, 5 min) | achat à la clôture de 16 h New York, revente sur la 1re bougie après l'ouverture, toutes les nuits | ✅ QQQ 2024–2026 : +8,9 % puis +3,9 % après frais et financement CFD (+13,8 % / +8,5 % sans financement). Sur 25 ans de ^NDX, la nuit rapporte ≈ +9,6 %/an contre +4 à +8 % pour la journée. **Active** |
 | **Veille de jour férié** (`n_preholiday`, journalier) | achat la veille de la veille d'un férié NYSE, revente la veille | ✅ +12,8 % cumulés 1985–2009, +16,3 % 2010–2026, 57 % gagnants. **Active** |
 | **Rebond après une mauvaise semaine** (`n_weekrev`, journalier) | −3 % sur 5 séances au-dessus de la moyenne 200 j → achat, revente au plus haut de 5 séances | ✅ +103 % cumulés 1985–2009, +58 % 2010–2026, 72 % gagnants. **Active** |
+| **Plus bas de 10 jours dans la tendance** (`n_low10`, journalier) | clôture au plus bas de 10 séances au-dessus de la moyenne 200 j → achat, revente au plus haut de 5 séances | ✅ +128 % cumulés 1985–2009, +62 % 2010–2026, 73 % gagnants. **Active** |
+| **Rebond après une forte baisse d'un jour** (`n_drop`) | −2,5 % en une séance au-dessus de la moyenne 200 j → achat, revente au-dessus du plus haut de la veille | ✅ +69 % puis +48 %, 73 % gagnants. **Active** |
+| **Chute rapide des taux** (`n_yieldfall`) | taux 10 ans −5 % en 5 séances et Nasdaq > moyenne 50 j → achat, revente quand les taux remontent au-dessus de leur moyenne 10 j | ✅ +52 % puis +74 %, 70 % gagnants. **Active** |
+| Journée de retournement (`n_reversal`), vendre la panique du VIX (`n_vixfade`) | | ❌ perdante / trop faible sur 1985–2009 |
 | **Semaine d'expiration des options** (`n_opex`, journalier) | achat le vendredi d'avant, revente le 3e vendredi du mois | ✅ +34 % puis +25 %, 55 % gagnants. **Active** |
 | Rallye de Noël (`n_santa`) | 5 derniers jours de décembre + 2 premiers de janvier | ❌ +58 % 1985–2009 mais −2,6 % 2010–2026 |
 | 1re demi-heure → dernière (`n_halfhalf`), journée de tendance VWAP (`n_trendday`) | intraday QQQ | ❌ perdantes la 2e année |
