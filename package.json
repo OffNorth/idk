@@ -30,7 +30,8 @@
     "ftmo-combo": "node --max-old-space-size=4096 ftmo-combo.js",
     "ftmo-more": "node --max-old-space-size=6144 ftmo-more.js",
     "ftmo-grid": "node --max-old-space-size=6144 ftmo-grid.js",
-    "ftmo-papers": "node --max-old-space-size=6144 ftmo-papers.js"
+    "ftmo-papers": "node --max-old-space-size=6144 ftmo-papers.js",
+    "ftmo-sizing": "node --max-old-space-size=6144 ftmo-sizing.js"
   },
   "engines": {
     "node": ">=20"

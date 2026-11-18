@@ -1,0 +1,59 @@
+/**
+ * Levier dynamique : le risque de chaque trade (donc son levier = montant engagé ÷ solde) est ajusté selon le contexte.
+ * Toutes les règles renvoient un MULTIPLICATEUR du risque de base (0 = on ne prend pas le trade), borné.
+ * Indicateurs par trade (annotate) calculés uniquement avec le passé :
+ *   volRatio : distance du stop ÷ médiane des 50 derniers stops de la même stratégie (> 1 = marché plus agité que d'habitude)
+ *   recentR  : somme des R des 20 derniers trades FERMÉS de la même stratégie avant l'entrée (forme récente)
+ * État du compte (fourni par runPhase / le compte en direct) : balance, capital, dayStart, target (%), open (positions).
+ */
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const stopPctOf = (t) => (Math.abs(t.entry - (t.initSl ?? t.sl)) / t.entry) * 100;
+
+/** Ajoute volRatio et recentR à chaque trade (liste de trades d'une ou plusieurs stratégies, champ `sid`). */
+function annotate(trades) {
+  const by = new Map();
+  for (const t of trades) {
+    if (!by.has(t.sid)) by.set(t.sid, []);
+    by.get(t.sid).push(t);
+  }
+  for (const list of by.values()) {
+    list.sort((a, b) => a.entryT - b.entryT);
+    const exits = [...list].sort((a, b) => a.exitT - b.exitT);
+    let k = 0;
+    const closedR = [];
+    for (let i = 0; i < list.length; i++) {
+      const t = list[i];
+      while (k < exits.length && exits[k].exitT <= t.entryT) {
+        const x = exits[k++];
+        closedR.push(x.pnlPct / Math.max(1e-9, stopPctOf(x)));
+      }
+      const prev = list.slice(Math.max(0, i - 50), i).map(stopPctOf).sort((a, b) => a - b);
+      t.volRatio = prev.length >= 10 ? stopPctOf(t) / prev[Math.floor(prev.length / 2)] : 1;
+      t.recentR = closedR.length >= 5 ? closedR.slice(-20).reduce((a, b) => a + b, 0) : 0;
+    }
+  }
+  return trades;
+}
+
+/** Règles de levier dynamique testées par `npm run ftmo-sizing`. */
+const RULES = {
+  fixe: () => 1,
+  // Marché agité → moins de risque, marché calme → un peu plus
+  volatilité: (t) => clamp(1 / (t.volRatio || 1), 0.5, 1.5),
+  'volatilité forte seulement': (t) => ((t.volRatio || 1) > 1.5 ? 0.5 : 1),
+  // Forme de la stratégie : plus de risque quand elle gagne, moins quand elle perd
+  'forme récente': (t) => (t.recentR > 2 ? 1.5 : t.recentR < -2 ? 0.5 : 1),
+  'forme récente (coupe les perdantes)': (t) => (t.recentR < -3 ? 0 : t.recentR > 2 ? 1.25 : 1),
+  // État du compte
+  'prudence en perte': (t, s) => (s.balance < s.capital * 0.97 ? 0.5 : 1),
+  'gain → plus de risque': (t, s) => clamp(1 + ((s.balance / s.capital - 1) * 100) / 10, 0.6, 1.6),
+  'perte du jour → moins': (t, s) => (s.balance < s.dayStart - s.capital * 0.01 ? 0.5 : 1),
+  'proche de l’objectif → moins': (t, s) => (s.balance >= s.capital * (1 + (s.target * 0.7) / 100) ? 0.5 : 1),
+  'plusieurs positions → moins': (t, s) => (s.open >= 2 ? 0.5 : 1),
+  // Combinaisons
+  'volatilité + prudence en perte': (t, s) => clamp(1 / (t.volRatio || 1), 0.5, 1.5) * (s.balance < s.capital * 0.97 ? 0.5 : 1),
+  'volatilité + forme': (t) => clamp(1 / (t.volRatio || 1), 0.5, 1.5) * (t.recentR > 2 ? 1.25 : t.recentR < -2 ? 0.6 : 1),
+};
+
+module.exports = { annotate, RULES, clamp, stopPctOf };

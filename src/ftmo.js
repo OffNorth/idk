@@ -37,7 +37,7 @@ const rMultiple = (t) => t.pnlPct / Math.max(1e-9, stopPct(t));
  * maxOpen : nombre maximal de positions ouvertes en même temps (les signaux suivants sont ignorés).
  * Retourne l'issue (target / daily / maxloss / open), le solde et le nombre de jours de trading.
  */
-function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity, riskMul = 1 } = {}) {
+function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity, riskMul = 1, sizer = null } = {}) {
   const events = [];
   for (const t of trades) {
     if (t.entryT < from) continue;
@@ -60,7 +60,10 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       if (open.size >= maxOpen) continue; // pas plus de maxOpen positions en même temps (limite le risque d'un trou de cotation)
       const sp = stopPct(e.tr);
       if (!(sp > 0)) continue;
-      const notional = Math.min((balance * (e.tr.riskPct ?? riskPct) * riskMul) / sp, balance * leverage); // risque propre au trade si fourni (comptes multi-marchés)
+      // risque propre au trade si fourni (comptes multi-marchés) ; `sizer` : multiplicateur de risque selon le trade et l'état du compte
+      const mul = sizer ? sizer(e.tr, { balance, capital, dayStart, target, open: open.size }) : 1;
+      if (!(mul > 0)) continue;
+      const notional = Math.min((balance * (e.tr.riskPct ?? riskPct) * riskMul * mul) / sp, balance * leverage);
       open.set(e.tr, notional);
       days.add(d);
       continue;
