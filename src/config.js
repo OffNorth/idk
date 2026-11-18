@@ -60,6 +60,16 @@ module.exports = {
   // Graphique du portefeuille publié sur le canal toutes les X heures (0 = jamais)
   chartHours: num('CHART_HOURS', 24),
 
+  // Compte FTMO simulé : suit les trades des stratégies listées (marché:id) avec une taille au risque
+  ftmoEnabled: num('FTMO', 1) === 1,
+  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:x_rsi2'),
+  ftmoCapital: num('FTMO_CAPITAL', 100000),
+  ftmoRisk: num('FTMO_RISK_PCT', 1), // % du solde risqué par trade (distance au stop)
+  ftmoLeverage: num('FTMO_LEVERAGE', 30),
+  ftmoDayStop: num('FTMO_DAY_STOP_PCT', 2), // plus de nouveau trade dans la journée après −2 % (0 = jamais)
+  ftmoFeeGold: num('FTMO_FEE_GOLD_PCT', 0.005),
+  ftmoFeeNas: num('FTMO_FEE_NAS_PCT', 0.003),
+
   // Jeu du groupe « Pronostic du jour » : hausse ou baisse, chaque jour de semaine à GAME_HOUR_UTC
   gameEnabled: num('GAME', 1) === 1,
   gameHourUtc: Math.min(23, Math.max(0, num('GAME_HOUR_UTC', 13))),

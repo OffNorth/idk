@@ -1143,6 +1143,9 @@ STRATEGIES.push(longOnly(STRATEGIES.find((s) => s.id === 'macd'), '1d'), longOnl
   STRATEGIES.push(...SCALP2.map((s) => ({ ...s, compute: (candles, barSec, market) => computeScalp2(candles, barSec, market) })));
 }
 
+/* Stratégies « style FTMO » (stop clair, taille au risque) : voir src/ftmostrats.js et npm run ftmo */
+STRATEGIES.push(...require('./ftmostrats').FTMO);
+
 /* Intraday NAS100 (formation TradingView, module 5) : voir src/intraday.js */
 STRATEGIES.push(...require('./intraday').INTRADAY);
 

@@ -291,4 +291,62 @@ function positionsImage({ market, rows, price: now }) {
   return cv.png();
 }
 
-module.exports = { priceChartImage, tradeCardImage, strategyCardImage, rankingImage, positionsImage, positionLevels, drawCandles };
+/* ------------------------------------------------------------------ */
+/* Compte FTMO simulé                                                   */
+/* ------------------------------------------------------------------ */
+
+/** Jauge horizontale : part utilisée (0..1+). */
+function gauge(cv, x, y, w, frac, col) {
+  cv.roundRect(x, y, w, 14, 7, THEME.surface2);
+  const f = Math.max(0, Math.min(1, frac));
+  if (f > 0.01) cv.roundRect(x, y, Math.max(14, w * f), 14, 7, col);
+}
+
+/** st = createFtmo().status(prix) */
+function ftmoImage(st) {
+  const s = st.s;
+  const cv = new Canvas(W, 600, THEME.bg);
+  const phase = s.phase === 'funded' ? 'Compte financé' : `Étape ${s.phase} sur 2`;
+  header(cv, { market: null, title: `Compte FTMO simulé · ${phase}`, subtitle: `Challenge n° ${s.attempt} · capital ${money(s.capital)} · risque par trade selon le stop · depuis le ${date(s.startedAt)}` });
+  const ret = (st.equity / s.capital - 1) * 100;
+  cv.roundRect(24, 96, 952, 150, 16, THEME.surface);
+  cv.text('VALEUR DU COMPTE', 48, 112, { style: 'b', size: 13, color: THEME.muted });
+  cv.text(money(st.equity), 46, 134, { style: 'b', size: 56, color: THEME.text });
+  cv.text(pct(ret, 2), 48 + cv.measure(money(st.equity), 'b', 56) + 12, 158, { style: 'b', size: 28, color: tone(ret) });
+  if (st.target) {
+    cv.text(`Objectif ${money(st.target)} (+${s.phase === 1 ? 10 : 5} %)`, 952, 112, { size: 15, color: THEME.muted, align: 'right' });
+    gauge(cv, 48, 212, 904, st.progress, THEME.up);
+    cv.text(`${Math.round(Math.min(1, st.progress) * 100)} % de l’objectif`, 952, 186, { style: 'b', size: 15, color: THEME.up, align: 'right' });
+  } else {
+    const gain = s.balance - s.capital;
+    cv.text(`Gain depuis le financement : ${gain >= 0 ? '+' : '−'}${money(Math.abs(gain))} · part du trader (80 %) : ${money(Math.max(0, gain) * 0.8)}`, 48, 212, { size: 15, color: THEME.muted });
+  }
+  const box = (x, title, used, label) => {
+    cv.roundRect(x, 262, 300, 130, 16, THEME.surface);
+    cv.text(title, x + 20, 278, { style: 'b', size: 13, color: THEME.muted });
+    cv.text(label, x + 20, 302, { style: 'b', size: 22, color: used > 0.6 ? THEME.down : THEME.text, maxWidth: 260 });
+    gauge(cv, x + 20, 348, 260, used, used > 0.6 ? THEME.down : used > 0.3 ? THEME.gold : THEME.up);
+  };
+  box(24, 'PERTE DU JOUR (MAX 5 %)', st.dailyUsed, `${Math.round(st.dailyUsed * 100)} % utilisé`);
+  box(350, 'PERTE MAXIMALE (10 %)', st.maxUsed, `${Math.round(st.maxUsed * 100)} % utilisé`);
+  cv.roundRect(676, 262, 300, 130, 16, THEME.surface);
+  cv.text('JOURS DE TRADING', 696, 278, { style: 'b', size: 13, color: THEME.muted });
+  cv.text(`${s.days.length}${s.phase === 'funded' ? '' : ' / 4 minimum'}`, 696, 302, { style: 'b', size: 22, color: s.days.length >= 4 ? THEME.up : THEME.text });
+  cv.text(`${st.trades} trades · ${st.trades ? Math.round((st.wins / st.trades) * 100) : 0} % gagnants`, 696, 344, { size: 15, color: THEME.muted });
+
+  cv.roundRect(24, 408, 952, 150, 16, THEME.surface);
+  const open = Object.values(s.open);
+  cv.text(open.length ? `POSITIONS OUVERTES · ${open.length}` : 'DERNIERS TRADES', 48, 424, { style: 'b', size: 13, color: THEME.muted });
+  const rows = open.length ? open.slice(0, 4) : s.closed.slice(-4).reverse();
+  if (!rows.length) cv.text('Aucun trade pour l’instant : le compte attend les signaux des stratégies suivies.', 48, 456, { size: 15, color: THEME.muted });
+  rows.forEach((r, i) => {
+    const y = 450 + i * 26;
+    cv.text(`${r.side === 'long' ? '▲' : '▼'} ${r.name}`, 48, y, { size: 15, color: THEME.text, maxWidth: 520 });
+    cv.text(`${price(r.entry)}${r.exit ? ` → ${price(r.exit)}` : ''} · ${money(r.notional)} engagés`, 760, y, { size: 15, color: THEME.muted, align: 'right' });
+    if (r.pnl !== undefined) cv.text(`${r.pnl >= 0 ? '+' : '−'}${money(Math.abs(r.pnl))}`, 952, y, { style: 'b', size: 15, color: tone(r.pnl), align: 'right' });
+  });
+  footer(cv, 'Simulation d’un challenge FTMO · argent fictif · pas un conseil financier');
+  return cv.png();
+}
+
+module.exports = { ftmoImage, priceChartImage, tradeCardImage, strategyCardImage, rankingImage, positionsImage, positionLevels, drawCandles };

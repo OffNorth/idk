@@ -254,6 +254,29 @@ toutes les 3 minutes ne reproduit pas. À noter : le PAXG sur Binance est moins 
 Avec des frais de broker (0,01 %), les stratégies en 1 h restent elles aussi presque toutes perdantes ;
 les stratégies journalières restent les meilleures (`npm run research -- 0.01`).
 
+## 🏦 Compte FTMO simulé (`/ftmo`) — banc d'essai `npm run ftmo`
+
+Le bot fait comme s'il avait un **compte FTMO** (challenge en 2 étapes, règles 2026) : 100 000 $, **1 % du solde risqué par
+trade** (taille = risque ÷ distance au stop, levier max 1:30), frais d'un CFD (or 0,005 %, Nasdaq 0,003 % par côté).
+- Étape 1 : **+10 %**, étape 2 : **+5 %**, minimum 4 jours de trading, pas de limite de temps ; puis compte financé (partage 80 %).
+- Échec si la **perte du jour** atteint 5 % (sous le solde de la veille, positions ouvertes comprises, jour à l'heure de Prague)
+  ou si la **perte totale** atteint 10 %. Après un échec, un nouveau challenge démarre le jour de trading suivant.
+- Prudence « maison » : plus de nouveau trade dans la journée après −2 % (`FTMO_DAY_STOP_PCT`).
+- Le compte suit les trades des stratégies de `FTMO_STRATEGIES` (par défaut `gold:x_rsi2`). Image d'état avec `/ftmo` ou le
+  bouton « 🏦 » du panneau ; la réussite d'une étape ou un échec est publié dans le groupe.
+
+**Banc d'essai** (`ftmo.js`, `src/ftmo.js`) : chaque stratégie est rejouée comme des challenges lancés chaque semaine ;
+« réussite » = les 2 étapes en moins de 6 mois (un challenge non fini compte comme raté).
+
+| Stratégie | Réussite en < 6 mois (risque 1 %) | Remarque |
+|---|---|---|
+| **Scalp RSI 2, or 5 min** (`x_rsi2`) | **72 %**, médiane **53 jours** (2020–2026) ; **43 %** sur la seule période récente | seule à pouvoir passer le challenge ; avantage plus faible depuis 2024 |
+| Tendances journalières (croix dorée, tendance 4 horizons, momentum 12 mois, moyenne 200 j) | 0 % | rentables, mais avec 1 % de risque sur un stop large il faut des années pour faire +10 % |
+| 6 nouvelles stratégies « style FTMO » : repli 1 h dans la tendance, cassure de la veille, cassure du range de nuit, jour intérieur, NR7, cassure de la semaine passée | 0 % | espérance nulle ou négative aux frais FTMO |
+
+Sources des règles : pages de comparatifs 2026 (ex. propfirm-escape-pod, tradetanto) ; le levier FTMO n'a pas été confirmé
+(réglable avec `FTMO_LEVERAGE`).
+
 ## 🎛 Dans le groupe : boutons et images
 
 Tout se passe dans le groupe Telegram, avec des **boutons sous les messages** que tous les membres peuvent utiliser.

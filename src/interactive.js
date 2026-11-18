@@ -42,6 +42,7 @@ function panelKeyboard(cfg, view, marketId, extra = []) {
   }
   rows.push([btn('📈 Portefeuille', `m:h:${k}`), btn('🏆 Classement', `m:r:${k}`), btn('📍 Positions', `m:o:${k}`)]);
   rows.push([btn('🕯 Cours', `m:c:${k}:1d`), btn('🕰 Historique', `m:y:${k}`), btn('📚 Stratégies', `m:l:${k}:0`)]);
+  if (cfg.ftmoEnabled) rows.push([btn('🏦 Compte FTMO simulé', `m:f:${k}`)]);
   return { inline_keyboard: [...extra, ...rows] };
 }
 
@@ -115,6 +116,20 @@ async function render(cfg, store, view, marketId, args = []) {
   const tr = trader(cfg, store, marketId);
   const st = tr.stats();
   const head = `${market.emoji} <b>${esc(market.name)}</b>`;
+
+  if (view === 'f') {
+    const { createFtmo } = require('./ftmoAccount');
+    const prices = Object.fromEntries(activeMarkets(cfg).map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
+    const fst = createFtmo({ cfg, store }).status(prices);
+    const s = fst.s;
+    const lines = [
+      `🏦 <b>Compte FTMO simulé</b> · ${s.phase === 'funded' ? 'compte financé' : `étape ${s.phase} sur 2`} · challenge n° ${s.attempt}`,
+      `Valeur <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · objectif ${money(fst.target)}` : ''}`,
+      `Stratégies suivies : ${cfg.ftmoStrategies.map((x) => `<code>${esc(x)}</code>`).join(', ')} · risque ${cfg.ftmoRisk} % par trade`,
+      ...(s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt}, étape ${h.phase} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
+    ];
+    return { png: C.ftmoImage(fst), caption: lines.join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'f', marketId) };
+  }
 
   if (view === 'h') {
     const { png } = liveChart(store, cfg, marketId);

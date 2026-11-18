@@ -89,6 +89,7 @@ bot.command(['start', 'aide', 'help'], (ctx) =>
       '',
       '/menu — 🎛 panneau interactif (images qui changent avec les boutons)',
       '/graphique [or|nasdaq] — 🕯 cours en bougies',
+      '/ftmo — 🏦 compte FTMO simulé (challenge +10 % puis +5 %)',
       '/jeu — 🎯 pronostic du jour · /classement — points des joueurs',
       '/gold · /nasdaq — bilan texte',
       '/portfolio — graphiques des portefeuilles',
@@ -163,6 +164,14 @@ bot.command('strategies', (ctx) =>
 );
 
 /* ---------- Jeu ---------- */
+
+bot.command('ftmo', async (ctx) => {
+  try {
+    await sendPanel(ctx.api, ctx.chat.id, cfg, store, { view: 'f' });
+  } catch (err) {
+    await ctx.reply(`❌ ${esc(err.message)}`);
+  }
+});
 
 bot.command('jeu', (ctx) => ctx.reply(game.status(), HTML));
 
@@ -256,6 +265,7 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
   await bot.api.setMyCommands([
     { command: 'menu', description: '🎛 Panneau interactif (images + boutons)' },
     { command: 'graphique', description: '🕯 Cours en bougies : /graphique or · /graphique nasdaq' },
+    { command: 'ftmo', description: '🏦 Compte FTMO simulé (challenge)' },
     { command: 'jeu', description: '🎯 Pronostic du jour' },
     { command: 'classement', description: '🏆 Classement des joueurs' },
     { command: 'gold', description: 'Bilan de l’or' },

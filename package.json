@@ -13,7 +13,8 @@
     "scalp": "node --max-old-space-size=3072 scalp.js",
     "nas-intraday": "node nas-intraday.js",
     "scalp2": "node --max-old-space-size=4096 scalp2.js",
-    "pdf": "node -e \"console.log(JSON.stringify(require('./src/catalog').catalog(require('./src/config'))))\" > /tmp/catalog.json && python3 scripts/make-pdf.py /tmp/catalog.json"
+    "pdf": "node -e \"console.log(JSON.stringify(require('./src/catalog').catalog(require('./src/config'))))\" > /tmp/catalog.json && python3 scripts/make-pdf.py /tmp/catalog.json",
+    "ftmo": "node --max-old-space-size=4096 ftmo.js"
   },
   "engines": {
     "node": ">=20"

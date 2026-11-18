@@ -122,7 +122,7 @@ function exposure(list, from, to) {
       const barSec = TF_SEC[tf];
       const split = Date.parse(SPLITS[tf]) / 1000;
       const cut = candles.findIndex((c) => c.t >= split);
-      const opts = { size: SIZE, feePct: FEE, daily, barSec, fx, vix, aux };
+      const opts = { size: SIZE, feePct: FEE, daily, barSec, fx, vix, aux, market: M.market || MARKET };
       const train = backtest(s, candles.slice(0, cut), opts);
       const test = backtest(s, candles, { ...opts, from: cut });
       const ys = Object.entries(buckets(train.list, 1));

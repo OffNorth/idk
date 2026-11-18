@@ -207,6 +207,9 @@ function backtest(strategy, candles, {
   for (let i = start; i < end; i++) {
     const c = candles[i];
     if (pos && pos.openIdx < i) {
+      // Pire moment du trade (en % du prix d'entrée), utile pour la perte du jour « positions ouvertes comprises » (FTMO)
+      const adverse = pos.side === 'long' ? (Math.max(c.l, pos.sl) / pos.entry - 1) * 100 : (1 - Math.min(c.h, pos.sl) / pos.entry) * 100;
+      pos.worstPct = Math.min(pos.worstPct ?? 0, adverse);
       const hit = hitInCandle(pos, c);
       if (hit) close(hit.price, hit.reason, c.t);
     }

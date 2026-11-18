@@ -15,6 +15,7 @@ const FAMILIES = [
   ['Spécifiques au Nasdaq', ['sma200', 'macro', 'lowvol', 'vixcalm', 'halloween', 'rates', 'macd_long', 'sox', 'dollarweak', 'ibs', 'cumrsi', 'ema_long', 'tom', 'double7', 'down3', 'dip5', 'vixspike', 'tuesday', 'pctb']],
   ['Intraday Nasdaq (5 min)', ['sweep', 'orb15', 'vwappb']],
   ['Scalp (1–5 min)', ['s_emavwap', 's_vwaprev', 's_bbrsi', 's_orb', 's_stoch', 's_burst']],
+  ['Style FTMO (stop clair, taille au risque)', ['f_pullback', 'f_pdbreak', 'f_nightbreak', 'f_insideday', 'f_nr7', 'f_weekbreak']],
   ['Scalp 2e série (or et Nasdaq, 1–5 min)', ['x_rsi2', 'x_trendpb', 'x_vwapbounce', 'x_rangesweep', 'x_pdsweep', 'x_orb5', 'x_lasthalf', 'x_squeeze', 'x_break20']],
   ['Référence', ['hold']],
 ];
@@ -94,6 +95,12 @@ const VERDICT = {
   x_lasthalf: ['rejet', 'perdante sur 6 ans d’or et sur 60 jours de Nasdaq'],
   x_squeeze: ['rejet', 'perdante'],
   x_break20: ['rejet', 'perdante sur l’or ; Nasdaq 1 min retenue au choix puis perdante en vérification'],
+  f_pullback: ['rejet', 'or 1 h −0,07 R/trade, Nasdaq 1 h ≈ 0'],
+  f_pdbreak: ['rejet', 'or 1 h −0,07 R/trade (choix), Nasdaq 1 h perdante en vérification'],
+  f_nightbreak: ['rejet', 'or 1 h −0,10 R/trade (choix), Nasdaq 1 h ≈ 0'],
+  f_insideday: ['rejet', 'or 1 jour +0,02 R/trade, Nasdaq perdante'],
+  f_nr7: ['rejet', 'or et Nasdaq ≈ 0 ou perdante en vérification'],
+  f_weekbreak: ['rejet', 'or 1 jour +0,08 R/trade (trop faible), Nasdaq perdante en vérification'],
   hold: ['ref', 'Or +10,8 %/an (pire baisse −44 %) · Nasdaq +17,0 %/an (−36 %)'],
 };
 
