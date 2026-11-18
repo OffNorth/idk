@@ -21,7 +21,7 @@ function accountOf(cfg, id = 'gold') {
     return {
       id: 'gold', label: 'Or + Nasdaq + EUR/USD', emoji: '🌍', file: 'ftmo.json', enabled: cfg.ftmoEnabled,
       strategies: [...cfg.ftmoStrategies, ...cfg.ftmoNasStrategies], risk: cfg.ftmoRisk,
-      riskOf: (marketId) => (marketId === 'nas100' ? cfg.ftmoComboNasRisk : marketId === 'eurusd' ? cfg.ftmoEurRisk ?? cfg.ftmoRisk : cfg.ftmoRisk),
+      riskOf: (marketId) => (marketId === 'nas100' ? cfg.ftmoComboNasRisk : marketId === 'eurusd' ? cfg.ftmoEurRisk ?? cfg.ftmoRisk : marketId === 'spx' ? cfg.ftmoSpxRisk ?? cfg.ftmoRisk : cfg.ftmoRisk),
     };
   }
   return { id: 'gold', label: 'Or', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk, riskOf: () => cfg.ftmoRisk };
@@ -39,7 +39,7 @@ const TARGET = { 1: 10, 2: 5 };
  */
 const PROGRAMS = {
   '2step': { label: 'Challenge 2 étapes', steps: 2, daily: 5, max: 10, trailing: false, bestDay: 0, levCap: null },
-  swing: { label: 'Challenge 2 étapes Swing', steps: 2, daily: 5, max: 10, trailing: false, bestDay: 0, levCap: { gold: 10, nas100: 10, eurusd: 30 } },
+  swing: { label: 'Challenge 2 étapes Swing', steps: 2, daily: 5, max: 10, trailing: false, bestDay: 0, levCap: { gold: 10, nas100: 10, spx: 10, eurusd: 30 } },
   '1step': { label: 'Challenge 1 étape', steps: 1, daily: 3, max: 10, trailing: true, bestDay: 50, levCap: null },
 };
 const programOf = (cfg) => PROGRAMS[cfg.ftmoProgram] || PROGRAMS['2step'];

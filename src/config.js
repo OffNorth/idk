@@ -88,6 +88,13 @@ module.exports = {
 
   // Paper trading du Nasdaq 100 (indice ^NDX, Yahoo Finance) — CFD NAS100 simulé
   // EUR/USD (journalier, Yahoo EURUSD=X) — marché à l'essai (npm run ftmo-markets : ibs +68 % · +85 % · +84 %, 2003–2026)
+  // S&P 500 (journalier, Yahoo ^GSPC ; CFD « US500 » chez FTMO) — stratégies choisies par npm run ftmo-real (EXTRA=1)
+  spxEnabled: num('SPX_TRADING', 1) === 1,
+  spxStrategies: list('SPX_STRATEGIES', 'rsi2,ibs,double7,down3,cumrsi,n_low10,hold'),
+  spxStartCapital: num('SPX_START_CAPITAL', 1000),
+  spxPositionPct: num('SPX_POSITION_PCT', 100),
+  spxFeePct: num('SPX_FEE_PCT', 0.003),
+  spxFinancingPct: num('SPX_FINANCING_PCT', 6),
   eurusdEnabled: num('EURUSD_TRADING', 1) === 1,
   eurusdStrategies: list('EURUSD_STRATEGIES', 'ibs,hold'),
   eurusdStartCapital: num('EURUSD_START_CAPITAL', 1000),
@@ -127,6 +134,7 @@ module.exports = {
   ftmoCombined: num('FTMO_COMBINED', 1) === 1,
   ftmoComboNasRisk: upgraded('FTMO_COMBO_NAS_RISK_PCT', ['1', '0.5'], 1.5),
   ftmoEurRisk: num('FTMO_EUR_RISK_PCT', 1.5),
+  ftmoSpxRisk: num('FTMO_SPX_RISK_PCT', 1.5),
   ftmoNasEnabled: num('FTMO_NAS', 1) === 1,
   ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:rsi2,nas100:ibs,nas100:down3,nas100:dip5,nas100:n_low10,nas100:n_drop,nas100:n_2down,nas100:n_dollarfall,nas100:rates,nas100:g_yieldfall'),
   ftmoNasRisk: process.env.FTMO_NAS_RISK_PCT === '0.5' ? 3 : num('FTMO_NAS_RISK_PCT', 3), // 0,5 = ancienne valeur par défaut, mise à jour ; // npm run ftmo-nas-port : 3 % → 42 % · 43 % · 39 % de challenges réussis
@@ -162,5 +170,6 @@ module.exports = {
     cfg.goldStrategies = of('gold');
     cfg.nasStrategies = of('nas100');
     cfg.eurusdStrategies = of('eurusd');
+    cfg.spxStrategies = of('spx');
   }
 }

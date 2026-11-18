@@ -68,6 +68,11 @@ async function loadHistory(marketId, cacheDir, fromYear = 2021) {
     const d = await cachedYahoo(cacheDir, 'GC=F', '1d');
     return { '1d': d, daily: d, fx: await y('EURUSD=X'), vix: await y('^VIX'), aux: await loadAux(cacheDir, 'gold'), source: 'future GC=F, Yahoo Finance' };
   }
+  if (marketId === 'spx') {
+    const { cachedYahoo } = require('./yahoo');
+    const d = (await cachedYahoo(cacheDir, '^GSPC', '1d')).filter((k) => k.c > 0);
+    return { '1d': d, daily: d, fx: null, vix: await cachedYahoo(cacheDir, '^VIX', '1d').catch(() => null), aux: await loadAux(cacheDir, 'nas100'), source: 'indice ^GSPC, Yahoo Finance' };
+  }
   if (marketId === 'eurusd') {
     const { cachedYahoo } = require('./yahoo');
     const d = (await cachedYahoo(cacheDir, 'EURUSD=X', '1d')).filter((k) => k.c > 0);

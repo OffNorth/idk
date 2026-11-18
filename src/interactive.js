@@ -19,9 +19,9 @@ const C = require('./cards');
 const { esc } = require('./format');
 const { VERDICT } = require('./catalog');
 
-const MK = { g: 'gold', n: 'nas100', e: 'eurusd' };
-const KM = { gold: 'g', nas100: 'n', eurusd: 'e' };
-const YEARS = { gold: [2001, 2010, 2016, 2021], nas100: [1990, 2000, 2010, 2020], eurusd: [2004, 2010, 2016, 2021] };
+const MK = { g: 'gold', n: 'nas100', e: 'eurusd', p: 'spx' };
+const KM = { gold: 'g', nas100: 'n', eurusd: 'e', spx: 'p' };
+const YEARS = { gold: [2001, 2010, 2016, 2021], nas100: [1990, 2000, 2010, 2020], eurusd: [2004, 2010, 2016, 2021], spx: [1990, 2000, 2010, 2020] };
 const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
 /** Cours : 4 décimales sous 10 (EUR/USD), entier au-delà de 1 000, 2 décimales sinon. */
 const quote = (v) => (Math.abs(v) < 10 ? `$${v.toFixed(4)}` : Math.abs(v) >= 1000 ? money(v) : `$${v.toFixed(2)}`);
@@ -128,7 +128,7 @@ async function render(cfg, store, view, marketId, args = []) {
     const lines = [
       `🏦 <b>Compte FTMO simulé ${fst.account.emoji} ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : fst.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} · challenge n° ${s.attempt}`,
       `Valeur <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · objectif ${money(fst.target)}` : ''}`,
-      `Stratégies suivies : ${fst.account.strategies.map((x) => `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶' }[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')} · risque ${fst.account.riskOf ? [...new Set(['gold', 'nas100', 'eurusd'].filter((m) => fst.account.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => fst.account.riskOf(m)))].join(' / ') : fst.account.risk} % par trade`,
+      `Stratégies suivies : ${fst.account.strategies.map((x) => `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' }[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')} · risque ${fst.account.riskOf ? [...new Set(['gold', 'nas100', 'spx', 'eurusd'].filter((m) => fst.account.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => fst.account.riskOf(m)))].join(' / ') : fst.account.risk} % par trade`,
       ...(s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt}, étape ${h.phase} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
     ];
     return { png: C.ftmoImage(fst), caption: lines.join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'f', marketId) };

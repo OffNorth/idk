@@ -157,10 +157,35 @@ function eurusdMarket(cfg) {
   };
 }
 
+function spxMarket(cfg) {
+  return {
+    id: 'spx',
+    name: 'S&P 500',
+    emoji: '🗽',
+    file: 'spx.json',
+    enabled: cfg.spxEnabled,
+    strategies: cfg.spxStrategies,
+    startCapital: cfg.spxStartCapital,
+    positionPct: cfg.spxPositionPct,
+    feePct: cfg.spxFeePct,
+    financingPct: cfg.spxFinancingPct,
+    async fetch(tfs, { needsVix, aux: auxList = [] } = {}) {
+      const [m5, d1, vix, aux] = await Promise.all([
+        cached('spx5m', 120, () => fetchYahoo('^GSPC', '5m', { range: '5d', ...LIVE })).catch(() => null),
+        cached('spx1d', 3600, () => fetchYahoo('^GSPC', '1d', { range: '2y', ...LIVE })),
+        needsVix ? cached('vix1d', 3600, () => fetchYahoo('^VIX', '1d', { range: '2y', ...LIVE })).catch(() => null) : null,
+        fetchAux('spx', auxList),
+      ]);
+      const series = { '1d': d1, '5m': m5, '1h': m5 ? aggregate(m5, 3600, 300) : null };
+      return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx: null, vix, aux, series };
+    },
+  };
+}
+
 /** Tous les marchés (actifs ou non). */
 function allMarkets(cfg) {
   // Nasdaq en premier : marché par défaut du panneau, du résumé, des bilans et du jeu ; l'or suit
-  return [nasMarket(cfg), goldMarket(cfg), eurusdMarket(cfg)];
+  return [nasMarket(cfg), goldMarket(cfg), spxMarket(cfg), eurusdMarket(cfg)];
 }
 
 /** Marchés actifs. */
@@ -179,4 +204,4 @@ class GoldTrader extends MarketTrader {
   }
 }
 
-module.exports = { goldMarket, nasMarket, eurusdMarket, allMarkets, activeMarkets, marketById, GoldTrader, MarketTrader };
+module.exports = { goldMarket, nasMarket, eurusdMarket, spxMarket, allMarkets, activeMarkets, marketById, GoldTrader, MarketTrader };

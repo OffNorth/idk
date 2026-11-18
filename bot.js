@@ -79,7 +79,7 @@ attachInteractive(bot, { cfg, store, gameHandler: (ctx, parts) => game.onVote(ct
 /* ------------------------------------------------------------------ */
 
 // Nasdaq par défaut ; « or » / « gold » pour l'or
-const marketArg = (text) => (/\b(or|gold|xau)\b/i.test(text || '') ? 'gold' : /\b(eur|eurusd|euro)\b/i.test(text || '') ? 'eurusd' : 'nas100');
+const marketArg = (text) => (/\b(or|gold|xau)\b/i.test(text || '') ? 'gold' : /\b(eur|eurusd|euro)\b/i.test(text || '') ? 'eurusd' : /\b(sp500|spx|s&p|us500)\b/i.test(text || '') ? 'spx' : 'nas100');
 
 bot.command(['start', 'aide', 'help'], (ctx) =>
   ctx.reply(
@@ -137,6 +137,7 @@ bot.command(['graphique', 'cours', 'chart'], async (ctx) => {
 
 bot.command(['gold', 'paper', 'or'], (ctx) => ctx.reply(portfolio(cfg, store, 'gold'), { ...HTML, reply_markup: summaryKeyboard('gold') }));
 bot.command(['nasdaq', 'nas100', 'nas'], (ctx) => ctx.reply(portfolio(cfg, store, 'nas100'), { ...HTML, reply_markup: summaryKeyboard('nas100') }));
+bot.command(['sp500', 'spx', 'us500'], (ctx) => ctx.reply(portfolio(cfg, store, 'spx'), { ...HTML, reply_markup: summaryKeyboard('spx') }));
 bot.command(['eurusd', 'eur', 'euro'], (ctx) => ctx.reply(portfolio(cfg, store, 'eurusd'), { ...HTML, reply_markup: summaryKeyboard('eurusd') }));
 
 bot.command('portfolio', async (ctx) => {
@@ -271,6 +272,7 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
     { command: 'jeu', description: '🎯 Pronostic du jour' },
     { command: 'classement', description: '🏆 Classement des joueurs' },
     { command: 'nasdaq', description: 'Bilan du Nasdaq 100' },
+    { command: 'sp500', description: 'Bilan du S&P 500' },
     { command: 'eurusd', description: 'Bilan de l’EUR/USD (à l’essai)' },
     { command: 'gold', description: 'Bilan de l’or' },
     { command: 'portfolio', description: 'Graphiques de l’évolution des portefeuilles' },

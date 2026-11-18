@@ -42,7 +42,7 @@ def status(s):
     a = s['active']
     if s['id'] == 'hold':
         return 'REF'
-    a = [m for m in a if m != 'eurusd']  # l'EUR/USD (à l'essai) est signalé à part dans le libellé
+    a = [m for m in a if m not in ('eurusd', 'spx')]  # EUR/USD et S&P 500 signalés à part dans le libellé
     if s['active'] and not a:
         return 'ESSAI'
     if a:
@@ -59,6 +59,8 @@ def table_for(rows):
     for r, s in enumerate(rows, start=1):
         st = status(s)
         label, bg = STATUS[st]
+        if 'spx' in s['active']:
+            label += ' + S&P 500'
         if 'eurusd' in s['active']:
             label += ' + EUR/USD (essai)' if st != 'ESSAI' else ' (EUR/USD)'
         on = st in ('OR+NAS', 'OR', 'NAS', 'ESSAI')
@@ -91,6 +93,7 @@ active = [s for s in strats if s['active']]
 n_gold = sum('gold' in s['active'] for s in strats)
 n_nas = sum('nas100' in s['active'] for s in strats)
 n_eur = sum('eurusd' in s['active'] for s in strats)
+n_spx = sum('spx' in s['active'] for s in strats)
 n_dispo = sum(status(s) == 'DISPO' for s in strats)
 n_rej = sum(status(s) == 'REJ' for s in strats)
 months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
@@ -102,7 +105,7 @@ story = [Paragraph('Stratégies du bot de paper trading', title),
          Paragraph(f'Or (PAXG / future GC=F), Nasdaq 100 (indice ^NDX) et EUR/USD (à l’essai) · état au {d.day} {months[d.month - 1]} {d.year}', sub), Spacer(1, 8)]
 summary = [
     (len(strats), 'stratégies codées et testées (+ la référence « garder le marché »)'),
-    (len(active), f'actives en direct : {n_gold} sur l’or, {n_nas} sur le Nasdaq, {n_eur} sur l’EUR/USD à l’essai (certaines sur plusieurs marchés)'),
+    (len(active), f'actives en direct : {n_gold} sur l’or, {n_nas} sur le Nasdaq, {n_spx} sur le S&P 500, {n_eur} sur l’EUR/USD à l’essai (certaines sur plusieurs marchés)'),
     (n_dispo, 'positives mais pas actives : activables dans le .env (GOLD_STRATEGIES, NAS_STRATEGIES)'),
     (n_rej, 'rejetées aux tests (perdantes ou nulles après frais)'),
 ]
