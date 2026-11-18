@@ -98,7 +98,7 @@ module.exports = {
   // Compte FTMO simulé : suit les trades des stratégies listées (marché:id) avec une taille au risque
   ftmoEnabled: num('FTMO', 1) === 1,
   ftmoStrategies: list('FTMO_STRATEGIES', 'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m'),
-  // 2e compte FTMO simulé, 100 % Nasdaq (stratégies à l'essai : rien n'est validé pour le challenge sur le Nasdaq)
+  // 2e compte FTMO simulé, 100 % Nasdaq (npm run ftmo-nas-port)
   ftmoNasEnabled: num('FTMO_NAS', 1) === 1,
   ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:ibs,nas100:cumrsi,nas100:n_dollarfall,nas100:tom,nas100:ema_long,nas100:rsi2,nas100:n_low10,nas100:n_rsi4,nas100:vixspike'),
   ftmoNasRisk: process.env.FTMO_NAS_RISK_PCT === '0.5' ? 3 : num('FTMO_NAS_RISK_PCT', 3), // 0,5 = ancienne valeur par défaut, mise à jour ; // npm run ftmo-nas-port : 3 % → 42 % · 43 % · 39 % de challenges réussis
@@ -116,3 +116,16 @@ module.exports = {
 
   dataDir: path.resolve(process.env.DATA_DIR || path.join(__dirname, '..', 'data')),
 };
+
+// FTMO_ONLY=1 (par défaut) : le bot ne fait tourner QUE les stratégies des comptes FTMO simulés (or et Nasdaq),
+// plus la référence « garder le marché » ; GOLD_STRATEGIES et NAS_STRATEGIES sont alors ignorées.
+{
+  const cfg = module.exports;
+  cfg.ftmoOnly = num('FTMO_ONLY', 1) === 1;
+  if (cfg.ftmoOnly) {
+    const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && cfg.ftmoNasEnabled ? cfg.ftmoNasStrategies : [])];
+    const of = (m) => [...new Set(all.filter((x) => x.startsWith(`${m}:`)).map((x) => x.slice(m.length + 1))), 'hold'];
+    cfg.goldStrategies = of('gold');
+    cfg.nasStrategies = of('nas100');
+  }
+}

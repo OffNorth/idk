@@ -377,6 +377,11 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 
 ## 🏦 Compte FTMO simulé (`/ftmo`) — banc d'essai `npm run ftmo`
 
+> **Mode FTMO seul (`FTMO_ONLY=1`, par défaut)** : le bot ne fait tourner que les stratégies des deux comptes FTMO
+> (or : `x_rsi2`, `m_bb@5m`, `m_ibs`, `m_rsi2x`, `m_keltner@5m` ; Nasdaq : `ibs`, `cumrsi`, `n_dollarfall`, `tom`,
+> `ema_long`, `rsi2`, `n_low10`, `n_rsi4`, `vixspike`), plus la référence `hold`. `GOLD_STRATEGIES` / `NAS_STRATEGIES` sont
+> ignorées ; `FTMO_ONLY=0` pour revenir à toutes les stratégies. Environ 10 trades par jour, presque tous sur l'or.
+
 Le bot fait comme s'il avait un **compte FTMO** (challenge en 2 étapes, règles 2026) : 100 000 $, **1 % du solde risqué par
 trade** (taille = risque ÷ distance au stop, levier max 1:30), frais d'un CFD (or 0,005 %, Nasdaq 0,003 % par côté).
 - Étape 1 : **+10 %**, étape 2 : **+5 %**, minimum 4 jours de trading, pas de limite de temps ; puis compte financé (partage 80 %).

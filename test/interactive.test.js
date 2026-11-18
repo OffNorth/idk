@@ -30,7 +30,7 @@ function setup() {
 test('panneau : chaque vue donne une image, une légende et des boutons valides', async () => {
   const { cfg, store } = setup();
   const { render, tradeKeyboard } = require('../src/interactive');
-  for (const [view, args] of [['h', []], ['r', []], ['o', []], ['l', ['0']], ['l', ['1']], ['s', ['season']]]) {
+  for (const [view, args] of [['h', []], ['r', []], ['o', []], ['l', ['0']], ['l', ['1']], ['s', ['x_rsi2']]]) {
     const out = await render(cfg, store, view, 'gold', args);
     assert.ok(isPng(out.png), `image ${view}`);
     assert.ok(out.caption.length <= 1024, `légende ${view}`);
