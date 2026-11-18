@@ -326,6 +326,13 @@ Données disponibles gratuitement : ^NDX journalier depuis 1985, NQ=F en 1 h sur
   pour être retenu. **Ces 3-là sont actives « à l'essai » sur le compte Nasdaq du bot** (`m_down3` 15 min, `x_lasthalf`,
   `x_orb5` 5 min ; pas sur le compte FTMO) pour voir en direct si elles tiennent. Clé : variable `POLYGON_API_KEY` (ou injectée par l'environnement), en-tête `Authorization: Bearer`.
 
+### Nasdaq : effet de nuit au format FTMO (`npm run ftmo-night`)
+
+25 ans de ^NDX (clôture → ouverture), chaque nuit = un trade, taille au risque sur un stop de 1 à 2 %, coûts d'un CFD
+(0,003 % par côté + financement 6 %/an par nuit), filtres testés : aucun, moyenne 200 j, moyenne 20 j, VIX < 25.
+Le financement de nuit mange presque tout l'avantage : **+0,01 à +0,02 R par nuit**, **3 à 16 % de challenges réussis**
+en moins de 6 mois (13 % pour le réglage choisi sur 2000–2015, vérifié sur 2016–2026). Non retenu pour le compte FTMO.
+
 Sources des règles : pages de comparatifs 2026 (ex. propfirm-escape-pod, tradetanto) ; le levier FTMO n'a pas été confirmé
 (réglable avec `FTMO_LEVERAGE`).
 
