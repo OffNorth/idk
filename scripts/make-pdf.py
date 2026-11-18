@@ -168,9 +168,10 @@ ft = [[Paragraph(x, head) for x in ('Compte', 'Stratégies suivies', 'Risque / t
 if fc['cb']:
     # Compte unique or + Nasdaq (npm run ftmo-combo)
     ft = [ft[0], [Paragraph('<b>Compte unique Or + Nasdaq</b> (celui du bot)', cell), Paragraph(esc(ids(fc['g'])) + ' · ' + esc(ids(fc['n'])), cell),
-                  Paragraph(f'or {fc["gr"]:g} % · Nasdaq {fc["cnr"]:g} %', cell),
-                  Paragraph(('1 étape : 100 % en moins de 6 mois sur sept. 2020 → oct. 2024 (43 j en médiane) ; 2 dernières années (vérification) : '
-                             '<b>46 %</b> en <b>35 j</b>, contre 45 % en 46 j pour le 2 étapes. Les scalps or rapportent moins depuis 2024.')
+                  Paragraph(f'{fc["gr"]:g} % par trade', cell),
+                  Paragraph(('Or au comptant réel (2009–2026), 1 étape : choix 2009–2019 : 44 % en moins de 6 mois, 64 % en moins d’un an ; '
+                             'vérification 2020–2026 : <b>32 %</b> / <b>49 %</b> (139 j en médiane). Les scalps or choisis sur PAXG perdaient sur l’or réel : '
+                             'retirés au profit de stratégies journalières (or, Nasdaq, EUR/USD).')
                             if fc['prog'] == '1step' else
                             ('sept. 2020 → oct. 2024 : <b>97 % en moins de 6 mois</b> (46 j en médiane) ; 2 dernières années (vérification) : <b>46 %</b> (34 j). '
                              'Les scalps or rapportent moins depuis 2024.'), cell)]] + ft[1:]

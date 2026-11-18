@@ -19,9 +19,9 @@ function accountOf(cfg, id = 'gold') {
   if (cfg.ftmoCombined) {
     // Compte unique or + Nasdaq (npm run ftmo-combo) : chaque marché garde son propre risque par trade
     return {
-      id: 'gold', label: 'Or + Nasdaq', emoji: '🌍', file: 'ftmo.json', enabled: cfg.ftmoEnabled,
+      id: 'gold', label: 'Or + Nasdaq + EUR/USD', emoji: '🌍', file: 'ftmo.json', enabled: cfg.ftmoEnabled,
       strategies: [...cfg.ftmoStrategies, ...cfg.ftmoNasStrategies], risk: cfg.ftmoRisk,
-      riskOf: (marketId) => (marketId === 'nas100' ? cfg.ftmoComboNasRisk : cfg.ftmoRisk),
+      riskOf: (marketId) => (marketId === 'nas100' ? cfg.ftmoComboNasRisk : marketId === 'eurusd' ? cfg.ftmoEurRisk ?? cfg.ftmoRisk : cfg.ftmoRisk),
     };
   }
   return { id: 'gold', label: 'Or', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk, riskOf: () => cfg.ftmoRisk };

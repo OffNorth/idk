@@ -387,6 +387,21 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > sur 2009–2019, et la partie or du challenge 1 étape ne réussit que 4 à 33 % selon la période (13 % sur 2020–2026).
 > **Le « retour à la moyenne » des scalps or venait surtout de la microstructure de PAXG** : les taux de réussite FTMO
 > calculés plus bas (≈ 45 %) sont donc trop optimistes pour un vrai compte FTMO.
+>
+> **Compte refait sur l'or réel (`npm run ftmo-real`)** : candidates = stratégies positives sur chacune des périodes
+> 2009–2012, 2013–2016, 2017–2019 (or au comptant HistData en 5 / 15 min, GC=F, ^NDX et EUR/USD en journalier) ;
+> 23 passent (2 scalps or seulement). Toutes ensemble, risque choisi sur 2009–2019 (× 3 → 1,5 % par trade), puis retrait
+> de celles qui gênent ; vérification sur 2020–2026 (challenge 1 étape) :
+>
+> | | 2009–2019 (choix) | 2020–2026 (vérification) |
+> |---|---|---|
+> | Réussite en moins de 6 mois | 44 % | **32 %** |
+> | Réussite en moins d'un an | 64 % | **49 %** (139 j en médiane) |
+>
+> Stratégies suivies (toutes journalières, risque 1,5 %) : or `down3`, `pctb`, `ema_long`, `g_yieldfall` ; EUR/USD `ibs` ;
+> Nasdaq `rsi2`, `ibs`, `down3`, `dip5`, `n_low10`, `n_drop`, `n_2down`, `n_dollarfall`, `rates`, `g_yieldfall`. Le scalp
+> or retenu (RSI 4 < 15 en 15 min, quasi nul sur 2020–2026) n'est pas repris. Le cours de l'or du bot vient maintenant
+> du future GC=F (`GOLD_FEED=future`) et non plus de PAXG.
 
 
 > **Objectif : réussir une évaluation FTMO.** Par défaut (`FTMO_COMBINED=1`), le bot tient **un seul compte FTMO qui trade

@@ -11,6 +11,8 @@ function num(name, def) {
 
 // Anciennes listes par défaut (copiées depuis .env.example) : remplacées par la sélection actuelle
 const OLD_DEFAULTS = [
+  'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m,gold:g_asia,gold:m_down3',
+  'nas100:ibs,nas100:cumrsi,nas100:n_dollarfall,nas100:tom,nas100:ema_long,nas100:rsi2,nas100:n_low10,nas100:n_rsi4,nas100:vixspike',
   'nas100:n_noise',
   'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m',
   'golden,mom12_1,trendmix,mom12,sma200,lowvol,rates,n_weekrev,n_low10,n_drop,n_dollarfall,n_rsspx,n_2down,n_goldfall,n_rsi4,tom,rsi2,ibs,double7,down3,vixspike,vixcalm,halloween,cumrsi,dip5,dualmom,macro,sox,macd_long,ema_long,x_orb5,x_lasthalf,m_down3,m_vwap,n_overnight,n_preholiday,n_opex,n_yieldfall,sweep,hold',
@@ -56,7 +58,7 @@ function list(name, def) {
 const FTMO_PROGRAM = process.env.FTMO_PROGRAM || '1step';
 const ONE = FTMO_PROGRAM === '1step';
 /** Réglage dont l'ancienne valeur par défaut (copiée de .env.example) suit désormais la formule du challenge. */
-const upgraded = (name, oldDefault, def) => ((process.env[name] || '').trim() === oldDefault ? def : num(name, def));
+const upgraded = (name, oldDefault, def) => ([].concat(oldDefault).includes((process.env[name] || '').trim()) ? def : num(name, def));
 
 module.exports = {
   telegramToken: process.env.TELEGRAM_BOT_TOKEN || '',
@@ -115,17 +117,20 @@ module.exports = {
 
   // Compte FTMO simulé : suit les trades des stratégies listées (marché:id) avec une taille au risque
   ftmoEnabled: num('FTMO', 1) === 1,
-  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m,gold:g_asia,gold:m_down3'),
+  // Or réel (npm run ftmo-real, XAU/USD 2009–2026) : les scalps choisis sur PAXG perdent sur l'or au comptant ; restent des
+  // stratégies JOURNALIÈRES sur l'or (GC=F), le Nasdaq et l'EUR/USD (les « gold:… » de cette liste peuvent viser un autre marché)
+  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:down3,gold:pctb,gold:ema_long,gold:g_yieldfall,eurusd:ibs'),
   // 2e compte FTMO simulé, 100 % Nasdaq (npm run ftmo-nas-port)
   // Compte FTMO UNIQUE or + Nasdaq (par défaut) : or au risque FTMO_RISK_PCT, Nasdaq au risque FTMO_COMBO_NAS_RISK_PCT.
   // npm run ftmo-combo : 74 % de réussite en < 6 mois (récent 45 %) contre 74 % / 39 % pour l'or seul.
   ftmoCombined: num('FTMO_COMBINED', 1) === 1,
-  ftmoComboNasRisk: upgraded('FTMO_COMBO_NAS_RISK_PCT', '1', ONE ? 0.5 : 1),
+  ftmoComboNasRisk: upgraded('FTMO_COMBO_NAS_RISK_PCT', ['1', '0.5'], 1.5),
+  ftmoEurRisk: num('FTMO_EUR_RISK_PCT', 1.5),
   ftmoNasEnabled: num('FTMO_NAS', 1) === 1,
-  ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:ibs,nas100:cumrsi,nas100:n_dollarfall,nas100:tom,nas100:ema_long,nas100:rsi2,nas100:n_low10,nas100:n_rsi4,nas100:vixspike'),
+  ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:rsi2,nas100:ibs,nas100:down3,nas100:dip5,nas100:n_low10,nas100:n_drop,nas100:n_2down,nas100:n_dollarfall,nas100:rates,nas100:g_yieldfall'),
   ftmoNasRisk: process.env.FTMO_NAS_RISK_PCT === '0.5' ? 3 : num('FTMO_NAS_RISK_PCT', 3), // 0,5 = ancienne valeur par défaut, mise à jour ; // npm run ftmo-nas-port : 3 % → 42 % · 43 % · 39 % de challenges réussis
   ftmoCapital: num('FTMO_CAPITAL', 100000),
-  ftmoRisk: upgraded('FTMO_RISK_PCT', '0.5', ONE ? 0.35 : 0.5), // % du solde risqué par trade (distance au stop)
+  ftmoRisk: upgraded('FTMO_RISK_PCT', ['0.5', '0.35'], 1.5), // % du solde risqué par trade (distance au stop)
   ftmoLeverage: num('FTMO_LEVERAGE', 30),
   // Levier dynamique (src/sizing.js) : « plusieurs positions → moins » = risque ÷ 2 dès 2 positions déjà ouvertes
   // (npm run ftmo-sizing : supprime les échecs sur la perte du jour, réussite égale) ; « fixe » = risque constant

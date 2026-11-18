@@ -128,7 +128,7 @@ async function render(cfg, store, view, marketId, args = []) {
     const lines = [
       `🏦 <b>Compte FTMO simulé ${fst.account.emoji} ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : fst.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} · challenge n° ${s.attempt}`,
       `Valeur <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · objectif ${money(fst.target)}` : ''}`,
-      `Stratégies suivies : ${fst.account.strategies.map((x) => `<code>${esc(x.split(':')[1])}</code>`).join(', ')} · risque ${fst.account.risk} % par trade${fst.account.id === 'nas100' ? ' · <i>à l’essai : rien n’est validé pour le challenge sur le Nasdaq</i>' : ''}`,
+      `Stratégies suivies : ${fst.account.strategies.map((x) => `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶' }[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')} · risque ${fst.account.riskOf ? [...new Set(['gold', 'nas100', 'eurusd'].filter((m) => fst.account.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => fst.account.riskOf(m)))].join(' / ') : fst.account.risk} % par trade`,
       ...(s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt}, étape ${h.phase} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
     ];
     return { png: C.ftmoImage(fst), caption: lines.join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'f', marketId) };
