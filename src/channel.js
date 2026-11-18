@@ -20,9 +20,9 @@ function explainTelegramError(err) {
  */
 function createChannel(api, cfg, store) {
   /** Message HTML sur le canal (ignoré si aucun canal n'est configuré). */
-  async function sendText(text) {
+  async function sendText(text, extra = {}) {
     if (!cfg.channelId) return null;
-    return api.sendMessage(cfg.channelId, text, HTML);
+    return api.sendMessage(cfg.channelId, text, { ...HTML, ...extra });
   }
 
   /** Le bilan périodique est-il dû (selon SUMMARY_HOURS) ? */
@@ -36,11 +36,11 @@ function createChannel(api, cfg, store) {
     store.setMeta('lastSummaryAt', Date.now());
   }
 
-  /** Image PNG (Buffer) avec légende HTML. */
-  async function sendPhoto(png, caption) {
+  /** Image PNG (Buffer) avec légende HTML (extra : boutons…). */
+  async function sendPhoto(png, caption, extra = {}) {
     if (!cfg.channelId) return null;
     const { InputFile } = require('grammy');
-    return api.sendPhoto(cfg.channelId, new InputFile(png, 'portefeuille.png'), { caption, parse_mode: 'HTML' });
+    return api.sendPhoto(cfg.channelId, new InputFile(png, 'image.png'), { caption, parse_mode: 'HTML', ...extra });
   }
 
   /** Le graphique du portefeuille est-il dû (selon CHART_HOURS) ? */

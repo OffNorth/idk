@@ -59,17 +59,10 @@ module.exports = {
   // Graphique du portefeuille publié sur le canal toutes les X heures (0 = jamais)
   chartHours: num('CHART_HOURS', 24),
 
-  // Mini-app de suivi (page web servie par le bot, commande /app)
-  webEnabled: num('WEB_APP', 1) === 1,
-  // Port : WEB_PORT, sinon le port attribué par l'hébergeur (SERVER_PORT sur Bot-Hosting / Pterodactyl, PORT ailleurs)
-  webPort: num('WEB_PORT', num('SERVER_PORT', num('PORT', 8080))),
-  // Adresse de l'app envoyée par /app : par défaut la page du site Marchés (Vercel, https), qui relaie l'API du bot
-  // « direct » = page servie par le bot lui-même (http://IP:PORT)
-  webUrl: (process.env.WEB_URL === 'direct' ? '' : process.env.WEB_URL || 'https://marches-eight.vercel.app/bot.html').replace(/\/+$/, ''),
-  // Clé facultative exigée par l'API (?k=…) ; le lien envoyé par /app la contient
-  webToken: process.env.WEB_TOKEN || '',
-  // 1 = lien HTTPS gratuit via un tunnel Cloudflare (nécessaire pour l'ouvrir DANS Telegram)
-  webTunnel: num('WEB_TUNNEL', 0) === 1,
+  // Jeu du groupe « Pronostic du jour » : hausse ou baisse, chaque jour de semaine à GAME_HOUR_UTC
+  gameEnabled: num('GAME', 1) === 1,
+  gameHourUtc: Math.min(23, Math.max(0, num('GAME_HOUR_UTC', 13))),
+  gameVoteHours: Math.max(0.5, num('GAME_VOTE_HOURS', 3)),
 
   dataDir: path.resolve(process.env.DATA_DIR || path.join(__dirname, '..', 'data')),
 };

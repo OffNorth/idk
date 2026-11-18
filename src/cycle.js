@@ -3,20 +3,22 @@
  *   1. paper trading, toutes stratégies (ouvertures / clôtures publiées)
  *   2. bilan publié sur le canal si c'est l'heure
  *   3. graphique de l'évolution du portefeuille si c'est l'heure
+ * Avec buttons = true (bot.js), boutons sous les messages : carte du trade, cours, panneau interactif.
  */
 const { MarketTrader, activeMarkets, marketById } = require('./markets');
 const { goldEventMessage, portfolioMessage } = require('./format');
 const { explainTelegramError } = require('./channel');
 
-async function safeSend(channel, text) {
+async function safeSend(channel, text, extra) {
   try {
-    await channel.sendText(text);
+    await channel.sendText(text, extra);
   } catch (err) {
     console.error(`[canal] envoi impossible : ${explainTelegramError(err)}`);
   }
 }
 
-async function runCycle({ cfg, store, channel, publish = true }) {
+async function runCycle({ cfg, store, channel, publish = true, buttons = false }) {
+  const ui = buttons ? require('./interactive') : null;
   const out = { events: 0, byMarket: {} };
   const markets = activeMarkets(cfg);
 
@@ -28,7 +30,7 @@ async function runCycle({ cfg, store, channel, publish = true }) {
         console.log(
           `[${market.id}] ${ev.strategy.id} : ${ev.type === 'open' ? `ouverture ${ev.pos.side} à ${ev.pos.entry.toFixed(2)}` : `clôture ${ev.trade.pnlPct.toFixed(2)}% (${ev.trade.reason})`}`,
         );
-        if (publish) await safeSend(channel, goldEventMessage(ev));
+        if (publish) await safeSend(channel, goldEventMessage(ev), ui ? { reply_markup: ui.tradeKeyboard(ev) } : {});
       }
     } catch (err) {
       console.error(`[${market.id}] échec du passage :`, err.message);
@@ -38,7 +40,7 @@ async function runCycle({ cfg, store, channel, publish = true }) {
   }
 
   if (publish && channel.summaryDue()) {
-    for (const market of markets) await safeSend(channel, portfolio(cfg, store, market.id));
+    for (const market of markets) await safeSend(channel, portfolio(cfg, store, market.id), ui ? { reply_markup: ui.summaryKeyboard(market.id) } : {});
     channel.markSummary();
   }
 
@@ -47,8 +49,14 @@ async function runCycle({ cfg, store, channel, publish = true }) {
     const { liveChart } = require('./portfolio');
     for (const market of markets) {
       try {
-        const { png, caption } = liveChart(store, cfg, market.id);
-        await channel.sendPhoto(png, caption);
+        if (ui) {
+          // Graphique du jour = panneau interactif : les boutons changent l'image sur place
+          const out = await ui.render(cfg, store, 'h', market.id);
+          await channel.sendPhoto(out.png, out.caption, { reply_markup: out.keyboard });
+        } else {
+          const { png, caption } = liveChart(store, cfg, market.id);
+          await channel.sendPhoto(png, caption);
+        }
       } catch (err) {
         console.error(`[canal] graphique ${market.id} impossible : ${explainTelegramError(err)}`);
       }

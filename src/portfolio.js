@@ -7,6 +7,7 @@ const { backtest } = require('./gold');
 const { MarketTrader, marketById } = require('./markets');
 const { selectStrategies, tfOf, TF_SEC } = require('./strategies');
 const { renderEquityChart, downsample, PALETTE, REFERENCE } = require('./chart');
+const { THEME } = require('./draw');
 const { esc } = require('./format');
 
 const CACHE = path.join(__dirname, '..', 'data', 'research');
@@ -26,15 +27,24 @@ function liveChart(store, cfg, marketId = 'gold') {
   const trader = new MarketTrader(market, store, cfg);
   const curves = trader.curves();
   const colors = colorize(curves.map((c) => c.strategy));
-  const png = renderEquityChart(
-    curves.map((c, k) => ({ points: downsample(c.points), rgb: colors[k].rgb, dash: colors[k].dash, reference: c.strategy.id === 'hold' })),
-    { baseline: market.startCapital },
-  );
   const st = trader.stats();
   const order = st.rows.map((r, k) => ({ r, color: colors[k] })).sort((a, b) => b.r.equity - a.r.equity);
   const strat = st.rows.filter((r) => r.strategy.id !== 'hold');
   const total = strat.reduce((s, r) => s + r.equity, 0);
   const start = market.startCapital * strat.length;
+  const byId = new Map(curves.map((c, k) => [c.strategy.id, { c, color: colors[k] }]));
+  const png = renderEquityChart(
+    curves.map((c, k) => ({ points: downsample(c.points), rgb: colors[k].rgb, dash: colors[k].dash, reference: c.strategy.id === 'hold' })),
+    {
+      baseline: market.startCapital,
+      title: `Portefeuille ${market.name} · ${money(total)} (${pct((total / start - 1) * 100)})`,
+      subtitle: `Paper trading, gains réinvestis · ${strat.length} stratégies × ${money(market.startCapital)}${st.since ? ` depuis le ${date(st.since)}` : ''} · prix ${st.price ? money(st.price) : '?'}`,
+      legend: order.map(({ r }) => ({
+        label: r.strategy.name, rgb: byId.get(r.strategy.id).color.rgb, dash: byId.get(r.strategy.id).color.dash, reference: r.strategy.id === 'hold',
+        value: pct(r.returnPct), valueColor: r.returnPct > 0 ? THEME.up : r.returnPct < 0 ? THEME.down : THEME.text,
+      })),
+    },
+  );
   const lines = [
     `<b>📈 Portefeuille ${market.emoji} ${esc(market.name)}</b> <i>(simulation, gains réinvestis)</i>`,
     `${strat.length} stratégies × ${money(market.startCapital)}${st.since ? ` depuis le ${date(st.since)}` : ''}`,
@@ -112,12 +122,21 @@ async function simulateHistory(cfg, { marketId = 'gold', fromYear, ids = null, c
 /** Simulation des stratégies actives d'un marché : graphique PNG + légende + détail par trade. */
 async function historyChart(cfg, opts = {}) {
   const { market, year, last, years, fees, source, results } = await simulateHistory(cfg, opts);
+  results.sort((a, b) => b.r.equity - a.r.equity);
   const png = renderEquityChart(
     results.map(({ s, r, color }) => ({ points: downsample(r.curve), rgb: color.rgb, dash: color.dash, reference: s.id === 'hold' })),
-    { baseline: market.startCapital },
+    {
+      baseline: market.startCapital,
+      log: years > 8,
+      title: `${market.name} · historique simulé ${year} → ${date(last.t)}`,
+      subtitle: `Gains réinvestis, ${fees} · départ ${money(market.startCapital)} par stratégie${years > 8 ? ' · échelle log' : ''} · ${source}`,
+      legend: results.map(({ s, r, color, stats }) => ({
+        label: s.name, rgb: color.rgb, dash: color.dash, reference: s.id === 'hold',
+        value: `${money(r.equity)} · ${pct(stats.perYear)}/an`, valueColor: stats.perYear > 0 ? THEME.up : stats.perYear < 0 ? THEME.down : THEME.text,
+      })),
+    },
   );
   const data = { source };
-  results.sort((a, b) => b.r.equity - a.r.equity);
 
   // Légende de la photo (≤ 1 024 caractères) : valeur finale + rendement annuel
   const caption = [

@@ -230,35 +230,37 @@ toutes les 3 minutes ne reproduit pas. À noter : le PAXG sur Binance est moins 
 Avec des frais de broker (0,01 %), les stratégies en 1 h restent elles aussi presque toutes perdantes ;
 les stratégies journalières restent les meilleures (`npm run research -- 0.01`).
 
-## 📱 Mini-app de suivi (`/app`)
+## 🎛 Dans le groupe : boutons et images
 
-Le bot sert une **page web** pour suivre les stratégies depuis le téléphone :
-- **Portefeuille** : valeur totale, courbe de chaque stratégie (touche une courbe pour lire les valeurs), position en cours ;
-  touche une stratégie pour voir sa position (entrée, stop, gain latent), ses derniers trades et son fonctionnement.
-- **Activité** : fil des achats et des clôtures avec leur résultat.
-- **Historique** : simulation des stratégies actives depuis 2001 / 2010 / 2016… (gains réinvestis), avec gain par an et pire baisse.
-- **Stratégies** : les 65 stratégies codées, filtrables (actives / disponibles / rejetées), avec leur résultat au banc
-  d'essai et un bouton **« Tester »** qui simule n'importe laquelle sur l'historique.
+Tout se passe dans le groupe Telegram, avec des **boutons sous les messages** que tous les membres peuvent utiliser.
+Les images sont dessinées par le bot lui-même (thème sombre, police DejaVu pré-rendue dans `src/font-data.json`,
+aucune dépendance à installer).
 
-La page est hébergée sur le site **Marchés** (dépôt `OffNorth/app`, Vercel, https) : **https://marches-eight.vercel.app/bot.html**.
-Le bot sert seulement une petite API en lecture seule ; le site la relaie (`/api/bot`), car une page https ne peut pas
-appeler du http. Pas d'autre hébergeur à trouver. La commande **`/app`** envoie le lien, et le bouton « 📊 App » apparaît
-à côté du champ de saisie dans Telegram (l'app s'ouvre **dans** Telegram).
-
-Mise en route (une fois) :
-1. Redémarrer le bot. La console affiche `API du bot : http://IP:PORT → à mettre dans BOT_API_URL`.
-2. Sur Vercel → projet *marches* → *Settings → Environment Variables* : ajouter `BOT_API_URL` avec cette adresse, puis *Redeploy*.
-3. (Conseillé) Mettre une clé dans `WEB_TOKEN` (`.env` du bot) : seules les personnes qui ont le lien de `/app` voient les données.
-   La clé est retenue sur le téléphone après la première ouverture.
-
-Le port est celui que l'hébergeur attribue au serveur (`SERVER_PORT` sur Bot-Hosting). Variante sans le site :
-`WEB_URL=direct` (lien `http://IP:PORT/`, s'ouvre dans le navigateur) ou `WEB_URL=direct` + `WEB_TUNNEL=1` (lien https Cloudflare).
+- **Panneau `/menu`** (et le graphique publié chaque jour) : une image qui **change sur place** quand on appuie sur les boutons.
+  - 🥇 Or / 🇺🇸 Nasdaq pour changer de marché.
+  - 📈 Portefeuille : courbes de toutes les stratégies avec la légende dans l'image.
+  - 🏆 Classement : barres de gain / perte de chaque stratégie.
+  - 📍 Positions : positions ouvertes avec entrée, stop et gain latent.
+  - 🕯 Cours : bougies 1 jour ou 1 heure.
+  - 🕰 Historique : simulation depuis 2001, 2010, 2016… ou 1990, 2000… pour le Nasdaq.
+  - 📚 Stratégies : liste, puis la fiche de chacune (description, chiffres, courbe, position), avec un bouton « Tester sur l'historique ».
+- **Sous chaque ouverture / clôture** : 🧾 carte du trade (résultat, entrée, sortie, stop, durée, cours pendant le trade),
+  🕯 cours avec les niveaux (entrée, stop, objectif, sortie), ℹ️ fiche de la stratégie, 🎛 menu.
+- **Sous le bilan** : graphique, classement, positions.
+- **🎯 Pronostic du jour** (jeu entre membres, sans argent) : chaque jour de semaine à `GAME_HOUR_UTC` (13 h UTC par défaut),
+  le bot publie le cours de l'or et du Nasdaq avec les boutons ▲ Hausse / ▼ Baisse. On vote pendant `GAME_VOTE_HOURS` heures
+  (vote modifiable). Au jour de bourse suivant, même heure, le bot compare les cours, donne 1 point par bonne réponse, publie
+  le résultat et le classement, puis relance un tour. `/classement` affiche le tableau des points, `/jeu` l'état du tour.
+  Prénoms et points sont gardés dans `data/game.json`, sur le serveur du bot uniquement.
 
 ## Commandes Telegram
 
 | Commande | Rôle |
 |---|---|
-| `/app` | 📱 Lien de la mini-app de suivi |
+| `/menu [or\|nasdaq]` | 🎛 Panneau interactif (images qui changent avec les boutons) |
+| `/graphique [or\|nasdaq]` | 🕯 Cours en bougies |
+| `/jeu` · `/classement` | 🎯 Pronostic du jour · 🏆 points des joueurs |
+| `/pronostic` | (admin) lance un tour du jeu tout de suite |
 | `/nasdaq` | Bilan du Nasdaq 100 |
 | `/gold` | Bilan de chaque stratégie (valeur du compte, trades, % gagnants, position en cours) |
 | `/portfolio` | Graphique de l'évolution du portefeuille depuis le lancement |
@@ -310,11 +312,10 @@ double. Secrets à créer : `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`.
 |---|---|---|
 | `GOLD_STRATEGIES` | `season,seasonplus,golden,trendmix,sma200,mom12_1,mom12,tsmom,high52,macd@1d,hold` | Stratégies actives (`id` ou `id@1h/6h/1d`, ou `all`) |
 | `NAS_STRATEGIES` | `golden,mom12_1,macro,trendmix,mom12,sma200,lowvol,vixcalm,halloween,rates,tsmom,macd_long,sweep,hold` | Stratégies actives sur le Nasdaq |
-| `WEB_APP` | 1 | Mini-app de suivi (0 = désactivée) |
-| `WEB_PORT` | `SERVER_PORT`, sinon 8080 | Port de la mini-app |
-| `WEB_URL` | `https://marches-eight.vercel.app/bot.html` | Lien envoyé par `/app` (`direct` = page servie par le bot, http://IP:PORT) |
-| `WEB_TUNNEL` | 0 | avec `WEB_URL=direct` : lien https gratuit (Cloudflare) |
-| `WEB_TOKEN` | (vide) | Clé exigée pour voir les données |
+| `GAME` | 1 | Pronostic du jour dans le groupe (0 = désactivé) |
+| `GAME_HOUR_UTC` | 13 | Heure d'ouverture des tours (UTC, jours de semaine) |
+| `GAME_VOTE_HOURS` | 3 | Durée des votes (heures) |
+| `ALLOWED_TELEGRAM_USER_IDS` | (vide) | IDs autorisés pour `/bilan`, `/settings`, `/pause`, `/resume`, `/testcanal`, `/backtest`, `/pronostic` ; boutons et autres commandes ouverts à tous |
 | `GOLD_START_CAPITAL` | 1000 | Capital de départ de chaque stratégie (gains réinvestis) |
 | `GOLD_POSITION_PCT` | 100 | Part du capital misée à chaque trade (%) |
 | `CHART_HOURS` | 24 | Graphique du portefeuille sur le canal (0 = jamais) |
@@ -341,11 +342,13 @@ src/portfolio.js   Graphique du portefeuille en direct et historique simulé (pa
 src/intraday.js    Indicateurs et stratégies intraday NAS100 (VWAP, range d'ouverture, sweep…)
 src/markets.js     Marchés : or (Coinbase/Kraken) et Nasdaq 100 (Yahoo), stratégies, frais, financement
 src/chart.js       Rendu PNG des courbes (sans dépendance)
-src/web.js         Mini-app : serveur web + API JSON (état, catalogue, simulation)
+src/interactive.js Boutons sous les messages : panneau /menu, cartes des trades, fiches
+src/cards.js       Images : cours avec niveaux, carte de trade, fiche de stratégie, classements, positions
+src/draw.js        Moteur d'images PNG (formes lissées, texte avec vraie police) sans dépendance
+src/font-data.json Police DejaVu Sans pré-rendue (scripts/make-font.py)
+src/game.js        Jeu « Pronostic du jour » (votes, résolution, classement)
 src/catalog.js     Catalogue des stratégies : famille, verdict du banc d'essai, résultat
 src/aux.js         Séries externes (taux, dollar, argent, SOX, autre marché) pour certaines stratégies
-src/tunnel.js      Lien https gratuit (Cloudflare) pour ouvrir la mini-app dans Telegram
-web/index.html     La mini-app (une seule page, sans dépendance)
 src/channel.js     Publication Telegram
 src/format.js      Messages Telegram
 src/store.js       Fichiers JSON du dossier data/

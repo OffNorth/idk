@@ -1,121 +1,30 @@
 /**
- * Graphique d'évolution du portefeuille en PNG, sans dépendance (Telegram n'affiche pas le SVG).
- * Courbes de capital par stratégie + axes avec une petite police bitmap pour les montants et les dates.
+ * Graphique d'évolution du portefeuille en PNG (Telegram n'affiche pas le SVG), thème sombre :
+ * titre, courbes de capital par stratégie, axes, et légende écrite dans l'image (src/draw.js).
  */
-const zlib = require('zlib');
+const { Canvas, THEME } = require('./draw');
 
-/** Couleurs des courbes, associées aux carrés emoji utilisés pour la légende dans Telegram. */
+/** Couleurs des courbes, associées aux carrés emoji utilisés dans les légendes Telegram. */
 const PALETTE = [
-  { rgb: [220, 38, 38], emoji: '🟥' },
-  { rgb: [37, 99, 235], emoji: '🟦' },
-  { rgb: [22, 163, 74], emoji: '🟩' },
-  { rgb: [234, 88, 12], emoji: '🟧' },
-  { rgb: [147, 51, 234], emoji: '🟪' },
-  { rgb: [202, 160, 0], emoji: '🟨' },
-  { rgb: [133, 77, 14], emoji: '🟫' },
+  { rgb: [239, 68, 68], emoji: '🟥' },
+  { rgb: [59, 130, 246], emoji: '🟦' },
+  { rgb: [34, 197, 94], emoji: '🟩' },
+  { rgb: [249, 115, 22], emoji: '🟧' },
+  { rgb: [168, 85, 247], emoji: '🟪' },
+  { rgb: [234, 179, 8], emoji: '🟨' },
+  { rgb: [180, 120, 60], emoji: '🟫' },
   { rgb: [236, 72, 153], emoji: '🩷' },
   { rgb: [6, 182, 212], emoji: '🩵' },
   // 2e série : mêmes teintes plus foncées, en pointillés (légende en ronds)
-  { rgb: [153, 27, 27], emoji: '🔴', dash: 9 },
-  { rgb: [30, 64, 175], emoji: '🔵', dash: 9 },
+  { rgb: [185, 28, 28], emoji: '🔴', dash: 9 },
+  { rgb: [37, 99, 235], emoji: '🔵', dash: 9 },
   { rgb: [21, 128, 61], emoji: '🟢', dash: 9 },
   { rgb: [194, 65, 12], emoji: '🟠', dash: 9 },
-  { rgb: [107, 33, 168], emoji: '🟣', dash: 9 },
+  { rgb: [126, 34, 206], emoji: '🟣', dash: 9 },
   { rgb: [161, 98, 7], emoji: '🟡', dash: 9 },
-  { rgb: [120, 53, 15], emoji: '🟤', dash: 9 },
+  { rgb: [120, 72, 30], emoji: '🟤', dash: 9 },
 ];
-const REFERENCE = { rgb: [90, 90, 90], emoji: '⬛' };
-
-/* Police 3×5 (chaque ligne = 3 bits) pour chiffres et quelques symboles. */
-const FONT = {
-  0: [7, 5, 5, 5, 7], 1: [2, 6, 2, 2, 7], 2: [7, 1, 7, 4, 7], 3: [7, 1, 7, 1, 7], 4: [5, 5, 7, 1, 1],
-  5: [7, 4, 7, 1, 7], 6: [7, 4, 7, 5, 7], 7: [7, 1, 2, 2, 2], 8: [7, 5, 7, 5, 7], 9: [7, 5, 7, 1, 7],
-  '$': [7, 6, 7, 3, 7], '%': [5, 1, 2, 4, 5], '.': [0, 0, 0, 0, 2], '-': [0, 0, 7, 0, 0], '+': [0, 2, 7, 2, 0],
-  '/': [1, 1, 2, 4, 4], k: [4, 5, 6, 5, 5], ' ': [0, 0, 0, 0, 0],
-};
-
-class Canvas {
-  constructor(w, h) {
-    this.w = w;
-    this.h = h;
-    this.px = Buffer.alloc(w * h * 3, 255);
-  }
-
-  set(x, y, [r, g, b]) {
-    x = Math.round(x);
-    y = Math.round(y);
-    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
-    const i = (y * this.w + x) * 3;
-    this.px[i] = r;
-    this.px[i + 1] = g;
-    this.px[i + 2] = b;
-  }
-
-  line(x0, y0, x1, y1, color, width = 1, dash = 0) {
-    const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
-    for (let s = 0; s <= steps; s++) {
-      if (dash && Math.floor(s / dash) % 2) continue;
-      const x = x0 + ((x1 - x0) * s) / steps;
-      const y = y0 + ((y1 - y0) * s) / steps;
-      for (let dx = 0; dx < width; dx++) for (let dy = 0; dy < width; dy++) this.set(x + dx - (width >> 1), y + dy - (width >> 1), color);
-    }
-  }
-
-  text(str, x, y, color, scale = 2, align = 'left') {
-    const w = str.length * 4 * scale - scale;
-    let cx = align === 'right' ? x - w : align === 'center' ? x - w / 2 : x;
-    for (const ch of str) {
-      const g = FONT[ch];
-      if (g) {
-        g.forEach((row, ry) => {
-          for (let rx = 0; rx < 3; rx++) {
-            if (!(row & (4 >> rx))) continue;
-            for (let a = 0; a < scale; a++) for (let b = 0; b < scale; b++) this.set(cx + rx * scale + a, y + ry * scale + b, color);
-          }
-        });
-      }
-      cx += 4 * scale;
-    }
-  }
-
-  png() {
-    const raw = Buffer.alloc((this.w * 3 + 1) * this.h);
-    for (let y = 0; y < this.h; y++) {
-      raw[y * (this.w * 3 + 1)] = 0;
-      this.px.copy(raw, y * (this.w * 3 + 1) + 1, y * this.w * 3, (y + 1) * this.w * 3);
-    }
-    const ihdr = Buffer.alloc(13);
-    ihdr.writeUInt32BE(this.w, 0);
-    ihdr.writeUInt32BE(this.h, 4);
-    ihdr[8] = 8; // profondeur
-    ihdr[9] = 2; // RGB
-    return Buffer.concat([
-      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-      chunk('IHDR', ihdr),
-      chunk('IDAT', zlib.deflateSync(raw, { level: 9 })),
-      chunk('IEND', Buffer.alloc(0)),
-    ]);
-  }
-}
-
-const CRC = new Int32Array(256).map((_, n) => {
-  let c = n;
-  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  return c;
-});
-function crc32(buf) {
-  let c = -1;
-  for (const b of buf) c = CRC[(c ^ b) & 0xff] ^ (c >>> 8);
-  return (c ^ -1) >>> 0;
-}
-function chunk(type, data) {
-  const len = Buffer.alloc(4);
-  len.writeUInt32BE(data.length);
-  const td = Buffer.concat([Buffer.from(type, 'ascii'), data]);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(td));
-  return Buffer.concat([len, td, crc]);
-}
+const REFERENCE = { rgb: [160, 170, 184], emoji: '⬜' };
 
 function niceStep(range, target = 5) {
   const raw = range / target;
@@ -124,61 +33,118 @@ function niceStep(range, target = 5) {
   return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
 }
 
-const fmtMoney = (v) => (Math.abs(v) >= 10_000 ? `$${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`);
+const fmtMoney = (v) => (Math.abs(v) >= 100_000 ? `$${Math.round(v / 1000).toLocaleString('fr-FR')}k` : `$${Math.round(v).toLocaleString('fr-FR')}`);
+const fmtPct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1).replace('.', ',')} %`;
 
 /**
- * @param {Array<{points: Array<{t:number, v:number}>, rgb:number[], reference?:boolean, dash?:number}>} series
- * @param {{width?:number, height?:number, baseline?:number}} opts  baseline = capital de départ (ligne pointillée)
- * @returns {Buffer} PNG
+ * Zone de graphique (axes + grille + courbes) dans un rectangle de la toile.
+ * series : [{ points: [{t, v}], rgb, dash?, reference? }]
  */
-function renderEquityChart(series, { width = 900, height = 500, baseline = null } = {}) {
-  const cv = new Canvas(width, height);
-  const L = 90;
-  const R = 20;
-  const T = 20;
-  const B = 40;
+function drawSeries(cv, series, box, { baseline = null, log = false, money = fmtMoney, axisFont = 13 } = {}) {
+  const { x, y, w, h } = box;
   const pts = series.flatMap((s) => s.points);
-  if (!pts.length) return cv.png();
-  let tMin = Math.min(...pts.map((p) => p.t));
-  let tMax = Math.max(...pts.map((p) => p.t));
+  if (pts.length < 2) {
+    cv.text('Pas encore assez de points : la courbe se remplit au fil des heures.', x + w / 2, y + h / 2 - 8, { size: 15, color: THEME.muted, align: 'center' });
+    return;
+  }
+  const f = log ? (v) => Math.log10(Math.max(v, 1e-9)) : (v) => v;
+  let tMin = Infinity;
+  let tMax = -Infinity;
+  let vMin = Infinity;
+  let vMax = -Infinity;
+  for (const p of pts) {
+    tMin = Math.min(tMin, p.t);
+    tMax = Math.max(tMax, p.t);
+    vMin = Math.min(vMin, f(p.v));
+    vMax = Math.max(vMax, f(p.v));
+  }
+  if (baseline !== null) {
+    vMin = Math.min(vMin, f(baseline));
+    vMax = Math.max(vMax, f(baseline));
+  }
   if (tMax === tMin) tMax = tMin + 3600;
-  let vMin = Math.min(...pts.map((p) => p.v), baseline ?? Infinity);
-  let vMax = Math.max(...pts.map((p) => p.v), baseline ?? -Infinity);
-  const pad = (vMax - vMin) * 0.08 || Math.max(1, vMax * 0.01);
+  if (!log && vMax - vMin < Math.abs(vMax) * 0.02) {
+    const mid = (vMax + vMin) / 2;
+    vMin = mid * 0.99;
+    vMax = mid * 1.01;
+  }
+  const pad = (vMax - vMin) * 0.06 || 1;
   vMin -= pad;
   vMax += pad;
-  const X = (t) => L + ((t - tMin) / (tMax - tMin)) * (width - L - R);
-  const Y = (v) => T + (1 - (v - vMin) / (vMax - vMin)) * (height - T - B);
-  const grid = [228, 228, 228];
-  const axis = [120, 120, 120];
-  const ink = [60, 60, 60];
+  const L = x + 64;
+  const R = x + w - 6;
+  const T = y + 6;
+  const B = y + h - 24;
+  const X = (t) => L + ((t - tMin) / (tMax - tMin)) * (R - L);
+  const Y = (v) => T + (1 - (f(v) - vMin) / (vMax - vMin)) * (B - T);
 
-  // grille horizontale + montants
-  const step = niceStep(vMax - vMin);
-  for (let v = Math.ceil(vMin / step) * step; v <= vMax; v += step) {
-    cv.line(L, Y(v), width - R, Y(v), grid);
-    cv.text(fmtMoney(v), L - 8, Y(v) - 5, ink, 2, 'right');
+  const hline = (v) => {
+    cv.line(L, Y(v), R, Y(v), THEME.border, 1);
+    cv.text(money(v), L - 8, Y(v) - axisFont / 2 - 1, { size: axisFont, color: THEME.muted, align: 'right' });
+  };
+  if (log) {
+    for (let e = Math.floor(vMin); e <= Math.ceil(vMax); e++) {
+      for (const m of [1, 2, 5]) {
+        const v = m * 10 ** e;
+        if (Math.log10(v) >= vMin && Math.log10(v) <= vMax) hline(v);
+      }
+    }
+  } else {
+    const step = niceStep(vMax - vMin);
+    for (let v = Math.ceil(vMin / step) * step; v <= vMax; v += step) hline(v);
   }
-  // dates sur l'axe horizontal
   const span = tMax - tMin;
   for (let k = 0; k <= 4; k++) {
     const t = tMin + (span * k) / 4;
     const d = new Date(t * 1000);
     const label = span > 400 * 86400
-      ? `${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCFullYear()).slice(2)}`
-      : `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-    cv.line(X(t), T, X(t), height - B, grid);
-    cv.text(label, X(t), height - B + 10, ink, 2, k === 0 ? 'left' : k === 4 ? 'right' : 'center');
+      ? String(d.getUTCFullYear())
+      : span > 2 * 86400
+        ? d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', timeZone: 'UTC' })
+        : d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+    cv.text(label, X(t), B + 7, { size: axisFont, color: THEME.muted, align: k === 0 ? 'left' : k === 4 ? 'right' : 'center' });
   }
-  cv.line(L, T, L, height - B, axis);
-  cv.line(L, height - B, width - R, height - B, axis);
-  if (baseline !== null) cv.line(L, Y(baseline), width - R, Y(baseline), axis, 1, 6);
+  if (baseline !== null) cv.line(L, Y(baseline), R, Y(baseline), THEME.muted, 1, 5, 0.7);
 
-  // courbes : la référence d'abord (en dessous), puis les stratégies
+  // La référence d'abord (en dessous), puis les stratégies
   for (const s of [...series].sort((a, b) => (b.reference ? 1 : 0) - (a.reference ? 1 : 0))) {
-    const p = s.points;
-    for (let i = 1; i < p.length; i++) cv.line(X(p[i - 1].t), Y(p[i - 1].v), X(p[i].t), Y(p[i].v), s.rgb, s.reference ? 2 : 3, s.reference ? 5 : s.dash || 0);
-    if (p.length === 1) cv.line(X(p[0].t) - 2, Y(p[0].v), X(p[0].t) + 2, Y(p[0].v), s.rgb, 3);
+    const p = s.points.map((q) => [X(q.t), Y(q.v)]);
+    if (p.length === 1) cv.circle(p[0][0], p[0][1], 3, s.rgb);
+    if (s.fill) cv.area(p, B, s.rgb);
+    cv.polyline(p, s.reference ? REFERENCE.rgb : s.rgb, s.reference ? 2 : s.width || 2.6, s.reference ? 6 : s.dash || 0);
+  }
+  return { X, Y, L, R, T, B };
+}
+
+/**
+ * @param {Array<{points: Array<{t:number, v:number}>, rgb:number[], reference?:boolean, dash?:number}>} series
+ * @param {{width?:number, height?:number, baseline?:number, title?:string, subtitle?:string, log?:boolean,
+ *          legend?: Array<{label:string, value?:string, valueColor?:number[], rgb:number[], dash?:number, reference?:boolean}>}} opts
+ * @returns {Buffer} PNG
+ */
+function renderEquityChart(series, { width = 1000, height = 560, baseline = null, title = '', subtitle = '', legend = [], log = false } = {}) {
+  const cols = 2;
+  const legendRows = Math.ceil(legend.length / cols);
+  const head = title ? (subtitle ? 78 : 56) : 0;
+  const legendH = legend.length ? 18 + legendRows * 30 : 0;
+  const cv = new Canvas(width, height + head + legendH, THEME.bg);
+  if (title) cv.text(title, 28, 18, { style: 'b', size: 28, color: THEME.text, maxWidth: width - 56 });
+  if (subtitle) cv.text(subtitle, 28, 54, { size: 15, color: THEME.muted, maxWidth: width - 56 });
+  drawSeries(cv, series, { x: 20, y: head, w: width - 44, h: height - 12 }, { baseline, log });
+
+  if (legend.length) {
+    const y0 = head + height + 4;
+    const colW = (width - 56) / cols;
+    legend.forEach((l, k) => {
+      const cx = 28 + (k % cols) * colW;
+      const cy = y0 + Math.floor(k / cols) * 30;
+      const rgb = l.reference ? REFERENCE.rgb : l.rgb;
+      if (l.dash || l.reference) cv.line(cx, cy + 10, cx + 22, cy + 10, rgb, 3, 5);
+      else cv.roundRect(cx, cy + 4, 22, 12, 3, rgb);
+      const vw = l.value ? cv.measure(l.value, 'b', 15) : 0;
+      cv.text(l.label, cx + 32, cy + 1, { size: 15, color: THEME.text, maxWidth: colW - 52 - vw });
+      if (l.value) cv.text(l.value, cx + colW - 16, cy + 1, { style: 'b', size: 15, color: l.valueColor || THEME.text, align: 'right' });
+    });
   }
   return cv.png();
 }
@@ -193,4 +159,4 @@ function downsample(points, maxPoints = 600) {
   return out;
 }
 
-module.exports = { renderEquityChart, downsample, PALETTE, REFERENCE };
+module.exports = { renderEquityChart, drawSeries, downsample, niceStep, fmtMoney, fmtPct, PALETTE, REFERENCE };
