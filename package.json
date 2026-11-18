@@ -32,7 +32,8 @@
     "ftmo-grid": "node --max-old-space-size=6144 ftmo-grid.js",
     "ftmo-papers": "node --max-old-space-size=6144 ftmo-papers.js",
     "ftmo-sizing": "node --max-old-space-size=6144 ftmo-sizing.js",
-    "ftmo-markets": "node --max-old-space-size=6144 ftmo-markets.js"
+    "ftmo-markets": "node --max-old-space-size=6144 ftmo-markets.js",
+    "gold-intraday-grid": "node --max-old-space-size=6144 nas-intraday-grid.js gold"
   },
   "engines": {
     "node": ">=20"

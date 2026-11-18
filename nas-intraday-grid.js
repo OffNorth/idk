@@ -13,6 +13,7 @@
  * (≥ 40 trades), vérification sur la tranche 3 (≥ 20 trades).
  *
  *   npm run nas-intraday-grid
+ *   npm run gold-intraday-grid   (les mêmes familles de momentum sur l'or, PAXG 2020–2026, séance 7 h–20 h UTC)
  */
 const path = require('path');
 const { aggregate } = require('./src/history');
@@ -22,18 +23,21 @@ const { ema } = require('./src/indicators');
 
 const { trendUp, trendDown, weekday } = helpers;
 const CACHE = path.join(__dirname, 'data', 'research');
-const FEE = 0.003;
-const FIN = 6;
-const OPEN = 9 * 60 + 30;
-const CLOSE = 16 * 60;
+const GOLD = process.argv[2] === 'gold';
+const FEE = GOLD ? 0.005 : 0.003;
+const FIN = GOLD ? 0 : 6;
+// Séance : Nasdaq 9 h 30 → 16 h (New York) ; or 7 h → 20 h UTC (ouverture de Londres → fin d'après-midi à New York)
+const OPEN = GOLD ? 7 * 60 : 9 * 60 + 30;
+const CLOSE = GOLD ? 20 * 60 : 16 * 60;
+/** Heure « Nasdaq » (minutes New York) transposée à la séance du marché testé (même écart depuis l'ouverture). */
+const T = (nyMin) => OPEN + (nyMin - (9 * 60 + 30));
 
 (async () => {
-  const q1 = await require('./src/polygon').polygonBars(CACHE, 'QQQ', 1, '2024-11-18');
-  const q5 = aggregate(q1, 300, 60);
+  const q5 = GOLD ? await require('./src/history').loadKlines(CACHE, { interval: '5m' }) : aggregate(await require('./src/polygon').polygonBars(CACHE, 'QQQ', 1, '2024-11-18'), 300, 60);
   const sets = { '5m': { c: q5, sec: 300 }, '15m': { c: aggregate(q5, 900, 300), sec: 900 } };
   const results = [];
   for (const [tf, d] of Object.entries(sets)) {
-    const x = computeScalp2(d.c, d.sec, 'nas100');
+    const x = computeScalp2(d.c, d.sec, GOLD ? 'gold' : 'nas100');
     const n = d.c.length;
     const cl = x.closes;
     const m = x.min;
@@ -85,8 +89,8 @@ const CLOSE = 16 * 60;
       for (const filt of ['aucun', 'VWAP', 'veille']) {
         const okL = (i) => filt === 'aucun' || (filt === 'VWAP' ? cl[i] > x.vwap[i] : sOpen[i] > x.pClose[i]);
         const okS = (i) => filt === 'aucun' || (filt === 'VWAP' ? cl[i] < x.vwap[i] : sOpen[i] < x.pClose[i]);
-        const up = firstOfDay((i) => R.hi[i] !== null && cl[i] > R.hi[i] && m[i] < 12 * 60);
-        const dn = firstOfDay((i) => R.lo[i] !== null && cl[i] < R.lo[i] && m[i] < 12 * 60);
+        const up = firstOfDay((i) => R.hi[i] !== null && cl[i] > R.hi[i] && m[i] < T(12 * 60));
+        const dn = firstOfDay((i) => R.lo[i] !== null && cl[i] < R.lo[i] && m[i] < T(12 * 60));
         for (const side of ['achat', 'vente', 'les deux']) {
           add('cassure ouverture', `range ${N} min, ${side}, filtre ${filt}`, {
             buy: (i) => side !== 'vente' && up[i] && okL(i), sell: (i) => side !== 'achat' && dn[i] && okS(i),
@@ -96,7 +100,7 @@ const CLOSE = 16 * 60;
       }
     }
     // 2. Momentum intraday : sens de la journée à une heure donnée → position jusqu'à la clôture
-    for (const [obs, ent] of [[10 * 60, 15 * 60], [10 * 60, 15 * 60 + 30], [10 * 60 + 30, 15 * 60], [10 * 60 + 30, 15 * 60 + 30], [12 * 60, 15 * 60], [15 * 60 + 30, 15 * 60 + 30]]) {
+    for (const [obs, ent] of [[T(10 * 60), T(15 * 60)], [T(10 * 60), T(15 * 60 + 30)], [T(10 * 60 + 30), T(15 * 60)], [T(10 * 60 + 30), T(15 * 60 + 30)], [T(12 * 60), T(15 * 60)], [T(15 * 60 + 30), T(15 * 60 + 30)]]) {
       const P = priceAt(obs);
       for (const th of [0, 0.25, 0.5]) {
         const go = (sgn) => firstOfDay((i) => inSess(i) && endMin(i) >= ent && P[i] !== null && x.pClose[i] && sgn * (P[i] / x.pClose[i] - 1) * 100 > th);
@@ -108,7 +112,7 @@ const CLOSE = 16 * 60;
       }
     }
     // 3. Croisement du VWAP dans la tendance 1 h
-    for (const lim of [12 * 60, 15 * 60]) {
+    for (const lim of [T(12 * 60), T(15 * 60)]) {
       add('VWAP', `croise le VWAP dans la tendance 1 h, avant ${lim / 60} h`, {
         buy: (i) => m[i] < lim && x.vwap[i - 1] !== null && cl[i - 1] <= x.vwap[i - 1] && cl[i] > x.vwap[i] && trendUp(x, i),
         sell: (i) => m[i] < lim && x.vwap[i - 1] !== null && cl[i - 1] >= x.vwap[i - 1] && cl[i] < x.vwap[i] && trendDown(x, i),
@@ -136,8 +140,8 @@ const CLOSE = 16 * 60;
     // 6. Repli sur le VWAP dans la tendance 1 h, objectif 1,5 R
     for (const rr of [1, 2]) {
       add('repli VWAP', `touche le VWAP dans la tendance, objectif ${rr} R`, {
-        buy: (i) => trendUp(x, i) && cl[i] > x.vwap[i] && d.c[i].l <= x.vwap[i] && m[i] >= OPEN + 30 && m[i] < 15 * 60,
-        sell: (i) => trendDown(x, i) && cl[i] < x.vwap[i] && d.c[i].h >= x.vwap[i] && m[i] >= OPEN + 30 && m[i] < 15 * 60,
+        buy: (i) => trendUp(x, i) && cl[i] > x.vwap[i] && d.c[i].l <= x.vwap[i] && m[i] >= OPEN + 30 && m[i] < T(15 * 60),
+        sell: (i) => trendDown(x, i) && cl[i] < x.vwap[i] && d.c[i].h >= x.vwap[i] && m[i] >= OPEN + 30 && m[i] < T(15 * 60),
         sl: (i) => 1 * x.atr[i], tp: (i) => rr * x.atr[i], flat: flatAt(CLOSE - 5),
       });
     }
@@ -159,12 +163,12 @@ const CLOSE = 16 * 60;
       };
       const r = backtest(strat, d.c, { size: 1000, feePct: FEE, financingPct: FIN, barSec: d.sec, ind: x });
       const parts = [0, 1, 2].map((k) => { const l = r.list.filter((t) => t.entryT >= cuts[k] && t.entryT < cuts[k + 1]); return { n: l.length, sum: l.reduce((s, t) => s + t.pnlPct, 0) }; });
-      const chosen = parts[0].sum > 0 && parts[1].sum > 0 && parts[0].n + parts[1].n >= 40;
-      results.push({ tf, v, parts, chosen, valid: chosen && parts[2].sum > 0 && parts[2].n >= 20, perDay: r.list.length / (((b - a) / 86400) * (252 / 365)) });
+      const chosen = parts[0].sum > 0 && parts[1].sum > 0 && parts[0].n + parts[1].n >= (GOLD ? 100 : 40);
+      results.push({ tf, v, parts, chosen, valid: chosen && parts[2].sum > 0 && parts[2].n >= (GOLD ? 50 : 20), list: r.list, perDay: r.list.length / (((b - a) / 86400) * (252 / 365)) });
     }
   }
   const fams = [...new Set(results.map((r) => `${r.v.fam} ${r.tf}`))];
-  console.log(`=== ${results.length} variantes intraday Nasdaq (QQQ 5 / 15 min, frais ${FEE} % + financement) · choix tranches 1 + 2, vérification tranche 3 ===\n`);
+  console.log(`=== ${results.length} variantes intraday ${GOLD ? 'or (PAXG' : 'Nasdaq (QQQ'} 5 / 15 min, frais ${FEE} % + financement) · choix tranches 1 + 2, vérification tranche 3 ===\n`);
   for (const f of fams) {
     const r = results.filter((x) => `${x.v.fam} ${x.tf}` === f);
     console.log(`  ${f.padEnd(24)} ${String(r.length).padStart(3)} testées · ${String(r.filter((x) => x.chosen).length).padStart(3)} choisies · ${String(r.filter((x) => x.valid).length).padStart(3)} confirmées`);
@@ -175,6 +179,40 @@ const CLOSE = 16 * 60;
   console.log('\nConfirmées (gain net cumulé % : tranche 1 · 2 · 3, trades, trades / jour) :');
   for (const r of valid.sort((p, q) => q.parts[2].sum - p.parts[2].sum)) {
     console.log(`  [${r.tf}] ${r.v.fam.padEnd(18)} ${r.v.name.padEnd(48)} ${r.parts.map((p) => `${p.sum >= 0 ? '+' : ''}${p.sum.toFixed(1)} %`).join(' · ')} · ${r.parts.reduce((s, p) => s + p.n, 0)} · ${r.perDay.toFixed(2)}/j`);
+  }
+  if (GOLD && valid.length) {
+    // Effet sur le compte FTMO unique (choix sept. 2020 → oct. 2024, vérification sur les 2 dernières années)
+    const cfg = require('./src/config');
+    const { challengeStats } = require('./src/ftmo');
+    const { RULES } = require('./src/sizing');
+    const { selectStrategies, tfOf, TF_SEC } = require('./src/strategies');
+    const { cachedYahoo } = require('./src/yahoo');
+    const { computeAll } = require('./src/indicators');
+    const strip = (l) => l.map((x) => x.split(':').slice(1).join(':'));
+    const y = (sym) => cachedYahoo(CACHE, sym, '1d').catch(() => null);
+    const nd = await y('^NDX');
+    const vix = await y('^VIX');
+    const aux = { tnx: await y('^TNX'), dxy: await y('DX-Y.NYB'), sox: await y('^SOX'), oil: await y('CL=F'), spx: await y('^GSPC'), peer: await y('GC=F') };
+    const nind = computeAll(nd, nd, 86400, null, vix, aux);
+    const G = { '5m': q5, '15m': aggregate(q5, 900, 300) };
+    const t0 = q5[0].t + 30 * 86400;
+    const SPLIT = q5[q5.length - 1].t - 2 * 365 * 86400;
+    const base = [];
+    for (const s of selectStrategies(strip(cfg.ftmoStrategies))) {
+      const tf = tfOf(s);
+      base.push(...backtest(s, G[tf], { size: 1000, feePct: 0.005, barSec: TF_SEC[tf], market: 'gold' }).list.map((t) => ({ ...t, riskPct: cfg.ftmoRisk })));
+    }
+    for (const s of selectStrategies(strip(cfg.ftmoNasStrategies)))
+      base.push(...backtest(s, nd, { size: 1000, feePct: 0.003, financingPct: 6, barSec: 86400, ind: nind, daily: nd, vix, aux, market: 'nas100' }).list.map((t) => ({ ...t, riskPct: cfg.ftmoComboNasRisk })));
+    const B = base.filter((t) => t.entryT >= t0);
+    const sizer = RULES[cfg.ftmoSizing] || RULES.fixe;
+    const st = (l, part, h = 180) => challengeStats(part === 'choix' ? l.filter((t) => t.entryT < SPLIT) : l.filter((t) => t.entryT >= SPLIT),
+      { riskPct: 1, dayStopPct: cfg.ftmoDayStop, horizonDays: h, sizer, ...(part === 'choix' ? { end: SPLIT } : { start: SPLIT }) });
+    const pr = (c) => (c ? c.passRate.toFixed(0).padStart(3) : '  —');
+    const f = (l) => `choix < 6 mois ${pr(st(l, 'choix'))} % · < 60 j ${pr(st(l, 'choix', 60))} % | vérif < 6 mois ${pr(st(l, 'verif'))} % · < 60 j ${pr(st(l, 'verif', 60))} %`;
+    console.log(`\n=== Compte FTMO unique : ajout de chaque variante confirmée (risque 0,5 %) ===\n`);
+    console.log(`  Actuel ${''.padEnd(58)} ${f(B)}`);
+    for (const r of valid) console.log(`  + [${r.tf}] ${r.v.name.slice(0, 54).padEnd(54)} ${f([...B, ...r.list.filter((t) => t.entryT >= t0).map((t) => ({ ...t, riskPct: 0.5 }))])}`);
   }
 })().catch((e) => {
   console.error(e);
