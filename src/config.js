@@ -11,6 +11,7 @@ function num(name, def) {
 
 // Anciennes listes par défaut (copiées depuis .env.example) : remplacées par la sélection actuelle
 const OLD_DEFAULTS = [
+  'nas100:n_noise',
   'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m',
   'golden,mom12_1,trendmix,mom12,sma200,lowvol,rates,n_weekrev,n_low10,n_drop,n_dollarfall,n_rsspx,n_2down,n_goldfall,n_rsi4,tom,rsi2,ibs,double7,down3,vixspike,vixcalm,halloween,cumrsi,dip5,dualmom,macro,sox,macd_long,ema_long,x_orb5,x_lasthalf,m_down3,m_vwap,n_overnight,n_preholiday,n_opex,n_yieldfall,sweep,hold',
   'nas100:n_weekrev,nas100:n_low10,nas100:n_drop,nas100:n_dollarfall,nas100:n_rsspx,nas100:n_2down,nas100:n_goldfall,nas100:n_rsi4,nas100:tom',
@@ -74,6 +75,13 @@ module.exports = {
   goldFinancingPct: num('GOLD_FINANCING_PCT', 0),
 
   // Paper trading du Nasdaq 100 (indice ^NDX, Yahoo Finance) — CFD NAS100 simulé
+  // EUR/USD (journalier, Yahoo EURUSD=X) — marché à l'essai (npm run ftmo-markets : ibs +68 % · +85 % · +84 %, 2003–2026)
+  eurusdEnabled: num('EURUSD_TRADING', 1) === 1,
+  eurusdStrategies: list('EURUSD_STRATEGIES', 'ibs,hold'),
+  eurusdStartCapital: num('EURUSD_START_CAPITAL', 1000),
+  eurusdPositionPct: num('EURUSD_POSITION_PCT', 100),
+  eurusdFeePct: num('EURUSD_FEE_PCT', 0.002),
+  eurusdFinancingPct: num('EURUSD_FINANCING_PCT', 3),
   nasEnabled: num('NAS_TRADING', 1) === 1,
   // Retenues par le banc d'essai (npm run research -- nas100), en version achat seul + référence
   nasStrategies: list('NAS_STRATEGIES', 'golden,mom12_1,trendmix,mom12,sma200,lowvol,rates,n_weekrev,n_low10,n_drop,n_dollarfall,n_rsspx,n_2down,n_goldfall,n_rsi4,tom,rsi2,ibs,double7,down3,vixspike,vixcalm,halloween,cumrsi,dip5,dualmom,macro,sox,macd_long,ema_long,x_orb5,x_lasthalf,m_down3,m_vwap,n_overnight,n_preholiday,n_opex,n_yieldfall,sweep,n_mom10,n_orb15,n_orb5s,hold'),
@@ -131,11 +139,12 @@ module.exports = {
   const cfg = module.exports;
   cfg.ftmoOnly = num('FTMO_ONLY', 1) === 1;
   // Stratégies à l'essai : suivies en paper trading (et publiées) mais PAS par le compte FTMO
-  cfg.trialStrategies = list('TRIAL_STRATEGIES', 'nas100:n_noise');
+  cfg.trialStrategies = list('TRIAL_STRATEGIES', 'nas100:n_noise,eurusd:ibs');
   if (cfg.ftmoOnly) {
     const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : [])];
     const of = (m) => [...new Set([...all, ...cfg.trialStrategies].filter((x) => x.startsWith(`${m}:`)).map((x) => x.slice(m.length + 1))), 'hold'];
     cfg.goldStrategies = of('gold');
     cfg.nasStrategies = of('nas100');
+    cfg.eurusdStrategies = of('eurusd');
   }
 }

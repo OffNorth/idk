@@ -9,6 +9,9 @@ const { MarketTrader, activeMarkets, marketById } = require('./markets');
 const { goldEventMessage, portfolioMessage, esc } = require('./format');
 const { explainTelegramError } = require('./channel');
 
+/** Prix lisible : 4 décimales sous 10 (EUR/USD), 2 sinon. */
+const px = (v) => (Math.abs(v) < 10 ? v.toFixed(4) : v.toFixed(2));
+
 async function safeSend(channel, text, extra) {
   try {
     await channel.sendText(text, extra);
@@ -133,7 +136,7 @@ function scalpDigest(cfg, store, markets, sinceMs) {
       if (acc.position) open++;
       if (fresh && !isScalp(s)) {
         // Stratégie journalière : la nouvelle position compte (elle est souvent gardée des semaines)
-        rows.push(`  • ${esc(s.name)} : ${fresh.side === 'long' ? '📈 achat' : '📉 vente'} à $${fresh.entry.toFixed(2)} (stop $${fresh.sl.toFixed(2)})`);
+        rows.push(`  • ${esc(s.name)} : ${fresh.side === 'long' ? '📈 achat' : '📉 vente'} à $${px(fresh.entry)} (stop $${px(fresh.sl)})`);
         opened++;
       }
       if (!done.length) continue;

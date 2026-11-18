@@ -108,10 +108,35 @@ function nasMarket(cfg) {
   };
 }
 
+function eurusdMarket(cfg) {
+  return {
+    id: 'eurusd',
+    name: 'EUR/USD',
+    emoji: '💶',
+    file: 'eurusd.json',
+    enabled: cfg.eurusdEnabled,
+    strategies: cfg.eurusdStrategies,
+    startCapital: cfg.eurusdStartCapital,
+    positionPct: cfg.eurusdPositionPct,
+    feePct: cfg.eurusdFeePct,
+    financingPct: cfg.eurusdFinancingPct,
+    async fetch(tfs, { needsVix, aux: auxList = [] } = {}) {
+      const [m5, d1, vix, aux] = await Promise.all([
+        cached('eurusd5m', 120, () => fetchYahoo('EURUSD=X', '5m', { range: '5d', ...LIVE })).catch(() => null),
+        cached('eurusd1d', 3600, () => fetchYahoo('EURUSD=X', '1d', { range: '2y', ...LIVE })),
+        needsVix ? cached('vix1d', 3600, () => fetchYahoo('^VIX', '1d', { range: '2y', ...LIVE })).catch(() => null) : null,
+        fetchAux('eurusd', auxList),
+      ]);
+      const series = { '1d': d1, '5m': m5, '1h': m5 ? aggregate(m5, 3600, 300) : null };
+      return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx: null, vix, aux, series };
+    },
+  };
+}
+
 /** Tous les marchés (actifs ou non). */
 function allMarkets(cfg) {
   // Nasdaq en premier : marché par défaut du panneau, du résumé, des bilans et du jeu ; l'or suit
-  return [nasMarket(cfg), goldMarket(cfg)];
+  return [nasMarket(cfg), goldMarket(cfg), eurusdMarket(cfg)];
 }
 
 /** Marchés actifs. */
@@ -130,4 +155,4 @@ class GoldTrader extends MarketTrader {
   }
 }
 
-module.exports = { goldMarket, nasMarket, allMarkets, activeMarkets, marketById, GoldTrader, MarketTrader };
+module.exports = { goldMarket, nasMarket, eurusdMarket, allMarkets, activeMarkets, marketById, GoldTrader, MarketTrader };

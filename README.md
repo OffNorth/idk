@@ -404,6 +404,10 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > 2003–2026). Ajoutées au compte FTMO, **aucune n'améliore la période de choix** (déjà à 100 %, et rien de mieux à 30,
 > 60 ou 90 jours) : rien n'est activé. La meilleure sur la vérification est `ibs` sur l'EUR/USD (45 → 53–55 %), mais la
 > choisir pour ce chiffre serait se servir des données de vérification pour choisir.
+>
+> **EUR/USD à l'essai** : 3e marché du bot (💶, `/eurusd`, journalier via Yahoo `EURUSD=X`, frais 0,002 % + financement
+> 3 %/an), stratégie `ibs` (+ la référence `hold`), en paper trading seulement — **pas sur le compte FTMO**
+> (`TRIAL_STRATEGIES=nas100:n_noise,eurusd:ibs`). `EURUSD_TRADING=0` pour le couper.
 
 > **Levier dynamique (`npm run ftmo-sizing`, `src/sizing.js`, `FTMO_SIZING`)** : la taille de chaque trade est déjà
 > « risque ÷ distance au stop » (le levier varie donc avec le stop : un stop serré donne plus de levier, plafonné à 1:30).

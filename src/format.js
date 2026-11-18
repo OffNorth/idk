@@ -2,6 +2,8 @@
  * Messages Telegram (HTML) du paper trading de l'or.
  */
 
+/** Prix lisible : 4 décimales sous 10 (EUR/USD), 2 sinon. */
+const px = (v) => (Math.abs(v) < 10 ? v.toFixed(4) : v.toFixed(2));
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const signedUsd = (v) => `${v >= 0 ? '+' : '−'}$${Math.abs(v).toFixed(2)}`;
 const signedPct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}%`;
@@ -21,7 +23,7 @@ function goldEventMessage(ev) {
   if (ev.type === 'open' && ev.strategy.id === 'hold') {
     return [
       `${mk} <b>${mn} · ${name}</b>`,
-      `Achat de référence simulé à <b>$${ev.pos.entry.toFixed(2)}</b> · taille $${ev.pos.size}, gardé sans limite de durée`,
+      `Achat de référence simulé à <b>$${px(ev.pos.entry)}</b> · taille $${ev.pos.size}, gardé sans limite de durée`,
       `<i>Sert à comparer : une stratégie doit faire mieux que simplement détenir ${ev.market?.id === 'nas100' ? 'l’indice (comme un ETF, sans financement)' : 'l’or'}.</i>`,
     ].join('\n');
   }
@@ -29,15 +31,15 @@ function goldEventMessage(ev) {
     const p = ev.pos;
     return [
       `${mk} <b>${mn} · ${name}</b>`,
-      `${p.side === 'long' ? '📈 <b>ACHAT</b> (long)' : '📉 <b>VENTE À DÉCOUVERT</b> (short)'} simulé à <b>$${p.entry.toFixed(2)}</b> · taille $${p.size}`,
-      `Stop : $${p.sl.toFixed(2)}${ev.strategy.trail ? ' (suiveur)' : ''} · Objectif : ${p.tp ? `$${p.tp.toFixed(2)}` : 'signal de sortie'}`,
+      `${p.side === 'long' ? '📈 <b>ACHAT</b> (long)' : '📉 <b>VENTE À DÉCOUVERT</b> (short)'} simulé à <b>$${px(p.entry)}</b> · taille $${p.size}`,
+      `Stop : $${px(p.sl)}${ev.strategy.trail ? ' (suiveur)' : ''} · Objectif : ${p.tp ? `$${px(p.tp)}` : 'signal de sortie'}`,
       `<i>${ev.rsi != null ? `RSI ${Number(ev.rsi).toFixed(0)} · ` : ""}paper trading, aucun argent réel</i>`,
     ].join('\n');
   }
   const t = ev.trade;
   return [
     `${mk} ${t.pnlUsd >= 0 ? '🟢' : '🔴'} <b>${mn} · ${name}</b> — ${t.side === 'long' ? 'long' : 'short'} clôturé`,
-    `$${t.entry.toFixed(2)} → $${t.exit.toFixed(2)} · <b>${signedPct(t.pnlPct)}</b> (${signedUsd(t.pnlUsd)} sur $${t.size})`,
+    `$${px(t.entry)} → $${px(t.exit)} · <b>${signedPct(t.pnlPct)}</b> (${signedUsd(t.pnlUsd)} sur $${t.size})`,
     `Raison : ${esc(t.reason)} · durée ${fmtDuration((t.exitT - t.entryT) * 1000)} · <i>paper trading, frais inclus</i>`,
     ...(ev.capital !== undefined
       ? [`Capital de la stratégie : <b>${money(ev.capital)}</b> (${signedPct((ev.capital / ev.start - 1) * 100)} depuis le départ)`]
@@ -55,13 +57,13 @@ function portfolioMessage(gold) {
   const start = gold.start * strat.length;
   const lines = [
     `<b>📒 Bilan paper trading — ${gold.market?.emoji || '🥇'} ${esc(gold.market?.name || 'Or')}</b> <i>(simulation, gains réinvestis)</i>`,
-    `Prix : ${gold.price ? `$${gold.price.toFixed(2)}` : '?'} · ${strat.length} stratégies × ${money(gold.start)}`,
+    `Prix : ${gold.price ? `$${px(gold.price)}` : '?'} · ${strat.length} stratégies × ${money(gold.start)}`,
     `Valeur du portefeuille : <b>${money(total)}</b> (${signedPct((total / start - 1) * 100)})`,
   ];
   if (ref) lines.push(`Référence achat-conservation : ${money(ref.equity)} (${signedPct(ref.returnPct)})`);
   for (const r of [...strat].sort((a, b) => b.equity - a.equity)) {
     const pos = r.position
-      ? `${r.position.side === 'long' ? '📈 long' : '📉 short'} depuis $${r.position.entry.toFixed(2)} (${signedUsd(r.unrealized)})`
+      ? `${r.position.side === 'long' ? '📈 long' : '📉 short'} depuis $${px(r.position.entry)} (${signedUsd(r.unrealized)})`
       : 'pas de position';
     lines.push(
       '',

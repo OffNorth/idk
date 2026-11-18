@@ -8,7 +8,7 @@ const { drawSeries, niceStep } = require('./chart');
 
 const W = 1000;
 const money = (v, d = 0) => (v == null || !Number.isFinite(v) ? 'n/d' : `${v < 0 ? '−' : ''}$${Math.abs(v).toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d })}`);
-const price = (v) => money(v, Math.abs(v) >= 1000 ? 0 : 2);
+const price = (v) => money(v, Math.abs(v) >= 1000 ? 0 : Math.abs(v) < 10 ? 4 : 2);
 const pct = (v, d = 1) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(d).replace('.', ',')} %`;
 const tone = (v) => (v > 0 ? THEME.up : v < 0 ? THEME.down : THEME.text);
 const date = (t) => new Date(t * 1000).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
@@ -87,8 +87,11 @@ function drawCandles(cv, candles, box, { levels = [], markers = [] } = {}) {
   });
   for (const l of levels) {
     cv.line(L, Y(l.price), R + 6, Y(l.price), l.rgb, 1.6, l.dash ? 7 : 0);
-    const label = `${l.label} ${price(l.price)}`;
-    const tw = Math.min(cv.measure(label, 'b', 13), x + w - R - 30);
+    const room = x + w - R - 30;
+    const full = `${l.label} ${price(l.price)}`;
+    // Pas assez de place (cours à 4 décimales, EUR/USD) : le prix seul
+    const label = cv.measure(full, 'b', 13) <= room ? full : price(l.price);
+    const tw = Math.min(cv.measure(label, 'b', 13), room);
     cv.roundRect(R + 8, Y(l.price) - 11, tw + 14, 22, 6, l.rgb);
     cv.text(label, R + 15, Y(l.price) - 9, { style: 'b', size: 13, color: THEME.bg, maxWidth: tw + 1 });
   }

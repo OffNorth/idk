@@ -29,7 +29,7 @@ function nextSlot(t, hour) {
 function createGame({ cfg, store, api }) {
   const load = () => store.loadJson(FILE, { round: null, scores: {}, rounds: 0 });
   const save = (s) => store.saveJson(FILE, s);
-  const markets = () => activeMarkets(cfg);
+  const markets = () => activeMarkets(cfg).filter((m) => m.id === 'gold' || m.id === 'nas100'); // le jeu reste sur l'or et le Nasdaq
   const lastPrice = (id) => store.loadJson(marketById(cfg, id).file, {}).lastPrice || null;
 
   function voteKeyboard(round) {

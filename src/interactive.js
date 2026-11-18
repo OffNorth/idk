@@ -19,10 +19,12 @@ const C = require('./cards');
 const { esc } = require('./format');
 const { VERDICT } = require('./catalog');
 
-const MK = { g: 'gold', n: 'nas100' };
-const KM = { gold: 'g', nas100: 'n' };
-const YEARS = { gold: [2001, 2010, 2016, 2021], nas100: [1990, 2000, 2010, 2020] };
+const MK = { g: 'gold', n: 'nas100', e: 'eurusd' };
+const KM = { gold: 'g', nas100: 'n', eurusd: 'e' };
+const YEARS = { gold: [2001, 2010, 2016, 2021], nas100: [1990, 2000, 2010, 2020], eurusd: [2004, 2010, 2016, 2021] };
 const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
+/** Cours : 4 décimales sous 10 (EUR/USD), entier au-delà de 1 000, 2 décimales sinon. */
+const quote = (v) => (Math.abs(v) < 10 ? `$${v.toFixed(4)}` : Math.abs(v) >= 1000 ? money(v) : `$${v.toFixed(2)}`);
 const pct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} %`;
 const PAGE = 6;
 
@@ -157,7 +159,7 @@ async function render(cfg, store, view, marketId, args = []) {
   if (view === 'o') {
     const open = st.rows.filter((r) => r.position);
     const png = C.positionsImage({ market, rows: open, price: st.price });
-    return { png, caption: `${head} · 📍 ${open.length} position${open.length > 1 ? 's' : ''} ouverte${open.length > 1 ? 's' : ''} · cours ${st.price ? money(st.price) : 'n/d'}`, keyboard: panelKeyboard(cfg, 'o', marketId) };
+    return { png, caption: `${head} · 📍 ${open.length} position${open.length > 1 ? 's' : ''} ouverte${open.length > 1 ? 's' : ''} · cours ${st.price ? quote(st.price) : 'n/d'}`, keyboard: panelKeyboard(cfg, 'o', marketId) };
   }
 
   if (view === 'c') {
@@ -170,12 +172,12 @@ async function render(cfg, store, view, marketId, args = []) {
     const png = C.priceChartImage({
       market,
       candles: shown,
-      title: `${market.name} · ${price ? money(price) : ''}`,
+      title: `${market.name} · ${price ? quote(price) : ''}`,
       subtitle: `Bougies ${tf === '1d' ? '1 jour · 120 derniers jours' : '1 heure · 4 derniers jours'} · ${pct(chg)} sur la période`,
       levels: price ? [{ price, label: 'Cours', rgb: [124, 196, 255] }] : [],
     });
     const extra = [[btn(`${tf === '1d' ? '• ' : ''}Bougies 1 jour`, `m:c:${KM[marketId]}:1d`), btn(`${tf === '1h' ? '• ' : ''}Bougies 1 heure`, `m:c:${KM[marketId]}:1h`)]];
-    return { png, caption: `${head} · 🕯 cours ${price ? `<b>${money(price)}</b>` : 'n/d'} (${pct(chg)} sur la période)`, keyboard: panelKeyboard(cfg, 'c', marketId, extra) };
+    return { png, caption: `${head} · 🕯 cours ${price ? `<b>${quote(price)}</b>` : 'n/d'} (${pct(chg)} sur la période)`, keyboard: panelKeyboard(cfg, 'c', marketId, extra) };
   }
 
   if (view === 'y' || view === 't') {
@@ -251,7 +253,7 @@ async function renderTrade(cfg, store, action, marketId, id, entryT) {
   if (action === 'k') {
     const png = C.tradeCardImage({ market, strategy: strat, trade: found.trade, pos: found.pos, price, candles: list, capital: found.trade ? found.trade.capital ?? null : acc.capital, start: market.startCapital });
     const res = found.trade ? `résultat <b>${pct(found.trade.pnlPct)}</b>` : `en cours (${price ? pct((t.side === 'long' ? 1 : -1) * (price / t.entry - 1) * 100) : 'n/d'})`;
-    return { png, caption: `${head}\n🧾 ${t.side === 'long' ? 'achat' : 'vente'} à ${money(t.entry)} · ${res}`, keyboard };
+    return { png, caption: `${head}\n🧾 ${t.side === 'long' ? 'achat' : 'vente'} à ${quote(t.entry)} · ${res}`, keyboard };
   }
   const shown = list.filter((c) => c.t >= t.entryT - (tf === '1d' ? 40 : 30) * (tf === '1d' ? 86400 : 3600)).slice(-120);
   const markers = [{ t: t.entryT, price: t.entry, rgb: [124, 196, 255], label: t.side === 'long' ? 'achat' : 'vente' }];
@@ -260,7 +262,7 @@ async function renderTrade(cfg, store, action, marketId, id, entryT) {
     market,
     candles: shown,
     title: `${market.name} · ${strat.name}`,
-    subtitle: `Bougies ${tf === '1d' ? '1 jour' : '1 heure'} · entrée${t.sl ? ', stop' : ''}${t.tp ? ', objectif' : ''}${found.trade ? ', sortie' : ''}${price ? ` · cours ${money(price)}` : ''}`,
+    subtitle: `Bougies ${tf === '1d' ? '1 jour' : '1 heure'} · entrée${t.sl ? ', stop' : ''}${t.tp ? ', objectif' : ''}${found.trade ? ', sortie' : ''}${price ? ` · cours ${quote(price)}` : ''}`,
     levels: C.positionLevels(found.trade ? { ...t, sl: t.initSl || t.sl } : t),
     markers,
   });
