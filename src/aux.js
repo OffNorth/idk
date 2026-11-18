@@ -2,11 +2,12 @@
  * Séries externes (journalières, Yahoo Finance) utilisées par certaines stratégies.
  *   tnx    : taux US 10 ans          dxy    : indice du dollar
  *   silver : argent (future SI=F)    sox    : indice des semi-conducteurs
+ *   oil    : pétrole (future CL=F)   spx    : S&P 500 (^GSPC)
  *   peer   : l'AUTRE marché du bot (Nasdaq 100 pour l'or, or pour le Nasdaq) — momentum relatif
  */
 const { cachedYahoo } = require('./yahoo');
 
-const SYMBOLS = { tnx: '^TNX', dxy: 'DX-Y.NYB', silver: 'SI=F', sox: '^SOX' };
+const SYMBOLS = { tnx: '^TNX', dxy: 'DX-Y.NYB', silver: 'SI=F', sox: '^SOX', oil: 'CL=F', spx: '^GSPC' };
 const PEER = { gold: '^NDX', nas100: 'GC=F' };
 
 /** Symbole Yahoo d'une série externe pour un marché donné. */

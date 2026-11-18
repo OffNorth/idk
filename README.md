@@ -184,7 +184,15 @@ Le bot trade aussi le **Nasdaq 100** en simulation, comme un CFD NAS100 :
 | **Rebond après une forte baisse d'un jour** (`n_drop`) | −2,5 % en une séance au-dessus de la moyenne 200 j → achat, revente au-dessus du plus haut de la veille | ✅ +69 % puis +48 %, 73 % gagnants. **Active** |
 | **Chute rapide des taux** (`n_yieldfall`) | taux 10 ans −5 % en 5 séances et Nasdaq > moyenne 50 j → achat, revente quand les taux remontent au-dessus de leur moyenne 10 j | ✅ +52 % puis +74 %, 70 % gagnants. **Active** |
 | **Chute rapide du dollar** (`n_dollarfall`) | DXY −2 % en 10 séances et Nasdaq > moyenne 50 j → achat, revente quand le dollar repasse au-dessus de sa moyenne 10 j | ✅ +68 % puis +15 %, 55 % gagnants. **Active** |
+| **Nasdaq plus fort que le S&P 500** (`n_rsspx`) | investi quand le Nasdaq 100 bat le S&P 500 sur 3 mois et est au-dessus de sa moyenne 50 j | ✅ +213 % 1985–1999, +12 % 2000–2009, +63 % 2010–2026. **Active** |
+| **Deux fortes baisses de suite** (`n_2down`) | 2 séances à −1 % au-dessus de la moyenne 200 j → achat | ✅ +11 %, +12 %, +27 % sur les 3 périodes. **Active** |
+| Chute rapide de l'or (`n_goldfall`) | or −4 % en 10 séances → afflux vers le risque | ✅ faible : +5 % puis +17 %. **Active** |
+| RSI 14 sous 30 (`n_rsi30`), chute du pétrole (`n_oilfall`) | | ❌ perdante sur une période |
 | Journée de retournement (`n_reversal`), vendre la panique du VIX (`n_vixfade`) | | ❌ perdante / trop faible sur 1985–2009 |
+
+**Règle stricte des 3 périodes** (1985–1999, 2000–2009, 2010–2026 : positive sur chacune) : `n_rsspx`, `n_low10`, `n_weekrev`,
+`n_drop`, `n_2down`, `n_dollarfall` la passent ; `n_opex` (−22 % en 2000–2009), `n_preholiday` (−3 %) et `n_yieldfall`
+(−4 % en 1985–1999, 7 trades) échouent, mais restent actives (à surveiller).
 | Nouveau plus haut d'un an (`n_ath`), semi-conducteurs en tête (`n_soxlead`) | suivi de tendance | ❌ ≈ 0 sur 1985–2009 (bonnes seulement depuis 2010) |
 | Très forte journée de hausse (`n_bigup`), repli d'un mois dans une forte tendance (`n_mompb`) | | ❌ perdantes sur 2010–2026 |
 | **Semaine d'expiration des options** (`n_opex`, journalier) | achat le vendredi d'avant, revente le 3e vendredi du mois | ✅ +34 % puis +25 %, 55 % gagnants. **Active** |

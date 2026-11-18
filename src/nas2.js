@@ -306,6 +306,69 @@ const NAS2 = [
       return { entry: ok ? 'long' : null, exitLong: x.closes[i] >= x.c20.max[i] || (r63 !== null && r63 < 0), exitShort: true, sl: 3 * x.atr[i], tp: null };
     },
   },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    id: 'n_rsi30',
+    name: 'Nasdaq : RSI 14 sous 30 dans la tendance',
+    desc: 'Le signal de « survente » le plus classique : RSI 14 sous 30 alors que le Nasdaq reste au-dessus de sa moyenne 200 jours → achat ; revente quand le RSI 14 repasse au-dessus de 50. Stop 3 ATR.',
+    evaluate(x, i) {
+      const r = x.rsi[i];
+      return { entry: r !== null && r < 30 && x.closes[i] > x.sma200[i] ? 'long' : null, exitLong: r > 50, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    id: 'n_2down',
+    name: 'Nasdaq : deux fortes baisses de suite',
+    desc: 'Deux séances d’affilée à plus de −1 % chacune, au-dessus de la moyenne 200 jours → achat à la clôture ; revente à la première clôture au-dessus du plus haut de la veille. Stop 3 ATR.',
+    evaluate(x, i) {
+      const c = x.closes;
+      const k = x.candles;
+      const two = i >= 2 && c[i] / c[i - 1] - 1 < -0.01 && c[i - 1] / c[i - 2] - 1 < -0.01;
+      return { entry: two && c[i] > x.sma200[i] ? 'long' : null, exitLong: c[i] > k[i - 1].h, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    needsAux: ['oil'],
+    id: 'n_oilfall',
+    name: 'Nasdaq : chute rapide du pétrole',
+    desc: 'Un pétrole qui chute de plus de 10 % en 10 séances fait baisser l’inflation attendue et les coûts des entreprises : achat du Nasdaq s’il est au-dessus de sa moyenne 50 jours ; revente quand le pétrole repasse au-dessus de sa moyenne 10 jours. Stop 3 ATR.',
+    evaluate(x, i) {
+      const o = x.oil;
+      if (!o) return { entry: null, exitLong: true, exitShort: true, sl: 0, tp: null };
+      const fall = i >= 10 && o.c[i] !== null && o.c[i - 10] && o.c[i] / o.c[i - 10] - 1 < -0.1;
+      const up = o.c[i] !== null && o.sma10[i] !== null && o.c[i] > o.sma10[i];
+      return { entry: fall && x.closes[i] > x.sma50[i] ? 'long' : null, exitLong: up, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    needsAux: ['peer'],
+    id: 'n_goldfall',
+    name: 'Nasdaq : chute rapide de l’or',
+    desc: 'Quand l’or (valeur refuge) perd plus de 4 % en 10 séances, les investisseurs reprennent du risque : achat du Nasdaq s’il est au-dessus de sa moyenne 50 jours ; revente quand l’or repasse au-dessus de sa moyenne 10 jours. Stop 3 ATR.',
+    evaluate(x, i) {
+      const g = x.peer;
+      const fall = i >= 10 && g.c[i] !== null && g.c[i - 10] && g.c[i] / g.c[i - 10] - 1 < -0.04;
+      const up = g.c[i] !== null && g.sma10[i] !== null && g.c[i] > g.sma10[i];
+      return { entry: fall && x.closes[i] > x.sma50[i] ? 'long' : null, exitLong: up, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    needsAux: ['spx'],
+    id: 'n_rsspx',
+    name: 'Nasdaq : plus fort que le S&P 500',
+    desc: 'Leadership de la tech : investi quand le Nasdaq 100 fait mieux que le S&P 500 sur 3 mois ET est au-dessus de sa moyenne 50 jours ; dehors sinon. Stop 4 ATR.',
+    evaluate(x, i) {
+      const sp = x.spx;
+      if (!sp || i < 63 || sp.c[i] === null || !sp.c[i - 63]) return { entry: null, exitLong: true, exitShort: true, sl: 0, tp: null };
+      const rs = (x.closes[i] / x.closes[i - 63]) - (sp.c[i] / sp.c[i - 63]);
+      const on = rs > 0 && x.closes[i] > x.sma50[i];
+      return { entry: on ? 'long' : null, exitLong: !on, exitShort: true, sl: 4 * x.atr[i], tp: null };
+    },
+  },
 ];
 
 module.exports = { NAS2, nyseHolidays, beforeHoliday };

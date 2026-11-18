@@ -69,10 +69,20 @@ function report(name, list, split) {
   const tnx = await cachedYahoo(CACHE, '^TNX', '1d');
   const dxy = await cachedYahoo(CACHE, 'DX-Y.NYB', '1d');
   const sox = await cachedYahoo(CACHE, '^SOX', '1d');
-  const ind = computeAll(nd, nd, 86400, null, vix, { tnx, dxy, sox });
+  const oil = await cachedYahoo(CACHE, 'CL=F', '1d');
+  const spx = await cachedYahoo(CACHE, '^GSPC', '1d');
+  const peer = await cachedYahoo(CACHE, 'GC=F', '1d');
+  const AUX = { tnx, dxy, sox, oil, spx, peer };
+  const ind = computeAll(nd, nd, 86400, null, vix, AUX);
   for (const s of selectStrategies((process.env.DAILY || 'n_preholiday,n_opex,n_santa,n_weekrev').split(','))) {
-    const r = backtest(s, nd, { size: 1000, feePct: 0.003, financingPct: 6, barSec: 86400, ind, daily: nd, vix, aux: { tnx, dxy, sox } });
-    if (report(s.name, r.list, split)) kept.push(s.id);
+    const r = backtest(s, nd, { size: 1000, feePct: 0.003, financingPct: 6, barSec: 86400, ind, daily: nd, vix, aux: AUX });
+    const ok = report(s.name, r.list, split);
+    // Règle plus stricte : positive sur CHAQUE grande période (avec au moins 5 trades)
+    const P = [['1985–1999', 0, Date.parse('2000-01-01') / 1000], ['2000–2009', Date.parse('2000-01-01') / 1000, split], ['2010–2026', split, Infinity]];
+    const parts = P.map(([lab, a, b]) => { const l = r.list.filter((t) => t.entryT >= a && t.entryT < b); return { lab, n: l.length, sum: l.reduce((x, t) => x + t.pnlPct, 0) }; });
+    const all3 = parts.filter((p) => p.n >= 5).length >= 2 && parts.every((p) => p.n < 5 || p.sum > 0);
+    console.log(`       par période : ${parts.map((p) => `${p.lab} ${p.n ? `${p.sum >= 0 ? '+' : ''}${p.sum.toFixed(0)} % (${p.n})` : '—'}`).join(' · ')}${all3 ? '  → ✔ positive sur chaque période' : ''}`);
+    if (ok && all3) kept.push(s.id);
   }
 
   // 3) L'effet de nuit sur 25 ans (ouverture / clôture journalières du ^NDX)
