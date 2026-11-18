@@ -8,7 +8,7 @@
 const { cachedYahoo } = require('./yahoo');
 
 const SYMBOLS = { tnx: '^TNX', dxy: 'DX-Y.NYB', silver: 'SI=F', sox: '^SOX', oil: 'CL=F', spx: '^GSPC' };
-const PEER = { gold: '^NDX', nas100: 'GC=F' };
+const PEER = { gold: '^NDX', nas100: 'GC=F', spx: 'GC=F', eurusd: 'GC=F' }; // « l'autre marché » : l'or pour les indices et l'EUR/USD
 
 /** Symbole Yahoo d'une série externe pour un marché donné. */
 function auxSymbol(key, marketId) {

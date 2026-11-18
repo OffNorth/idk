@@ -11,6 +11,7 @@ function num(name, def) {
 
 // Anciennes listes par défaut (copiées depuis .env.example) : remplacées par la sélection actuelle
 const OLD_DEFAULTS = [
+  'gold:down3,gold:pctb,gold:ema_long,gold:g_yieldfall,eurusd:ibs',
   'nas100:n_noise,eurusd:ibs',
   'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m,gold:g_asia,gold:m_down3',
   'nas100:ibs,nas100:cumrsi,nas100:n_dollarfall,nas100:tom,nas100:ema_long,nas100:rsi2,nas100:n_low10,nas100:n_rsi4,nas100:vixspike',
@@ -127,7 +128,7 @@ module.exports = {
   ftmoEnabled: num('FTMO', 1) === 1,
   // Or réel (npm run ftmo-real, XAU/USD 2009–2026) : les scalps choisis sur PAXG perdent sur l'or au comptant ; restent des
   // stratégies JOURNALIÈRES sur l'or (GC=F), le Nasdaq et l'EUR/USD (les « gold:… » de cette liste peuvent viser un autre marché)
-  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:down3,gold:pctb,gold:ema_long,gold:g_yieldfall,eurusd:ibs'),
+  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:down3,gold:pctb,gold:ema_long,gold:g_yieldfall,eurusd:ibs,spx:down3,spx:n_goldfall'),
   // 2e compte FTMO simulé, 100 % Nasdaq (npm run ftmo-nas-port)
   // Compte FTMO UNIQUE or + Nasdaq (par défaut) : or au risque FTMO_RISK_PCT, Nasdaq au risque FTMO_COMBO_NAS_RISK_PCT.
   // npm run ftmo-combo : 74 % de réussite en < 6 mois (récent 45 %) contre 74 % / 39 % pour l'or seul.

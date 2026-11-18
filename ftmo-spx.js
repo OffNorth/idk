@@ -57,6 +57,12 @@ const IDS = ['rsi2', 'ibs', 'double7', 'down3', 'cumrsi', 'dip5', 'pctb', 'tom',
 
   console.log(`=== ${F.label} · compte actuel + stratégies S&P 500 · « < 6 mois / < 1 an (médiane) » ===\n`);
   console.log(`  Compte actuel ${''.padEnd(24)} ${fmt(base)}\n`);
+  if (process.env.TEST) {
+    // TEST="spx:down3@1.5,spx:n_goldfall@1.5" : évalue seulement ce portefeuille
+    const add = process.env.TEST.split(',').flatMap((x) => { const [k, r] = x.split('@'); const l = (trades('spx', k.split(':')[1]) || []).map((t) => ({ ...t, riskPct: Number(r) })); annotate(l); return l; });
+    console.log(`  + ${process.env.TEST.padEnd(36)} ${fmt([...base, ...add])}`);
+    return;
+  }
   const C = {};
   for (const id of IDS) {
     const l = trades('spx', id);

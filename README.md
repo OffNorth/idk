@@ -403,6 +403,12 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > or retenu (RSI 4 < 15 en 15 min, quasi nul sur 2020–2026) n'est pas repris. Le cours de l'or du bot vient maintenant
 > du future GC=F (`GOLD_FEED=future`) et non plus de PAXG.
 >
+> **S&P 500 (`npm run ftmo-spx`, 4e marché du bot : 🗽, `/sp500`, Yahoo ^GSPC)** : ajouter d'un coup S&P 500, Dow, DAX et
+> argent fait BAISSER la réussite (vérification 32 % / 49 % → 16 % / 26 %) : les indices actions perdent les mêmes jours.
+> Testées une par une sur le compte actuel (0,25 à 1,5 %), deux stratégies S&P 500 l'améliorent un peu et sont ajoutées
+> au compte FTMO à 1,5 % : **`spx:down3`** (3 baisses de suite) et **`spx:n_goldfall`** (chute de l'or) — choix
+> 41 % / 58 % → 40 % / 60 %, vérification 31 % / 66 % → **34 % / 67 %** (« < 6 mois / < 1 an », même calcul que ce script).
+>
 > **Momentum intraday sur l'or réel (`npm run gold-intraday-grid`, `src/goldmom.js`)** : à l'inverse de PAXG, l'or au
 > comptant prolonge ses mouvements dans la journée — 40 variantes de momentum sur 46 choisies sont confirmées en
 > 3 tranches égales (2009–2015 · 2015–2020 · 2020–2026). Trois en ont été tirées : `g_orb30` (cassure des 30 premières
