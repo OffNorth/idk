@@ -113,7 +113,7 @@ for line in [
     'Les stratégies journalières (tendance de long terme, saisons) sont les plus solides ; en bougies d’1 heure et moins, presque tout perd à cause des frais et du bruit.',
     'Or : « saison OU tendance » et la saison (août → février) font presque aussi bien que garder l’or, avec beaucoup moins de baisse.',
     'Nasdaq : garder l’indice reste devant (+17 %/an depuis 2010) ; les stratégies évitent surtout une partie des krachs (croix dorée +10,1 %/an).',
-    'Scalp : sur 15 stratégies en bougies 1 à 5 min, une seule tient : RSI 2 dans la tendance 1 h sur l’or 5 min (≈ 2,7 trades/jour, positive chaque année 2020–2026, gain faible). Rien n’est validé en scalp sur le Nasdaq (données gratuites trop courtes).',
+    'Scalp or : les scalps choisis sur PAXG (jeton or de Binance, 2020–2026) perdent sur l’or au comptant réel (HistData 2009–2026) : leur avantage venait de la cotation de PAXG. Ils ne sont plus suivis par le compte FTMO. Rien n’est validé en scalp sur le Nasdaq.',
     'Le paper trading en direct, publié dans le groupe Telegram, sert à confirmer ces résultats sans risquer d’argent.',
 ]:
     story.append(Paragraph('• ' + line, body))
@@ -174,18 +174,18 @@ if fc['cb']:
                              'retirés au profit de stratégies journalières (or, Nasdaq, EUR/USD).')
                             if fc['prog'] == '1step' else
                             ('sept. 2020 → oct. 2024 : <b>97 % en moins de 6 mois</b> (46 j en médiane) ; 2 dernières années (vérification) : <b>46 %</b> (34 j). '
-                             'Les scalps or rapportent moins depuis 2024.'), cell)]] + ft[1:]
+                             'Les scalps or rapportent moins depuis 2024.'), cell)]]
 t = Table(ft, colWidths=[30 * mm, 62 * mm, 20 * mm, 68 * mm], repeatRows=1)
 t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), INK), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LINEBELOW', (0, 1), (-1, -1), 0.4, LINE),
                        ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4)]))
-story += [t, Spacer(1, 5), Paragraph(
+story += [t, Spacer(1, 5)] + ([] if fc['cb'] else [Paragraph(
     'Nasdaq : les stratégies journalières tradent trop rarement pour faire +10 % en un an à faible risque (0 % de réussite à 0,5 ou 1 %) ; à 3 %, environ '
-    '6 challenges sur 10 échouent encore, surtout sur la perte du jour quand plusieurs positions perdent ensemble. Choix sur 1985–2009, vérification sur 2010–2026.', body)]
+    '6 challenges sur 10 échouent encore, surtout sur la perte du jour quand plusieurs positions perdent ensemble. Choix sur 1985–2009, vérification sur 2010–2026.', body)])
 story += [Spacer(1, 4), Paragraph(
     '<b>Levier.</b> Chaque trade risque une part fixe du compte (taille = risque ÷ distance au stop, levier plafonné à 1:30) ; '
     'en plus, le risque est divisé par 2 dès que 2 positions sont déjà ouvertes. Sur 12 règles de levier dynamique testées '
     '(volatilité, forme des stratégies, état du compte), c’est la seule qui ne coûte rien : elle supprime les échecs sur la '
-    'perte du jour, à réussite égale (45 à 46 % sur les 2 dernières années). Aucune ne fait réussir plus souvent.', body)]
+    'perte du jour, à réussite égale (mesuré avec les anciens scalps or sur PAXG). Aucune ne fait réussir plus souvent.', body)]
 
 story.append(PageBreak())
 story.append(Paragraph('Historiques simulés des stratégies actives', h2))
