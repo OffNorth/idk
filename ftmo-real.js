@@ -29,7 +29,7 @@ const Y = (y) => Date.UTC(y, 0, 1) / 1000;
 const P = [['2009–2012', Y(2009), Y(2013)], ['2013–2016', Y(2013), Y(2017)], ['2017–2019', Y(2017), Y(2020)], ['2020–2026', Y(2020), Infinity]];
 const SPLIT = Y(2020);
 const RISK = { scalp: 0.35, gold: 0.5, nas100: 0.5, eurusd: 0.5 };
-const GOLD_SCALPS = ['x_rsi2', 'm_bb@5m', 'm_ibs', 'm_rsi2x', 'm_keltner@5m', 'm_wr@5m', 'g_ibsh@5m', 'g_asia', 'm_down3', 'm_vwap', 'x_lasthalf', 'x_orb5', 'n_orb5s'];
+const GOLD_SCALPS = ['g_orb30', 'g_mom8', 'g_gap', 'x_rsi2', 'm_bb@5m', 'm_ibs', 'm_rsi2x', 'm_keltner@5m', 'm_wr@5m', 'g_ibsh@5m', 'g_asia', 'm_down3', 'm_vwap', 'x_lasthalf', 'x_orb5', 'n_orb5s'];
 const DAILY = ['rsi2', 'ibs', 'double7', 'down3', 'cumrsi', 'dip5', 'pctb', 'tom', 'n_rsi4', 'n_low10', 'n_weekrev', 'n_drop', 'n_2down', 'n_dollarfall', 'n_goldfall', 'n_rsspx', 'vixspike', 'golden', 'sma200', 'trendmix', 'mom12_1', 'mom12', 'ema_long', 'dualmom', 'lowvol', 'rates',
   'g_low10', 'g_weekrev', 'g_oilfall', 'g_yieldfall', 'g_dollarfall', 'season', 'high52'];
 
