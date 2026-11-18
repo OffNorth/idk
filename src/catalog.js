@@ -15,6 +15,7 @@ const FAMILIES = [
   ['Tendance multi-horizons (or + Nasdaq)', ['golden', 'trendmix', 'mom12_1', 'dualmom']],
   ['Spécifiques au Nasdaq', ['sma200', 'macro', 'lowvol', 'vixcalm', 'halloween', 'rates', 'macd_long', 'sox', 'dollarweak', 'ibs', 'cumrsi', 'ema_long', 'tom', 'double7', 'down3', 'dip5', 'vixspike', 'tuesday', 'pctb']],
   ['Effets de calendrier Nasdaq', ['n_rsi4', 'n_rsspx', 'n_low10', 'n_weekrev', 'n_drop', 'n_2down', 'n_dollarfall', 'n_goldfall', 'n_yieldfall', 'n_rsi30', 'n_oilfall', 'n_opex', 'n_ath', 'n_soxlead', 'n_bigup', 'n_mompb', 'n_reversal', 'n_vixfade', 'n_overnight', 'n_preholiday', 'n_santa', 'n_gapfill', 'n_firsthour', 'n_halfhalf', 'n_trendday']],
+  ['Or intraday : momentum (or au comptant réel)', ['g_orb30', 'g_mom8', 'g_gap']],
   ['Tirées de la littérature (recherche web)', ['g_night', 'n_noise', 'n_orbdir']],
   ['Intraday Nasdaq (5 min)', ['n_mom10', 'n_orb15', 'n_orb5s', 'sweep', 'orb15', 'vwappb']],
   ['Scalp (1–5 min)', ['s_emavwap', 's_vwaprev', 's_bbrsi', 's_orb', 's_stoch', 's_burst']],
@@ -25,6 +26,9 @@ const FAMILIES = [
 ];
 
 const VERDICT = {
+  g_orb30: ['dispo', 'Or au comptant réel (HistData) : −13 % · +46 % · +5 % · +31 % (2009–12 · 13–16 · 17–19 · 20–26) ; perdante sur 2009–2012 → pas sur le compte FTMO'],
+  g_mom8: ['dispo', 'Or au comptant réel : −13 % · +18 % · −6 % · +51 % (2009–12 · 13–16 · 17–19 · 20–26) ; perdante sur 2 périodes → pas sur le compte FTMO'],
+  g_gap: ['dispo', 'Or au comptant réel : −9 % · +22 % · −2 % · +46 % (2009–12 · 13–16 · 17–19 · 20–26) ; perdante sur 2 périodes → pas sur le compte FTMO'],
   g_night: ['rejet', 'Littérature (effet de nuit, Blose et al.) : PAXG 2020–2026, 24 variantes d’horaires toutes perdantes sur 2020–2022 (−7 à −39 %), gagnantes depuis : pas stable'],
   n_noise: ['essai', 'Zarattini, Aziz & Barbon 2024 : QQQ 2 ans, +4,5 % · −0,6 % · +8,3 % (3 tranches de 8 mois) ; échoue de peu à la règle stricte → à l’essai en paper trading, hors compte FTMO'],
   n_orbdir: ['rejet', 'Zarattini & Aziz 2023 : QQQ 2 ans, −0,5 % · +2,2 % · +3,2 % avec frais ; « brut reproduit, net nul » comme la réplication publiée'],

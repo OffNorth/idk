@@ -402,6 +402,14 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > Nasdaq `rsi2`, `ibs`, `down3`, `dip5`, `n_low10`, `n_drop`, `n_2down`, `n_dollarfall`, `rates`, `g_yieldfall`. Le scalp
 > or retenu (RSI 4 < 15 en 15 min, quasi nul sur 2020–2026) n'est pas repris. Le cours de l'or du bot vient maintenant
 > du future GC=F (`GOLD_FEED=future`) et non plus de PAXG.
+>
+> **Momentum intraday sur l'or réel (`npm run gold-intraday-grid`, `src/goldmom.js`)** : à l'inverse de PAXG, l'or au
+> comptant prolonge ses mouvements dans la journée — 40 variantes de momentum sur 46 choisies sont confirmées en
+> 3 tranches égales (2009–2015 · 2015–2020 · 2020–2026). Trois en ont été tirées : `g_orb30` (cassure des 30 premières
+> minutes de Londres, +24 % · +22 % · +24 %), `g_mom8` (sens de la matinée à 8 h UTC), `g_gap` (écart d'ouverture qui se
+> prolonge). Mais sur les 4 périodes de la règle stricte du compte FTMO, **toutes perdent sur 2009–2012** (−13 %, −13 %,
+> −9 %), et `g_mom8` / `g_gap` aussi sur 2017–2019 : elles ne sont donc **pas** ajoutées au compte FTMO (disponibles,
+> non actives).
 
 
 > **Objectif : réussir une évaluation FTMO.** Par défaut (`FTMO_COMBINED=1`), le bot tient **un seul compte FTMO qui trade
