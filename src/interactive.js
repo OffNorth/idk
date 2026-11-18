@@ -337,7 +337,7 @@ function attachInteractive(bot, { cfg, store, gameHandler = null }) {
 }
 
 /** Envoie un panneau (commande /menu, graphique quotidien). */
-async function sendPanel(api, chatId, cfg, store, { view = 'h', marketId = 'gold', args = [], extra = {} } = {}) {
+async function sendPanel(api, chatId, cfg, store, { view = 'h', marketId = 'nas100', args = [], extra = {} } = {}) {
   const out = await render(cfg, store, view, marketId, args);
   return api.sendPhoto(chatId, new InputFile(out.png, 'image.png'), { caption: out.caption, parse_mode: 'HTML', reply_markup: out.keyboard, ...extra });
 }

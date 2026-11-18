@@ -1,4 +1,6 @@
-# 🥇 Gold Paper Bot (+ 🇺🇸 Nasdaq 100)
+# 🇺🇸 Nasdaq 100 + 🥇 Gold — Paper Bot
+
+> **Nasdaq en premier** : marché par défaut du panneau (`/menu`, `/graphique`, `/historique`), du résumé du jour, des bilans et du jeu. L'or continue de trader ; `/menu or`, `/graphique or`, `/historique or` pour l'or.
 
 Bot Telegram qui **trade l'or et le Nasdaq 100 en simulation** (paper trading) avec plusieurs stratégies en parallèle et publie chaque
 entrée, chaque sortie et un bilan régulier sur un canal Telegram. Les stratégies actives par défaut ont été choisies

@@ -78,22 +78,23 @@ attachInteractive(bot, { cfg, store, gameHandler: (ctx, parts) => game.onVote(ct
 /* Commandes                                                           */
 /* ------------------------------------------------------------------ */
 
-const marketArg = (text) => (/nas/i.test(text || '') ? 'nas100' : 'gold');
+// Nasdaq par défaut ; « or » / « gold » pour l'or
+const marketArg = (text) => (/\b(or|gold|xau)\b/i.test(text || '') ? 'gold' : 'nas100');
 
 bot.command(['start', 'aide', 'help'], (ctx) =>
   ctx.reply(
     [
-      '<b>📊 Paper trading : 🥇 or + 🇺🇸 Nasdaq 100</b>',
+      '<b>📊 Paper trading : 🇺🇸 Nasdaq 100 (+ 🥇 or)</b>',
       ...activeMarkets(cfg).map((m) => `${m.emoji} ${m.name} : ${selectStrategies(m.strategies).length} stratégies, $${m.startCapital} chacune au départ, gains réinvestis`),
-      'Chaque entrée / sortie est publiée avec des boutons : carte du trade, cours avec les niveaux, fiche de la stratégie.',
+      'Les trades sont regroupés dans un résumé chaque soir ; /menu pour tout voir (portefeuille, positions, fiches…).',
       '',
       '/menu — 🎛 panneau interactif (images qui changent avec les boutons)',
-      '/graphique [or|nasdaq] — 🕯 cours en bougies',
+      '/graphique [nasdaq|or] — 🕯 cours en bougies (Nasdaq par défaut)',
       '/ftmo — 🏦 compte FTMO simulé (challenge +10 % puis +5 %)',
       '/jeu — 🎯 pronostic du jour · /classement — points des joueurs',
-      '/gold · /nasdaq — bilan texte',
+      '/nasdaq · /gold — bilan texte',
       '/portfolio — graphiques des portefeuilles',
-      '/historique [or|nasdaq] [année] — simulation sur l’historique',
+      '/historique [nasdaq|or] [année] — simulation sur l’historique (Nasdaq par défaut)',
       '/strategies — comment fonctionne chaque stratégie',
       '',
       '<i>⚠️ Simulation uniquement, aucun argent réel. Pas un conseil financier.</i>',
@@ -263,15 +264,15 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
 
 (async () => {
   await bot.api.setMyCommands([
-    { command: 'menu', description: '🎛 Panneau interactif (images + boutons)' },
-    { command: 'graphique', description: '🕯 Cours en bougies : /graphique or · /graphique nasdaq' },
+    { command: 'menu', description: '🎛 Panneau interactif (Nasdaq ; /menu or pour l’or)' },
+    { command: 'graphique', description: '🕯 Cours en bougies : /graphique (Nasdaq) · /graphique or' },
     { command: 'ftmo', description: '🏦 Compte FTMO simulé (challenge)' },
     { command: 'jeu', description: '🎯 Pronostic du jour' },
     { command: 'classement', description: '🏆 Classement des joueurs' },
-    { command: 'gold', description: 'Bilan de l’or' },
     { command: 'nasdaq', description: 'Bilan du Nasdaq 100' },
+    { command: 'gold', description: 'Bilan de l’or' },
     { command: 'portfolio', description: 'Graphiques de l’évolution des portefeuilles' },
-    { command: 'historique', description: 'Simulation : /historique or 2021 · /historique nasdaq 2010' },
+    { command: 'historique', description: 'Simulation : /historique 2010 (Nasdaq) · /historique or 2001' },
     { command: 'strategies', description: 'Comment fonctionne chaque stratégie' },
   ]);
   // Bouton du menu Telegram : liste des commandes (remplace l'ancien bouton « 📊 App »)

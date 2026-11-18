@@ -54,7 +54,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
         const text = msg.type === 'pass'
           ? (msg.phase === 1 ? '🏦✅ <b>Compte FTMO simulé : étape 1 réussie (+10 %)</b>\nPassage à l’étape 2 (vérification, objectif +5 %).' : '🏦🏆 <b>Compte FTMO simulé : étape 2 réussie, compte financé !</b>\nOn suit maintenant les gains mensuels (partage 80 %).')
           : `🏦❌ <b>Compte FTMO simulé : challenge n° ${msg.s.attempt} échoué</b>\n${msg.why}. Un nouveau challenge démarre au prochain jour de trading.`;
-        await channel.sendPhoto(ftmoImage(st), text, ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: 'm:f:g' }]] } } : {}).catch((err) => console.error(`[ftmo] ${explainTelegramError(err)}`));
+        await channel.sendPhoto(ftmoImage(st), text, ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: 'm:f:n' }]] } } : {}).catch((err) => console.error(`[ftmo] ${explainTelegramError(err)}`));
       }
     } catch (err) {
       console.error('[ftmo]', err.message);
@@ -68,7 +68,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
     if (now.getUTCHours() >= cfg.digestHourUtc && store.getMeta('lastDigestDay') !== today) {
       try {
         const text = scalpDigest(cfg, store, markets, store.getMeta('lastDigestAt') || Date.now() - 86_400_000);
-        if (text) await channel.sendText(text, ui ? { reply_markup: { inline_keyboard: [[{ text: '🎛 Menu', callback_data: 'm:h:g' }, ...(cfg.ftmoEnabled ? [{ text: '🏦 Compte FTMO', callback_data: 'm:f:g' }] : [])]] } } : {});
+        if (text) await channel.sendText(text, ui ? { reply_markup: { inline_keyboard: [[{ text: '🎛 Menu', callback_data: 'm:h:n' }, ...(cfg.ftmoEnabled ? [{ text: '🏦 Compte FTMO', callback_data: 'm:f:n' }] : [])]] } } : {});
         store.setMeta('lastDigestDay', today);
         store.setMeta('lastDigestAt', Date.now());
       } catch (err) {
@@ -159,7 +159,7 @@ function scalpDigest(cfg, store, markets, sinceMs) {
 }
 
 /** Bilan texte d'un marché (or par défaut). */
-function portfolio(cfg, store, marketId = 'gold') {
+function portfolio(cfg, store, marketId = 'nas100') {
   return portfolioMessage(new MarketTrader(marketById(cfg, marketId), store, cfg).stats(), cfg);
 }
 

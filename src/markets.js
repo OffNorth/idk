@@ -109,7 +109,8 @@ function nasMarket(cfg) {
 
 /** Tous les marchés (actifs ou non). */
 function allMarkets(cfg) {
-  return [goldMarket(cfg), nasMarket(cfg)];
+  // Nasdaq en premier : marché par défaut du panneau, du résumé, des bilans et du jeu ; l'or suit
+  return [nasMarket(cfg), goldMarket(cfg)];
 }
 
 /** Marchés actifs. */
