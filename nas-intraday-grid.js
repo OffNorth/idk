@@ -33,7 +33,11 @@ const CLOSE = GOLD ? 20 * 60 : 16 * 60;
 const T = (nyMin) => OPEN + (nyMin - (9 * 60 + 30));
 
 (async () => {
-  const q5 = GOLD ? await require('./src/history').loadKlines(CACHE, { interval: '5m' }) : aggregate(await require('./src/polygon').polygonBars(CACHE, 'QQQ', 1, '2024-11-18'), 300, 60);
+  // Or : or au comptant réel (HistData 2009–2026, `npm run histdata`) ; PAXG seulement avec PAXG=1 (cotation trompeuse en intraday)
+  const spot = path.join(CACHE, 'xauusd-5m.json');
+  const q5 = GOLD ? (!process.env.PAXG && require('fs').existsSync(spot)
+    ? JSON.parse(require('fs').readFileSync(spot, 'utf8')).map(([t, o, h, l, c, v]) => ({ t, o, h, l, c, v }))
+    : await require('./src/history').loadKlines(CACHE, { interval: '5m' })) : aggregate(await require('./src/polygon').polygonBars(CACHE, 'QQQ', 1, '2024-11-18'), 300, 60);
   const sets = { '5m': { c: q5, sec: 300 }, '15m': { c: aggregate(q5, 900, 300), sec: 900 } };
   const results = [];
   for (const [tf, d] of Object.entries(sets)) {
@@ -168,7 +172,7 @@ const T = (nyMin) => OPEN + (nyMin - (9 * 60 + 30));
     }
   }
   const fams = [...new Set(results.map((r) => `${r.v.fam} ${r.tf}`))];
-  console.log(`=== ${results.length} variantes intraday ${GOLD ? 'or (PAXG' : 'Nasdaq (QQQ'} 5 / 15 min, frais ${FEE} % + financement) · choix tranches 1 + 2, vérification tranche 3 ===\n`);
+  console.log(`=== ${results.length} variantes intraday ${GOLD ? 'or (au comptant, HistData' : 'Nasdaq (QQQ'} 5 / 15 min, frais ${FEE} % + financement) · choix tranches 1 + 2, vérification tranche 3 ===\n`);
   for (const f of fams) {
     const r = results.filter((x) => `${x.v.fam} ${x.tf}` === f);
     console.log(`  ${f.padEnd(24)} ${String(r.length).padStart(3)} testées · ${String(r.filter((x) => x.chosen).length).padStart(3)} choisies · ${String(r.filter((x) => x.valid).length).padStart(3)} confirmées`);
@@ -183,40 +187,6 @@ const T = (nyMin) => OPEN + (nyMin - (9 * 60 + 30));
   console.log('\nConfirmées (gain net cumulé % : tranche 1 · 2 · 3, trades, trades / jour) :');
   for (const r of valid.sort((p, q) => q.parts[2].sum - p.parts[2].sum)) {
     console.log(`  [${r.tf}] ${r.v.fam.padEnd(18)} ${r.v.name.padEnd(48)} ${r.parts.map((p) => `${p.sum >= 0 ? '+' : ''}${p.sum.toFixed(1)} %`).join(' · ')} · ${r.parts.reduce((s, p) => s + p.n, 0)} · ${r.perDay.toFixed(2)}/j`);
-  }
-  if (GOLD && valid.length) {
-    // Effet sur le compte FTMO unique (choix sept. 2020 → oct. 2024, vérification sur les 2 dernières années)
-    const cfg = require('./src/config');
-    const { challengeStats } = require('./src/ftmo');
-    const { RULES } = require('./src/sizing');
-    const { selectStrategies, tfOf, TF_SEC } = require('./src/strategies');
-    const { cachedYahoo } = require('./src/yahoo');
-    const { computeAll } = require('./src/indicators');
-    const strip = (l) => l.map((x) => x.split(':').slice(1).join(':'));
-    const y = (sym) => cachedYahoo(CACHE, sym, '1d').catch(() => null);
-    const nd = await y('^NDX');
-    const vix = await y('^VIX');
-    const aux = { tnx: await y('^TNX'), dxy: await y('DX-Y.NYB'), sox: await y('^SOX'), oil: await y('CL=F'), spx: await y('^GSPC'), peer: await y('GC=F') };
-    const nind = computeAll(nd, nd, 86400, null, vix, aux);
-    const G = { '5m': q5, '15m': aggregate(q5, 900, 300) };
-    const t0 = q5[0].t + 30 * 86400;
-    const SPLIT = q5[q5.length - 1].t - 2 * 365 * 86400;
-    const base = [];
-    for (const s of selectStrategies(strip(cfg.ftmoStrategies))) {
-      const tf = tfOf(s);
-      base.push(...backtest(s, G[tf], { size: 1000, feePct: 0.005, barSec: TF_SEC[tf], market: 'gold' }).list.map((t) => ({ ...t, riskPct: cfg.ftmoRisk })));
-    }
-    for (const s of selectStrategies(strip(cfg.ftmoNasStrategies)))
-      base.push(...backtest(s, nd, { size: 1000, feePct: 0.003, financingPct: 6, barSec: 86400, ind: nind, daily: nd, vix, aux, market: 'nas100' }).list.map((t) => ({ ...t, riskPct: cfg.ftmoComboNasRisk })));
-    const B = base.filter((t) => t.entryT >= t0);
-    const sizer = RULES[cfg.ftmoSizing] || RULES.fixe;
-    const st = (l, part, h = 180) => challengeStats(part === 'choix' ? l.filter((t) => t.entryT < SPLIT) : l.filter((t) => t.entryT >= SPLIT),
-      { riskPct: 1, dayStopPct: cfg.ftmoDayStop, horizonDays: h, sizer, ...(part === 'choix' ? { end: SPLIT } : { start: SPLIT }) });
-    const pr = (c) => (c ? c.passRate.toFixed(0).padStart(3) : '  —');
-    const f = (l) => `choix < 6 mois ${pr(st(l, 'choix'))} % · < 60 j ${pr(st(l, 'choix', 60))} % | vérif < 6 mois ${pr(st(l, 'verif'))} % · < 60 j ${pr(st(l, 'verif', 60))} %`;
-    console.log(`\n=== Compte FTMO unique : ajout de chaque variante confirmée (risque 0,5 %) ===\n`);
-    console.log(`  Actuel ${''.padEnd(58)} ${f(B)}`);
-    for (const r of valid) console.log(`  + [${r.tf}] ${r.v.name.slice(0, 54).padEnd(54)} ${f([...B, ...r.list.filter((t) => t.entryT >= t0).map((t) => ({ ...t, riskPct: 0.5 }))])}`);
   }
 })().catch((e) => {
   console.error(e);
