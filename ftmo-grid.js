@@ -15,35 +15,12 @@ const { backtest } = require('./src/gold');
 const { selectStrategies, tfOf, TF_SEC } = require('./src/strategies');
 const { computeAll, rsi, ema } = require('./src/indicators');
 const { computeScalp2, helpers } = require('./src/scalp2');
+const { variants } = require('./src/scalpgrid');
 const { challengeStats } = require('./src/ftmo');
 
 const { active, flat, trendUp, trendDown } = helpers;
 const CACHE = path.join(__dirname, 'data', 'research');
 const strip = (l) => l.map((x) => x.split(':').slice(1).join(':'));
-
-/** Variantes de retour à la moyenne dans la tendance 1 h (mêmes familles que gold-scalp-grid.js). */
-function variants(x) {
-  const cl = x.closes;
-  const R = {};
-  const rs = (k) => (R[k] ||= rsi(cl, k));
-  const m20 = x.bb.mid;
-  const sd = cl.map((_, i) => { if (i < 19) return null; let s = 0; for (let j = i - 19; j <= i; j++) s += (cl[j] - m20[i]) ** 2; return Math.sqrt(s / 20); });
-  const e20 = ema(cl, 20);
-  const V = [];
-  const add = (name, buy, sell, exitL, exitS) => V.push({ name, buy, sell, exitL, exitS });
-  for (const k of [2, 3, 4]) for (const lo of [3, 5, 10, 15]) for (const ex of [50, 60, 70])
-    add(`RSI ${k} < ${lo} sortie ${ex}`, (i) => rs(k)[i] < lo, (i) => rs(k)[i] > 100 - lo, (i) => rs(k)[i] > ex, (i) => rs(k)[i] < 100 - ex);
-  for (const lo of [0.1, 0.15, 0.2]) for (const ex of ['ibs', 'haut'])
-    add(`IBS < ${lo} sortie ${ex}`, (i) => x.ibs[i] < lo && cl[i] < e20[i], (i) => x.ibs[i] > 1 - lo && cl[i] > e20[i],
-      (i) => (ex === 'ibs' ? x.ibs[i] > 0.7 : cl[i] > x.candles[i - 1].h), (i) => (ex === 'ibs' ? x.ibs[i] < 0.3 : cl[i] < x.candles[i - 1].l));
-  for (const z of [1.5, 2, 2.5, 3])
-    add(`Bollinger ${z} σ`, (i) => sd[i] && cl[i] < m20[i] - z * sd[i], (i) => sd[i] && cl[i] > m20[i] + z * sd[i], (i) => cl[i] >= m20[i], (i) => cl[i] <= m20[i]);
-  for (const w of [-90, -95, -98]) for (const ex of [-50, -30])
-    add(`Williams ${w} sortie ${ex}`, (i) => x.wr10[i] !== null && x.wr10[i] < w, (i) => x.wr10[i] !== null && x.wr10[i] > -100 - w, (i) => x.wr10[i] > ex, (i) => x.wr10[i] < -100 - ex);
-  for (const k of [1.5, 2, 2.5, 3])
-    add(`Keltner ${k} ATR`, (i) => cl[i] < e20[i] - k * x.atr[i], (i) => cl[i] > e20[i] + k * x.atr[i], (i) => cl[i] >= e20[i], (i) => cl[i] <= e20[i]);
-  return V;
-}
 
 (async () => {
   const y = (s) => cachedYahoo(CACHE, s, '1d').catch(() => null);

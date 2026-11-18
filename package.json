@@ -34,7 +34,9 @@
     "ftmo-sizing": "node --max-old-space-size=6144 ftmo-sizing.js",
     "ftmo-markets": "node --max-old-space-size=6144 ftmo-markets.js",
     "gold-intraday-grid": "node --max-old-space-size=6144 nas-intraday-grid.js gold",
-    "ftmo-formulas": "node --max-old-space-size=6144 ftmo-formulas.js"
+    "ftmo-formulas": "node --max-old-space-size=6144 ftmo-formulas.js",
+    "ftmo-long": "node --max-old-space-size=8192 ftmo-long.js",
+    "dukascopy": "python3 scripts/dukascopy.py"
   },
   "engines": {
     "node": ">=20"
