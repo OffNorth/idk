@@ -145,14 +145,19 @@ for i, fam in enumerate(families, start=1):
 
 # Comptes FTMO simulés (réglages lus dans src/config.js)
 import subprocess
-fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({g:c.ftmoStrategies,gr:c.ftmoRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop,cb:c.ftmoCombined,cnr:c.ftmoComboNasRisk}))"],
+fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({g:c.ftmoStrategies,gr:c.ftmoRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop,cb:c.ftmoCombined,cnr:c.ftmoComboNasRisk,prog:c.ftmoProgram}))"],
                                cwd=ROOT, capture_output=True, text=True, check=True).stdout)
 ids = lambda l: ', '.join(x.split(':', 1)[-1] for x in l)
 story.append(PageBreak())
 story.append(Paragraph('Comptes FTMO simulés', h2))
 story.append(Paragraph(
-    'Challenge FTMO en 2 étapes (règles 2026) sur 100 000 $ : <b>+10 %</b> puis <b>+5 %</b>, au moins 4 jours de trading par étape ; échec si la perte du jour '
-    'atteint 5 % (positions ouvertes comprises) ou la perte totale 10 %. Taille de chaque trade = risque ÷ distance au stop, levier max 1:30, '
+    ('<b>Formule simulée : challenge 1 étape</b> (lancé par FTMO en février 2026 ; règles d’après des sources secondaires, à vérifier) : '
+     '<b>+10 %</b> en une seule étape, au moins 4 jours de trading ; échec si la perte du jour atteint <b>3 %</b> ou si le compte perd '
+     '<b>10 % depuis son plus haut</b> (perte max suiveuse) ; le meilleur jour ne doit pas dépasser la moitié du gain. '
+     if fc['prog'] == '1step' else
+     'Challenge FTMO en 2 étapes (règles 2026) sur 100 000 $ : <b>+10 %</b> puis <b>+5 %</b>, au moins 4 jours de trading par étape ; échec si la perte du jour '
+     'atteint 5 % (positions ouvertes comprises) ou la perte totale 10 %. ') +
+    'Taille de chaque trade = risque ÷ distance au stop, levier max 1:30, '
     f'plus de nouveau trade dans la journée après −{fc["ds"]:g}\u00a0%. Taux de réussite mesuré en lançant un challenge chaque semaine de l’historique.', body))
 story.append(Spacer(1, 5))
 ft = [[Paragraph(x, head) for x in ('Compte', 'Stratégies suivies', 'Risque / trade', 'Réussite')],
@@ -164,8 +169,11 @@ if fc['cb']:
     # Compte unique or + Nasdaq (npm run ftmo-combo)
     ft = [ft[0], [Paragraph('<b>Compte unique Or + Nasdaq</b> (celui du bot)', cell), Paragraph(esc(ids(fc['g'])) + ' · ' + esc(ids(fc['n'])), cell),
                   Paragraph(f'or {fc["gr"]:g} % · Nasdaq {fc["cnr"]:g} %', cell),
-                  Paragraph('sept. 2020 → oct. 2024 : <b>97 % en moins de 6 mois</b> (46 j en médiane) ; 2 dernières années (vérification) : <b>46 %</b> (34 j). '
-                            'Les scalps or rapportent moins depuis 2024.', cell)]] + ft[1:]
+                  Paragraph(('1 étape : 100 % en moins de 6 mois sur sept. 2020 → oct. 2024 (43 j en médiane) ; 2 dernières années (vérification) : '
+                             '<b>46 %</b> en <b>35 j</b>, contre 45 % en 46 j pour le 2 étapes. Les scalps or rapportent moins depuis 2024.')
+                            if fc['prog'] == '1step' else
+                            ('sept. 2020 → oct. 2024 : <b>97 % en moins de 6 mois</b> (46 j en médiane) ; 2 dernières années (vérification) : <b>46 %</b> (34 j). '
+                             'Les scalps or rapportent moins depuis 2024.'), cell)]] + ft[1:]
 t = Table(ft, colWidths=[30 * mm, 62 * mm, 20 * mm, 68 * mm], repeatRows=1)
 t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), INK), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LINEBELOW', (0, 1), (-1, -1), 0.4, LINE),
                        ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4)]))

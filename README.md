@@ -414,6 +414,23 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > 2020–2026) : **aucune** n'est positive sur les 2 tranches de choix. L'or intraday revient à sa moyenne (77 variantes sur
 > 77 confirmées) au lieu de prolonger ses mouvements : le momentum n'y a pas sa place.
 
+> **Formule du challenge (`npm run ftmo-formulas`, `FTMO_PROGRAM`)** : le même compte rejoué sous chaque formule FTMO
+> (règles 2026 d'après des sources secondaires — propfirm-escape-pod, tradetanto, thetrustedprop, proptradingvibes —
+> à vérifier sur le site de FTMO) :
+>
+> | Formule | Règles | Meilleur réglage | Vérification (2 ans) < 6 mois |
+> |---|---|---|---|
+> | 2 étapes Standard | +10 % puis +5 %, perte du jour 5 %, perte max 10 % fixe | or 0,5 % · Nasdaq 1 % · stop du jour 2 % | 45 % en 46 j |
+> | 2 étapes Swing | idem, levier 1:10 sur or et indices | idem | 48 % en 46 j |
+> | **1 étape (retenue)** | +10 %, perte du jour **3 %**, perte max 10 % **suiveuse**, meilleur jour ≤ 50 % du gain | **or 0,35 % · Nasdaq 0,5 % · stop du jour 1 %** | **46 % en 35 j** |
+>
+> Sur la période de choix (2020–2024), toutes les formules réussissent 100 % des challenges : la réussite ne les
+> départage pas. Le 1 étape va au compte financé **plus vite** (une seule phase : 43 j en médiane contre 50 sur la
+> période de choix, 35 contre 46 sur la vérification), à réussite égale. Avec sa perte du jour de 3 %, il faut moins de
+> risque : 0,5 % sur l'or donne 13 échecs sur la perte du jour en vérification, 0,35 % aucun. Le compte en direct
+> applique la formule de `FTMO_PROGRAM` (`1step` par défaut, `2step`, `swing`) ; changer de formule relance un
+> challenge.
+
 > **Levier dynamique (`npm run ftmo-sizing`, `src/sizing.js`, `FTMO_SIZING`)** : la taille de chaque trade est déjà
 > « risque ÷ distance au stop » (le levier varie donc avec le stop : un stop serré donne plus de levier, plafonné à 1:30).
 > 12 règles qui ajustent EN PLUS ce risque ont été testées (volatilité, forme récente de la stratégie, compte en perte,

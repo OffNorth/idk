@@ -309,7 +309,7 @@ function gauge(cv, x, y, w, frac, col) {
 function ftmoImage(st) {
   const s = st.s;
   const cv = new Canvas(W, 600, THEME.bg);
-  const phase = s.phase === 'funded' ? 'Compte financé' : `Étape ${s.phase} sur 2`;
+  const phase = s.phase === 'funded' ? 'Compte financé' : st.program?.steps === 1 ? 'Challenge 1 étape' : `Étape ${s.phase} sur 2`;
   header(cv, { market: st.account ? { id: st.account.id, name: st.account.label } : null, title: `Compte FTMO simulé · ${phase}`, subtitle: `Challenge n° ${s.attempt} · capital ${money(s.capital)} · risque par trade selon le stop · depuis le ${date(s.startedAt)}` });
   const ret = (st.equity / s.capital - 1) * 100;
   cv.roundRect(24, 96, 952, 150, 16, THEME.surface);
@@ -330,8 +330,9 @@ function ftmoImage(st) {
     cv.text(label, x + 20, 302, { style: 'b', size: 22, color: used > 0.6 ? THEME.down : THEME.text, maxWidth: 260 });
     gauge(cv, x + 20, 348, 260, used, used > 0.6 ? THEME.down : used > 0.3 ? THEME.gold : THEME.up);
   };
-  box(24, 'PERTE DU JOUR (MAX 5 %)', st.dailyUsed, `${Math.round(st.dailyUsed * 100)} % utilisé`);
-  box(350, 'PERTE MAXIMALE (10 %)', st.maxUsed, `${Math.round(st.maxUsed * 100)} % utilisé`);
+  const P = st.program || { daily: 5, max: 10, trailing: false };
+  box(24, `PERTE DU JOUR (MAX ${P.daily} %)`, st.dailyUsed, `${Math.round(st.dailyUsed * 100)} % utilisé`);
+  box(350, `PERTE MAX (${P.max} %${P.trailing ? ', SUIVEUSE' : ''})`, st.maxUsed, `${Math.round(st.maxUsed * 100)} % utilisé`);
   cv.roundRect(676, 262, 300, 130, 16, THEME.surface);
   cv.text('JOURS DE TRADING', 696, 278, { style: 'b', size: 13, color: THEME.muted });
   cv.text(`${s.days.length}${s.phase === 'funded' ? '' : ' / 4 minimum'}`, 696, 302, { style: 'b', size: 22, color: s.days.length >= 4 ? THEME.up : THEME.text });

@@ -126,7 +126,7 @@ async function render(cfg, store, view, marketId, args = []) {
     const fst = createFtmo({ cfg, store, account: acct.enabled ? marketId : 'gold' }).status(prices);
     const s = fst.s;
     const lines = [
-      `🏦 <b>Compte FTMO simulé ${fst.account.emoji} ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : `étape ${s.phase} sur 2`} · challenge n° ${s.attempt}`,
+      `🏦 <b>Compte FTMO simulé ${fst.account.emoji} ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : fst.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} · challenge n° ${s.attempt}`,
       `Valeur <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · objectif ${money(fst.target)}` : ''}`,
       `Stratégies suivies : ${fst.account.strategies.map((x) => `<code>${esc(x.split(':')[1])}</code>`).join(', ')} · risque ${fst.account.risk} % par trade${fst.account.id === 'nas100' ? ' · <i>à l’essai : rien n’est validé pour le challenge sur le Nasdaq</i>' : ''}`,
       ...(s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt}, étape ${h.phase} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),

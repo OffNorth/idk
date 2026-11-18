@@ -6,7 +6,7 @@ const path = require('path');
 
 function setup(extra = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ftmo-'));
-  const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, ftmoStrategies: ['gold:x_rsi2'], ftmoCapital: 100000, ftmoRisk: 1, ftmoLeverage: 30, ftmoDayStop: 0, ftmoFeeGold: 0, ftmoFeeNas: 0, ...extra };
+  const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, ftmoStrategies: ['gold:x_rsi2'], ftmoCapital: 100000, ftmoRisk: 1, ftmoLeverage: 30, ftmoDayStop: 0, ftmoFeeGold: 0, ftmoFeeNas: 0, ftmoProgram: '2step', ...extra };
   const { Store } = require('../src/store');
   return { cfg, store: new Store(dir) };
 }
@@ -105,4 +105,37 @@ test('levier dynamique : risque divisé par 2 dès 2 positions ouvertes', () => 
   const n = Object.values(acct.load().open).map((p) => Math.round(p.notional));
   // risque 1 % sur un stop de 1 % → 100 000 $ ; la 3e position (2 déjà ouvertes) → 50 000 $
   assert.deepStrictEqual(n, [100000, 100000, 50000]);
+});
+
+test('challenge 1 étape : perte du jour 3 %, perte max suiveuse, réussite directe vers le compte financé', () => {
+  const { createFtmo } = require('../src/ftmoAccount');
+  const mk = (k, entry, sl) => ({ type: 'open', market, strategy, pos: { side: 'long', entry, sl, initSl: sl, entryT: T0 + k * DAY } });
+  const cl = (k, entry, exit) => ({ type: 'close', market, strategy, trade: { side: 'long', entry, exit, exitT: T0 + k * DAY + 60, entryT: T0 + k * DAY, reason: 'test' } });
+  // Réussite : +11 % répartis sur 4 jours (aucun jour > 50 % du gain) → compte financé en une étape
+  {
+    const { cfg, store } = setup({ ftmoProgram: '1step', ftmoRisk: 1, ftmoCombined: false });
+    const a = createFtmo({ cfg, store, account: 'gold' });
+    let res = [];
+    for (let k = 0; k < 4; k++) {
+      a.onCycle([mk(k, 2000, 1980)], { gold: 2000 }, T0 + k * DAY);
+      // stop 1 %, risque 1 % → 100 000 $ engagés ; +2,75 % → +2 750 $
+      res = a.onCycle([cl(k, 2000, 2055)], { gold: 2055 }, T0 + k * DAY + 60);
+    }
+    assert.ok(res.some((m) => m.type === 'pass'), 'réussite');
+    assert.strictEqual(a.load().phase, 'funded');
+  }
+  // Perte max suiveuse : +5 % puis −10,5 % depuis le plus haut → échec (alors que le solde reste au-dessus de 90 000 $)
+  {
+    const { cfg, store } = setup({ ftmoProgram: '1step', ftmoRisk: 1, ftmoCombined: false });
+    const a = createFtmo({ cfg, store, account: 'gold' });
+    a.onCycle([mk(0, 2000, 1980)], { gold: 2000 }, T0);
+    a.onCycle([cl(0, 2000, 2100)], { gold: 2100 }, T0 + 60); // +5 000 $
+    let failed = false;
+    for (let k = 1; k <= 4 && !failed; k++) {
+      a.onCycle([mk(k, 2000, 1980)], { gold: 2000 }, T0 + k * DAY);
+      const r = a.onCycle([cl(k, 2000, 1945)], { gold: 1945 }, T0 + k * DAY + 60); // −2 750 $ par jour (< 3 %)
+      failed = r.some((m) => m.type === 'fail' && /perte maximale/.test(m.why));
+    }
+    assert.ok(failed, 'échec sur la perte max suiveuse');
+  }
 });

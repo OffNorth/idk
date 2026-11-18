@@ -51,6 +51,13 @@ function list(name, def) {
   return src.split(',').map((s) => s.trim()).filter(Boolean);
 }
 
+// Formule du challenge FTMO : 1step (défaut), 2step, swing — voir PROGRAMS dans src/ftmoAccount.js (npm run ftmo-formulas).
+// Les risques par défaut en dépendent (1 étape : perte du jour limitée à 3 %, donc moins de risque).
+const FTMO_PROGRAM = process.env.FTMO_PROGRAM || '1step';
+const ONE = FTMO_PROGRAM === '1step';
+/** Réglage dont l'ancienne valeur par défaut (copiée de .env.example) suit désormais la formule du challenge. */
+const upgraded = (name, oldDefault, def) => ((process.env[name] || '').trim() === oldDefault ? def : num(name, def));
+
 module.exports = {
   telegramToken: process.env.TELEGRAM_BOT_TOKEN || '',
   channelId: process.env.TELEGRAM_CHANNEL_ID || '',
@@ -111,17 +118,18 @@ module.exports = {
   // Compte FTMO UNIQUE or + Nasdaq (par défaut) : or au risque FTMO_RISK_PCT, Nasdaq au risque FTMO_COMBO_NAS_RISK_PCT.
   // npm run ftmo-combo : 74 % de réussite en < 6 mois (récent 45 %) contre 74 % / 39 % pour l'or seul.
   ftmoCombined: num('FTMO_COMBINED', 1) === 1,
-  ftmoComboNasRisk: num('FTMO_COMBO_NAS_RISK_PCT', 1),
+  ftmoComboNasRisk: upgraded('FTMO_COMBO_NAS_RISK_PCT', '1', ONE ? 0.5 : 1),
   ftmoNasEnabled: num('FTMO_NAS', 1) === 1,
   ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:ibs,nas100:cumrsi,nas100:n_dollarfall,nas100:tom,nas100:ema_long,nas100:rsi2,nas100:n_low10,nas100:n_rsi4,nas100:vixspike'),
   ftmoNasRisk: process.env.FTMO_NAS_RISK_PCT === '0.5' ? 3 : num('FTMO_NAS_RISK_PCT', 3), // 0,5 = ancienne valeur par défaut, mise à jour ; // npm run ftmo-nas-port : 3 % → 42 % · 43 % · 39 % de challenges réussis
   ftmoCapital: num('FTMO_CAPITAL', 100000),
-  ftmoRisk: num('FTMO_RISK_PCT', 0.5), // % du solde risqué par trade (distance au stop)
+  ftmoRisk: upgraded('FTMO_RISK_PCT', '0.5', ONE ? 0.35 : 0.5), // % du solde risqué par trade (distance au stop)
   ftmoLeverage: num('FTMO_LEVERAGE', 30),
   // Levier dynamique (src/sizing.js) : « plusieurs positions → moins » = risque ÷ 2 dès 2 positions déjà ouvertes
   // (npm run ftmo-sizing : supprime les échecs sur la perte du jour, réussite égale) ; « fixe » = risque constant
   ftmoSizing: process.env.FTMO_SIZING || 'plusieurs positions → moins',
-  ftmoDayStop: num('FTMO_DAY_STOP_PCT', 2), // plus de nouveau trade dans la journée après −2 % (0 = jamais)
+  ftmoProgram: FTMO_PROGRAM,
+  ftmoDayStop: upgraded('FTMO_DAY_STOP_PCT', '2', ONE ? 1 : 2), // plus de nouveau trade dans la journée après −2 % (0 = jamais)
   ftmoFeeGold: num('FTMO_FEE_GOLD_PCT', 0.005),
   ftmoFeeNas: num('FTMO_FEE_NAS_PCT', 0.003),
 

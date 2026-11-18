@@ -155,7 +155,7 @@ function scalpDigest(cfg, store, markets, sinceMs) {
     const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
     const st = require('./ftmoAccount').createFtmo({ cfg, store, account: acct.id }).status(prices);
     const s = st.s;
-    lines.push('', `🏦 <b>Compte FTMO simulé ${acct.emoji} ${acct.label}</b> : ${s.phase === 'funded' ? 'compte financé' : `étape ${s.phase} sur 2`} (challenge n° ${s.attempt}) · ${usd(st.equity - s.capital)} (${((st.equity / s.capital - 1) * 100).toFixed(2)} %)${st.target ? ` · ${Math.round(Math.min(1, st.progress) * 100)} % de l’objectif` : ''} · ${s.days.length} jour${s.days.length > 1 ? 's' : ''} de trading`);
+    lines.push('', `🏦 <b>Compte FTMO simulé ${acct.emoji} ${acct.label}</b> : ${s.phase === 'funded' ? 'compte financé' : st.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} (challenge n° ${s.attempt}) · ${usd(st.equity - s.capital)} (${((st.equity / s.capital - 1) * 100).toFixed(2)} %)${st.target ? ` · ${Math.round(Math.min(1, st.progress) * 100)} % de l’objectif` : ''} · ${s.days.length} jour${s.days.length > 1 ? 's' : ''} de trading`);
     any = true;
   }
   lines.push('', '<i>Montants : chaque stratégie a son propre compte de paper trading. Argent fictif.</i>');
