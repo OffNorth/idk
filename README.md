@@ -409,7 +409,7 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > minutes de Londres, +24 % · +22 % · +24 %), `g_mom8` (sens de la matinée à 8 h UTC), `g_gap` (écart d'ouverture qui se
 > prolonge). Mais sur les 4 périodes de la règle stricte du compte FTMO, **toutes perdent sur 2009–2012** (−13 %, −13 %,
 > −9 %), et `g_mom8` / `g_gap` aussi sur 2017–2019 : elles ne sont donc **pas** ajoutées au compte FTMO (disponibles,
-> non actives).
+> non actives) ; **`g_orb30` est à l'essai** en paper trading (`TRIAL_STRATEGIES`), hors compte FTMO.
 
 
 > **Objectif : réussir une évaluation FTMO.** Par défaut (`FTMO_COMBINED=1`), le bot tient **un seul compte FTMO qui trade

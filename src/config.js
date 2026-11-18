@@ -11,6 +11,7 @@ function num(name, def) {
 
 // Anciennes listes par défaut (copiées depuis .env.example) : remplacées par la sélection actuelle
 const OLD_DEFAULTS = [
+  'nas100:n_noise,eurusd:ibs',
   'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m,gold:g_asia,gold:m_down3',
   'nas100:ibs,nas100:cumrsi,nas100:n_dollarfall,nas100:tom,nas100:ema_long,nas100:rsi2,nas100:n_low10,nas100:n_rsi4,nas100:vixspike',
   'nas100:n_noise',
@@ -154,7 +155,7 @@ module.exports = {
   const cfg = module.exports;
   cfg.ftmoOnly = num('FTMO_ONLY', 1) === 1;
   // Stratégies à l'essai : suivies en paper trading (et publiées) mais PAS par le compte FTMO
-  cfg.trialStrategies = list('TRIAL_STRATEGIES', 'nas100:n_noise,eurusd:ibs');
+  cfg.trialStrategies = list('TRIAL_STRATEGIES', 'nas100:n_noise,eurusd:ibs,gold:g_orb30');
   if (cfg.ftmoOnly) {
     const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : [])];
     const of = (m) => [...new Set([...all, ...cfg.trialStrategies].filter((x) => x.startsWith(`${m}:`)).map((x) => x.slice(m.length + 1))), 'hold'];

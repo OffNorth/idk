@@ -26,7 +26,7 @@ const FAMILIES = [
 ];
 
 const VERDICT = {
-  g_orb30: ['dispo', 'Or au comptant réel (HistData) : −13 % · +46 % · +5 % · +31 % (2009–12 · 13–16 · 17–19 · 20–26) ; perdante sur 2009–2012 → pas sur le compte FTMO'],
+  g_orb30: ['essai', 'Or au comptant réel (HistData) : −13 % · +46 % · +5 % · +31 % (2009–12 · 13–16 · 17–19 · 20–26) ; perdante sur 2009–2012 → à l’essai en paper trading, pas sur le compte FTMO'],
   g_mom8: ['dispo', 'Or au comptant réel : −13 % · +18 % · −6 % · +51 % (2009–12 · 13–16 · 17–19 · 20–26) ; perdante sur 2 périodes → pas sur le compte FTMO'],
   g_gap: ['dispo', 'Or au comptant réel : −9 % · +22 % · −2 % · +46 % (2009–12 · 13–16 · 17–19 · 20–26) ; perdante sur 2 périodes → pas sur le compte FTMO'],
   g_night: ['rejet', 'Littérature (effet de nuit, Blose et al.) : PAXG 2020–2026, 24 variantes d’horaires toutes perdantes sur 2020–2022 (−7 à −39 %), gagnantes depuis : pas stable'],
