@@ -166,6 +166,10 @@ Le bot trade aussi le **Nasdaq 100** en simulation, comme un CFD NAS100 :
 |---|---|---|
 | **Effet de nuit** (`n_overnight`, 5 min) | achat à la clôture de 16 h New York, revente sur la 1re bougie après l'ouverture, toutes les nuits | ✅ QQQ 2024–2026 : +8,9 % puis +3,9 % après frais et financement CFD (+13,8 % / +8,5 % sans financement). Sur 25 ans de ^NDX, la nuit rapporte ≈ +9,6 %/an contre +4 à +8 % pour la journée. **Active** |
 | **Veille de jour férié** (`n_preholiday`, journalier) | achat la veille de la veille d'un férié NYSE, revente la veille | ✅ +12,8 % cumulés 1985–2009, +16,3 % 2010–2026, 57 % gagnants. **Active** |
+| **Rebond après une mauvaise semaine** (`n_weekrev`, journalier) | −3 % sur 5 séances au-dessus de la moyenne 200 j → achat, revente au plus haut de 5 séances | ✅ +103 % cumulés 1985–2009, +58 % 2010–2026, 72 % gagnants. **Active** |
+| **Semaine d'expiration des options** (`n_opex`, journalier) | achat le vendredi d'avant, revente le 3e vendredi du mois | ✅ +34 % puis +25 %, 55 % gagnants. **Active** |
+| Rallye de Noël (`n_santa`) | 5 derniers jours de décembre + 2 premiers de janvier | ❌ +58 % 1985–2009 mais −2,6 % 2010–2026 |
+| 1re demi-heure → dernière (`n_halfhalf`), journée de tendance VWAP (`n_trendday`) | intraday QQQ | ❌ perdantes la 2e année |
 | Comblement de l'écart d'ouverture (`n_gapfill`) | gap de 0,4 à 1,5 % → retour vers la clôture de la veille | ❌ perdante la 2e année |
 | Première heure forte (`n_firsthour`) | suivre une première heure à ±0,5 % jusqu'à la clôture | ❌ perdante |
 

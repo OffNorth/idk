@@ -49,7 +49,7 @@ function report(name, list, split) {
     const split = c[Math.floor(c.length / 2)].t;
     const ind = computeScalp2(c, 300, 'nas100');
     console.log(`=== QQQ 5 min (Polygon) : ${iso(c[0].t)} → ${iso(c[c.length - 1].t)} · choix avant ${iso(split)} · frais 0,003 % + 6 %/an la nuit ===`);
-    for (const s of selectStrategies(['n_overnight', 'n_gapfill', 'n_firsthour'])) {
+    for (const s of selectStrategies((process.env.INTRA || 'n_overnight,n_gapfill,n_firsthour,n_halfhalf,n_trendday').split(','))) {
       const r = backtest(s, c, { size: 1000, feePct: 0.003, financingPct: 6, barSec: 300, ind, market: 'nas100' });
       if (report(s.name, r.list, split)) kept.push(s.id);
       if (s.id === 'n_overnight') {
@@ -66,7 +66,7 @@ function report(name, list, split) {
   const split = Date.parse('2010-01-01') / 1000;
   console.log(`\n=== ^NDX journalier : ${iso(nd[0].t)} → ${iso(nd[nd.length - 1].t)} · choix avant 2010 ===`);
   const ind = computeAll(nd, nd, 86400, null, null, {});
-  for (const s of selectStrategies(['n_preholiday'])) {
+  for (const s of selectStrategies((process.env.DAILY || 'n_preholiday,n_opex,n_santa,n_weekrev').split(','))) {
     const r = backtest(s, nd, { size: 1000, feePct: 0.003, financingPct: 6, barSec: 86400, ind, daily: nd });
     if (report(s.name, r.list, split)) kept.push(s.id);
   }

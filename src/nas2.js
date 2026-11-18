@@ -104,6 +104,82 @@ const NAS2 = [
       return { entry: enter ? 'long' : null, exitLong: !enter, exitShort: true, sl: 2 * x.atr[i], tp: null };
     },
   },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    id: 'n_opex',
+    name: 'Nasdaq : semaine d’expiration des options',
+    desc: 'Effet documenté (Stivers & Sun 2013) : les indices US montent plus souvent pendant la semaine de l’expiration mensuelle des options (celle du 3e vendredi du mois). Achat à la clôture du vendredi précédent, revente à la clôture du 3e vendredi. Stop 3 ATR.',
+    evaluate(x, i) {
+      const d = new Date(x.candles[i].t * 1000);
+      const thirdFriday = (y, m) => { const f = new Date(Date.UTC(y, m, 1)); while (f.getUTCDay() !== 5) f.setUTCDate(f.getUTCDate() + 1); f.setUTCDate(f.getUTCDate() + 14); return f; };
+      const tf = thirdFriday(d.getUTCFullYear(), d.getUTCMonth());
+      const daysTo = Math.round((tf - Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())) / 86400e3);
+      // Entrée : dernière séance de la semaine précédant la semaine d'expiration (vendredi, ou jeudi si vendredi férié)
+      const enter = daysTo >= 7 && daysTo <= 9 && d.getUTCDay() >= 4;
+      const exit = daysTo <= 0;
+      return { entry: enter ? 'long' : null, exitLong: exit, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    id: 'n_santa',
+    name: 'Nasdaq : rallye de Noël',
+    desc: 'Effet de calendrier connu (« Santa Claus rally », Hirsch) : les 5 dernières séances de décembre et les 2 premières de janvier sont souvent positives. Achat à la clôture du 6e jour de bourse avant la fin de l’année, revente à la clôture du 2e jour de bourse de janvier. Stop 3 ATR.',
+    evaluate(x, i) {
+      const d = new Date(x.candles[i].t * 1000);
+      const m = d.getUTCMonth();
+      const tdom = x.cal ? x.cal.tdom[i] : 99;
+      const left = x.cal ? x.cal.bizLeft[i] : 99;
+      return { entry: m === 11 && left === 6 ? 'long' : null, exitLong: m === 0 && tdom >= 2, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '1d', onlyTf: ['1d'], markets: ['nas100'], nas2: true, warmup: 210,
+    id: 'n_weekrev',
+    name: 'Nasdaq : rebond après une mauvaise semaine',
+    desc: 'Retour à la moyenne hebdomadaire dans la tendance : si le Nasdaq a perdu plus de 3 % sur la semaine (5 séances) tout en restant au-dessus de sa moyenne 200 jours, achat à la clôture ; revente quand il retrouve son plus haut de 5 séances, ou au bout de 10 séances. Stop 3 ATR.',
+    evaluate(x, i) {
+      const c = x.closes;
+      if (i < 15) return { entry: null, exitLong: false, exitShort: true, sl: 0, tp: null };
+      const wk = c[i] / c[i - 5] - 1;
+      const hi5 = Math.max(...c.slice(i - 5, i));
+      return { entry: wk < -0.03 && c[i] > x.sma200[i] ? 'long' : null, exitLong: c[i] >= hi5, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    ...BASE,
+    id: 'n_halfhalf',
+    name: 'Nasdaq : 1re demi-heure → dernière demi-heure',
+    desc: 'Gao, Han, Li & Zhou (2018) : le rendement de la première demi-heure (9 h 30 → 10 h New York) annonce le sens de la dernière demi-heure. Entrée à 15 h 30 dans le sens de la 1re demi-heure (si elle a bougé de plus de 0,2 %), sortie à 15 h 55. Stop 1,5 ATR.',
+    evaluate(x, i) {
+      const m = x.min[i];
+      const out = !weekday(x, i) || m >= NY.close - 5 || m < NY.close - 30;
+      if (!weekday(x, i) || m !== NY.close - 30 || x.dOpen[i] === null) return none(out);
+      // clôture de 10 h : dernière bougie avant 10 h du même jour
+      let j = i;
+      while (j > 0 && x.day[j] === x.day[i] && x.min[j] >= NY.open + 30) j--;
+      if (x.day[j] !== x.day[i] || x.min[j] < NY.open) return none(out);
+      const r = x.closes[j] / x.dOpen[i] - 1;
+      if (Math.abs(r) < 0.002) return none(out);
+      return { entry: r > 0 ? 'long' : 'short', exitLong: false, exitShort: false, sl: 1.5 * x.atr[i], tp: null };
+    },
+  },
+  {
+    ...BASE,
+    id: 'n_trendday',
+    name: 'Nasdaq : journée de tendance (VWAP à midi)',
+    desc: 'À midi New York, si le prix est au-dessus du VWAP de la séance ET au-dessus de l’ouverture (journée acheteuse), achat jusqu’à 15 h 55 ; inverse si en dessous des deux. Stop sous le VWAP (au moins 1 ATR).',
+    evaluate(x, i) {
+      const m = x.min[i];
+      const flat = !weekday(x, i) || m >= NY.close - 5 || m < NY.open;
+      if (!weekday(x, i) || m !== 12 * 60 || x.vwap[i] === null || x.dOpen[i] === null) return none(flat);
+      const c = x.closes[i];
+      const v = x.vwap[i];
+      if (c > v && c > x.dOpen[i]) return { entry: 'long', exitLong: flat, exitShort: true, sl: Math.max(x.atr[i], c - v), tp: null };
+      if (c < v && c < x.dOpen[i]) return { entry: 'short', exitLong: true, exitShort: flat, sl: Math.max(x.atr[i], v - c), tp: null };
+      return none(flat);
+    },
+  },
 ];
 
 module.exports = { NAS2, nyseHolidays, beforeHoliday };
