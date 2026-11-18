@@ -6,7 +6,7 @@ regroupé en bougies 5 min pour le banc d'essai (bien plus long que l'archive PA
     python3 scripts/dukascopy.py [AAAA-MM-JJ début] [AAAA-MM-JJ fin]
 
 - un fichier par jour (BID_candles_min_1.bi5, compressé LZMA), mis en cache dans data/research/duka/XAUUSD/ ;
-- requêtes lentes (une à la fois, pause entre chaque, nouvel essai en cas de 429 / 503) pour ne pas surcharger le service ;
+- requêtes lentes (une à la fois, 1 s de pause, jusqu'à 12 essais avec attente croissante : le service limite le débit) pour ne pas surcharger le service ;
 - sortie : data/research/xauusd-5m.json = [[t, o, h, l, c, v], …] (t en secondes UTC), week-ends et bougies vides retirés.
 """
 import datetime, json, lzma, os, struct, sys, time, urllib.request
@@ -26,20 +26,20 @@ def fetch(day):
     if os.path.exists(path):
         return open(path, 'rb').read()
     url = URL.format(y=day.year, m=day.month - 1, d=day.day)  # mois numérotés à partir de 0
-    for attempt in range(6):
+    for attempt in range(12):
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             data = urllib.request.urlopen(req, timeout=30).read()
             open(path, 'wb').write(data)
-            time.sleep(0.25)
+            time.sleep(1.0)
             return data
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 open(path, 'wb').write(b'')
                 return b''
-            time.sleep(2 * (attempt + 1))
+            time.sleep(min(60, 3 * 2 ** min(attempt, 4)))
         except Exception:
-            time.sleep(2 * (attempt + 1))
+            time.sleep(min(60, 3 * 2 ** min(attempt, 4)))
     return None
 
 
