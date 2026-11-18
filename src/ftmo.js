@@ -34,10 +34,12 @@ const rMultiple = (t) => t.pnlPct / Math.max(1e-9, stopPct(t));
  * dayStopPct > 0 : règle de prudence « maison » — plus de nouveau trade dans la journée une fois la perte du jour
  * (soldée) arrivée à dayStopPct % du capital initial.
  * riskMul : multiplie le risque de chaque trade (challengeStats : `phase2Mul` pour l'étape 2, objectif +5 % seulement).
+ * trailingMax : perte max mesurée depuis le plus haut solde (1 étape) ; bestDayPct : règle du meilleur jour ;
+ * levCap : levier max par marché ({ gold, nas100 }, compte Swing) ; challengeStats({ steps: 1 }) : challenge 1 étape.
  * maxOpen : nombre maximal de positions ouvertes en même temps (les signaux suivants sont ignorés).
  * Retourne l'issue (target / daily / maxloss / open), le solde et le nombre de jours de trading.
  */
-function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity, riskMul = 1, sizer = null } = {}) {
+function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity, riskMul = 1, sizer = null, trailingMax = false, bestDayPct = 0, levCap = null } = {}) {
   const events = [];
   for (const t of trades) {
     if (t.entryT < from) continue;
@@ -45,6 +47,8 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
   }
   events.sort((a, b) => a.t - b.t || (a.kind === 'close' ? -1 : 1));
   let balance = capital;
+  let peak = capital; // plus haut solde (perte max suiveuse, challenge 1 étape)
+  const dayPnl = new Map(); // gain soldé par jour (règle du meilleur jour)
   let dayStart = capital;
   let day = null;
   const days = new Set();
@@ -63,7 +67,8 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       // risque propre au trade si fourni (comptes multi-marchés) ; `sizer` : multiplicateur de risque selon le trade et l'état du compte
       const mul = sizer ? sizer(e.tr, { balance, capital, dayStart, target, open: open.size }) : 1;
       if (!(mul > 0)) continue;
-      const notional = Math.min((balance * (e.tr.riskPct ?? riskPct) * riskMul * mul) / sp, balance * leverage);
+      const cap = (levCap && e.tr.market && levCap[e.tr.market]) || leverage; // levier max par marché (compte Swing)
+      const notional = Math.min((balance * (e.tr.riskPct ?? riskPct) * riskMul * mul) / sp, balance * cap);
       open.set(e.tr, notional);
       days.add(d);
       continue;
@@ -72,15 +77,24 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
     if (notional === undefined) continue;
     open.delete(e.tr);
     // Pire moment du trade (si connu) : compte pour la perte du jour comme sur FTMO (positions ouvertes comprises)
+    // Perte max : seuil fixe (capital − 10 %) ou suiveur (plus haut solde − 10 %, challenge 1 étape)
+    const floor = (trailingMax ? peak : capital) - (capital * maxPct) / 100;
     if (e.tr.worstPct !== undefined) {
       const worst = balance + (notional * e.tr.worstPct) / 100;
       if (worst <= dayStart - (capital * dailyPct) / 100) return { outcome: 'daily', at: e.t, balance: worst, days: days.size };
-      if (worst <= capital * (1 - maxPct / 100)) return { outcome: 'maxloss', at: e.t, balance: worst, days: days.size };
+      if (worst <= floor) return { outcome: 'maxloss', at: e.t, balance: worst, days: days.size };
     }
-    balance += (notional * e.tr.pnlPct) / 100;
+    const gain = (notional * e.tr.pnlPct) / 100;
+    balance += gain;
+    dayPnl.set(d, (dayPnl.get(d) || 0) + gain);
+    peak = Math.max(peak, balance);
     if (balance <= dayStart - (capital * dailyPct) / 100) return { outcome: 'daily', at: e.t, balance, days: days.size };
-    if (balance <= capital * (1 - maxPct / 100)) return { outcome: 'maxloss', at: e.t, balance, days: days.size };
-    if (balance >= capital * (1 + target / 100) && days.size >= minDays && open.size === 0) return { outcome: 'target', at: e.t, balance, days: days.size };
+    if (balance <= floor) return { outcome: 'maxloss', at: e.t, balance, days: days.size };
+    if (balance >= capital * (1 + target / 100) && days.size >= minDays && open.size === 0) {
+      // Règle du meilleur jour : le meilleur jour ne doit pas dépasser bestDayPct % du gain total (sinon on continue)
+      const best = Math.max(...dayPnl.values());
+      if (!(bestDayPct > 0) || best <= ((balance - capital) * bestDayPct) / 100) return { outcome: 'target', at: e.t, balance, days: days.size };
+    }
   }
   return { outcome: 'open', at: events.length ? events[events.length - 1].t : from, balance, days: days.size };
 }
@@ -101,6 +115,12 @@ function challengeStats(trades, opts = {}) {
     const p1 = runPhase(trades, { ...opts, from: s, target: 10 });
     if (p1.outcome === 'target' && (p1.at - s) / 86400 > horizonDays) {
       res.unfinished++;
+      continue;
+    }
+    if (opts.steps === 1 && p1.outcome === 'target') {
+      // Challenge 1 étape : une seule phase à +10 %
+      res.passed++;
+      res.durations.push((p1.at - s) / 86400);
       continue;
     }
     if (p1.outcome !== 'target') {
