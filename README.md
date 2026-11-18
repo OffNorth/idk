@@ -341,6 +341,23 @@ Ajoutées (validées par l'audit des 3 périodes) :
 Les scalps du compte or sont maintenant simulés avec les frais d'un CFD (`GOLD_SCALP_FEE_PCT`, 0,005 % par défaut) au lieu
 des 0,05 % de l'or au comptant, qui rendaient perdante toute stratégie à plusieurs trades par jour.
 
+## ⚡ Intraday Nasdaq : test en masse (`npm run nas-scalp-grid`, `npm run nas-intraday-grid`)
+
+QQQ 1 min (Polygon, nov. 2024 → nov. 2026) regroupé en 5 et 15 min, frais 0,003 % + financement, 3 tranches de 8 mois
+(choix sur les 2 premières, vérification sur la dernière).
+
+- **Retour à la moyenne** (les 112 variantes qui marchent si bien sur l'or) : **1 seule** choisie et confirmée.
+- **Momentum** (131 variantes : cassure du range d'ouverture, sens de la matinée, VWAP, cassures, gaps) : 32 choisies,
+  **7 confirmées**. Gains faibles ; avec seulement 2 ans de données, une partie peut être due au hasard.
+
+Ajoutées **à l'essai** (≈ 1,6 trade de plus par jour, validées par l'audit des 3 tranches) :
+
+| Stratégie | Règle | 3 tranches | Trades / jour |
+|---|---|---|---|
+| **`n_mom10`** | à 10 h, +/− 0,5 % depuis la veille → même sens de 15 h à 15 h 55 | +0,3 % · +0,9 % · +2,9 % | ≈ 0,5 |
+| **`n_orb15`** | ouverture au-dessus de la veille, cassure du plus haut des 15 premières minutes → achat jusqu'à la clôture | +3,5 % · +0,6 % · +2,0 % | ≈ 0,4 |
+| **`n_orb5s`** | cassure du plus bas des 5 premières minutes → vente jusqu'à la clôture | +0,6 % · +8,5 % · +1,3 % | ≈ 0,7 |
+
 ## 🔎 Audit des 3 périodes (`npm run audit`)
 
 Toutes les stratégies actives doivent être **positives sur chacune de 3 périodes** (frais inclus) : Nasdaq journalier
