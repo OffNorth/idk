@@ -304,7 +304,8 @@ Données disponibles gratuitement : ^NDX journalier depuis 1985, NQ=F en 1 h sur
   15 min et 1 h ; 17 stratégies intraday : famille de retour à la moyenne, 9 scalps, formation TradingView) : **aucune ne passe
   choix puis vérification**. Plusieurs font de bons chiffres sur la 2e année seulement (ex. 3 bougies de baisse en 15 min,
   momentum de la dernière demi-heure, cassure des 5 premières minutes) mais perdaient sur la 1re : trop dépendant de la période
-  pour être retenu. Clé : variable `POLYGON_API_KEY` (ou injectée par l'environnement), en-tête `Authorization: Bearer`.
+  pour être retenu. **Ces 3-là sont actives « à l'essai » sur le compte Nasdaq du bot** (`m_down3` 15 min, `x_lasthalf`,
+  `x_orb5` 5 min ; pas sur le compte FTMO) pour voir en direct si elles tiennent. Clé : variable `POLYGON_API_KEY` (ou injectée par l'environnement), en-tête `Authorization: Bearer`.
 
 Sources des règles : pages de comparatifs 2026 (ex. propfirm-escape-pod, tradetanto) ; le levier FTMO n'a pas été confirmé
 (réglable avec `FTMO_LEVERAGE`).
