@@ -139,7 +139,7 @@ for i, fam in enumerate(families, start=1):
 
 # Comptes FTMO simulés (réglages lus dans src/config.js)
 import subprocess
-fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({g:c.ftmoStrategies,gr:c.ftmoRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop}))"],
+fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({g:c.ftmoStrategies,gr:c.ftmoRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop,cb:c.ftmoCombined,cnr:c.ftmoComboNasRisk}))"],
                                cwd=ROOT, capture_output=True, text=True, check=True).stdout)
 ids = lambda l: ', '.join(x.split(':', 1)[-1] for x in l)
 story.append(PageBreak())
@@ -154,6 +154,12 @@ ft = [[Paragraph(x, head) for x in ('Compte', 'Stratégies suivies', 'Risque / t
        Paragraph('≈ 80 % en moins de 6 mois sur 2020–2026, 59 % sur la période récente (PAXG 5 min)', cell)],
       [Paragraph('<b>Nasdaq</b> (journalier)', cell), Paragraph(esc(ids(fc['n'])), cell), Paragraph(f'{fc["nr"]:g} %', cell),
        Paragraph('en moins d’un an : 42 % (1985–1999), 43 % (2000–2009), <b>39 % (2010–2026, vérification)</b> ; ancien portefeuille 21 %', cell)]]
+if fc['cb']:
+    # Compte unique or + Nasdaq (npm run ftmo-combo)
+    ft = [ft[0], [Paragraph('<b>Compte unique Or + Nasdaq</b> (celui du bot)', cell), Paragraph(esc(ids(fc['g'])) + ' · ' + esc(ids(fc['n'])), cell),
+                  Paragraph(f'or {fc["gr"]:g} % · Nasdaq {fc["cnr"]:g} %', cell),
+                  Paragraph('sept. 2020 → 2026 : <b>74 % en moins de 6 mois, 80 % en moins d’un an</b> ; départs des 2 dernières années : 45 % / 54 % '
+                            '(or seul : 39 % / 48 %)', cell)]] + ft[1:]
 t = Table(ft, colWidths=[30 * mm, 62 * mm, 20 * mm, 68 * mm], repeatRows=1)
 t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), INK), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LINEBELOW', (0, 1), (-1, -1), 0.4, LINE),
                        ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4)]))

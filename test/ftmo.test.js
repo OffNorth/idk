@@ -63,7 +63,7 @@ test('image et vue du panneau FTMO', async () => {
 });
 
 test('2e compte FTMO (Nasdaq) : indépendant du compte or', async () => {
-  const { cfg, store } = setup({ ftmoNasEnabled: true, ftmoNasStrategies: ['nas100:x_orb5'], ftmoNasRisk: 0.5 });
+  const { cfg, store } = setup({ ftmoCombined: false, ftmoNasEnabled: true, ftmoNasStrategies: ['nas100:x_orb5'], ftmoNasRisk: 0.5 });
   const { createFtmo, ftmoAccounts } = require('../src/ftmoAccount');
   assert.deepStrictEqual(ftmoAccounts(cfg).map((a) => a.id), ['nas100', 'gold']);
   const nas = createFtmo({ cfg, store, account: 'nas100' });
@@ -81,4 +81,17 @@ test('2e compte FTMO (Nasdaq) : indépendant du compte or', async () => {
   const { render } = require('../src/interactive');
   const out = await render(cfg, store, 'f', 'nas100');
   assert.match(out.caption, /FTMO simulé 🇺🇸 Nasdaq/);
+});
+
+test('compte FTMO unique or + Nasdaq : un risque par marché', () => {
+  const { cfg, store } = setup({ ftmoCombined: true, ftmoNasEnabled: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: ['nas100:x_orb5'], ftmoRisk: 0.5, ftmoComboNasRisk: 1 });
+  const { createFtmo, ftmoAccounts } = require('../src/ftmoAccount');
+  assert.deepStrictEqual(ftmoAccounts(cfg).map((a) => a.id), ['gold']);
+  const acct = createFtmo({ cfg, store, account: 'gold' });
+  const nasMarket = { id: 'nas100', name: 'Nasdaq 100' };
+  const pos = { side: 'long', entry: 20000, sl: 19800, initSl: 19800, entryT: T0 }; // stop 1 %
+  acct.onCycle([{ type: 'open', market: nasMarket, strategy: { id: 'x_orb5', name: 'ORB' }, pos }], { nas100: 20000 }, T0);
+  acct.onCycle([{ type: 'close', market: nasMarket, strategy: { id: 'x_orb5' }, trade: { ...pos, exit: 20200, exitT: T0 + 600, reason: 'objectif' } }], { nas100: 20200 }, T0 + 600);
+  // risque Nasdaq 1 % de 100 000 $ sur un stop de 1 % → 100 000 $ engagés ; +1 % → +1 000 $ (moins les frais)
+  assert.ok(Math.abs(acct.load().balance - 101000) < 20, String(acct.load().balance));
 });

@@ -99,6 +99,10 @@ module.exports = {
   ftmoEnabled: num('FTMO', 1) === 1,
   ftmoStrategies: list('FTMO_STRATEGIES', 'gold:x_rsi2,gold:m_bb@5m,gold:m_ibs,gold:m_rsi2x,gold:m_keltner@5m'),
   // 2e compte FTMO simulé, 100 % Nasdaq (npm run ftmo-nas-port)
+  // Compte FTMO UNIQUE or + Nasdaq (par défaut) : or au risque FTMO_RISK_PCT, Nasdaq au risque FTMO_COMBO_NAS_RISK_PCT.
+  // npm run ftmo-combo : 74 % de réussite en < 6 mois (récent 45 %) contre 74 % / 39 % pour l'or seul.
+  ftmoCombined: num('FTMO_COMBINED', 1) === 1,
+  ftmoComboNasRisk: num('FTMO_COMBO_NAS_RISK_PCT', 1),
   ftmoNasEnabled: num('FTMO_NAS', 1) === 1,
   ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:ibs,nas100:cumrsi,nas100:n_dollarfall,nas100:tom,nas100:ema_long,nas100:rsi2,nas100:n_low10,nas100:n_rsi4,nas100:vixspike'),
   ftmoNasRisk: process.env.FTMO_NAS_RISK_PCT === '0.5' ? 3 : num('FTMO_NAS_RISK_PCT', 3), // 0,5 = ancienne valeur par défaut, mise à jour ; // npm run ftmo-nas-port : 3 % → 42 % · 43 % · 39 % de challenges réussis
@@ -123,7 +127,7 @@ module.exports = {
   const cfg = module.exports;
   cfg.ftmoOnly = num('FTMO_ONLY', 1) === 1;
   if (cfg.ftmoOnly) {
-    const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && cfg.ftmoNasEnabled ? cfg.ftmoNasStrategies : [])];
+    const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : [])];
     const of = (m) => [...new Set(all.filter((x) => x.startsWith(`${m}:`)).map((x) => x.slice(m.length + 1))), 'hold'];
     cfg.goldStrategies = of('gold');
     cfg.nasStrategies = of('nas100');

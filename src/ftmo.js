@@ -59,7 +59,7 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       if (open.size >= maxOpen) continue; // pas plus de maxOpen positions en même temps (limite le risque d'un trou de cotation)
       const sp = stopPct(e.tr);
       if (!(sp > 0)) continue;
-      const notional = Math.min((balance * riskPct) / sp, balance * leverage);
+      const notional = Math.min((balance * (e.tr.riskPct ?? riskPct)) / sp, balance * leverage); // risque propre au trade si fourni (comptes multi-marchés)
       open.set(e.tr, notional);
       days.add(d);
       continue;

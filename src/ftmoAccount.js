@@ -12,9 +12,18 @@ const { ftmoDay } = require('./ftmo');
 /** Réglages d'un compte FTMO simulé : 'gold' (or) ou 'nas100' (Nasdaq). */
 function accountOf(cfg, id = 'gold') {
   if (id === 'nas100') {
-    return { id, label: 'Nasdaq', emoji: '🇺🇸', file: 'ftmo-nas.json', enabled: cfg.ftmoEnabled && cfg.ftmoNasEnabled, strategies: cfg.ftmoNasStrategies, risk: cfg.ftmoNasRisk };
+    const risk = cfg.ftmoNasRisk;
+    return { id, label: 'Nasdaq', emoji: '🇺🇸', file: 'ftmo-nas.json', enabled: cfg.ftmoEnabled && cfg.ftmoNasEnabled && !cfg.ftmoCombined, strategies: cfg.ftmoNasStrategies, risk, riskOf: () => risk };
   }
-  return { id: 'gold', label: 'Or', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk };
+  if (cfg.ftmoCombined) {
+    // Compte unique or + Nasdaq (npm run ftmo-combo) : chaque marché garde son propre risque par trade
+    return {
+      id: 'gold', label: 'Or + Nasdaq', emoji: '🌍', file: 'ftmo.json', enabled: cfg.ftmoEnabled,
+      strategies: [...cfg.ftmoStrategies, ...cfg.ftmoNasStrategies], risk: cfg.ftmoRisk,
+      riskOf: (marketId) => (marketId === 'nas100' ? cfg.ftmoComboNasRisk : cfg.ftmoRisk),
+    };
+  }
+  return { id: 'gold', label: 'Or', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk, riskOf: () => cfg.ftmoRisk };
 }
 /** Comptes FTMO actifs. */
 const ftmoAccounts = (cfg) => ['nas100', 'gold'].map((id) => accountOf(cfg, id)).filter((a) => a.enabled);
@@ -82,7 +91,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         const stopPct = (Math.abs(p.entry - (p.initSl ?? p.sl)) / p.entry) * 100;
         if (!(stopPct > 0)) continue;
         if (cfg.ftmoDayStop > 0 && s.balance <= s.dayStart - (s.capital * cfg.ftmoDayStop) / 100) continue; // stop du jour maison
-        const notional = Math.min((s.balance * A.risk) / stopPct, s.balance * cfg.ftmoLeverage);
+        const notional = Math.min((s.balance * A.riskOf(ev.market.id)) / stopPct, s.balance * cfg.ftmoLeverage);
         s.open[key(ev.market.id, ev.strategy.id, p.entryT)] = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, notional, entryT: p.entryT };
         if (!s.days.includes(s.day)) s.days.push(s.day);
       } else if (ev.type === 'close') {

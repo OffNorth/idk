@@ -377,6 +377,22 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 
 ## 🏦 Compte FTMO simulé (`/ftmo`) — banc d'essai `npm run ftmo`
 
+> **Objectif : réussir une évaluation FTMO.** Par défaut (`FTMO_COMBINED=1`), le bot tient **un seul compte FTMO qui trade
+> l'or ET le Nasdaq** (FTMO l'autorise) : scalps or à **0,5 %** de risque par trade, stratégies Nasdaq journalières à **1 %**
+> (`FTMO_COMBO_NAS_RISK_PCT`). `npm run ftmo-combo`, challenges lancés chaque semaine de sept. 2020 à aujourd'hui :
+>
+> | Réglage | < 6 mois | < 1 an | Récent (2 ans) < 6 mois / < 1 an |
+> |---|---|---|---|
+> | **Or 0,5 % + Nasdaq 1 % (compte unique)** | **74 %** (49 j) | **80 %** | **45 % / 54 %** |
+> | Or 0,5 % seul | 74 % (39 j) | 77 % | 39 % / 48 % |
+> | Or 0,35 % seul | 79 % (56 j) | 89 % | 44 % / 46 % |
+> | Nasdaq 3 % seul | 29 % | 39 % | 14 % / — |
+> | Or 0,75 % ou 1 %, ou Nasdaq à 2–3 % en plus | moins bien (plus d'échecs sur la perte du jour) | | |
+>
+> Le Nasdaq journalier, peu corrélé aux scalps or, lisse la courbe ; à 3 % il la rend trop risquée. Sur les 2 dernières
+> années, les scalps or rapportent moins : environ une évaluation sur deux réussit. `FTMO_COMBINED=0` pour revenir aux
+> deux comptes séparés.
+
 > **Mode FTMO seul (`FTMO_ONLY=1`, par défaut)** : le bot ne fait tourner que les stratégies des deux comptes FTMO
 > (or : `x_rsi2`, `m_bb@5m`, `m_ibs`, `m_rsi2x`, `m_keltner@5m` ; Nasdaq : `ibs`, `cumrsi`, `n_dollarfall`, `tom`,
 > `ema_long`, `rsi2`, `n_low10`, `n_rsi4`, `vixspike`), plus la référence `hold`. `GOLD_STRATEGIES` / `NAS_STRATEGIES` sont
