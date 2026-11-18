@@ -137,6 +137,30 @@ for i, fam in enumerate(families, start=1):
     rows = [s for s in strats if s['family'] == fam]
     story.append(KeepTogether([Paragraph(f'{i}. {esc(fam)} ({len(rows)})', h2), table_for(rows)]))
 
+# Comptes FTMO simulés (réglages lus dans src/config.js)
+import subprocess
+fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({g:c.ftmoStrategies,gr:c.ftmoRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop}))"],
+                               cwd=ROOT, capture_output=True, text=True, check=True).stdout)
+ids = lambda l: ', '.join(x.split(':', 1)[-1] for x in l)
+story.append(PageBreak())
+story.append(Paragraph('Comptes FTMO simulés', h2))
+story.append(Paragraph(
+    'Challenge FTMO en 2 étapes (règles 2026) sur 100 000 $ : <b>+10 %</b> puis <b>+5 %</b>, au moins 4 jours de trading par étape ; échec si la perte du jour '
+    'atteint 5 % (positions ouvertes comprises) ou la perte totale 10 %. Taille de chaque trade = risque ÷ distance au stop, levier max 1:30, '
+    f'plus de nouveau trade dans la journée après −{fc["ds"]:g}\u00a0%. Taux de réussite mesuré en lançant un challenge chaque semaine de l’historique.', body))
+story.append(Spacer(1, 5))
+ft = [[Paragraph(x, head) for x in ('Compte', 'Stratégies suivies', 'Risque / trade', 'Réussite')],
+      [Paragraph('<b>Or</b> (scalps 5 et 15 min)', cell), Paragraph(esc(ids(fc['g'])), cell), Paragraph(f'{fc["gr"]:g} %', cell),
+       Paragraph('≈ 80 % en moins de 6 mois sur 2020–2026, 59 % sur la période récente (PAXG 5 min)', cell)],
+      [Paragraph('<b>Nasdaq</b> (journalier)', cell), Paragraph(esc(ids(fc['n'])), cell), Paragraph(f'{fc["nr"]:g} %', cell),
+       Paragraph('en moins d’un an : 42 % (1985–1999), 43 % (2000–2009), <b>39 % (2010–2026, vérification)</b> ; ancien portefeuille 21 %', cell)]]
+t = Table(ft, colWidths=[30 * mm, 62 * mm, 20 * mm, 68 * mm], repeatRows=1)
+t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), INK), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LINEBELOW', (0, 1), (-1, -1), 0.4, LINE),
+                       ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4)]))
+story += [t, Spacer(1, 5), Paragraph(
+    'Nasdaq : les stratégies journalières tradent trop rarement pour faire +10 % en un an à faible risque (0 % de réussite à 0,5 ou 1 %) ; à 3 %, environ '
+    '6 challenges sur 10 échouent encore, surtout sur la perte du jour quand plusieurs positions perdent ensemble. Choix sur 1985–2009, vérification sur 2010–2026.', body)]
+
 story.append(PageBreak())
 story.append(Paragraph('Historiques simulés des stratégies actives', h2))
 story.append(Paragraph('Chaque stratégie part de 1 000 $, gains réinvestis, frais inclus. Légende et rendement annuel dans chaque image ; pointillé gris : garder le marché.', body))
