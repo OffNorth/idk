@@ -47,6 +47,7 @@ function goldMarket(cfg) {
     startCapital: cfg.goldStartCapital,
     positionPct: cfg.goldPositionPct,
     feePct: cfg.goldFeePct,
+    scalpFeePct: cfg.goldScalpFeePct,
     financingPct: cfg.goldFinancingPct,
     async fetch(tfs, { needsFx, needsVix, aux: auxList = [] } = {}) {
       const yahoo = (key, sym) => cached(key, 3600, () => fetchYahoo(sym, '1d', { range: '2y', ...LIVE })).catch(() => null);

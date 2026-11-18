@@ -319,6 +319,28 @@ monte »). Choix sur 1985–1999 ET 2000–2009, vérification sur 2010–2026.
 hasard : il sert à éviter les krachs, pas à battre l'indice. Ajoutées : **`n_rsi4`** (RSI 4 < 20 au-dessus de la moyenne
 200 j, sortie RSI 4 > 50) et **`tom`** (tournant du mois), toutes deux validées par l'audit des 3 périodes.
 
+## 🧪 Test en masse or (`npm run gold-grid` et `npm run gold-scalp-grid`)
+
+**Journalier** : les mêmes 346 variantes que pour le Nasdaq, sur l'or (GC=F 2000–2026, frais 0,05 %). Choix sur 2000–2008 ET
+2009–2016, vérification sur 2017–2026 : **29 choisies, 15 confirmées (52 %)**, contre 62 % sur le Nasdaq. Les confirmées
+viennent surtout des replis (5) et des RSI bas (6) ; moyennes, cassures, calendrier et jours de la semaine : 0. Comme sur le
+Nasdaq, suivre la tendance n'apporte presque rien de plus que d'être simplement investi.
+
+**Scalps 5 / 15 min** : 112 variantes de retour à la moyenne dans la tendance 1 h (RSI, IBS, Bollinger, Williams %R,
+Keltner ; achat et vente) sur PAXG sept. 2020 → 2026, frais CFD 0,005 %, 3 tranches de 2 ans. **77 choisies, 77
+confirmées** sur la tranche la plus récente : la famille est solide. Les gains par trade sont en revanche faibles et baissent
+depuis 2024 (environ 3 à 5 fois moins que sur 2020–2022).
+
+Ajoutées (validées par l'audit des 3 périodes) :
+
+| Stratégie | Règle | 3 périodes |
+|---|---|---|
+| **`g_oilfall`** | pétrole −4 % en 20 j et or > SMA 50 → achat, 20 j | +53 % · +12 % · +82 % |
+| **`g_ibsh@5m`** | bougie fermée en bas (IBS < 0,2) sous l'EMA 20, sortie au-dessus du plus haut précédent | +157 % · +85 % · +18 % |
+
+Les scalps du compte or sont maintenant simulés avec les frais d'un CFD (`GOLD_SCALP_FEE_PCT`, 0,005 % par défaut) au lieu
+des 0,05 % de l'or au comptant, qui rendaient perdante toute stratégie à plusieurs trades par jour.
+
 ## 🔎 Audit des 3 périodes (`npm run audit`)
 
 Toutes les stratégies actives doivent être **positives sur chacune de 3 périodes** (frais inclus) : Nasdaq journalier

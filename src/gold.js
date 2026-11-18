@@ -381,7 +381,9 @@ class MarketTrader {
   }
 
   #close(strat, acc, price, reason, t) {
-    const trade = closePos(acc.position, price, reason, t, this.market.feePct, this.market.financingPct);
+    // Scalps (1 à 15 min) : frais d'un CFD (écart serré) plutôt que ceux d'un achat d'or physique / PAXG
+    const scalp = ['1m', '5m', '15m'].includes(strat.tf) && this.market.scalpFeePct != null;
+    const trade = closePos(acc.position, price, reason, t, scalp ? this.market.scalpFeePct : this.market.feePct, this.market.financingPct);
     acc.capital += trade.pnlUsd;
     trade.capital = acc.capital;
     acc.position = null;

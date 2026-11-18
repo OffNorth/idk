@@ -31,7 +31,7 @@ const lab = (t) => new Date(t * 1000).toISOString().slice(0, 7);
   const nd = await y('^NDX');
   const gc = await y('GC=F');
   const nasAux = { tnx: await y('^TNX'), dxy: await y('DX-Y.NYB'), sox: await y('^SOX'), oil: await y('CL=F'), spx: await y('^GSPC'), peer: gc };
-  const goldAux = { tnx: nasAux.tnx, dxy: nasAux.dxy, silver: await y('SI=F'), peer: nd };
+  const goldAux = { tnx: nasAux.tnx, dxy: nasAux.dxy, silver: await y('SI=F'), oil: nasAux.oil, peer: nd };
   const g5 = await loadKlines(CACHE, { interval: '5m' });
   let q5 = null;
   try { q5 = aggregate(await require('./src/polygon').polygonBars(CACHE, 'QQQ', 1, '2024-11-18'), 300, 60); } catch { /* sans clé */ }

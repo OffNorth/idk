@@ -1,11 +1,14 @@
 /**
  * Or : nouvelles stratégies.
  *   Journalières (future GC=F) : plus bas de 10 jours, mauvaise semaine, chute des taux, chute du dollar, l'argent en tête.
+ *   Pétrole en baisse (test en masse) ; 5 min : bougie fermée en bas (test en masse des scalps) ;
  *   5 min : retour à la moyenne pendant la séance asiatique (0 h – 6 h UTC), quand Londres et New York dorment.
  */
 const { computeScalp2, helpers } = require('./scalp2');
 
-const { trendUp, trendDown } = helpers;
+const { ema } = require('./indicators');
+
+const { trendUp, trendDown, active, flat } = helpers;
 const D = { tf: '1d', onlyTf: ['1d'], markets: ['gold'], gold2: true, warmup: 210 };
 const none = (exitLong = false) => ({ entry: null, exitLong, exitShort: true, sl: 0, tp: null });
 
@@ -72,6 +75,38 @@ const GOLD2 = [
       if (i < 12 || g.r[i] === null || !g.r[i - 10]) return none(x.closes[i] < x.sma50[i]);
       const lead = 1 - g.r[i] / g.r[i - 10]; // l'argent surperforme quand le ratio baisse
       return { entry: lead > 0.05 && x.closes[i] > x.sma50[i] ? 'long' : null, exitLong: lead < 0 || x.closes[i] < x.sma50[i], exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    ...D,
+    needsAux: ['oil'],
+    id: 'g_oilfall',
+    name: 'Or : chute du pétrole',
+    desc: 'Meilleure « autres marchés » du test en masse or : quand le pétrole perd plus de 4 % en 20 séances et que l’or est au-dessus de sa moyenne 50 jours → achat ; revente 20 séances après le dernier signal. Stop 3 ATR.',
+    evaluate(x, i) {
+      const o = x.oil;
+      if (!o || i < 45) return none(true);
+      const sig = (j) => o.c[j] !== null && o.c[j - 20] && o.c[j] / o.c[j - 20] - 1 < -0.04 && x.closes[j] > x.sma50[j];
+      let recent = false;
+      for (let j = i; j > i - 20 && !recent; j--) recent = sig(j);
+      return { entry: sig(i) ? 'long' : null, exitLong: !recent, exitShort: true, sl: 3 * x.atr[i], tp: null };
+    },
+  },
+  {
+    tf: '5m', onlyTf: ['5m', '15m'], markets: ['gold'], scalp: true, gold2: true, warmup: 700,
+    compute: (c, s, m) => computeScalp2(c, s, m),
+    id: 'g_ibsh',
+    name: 'Or : bougie fermée en bas, sortie au-dessus du plus haut',
+    desc: 'Meilleur total du test en masse des scalps or (112 variantes) : dans la tendance 1 h, bougie 5 min qui clôture dans les 20 % bas de son range (IBS < 0,2) sous l’EMA 20 → achat ; sortie dès qu’une clôture dépasse le plus haut de la bougie précédente (symétrique à la vente). Stop 1,5 ATR, tout fermé hors séance.',
+    evaluate(x, i) {
+      const c = x.closes;
+      const e = x.ema20 || (x.ema20 = ema(c, 20));
+      const fl = flat(x, i);
+      const out = { entry: null, exitLong: fl || c[i] > x.candles[i - 1].h, exitShort: fl || c[i] < x.candles[i - 1].l, sl: 1.5 * x.atr[i], tp: null };
+      if (!active(x, i)) return out;
+      if (trendUp(x, i) && x.ibs[i] < 0.2 && c[i] < e[i]) return { ...out, entry: 'long' };
+      if (trendDown(x, i) && x.ibs[i] > 0.8 && c[i] > e[i]) return { ...out, entry: 'short' };
+      return out;
     },
   },
   {

@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 /**
- * Test en masse de stratégies Nasdaq 100 (achat seul, journalier, ^NDX 1985–2026) — avec garde-fous contre le hasard.
+ * Test en masse de stratégies (achat seul, journalier) — Nasdaq 100 (^NDX 1985–2026) ou or (GC=F 2000–2026) —
+ * avec garde-fous contre le hasard.
  *
  * ~300 variantes de 11 familles (replis, RSI, chutes, moyennes, croisements, momentum, cassures, calendrier, jours de la
  * semaine, volatilité, autres marchés). Pour chacune :
  *   alpha = gain des trades − ce qu'aurait rapporté le Nasdaq pendant les mêmes jours en position (rendement moyen du jour),
  *   en % par an. Un alpha > 0 veut dire que la stratégie choisit de MEILLEURS jours que le hasard, pas juste qu'elle est
  *   investie dans un marché qui monte.
- * Choix sur 1985–2009 : alpha > 0 sur 1985–1999 ET 2000–2009, au moins 30 trades.
- * Vérification sur 2010–2026 (jamais utilisée pour choisir) : alpha > 0.
- * Frais 0,003 % par côté + financement CFD 6 %/an.
+ * Nasdaq : choix sur 1985–1999 ET 2000–2009, vérification sur 2010–2026 ; frais 0,003 % + financement CFD 6 %/an.
+ * Or     : choix sur 2000–2008 ET 2009–2016, vérification sur 2017–2026 ; frais 0,05 % (comme le compte or du bot).
+ * Choix : alpha > 0 sur les 2 premières périodes, au moins 30 trades. Vérification : alpha > 0 sur la 3e (jamais utilisée).
  *
- *   npm run nas-grid
+ *   npm run nas-grid        (Nasdaq)
+ *   npm run gold-grid       (or)
  */
 const path = require('path');
 const { cachedYahoo } = require('./src/yahoo');
@@ -20,12 +22,16 @@ const { sma, rsi, atr, ema } = require('./src/indicators');
 
 const CACHE = path.join(__dirname, 'data', 'research');
 const Y = (y) => Date.UTC(y, 0, 1) / 1000;
-const P = [['1985–1999', 0, Y(2000)], ['2000–2009', Y(2000), Y(2010)], ['2010–2026', Y(2010), Infinity]];
+const GOLD = process.argv[2] === 'gold';
+const P = GOLD
+  ? [['2000–2008', 0, Y(2009)], ['2009–2016', Y(2009), Y(2017)], ['2017–2026', Y(2017), Infinity]]
+  : [['1985–1999', 0, Y(2000)], ['2000–2009', Y(2000), Y(2010)], ['2010–2026', Y(2010), Infinity]];
+const M = GOLD ? { sym: 'GC=F', name: 'l’or (GC=F 2000–2026)', fee: 0.05, fin: 0, label: 'Or' } : { sym: '^NDX', name: '^NDX 1985–2026', fee: 0.003, fin: 6, label: 'Nasdaq' };
 
 (async () => {
-  const nd = await cachedYahoo(CACHE, '^NDX', '1d');
+  const nd = await cachedYahoo(CACHE, M.sym, '1d');
   const ext = async (s) => { const d = await cachedYahoo(CACHE, s, '1d').catch(() => []); const m = new Map(d.map((x) => [x.t, x.c])); let last = null; return nd.map((c) => { if (m.has(c.t)) last = m.get(c.t); return last; }); };
-  const X = { vix: await ext('^VIX'), tnx: await ext('^TNX'), dxy: await ext('DX-Y.NYB'), oil: await ext('CL=F'), gold: await ext('GC=F'), spx: await ext('^GSPC') };
+  const X = { vix: await ext('^VIX'), tnx: await ext('^TNX'), dxy: await ext('DX-Y.NYB'), oil: await ext('CL=F'), gold: await ext(GOLD ? 'SI=F' : 'GC=F'), spx: await ext(GOLD ? '^NDX' : '^GSPC') };
   const c = nd.map((k) => k.c);
   const n = c.length;
   const A = atr(nd, 14);
@@ -67,9 +73,9 @@ const P = [['1985–1999', 0, Y(2000)], ['2000–2009', Y(2000), Y(2010)], ['201
   for (const d of [1, 2, 3, 4, 5]) add('jour', `achat à la clôture du ${['', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'][d]}, 1 j`, (i) => wd[i] === d, () => false, 1);
   for (const f of [0.8, 1, 1.2]) for (const m of [50, 100, 200])
     add('volatilité', `volatilité 20 j < ${f} × moyenne 1 an, prix > SMA ${m}`, (i) => rv[i] !== null && rvAvg[i] && rv[i] < f * rvAvg[i] && c[i] > sm(m)[i], (i) => !(rv[i] < f * 1.1 * rvAvg[i]) || c[i] < sm(m)[i]);
-  for (const [key, lab] of [['tnx', 'taux 10 ans'], ['dxy', 'dollar'], ['oil', 'pétrole'], ['gold', 'or'], ['vix', 'VIX'], ['spx', 'S&P 500']])
+  for (const [key, lab] of [['tnx', 'taux 10 ans'], ['dxy', 'dollar'], ['oil', 'pétrole'], ['gold', GOLD ? 'argent' : 'or'], ['vix', 'VIX'], ['spx', GOLD ? 'Nasdaq' : 'S&P 500']])
     for (const k of [5, 10, 20]) for (const d of [-8, -4, -2, 2, 4, 8])
-      add('autres marchés', `${lab} ${d > 0 ? '+' : ''}${d} % en ${k} j, Nasdaq > SMA 50`, (i) => { const r = xret(key, i, k); return r !== null && (d < 0 ? r < d / 100 : r > d / 100) && c[i] > sm(50)[i]; }, () => false, k);
+      add('autres marchés', `${lab} ${d > 0 ? '+' : ''}${d} % en ${k} j, ${M.label} > SMA 50`, (i) => { const r = xret(key, i, k); return r !== null && (d < 0 ? r < d / 100 : r > d / 100) && c[i] > sm(50)[i]; }, () => false, k);
 
   // Rendement moyen d'une journée de Nasdaq par période (pour l'alpha)
   const dayMean = P.map(([, a, b]) => { let s = 0; let m = 0; for (let i = 1; i < n; i++) if (nd[i].t >= a && nd[i].t < b) { s += c[i] / c[i - 1] - 1; m++; } return (s / m) * 100; });
@@ -94,7 +100,7 @@ const P = [['1985–1999', 0, Y(2000)], ['2000–2009', Y(2000), Y(2010)], ['201
       if (sig.entry) openIdx = i;
       return sig;
     };
-    const r = backtest(strat, nd, { size: 1000, feePct: 0.003, financingPct: 6, barSec: 86400, ind: { closes: c } });
+    const r = backtest(strat, nd, { size: 1000, feePct: M.fee, financingPct: M.fin, barSec: 86400, ind: { closes: c } });
     const per = P.map(([lab, a, b], k) => {
       const l = r.list.filter((t) => t.entryT >= a && t.entryT < b);
       const days = l.reduce((s, t) => s + Math.max(1, (idxOf.get(t.exitT) ?? 0) - (idxOf.get(t.entryT) ?? 0)), 0);
@@ -106,16 +112,16 @@ const P = [['1985–1999', 0, Y(2000)], ['2000–2009', Y(2000), Y(2010)], ['201
   }
 
   const fam = [...new Set(V.map((v) => v.family))];
-  console.log(`=== ${V.length} variantes testées sur ^NDX 1985–2026 (alpha = gain au-delà du simple fait d'être investi, %/an) ===\n`);
-  console.log('FAMILLE'.padEnd(16) + 'testées  choisies (1985–2009)  confirmées (2010–2026)');
+  console.log(`=== ${V.length} variantes testées sur ${M.name} (alpha = gain au-delà du simple fait d'être investi, %/an) ===\n`);
+  console.log('FAMILLE'.padEnd(16) + `testées  choisies (${P[0][0].slice(0, 4)}–${P[1][0].slice(5)})  confirmées (${P[2][0]})`);
   for (const f of fam) {
     const r = results.filter((x) => x.v.family === f);
     console.log(`${f.padEnd(16)}${String(r.length).padStart(6)}  ${String(r.filter((x) => x.chosen).length).padStart(10)}            ${String(r.filter((x) => x.valid).length).padStart(8)}`);
   }
   const chosen = results.filter((x) => x.chosen);
   const valid = results.filter((x) => x.valid);
-  console.log(`\nTotal : ${results.length} testées · ${chosen.length} choisies · ${valid.length} confirmées sur 2010–2026 (${chosen.length ? ((valid.length / chosen.length) * 100).toFixed(0) : 0} % des choisies)`);
-  console.log('\nLes 25 meilleures confirmées (alpha %/an : 1985–1999 · 2000–2009 · 2010–2026 · part du temps investi 2010–2026) :');
+  console.log(`\nTotal : ${results.length} testées · ${chosen.length} choisies · ${valid.length} confirmées sur ${P[2][0]} (${chosen.length ? ((valid.length / chosen.length) * 100).toFixed(0) : 0} % des choisies)`);
+  console.log(`\nLes 25 meilleures confirmées (alpha %/an : ${P.map((p) => p[0]).join(' · ')} · part du temps investi ${P[2][0]}) :`);
   for (const x of valid.sort((a, b) => Math.min(...b.per.map((p) => p.alpha)) - Math.min(...a.per.map((p) => p.alpha))).slice(0, 25)) {
     console.log(`  [${x.v.family}] ${x.v.name.padEnd(56)} ${x.per.map((p) => `${p.alpha >= 0 ? '+' : ''}${p.alpha.toFixed(1)}`).join(' · ')} · ${(x.per[2].expo * 100).toFixed(0)} % · ${x.per[2].n} trades`);
   }

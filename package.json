@@ -22,7 +22,9 @@
     "ftmo-night": "node ftmo-night.js",
     "gold-new": "node --max-old-space-size=4096 gold-new.js",
     "audit": "node --max-old-space-size=4096 audit.js",
-    "nas-grid": "node nas-grid.js"
+    "nas-grid": "node nas-grid.js",
+    "gold-grid": "node nas-grid.js gold",
+    "gold-scalp-grid": "node --max-old-space-size=4096 gold-scalp-grid.js"
   },
   "engines": {
     "node": ">=20"
