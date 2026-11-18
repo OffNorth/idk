@@ -13,6 +13,7 @@ const FAMILIES = [
   ['Spécifiques à l’or', ['season', 'seasonplus', 'season200', 'mom12', 'high52', 'silver', 'riskoff', 'yields', 'dxy', 'fear']],
   ['Tendance multi-horizons (or + Nasdaq)', ['golden', 'trendmix', 'mom12_1', 'dualmom']],
   ['Spécifiques au Nasdaq', ['sma200', 'macro', 'lowvol', 'vixcalm', 'halloween', 'rates', 'macd_long', 'sox', 'dollarweak', 'ibs', 'cumrsi', 'ema_long', 'tom', 'double7', 'down3', 'dip5', 'vixspike', 'tuesday', 'pctb']],
+  ['Effets de calendrier Nasdaq', ['n_overnight', 'n_preholiday', 'n_gapfill', 'n_firsthour']],
   ['Intraday Nasdaq (5 min)', ['sweep', 'orb15', 'vwappb']],
   ['Scalp (1–5 min)', ['s_emavwap', 's_vwaprev', 's_bbrsi', 's_orb', 's_stoch', 's_burst']],
   ['Style FTMO (stop clair, taille au risque)', ['f_pullback', 'f_pdbreak', 'f_nightbreak', 'f_insideday', 'f_nr7', 'f_weekbreak']],
@@ -112,6 +113,10 @@ const VERDICT = {
   m_cci: ['rejet', 'Or : espérance trop faible sur la période de choix (+0,08 R)'],
   m_stoch: ['rejet', 'Or : perdante sur la période de choix'],
   m_2ll: ['rejet', 'Or : ≈ 0 en vérification'],
+  n_overnight: ['retenue', 'QQQ 2 ans : +8,9 % puis +3,9 % après frais et financement CFD (+13,8 % / +8,5 % sans) ; la nuit fait +9,6 %/an sur 25 ans de ^NDX'],
+  n_preholiday: ['retenue', '^NDX : +12,8 % cumulés 1985–2009, +16,3 % 2010–2026, 57 % gagnants (petit effet, régulier)'],
+  n_gapfill: ['rejet', 'QQQ : +2,6 % la 1re année, −9,5 % la 2e'],
+  n_firsthour: ['rejet', 'QQQ : perdante les 2 années'],
   hold: ['ref', 'Or +10,8 %/an (pire baisse −44 %) · Nasdaq +17,0 %/an (−36 %)'],
 };
 

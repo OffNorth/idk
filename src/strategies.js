@@ -1149,6 +1149,9 @@ STRATEGIES.push(...require('./ftmostrats').FTMO);
 /* Retour à la moyenne dans la tendance (famille de x_rsi2) : voir src/meanrev.js et npm run ftmo-mr */
 STRATEGIES.push(...require('./meanrev').MEANREV);
 
+/* Nasdaq : effets documentés (nuit, gap, première heure, veille de férié) : voir src/nas2.js */
+STRATEGIES.push(...require('./nas2').NAS2);
+
 /* Intraday NAS100 (formation TradingView, module 5) : voir src/intraday.js */
 STRATEGIES.push(...require('./intraday').INTRADAY);
 

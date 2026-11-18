@@ -158,6 +158,17 @@ Le bot trade aussi le **Nasdaq 100** en simulation, comme un CFD NAS100 :
 - Coûts : 0,01 % par côté **+ financement de nuit 6 %/an** (`NAS_FINANCING_PCT`) au prorata des jours en position.
 - Messages marqués 🇺🇸 sur le canal, bilan et graphique séparés ; commande `/nasdaq`, `/historique nasdaq 2010`.
 
+### Effets de calendrier (`npm run nas-new`, `src/nas2.js`)
+
+| Stratégie | Idée | Résultat |
+|---|---|---|
+| **Effet de nuit** (`n_overnight`, 5 min) | achat à la clôture de 16 h New York, revente sur la 1re bougie après l'ouverture, toutes les nuits | ✅ QQQ 2024–2026 : +8,9 % puis +3,9 % après frais et financement CFD (+13,8 % / +8,5 % sans financement). Sur 25 ans de ^NDX, la nuit rapporte ≈ +9,6 %/an contre +4 à +8 % pour la journée. **Active** |
+| **Veille de jour férié** (`n_preholiday`, journalier) | achat la veille de la veille d'un férié NYSE, revente la veille | ✅ +12,8 % cumulés 1985–2009, +16,3 % 2010–2026, 57 % gagnants. **Active** |
+| Comblement de l'écart d'ouverture (`n_gapfill`) | gap de 0,4 à 1,5 % → retour vers la clôture de la veille | ❌ perdante la 2e année |
+| Première heure forte (`n_firsthour`) | suivre une première heure à ±0,5 % jusqu'à la clôture | ❌ perdante |
+
+Jours fériés NYSE calculés par les règles officielles (Pâques, 3e lundi…, report du samedi / dimanche).
+
 ### Historique simulé 2010 → 2026 (1 000 $ au départ, gains réinvestis, frais + financement)
 
 ![Évolution simulée des stratégies Nasdaq 100 depuis 2010](docs/historique-nasdaq-2010.png)
