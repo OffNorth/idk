@@ -91,6 +91,17 @@ function nasMarket(cfg) {
         fetchAux('nas100', auxList),
       ]);
       const series = { '1d': d1, '1h': h1, '6h': h1 ? aggregate(h1, 21600) : null, '5m': m5 };
+      // Stratégies 5 / 15 min : il faut plus que 5 jours de bougies (tendance 1 h, réchauffage) → 60 jours, complétés
+      // à chaque passage par les 5 derniers jours (bougies récentes)
+      if (tfs.includes('15m') || tfs.includes('5m')) {
+        const long = await cached('ndx5m60', 1800, () => fetchYahoo('^NDX', '5m', { range: '60d', ...LIVE })).catch(() => null);
+        if (long?.length) {
+          const byT = new Map(long.map((c) => [c.t, c]));
+          for (const c of m5 || []) byT.set(c.t, c);
+          series['5m'] = [...byT.values()].sort((x, y) => x.t - y.t);
+          series['15m'] = aggregate(series['5m'], 900, 300);
+        }
+      }
       return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx: null, vix, aux, series };
     },
   };

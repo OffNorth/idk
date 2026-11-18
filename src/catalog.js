@@ -92,8 +92,8 @@ const VERDICT = {
   x_vwapbounce: ['rejet', 'trop rare, perdante'],
   x_rangesweep: ['rejet', 'perdante (5 % de gagnants en 1 min)'],
   x_pdsweep: ['rejet', '≈ 0 après frais'],
-  x_orb5: ['rejet', 'perdante sur l’or ; trop peu de trades sur le Nasdaq'],
-  x_lasthalf: ['rejet', 'perdante sur 6 ans d’or et sur 60 jours de Nasdaq'],
+  x_orb5: ['essai', 'Nasdaq 5 min : 75 % de challenges FTMO réussis sur 2025–2026 mais perdante en 2024–2025 → à l’essai en direct ; perdante sur l’or'],
+  x_lasthalf: ['essai', 'Nasdaq 5 min : 75 % de challenges FTMO réussis sur 2025–2026 mais perdante en 2024–2025 → à l’essai en direct ; perdante sur l’or']
   x_squeeze: ['rejet', 'perdante'],
   x_break20: ['rejet', 'perdante sur l’or ; Nasdaq 1 min retenue au choix puis perdante en vérification'],
   f_pullback: ['rejet', 'or 1 h −0,07 R/trade, Nasdaq 1 h ≈ 0'],
@@ -106,7 +106,7 @@ const VERDICT = {
   m_ibs: ['retenue', 'Or 15 min : challenge FTMO réussi 71 % (récent 48 %), 38 trades/mois'],
   m_rsi2x: ['retenue', 'Or 15 min : retenue au test, mais challenge FTMO réussi 35 % seulement'],
   m_vwap: ['dispo', 'Or 5 min : réussite FTMO 51 % (récent 61 %) mais pas retenue sur la période de choix'],
-  m_down3: ['rejet', 'Or : ≈ 0 en vérification'],
+  m_down3: ['essai', 'Nasdaq 15 min : 83–96 % de challenges FTMO réussis sur 2025–2026 mais perdante en 2024–2025 → à l’essai en direct ; or ≈ 0'],
   hold: ['ref', 'Or +10,8 %/an (pire baisse −44 %) · Nasdaq +17,0 %/an (−36 %)'],
 };
 
