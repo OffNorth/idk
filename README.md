@@ -409,6 +409,11 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > 3 %/an), stratégie `ibs` (+ la référence `hold`), en paper trading seulement — **pas sur le compte FTMO**
 > (`TRIAL_STRATEGIES=nas100:n_noise,eurusd:ibs`). `EURUSD_TRADING=0` pour le couper.
 
+> **Momentum intraday sur l'or (`npm run gold-intraday-grid`)** : les 131 variantes de momentum du Nasdaq (cassure du
+> range d'ouverture, sens de la matinée, VWAP, cassures, gaps), transposées à la séance de l'or (7 h–20 h UTC, PAXG
+> 2020–2026) : **aucune** n'est positive sur les 2 tranches de choix. L'or intraday revient à sa moyenne (77 variantes sur
+> 77 confirmées) au lieu de prolonger ses mouvements : le momentum n'y a pas sa place.
+
 > **Levier dynamique (`npm run ftmo-sizing`, `src/sizing.js`, `FTMO_SIZING`)** : la taille de chaque trade est déjà
 > « risque ÷ distance au stop » (le levier varie donc avec le stop : un stop serré donne plus de levier, plafonné à 1:30).
 > 12 règles qui ajustent EN PLUS ce risque ont été testées (volatilité, forme récente de la stratégie, compte en perte,

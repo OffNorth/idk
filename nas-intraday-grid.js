@@ -176,6 +176,10 @@ const T = (nyMin) => OPEN + (nyMin - (9 * 60 + 30));
   const chosen = results.filter((x) => x.chosen);
   const valid = results.filter((x) => x.valid);
   console.log(`\nTotal : ${results.length} testées · ${chosen.length} choisies · ${valid.length} confirmées (${chosen.length ? ((valid.length / chosen.length) * 100).toFixed(0) : 0} %)`);
+  console.log('\nLes 5 meilleures sur les tranches de choix, même non retenues (tranche 1 · 2 · 3, trades) :');
+  for (const r of [...results].sort((p, q) => q.parts[0].sum + q.parts[1].sum - p.parts[0].sum - p.parts[1].sum).slice(0, 5)) {
+    console.log(`  [${r.tf}] ${r.v.fam.padEnd(18)} ${r.v.name.padEnd(48)} ${r.parts.map((p) => `${p.sum >= 0 ? '+' : ''}${p.sum.toFixed(1)} %`).join(' · ')} · ${r.parts.reduce((s, p) => s + p.n, 0)}`);
+  }
   console.log('\nConfirmées (gain net cumulé % : tranche 1 · 2 · 3, trades, trades / jour) :');
   for (const r of valid.sort((p, q) => q.parts[2].sum - p.parts[2].sum)) {
     console.log(`  [${r.tf}] ${r.v.fam.padEnd(18)} ${r.v.name.padEnd(48)} ${r.parts.map((p) => `${p.sum >= 0 ? '+' : ''}${p.sum.toFixed(1)} %`).join(' · ')} · ${r.parts.reduce((s, p) => s + p.n, 0)} · ${r.perDay.toFixed(2)}/j`);
