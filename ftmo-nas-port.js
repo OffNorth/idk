@@ -2,10 +2,10 @@
 /**
  * Compte FTMO Nasdaq : choix d'un portefeuille de stratégies journalières (^NDX 1985–2026) qui passe le challenge.
  *
- * Candidates : les stratégies Nasdaq journalières actives qui passent l'audit des 3 périodes, en version d'origine et en
- * version « stop serré » (1,5 ATR : position plus grosse pour le même risque).
+ * Candidates : les stratégies Nasdaq journalières actives qui passent l'audit des 3 périodes (TIGHT=1 : ajoute une version
+ * « stop serré » 1,5 ATR, non suivie par le compte en direct).
  * Choix glouton sur 1985–1999 ET 2000–2009 (on ajoute la stratégie qui améliore le plus le PIRE des deux taux de réussite),
- * puis vérification sur 2010–2026 (jamais utilisée pour choisir). Risque testé : 0,5 à 2 % par trade.
+ * puis vérification sur 2010–2026 (jamais utilisée pour choisir). Risque testé : 0,5 à 4 % par trade. Réussite = les 2 étapes en moins d'un an (HORIZON).
  * Frais 0,003 % par côté + swap 6 %/an, perte du jour maison −2 %, levier 30, réussite des 2 étapes en moins de 6 mois.
  *
  *   npm run ftmo-nas-port
@@ -21,9 +21,9 @@ const CACHE = path.join(__dirname, 'data', 'research');
 const Y = (y) => Date.UTC(y, 0, 1) / 1000;
 const P = [['1985–1999', Y(1985), Y(2000)], ['2000–2009', Y(2000), Y(2010)], ['2010–2026', Y(2010), Infinity]];
 const IDS = (process.env.IDS || 'golden,mom12_1,trendmix,mom12,sma200,lowvol,rates,n_weekrev,n_low10,n_drop,n_dollarfall,n_rsspx,n_2down,n_goldfall,n_rsi4,tom,rsi2,ibs,double7,down3,cumrsi,dip5,vixspike,ema_long,dualmom').split(',');
-const RISKS = (process.env.RISKS || '0.5,1,1.5,2').split(',').map(Number);
+const RISKS = (process.env.RISKS || '0.5,1,2,3,4').split(',').map(Number);
 const MAXOPEN = Number(process.env.MAXOPEN || Infinity); // positions ouvertes en même temps au maximum
-const HORIZON = Number(process.env.HORIZON || 180); // jours pour réussir les 2 étapes (FTMO : pas de limite ; 180 = exigence maison)
+const HORIZON = Number(process.env.HORIZON || 365); // jours pour réussir les 2 étapes (FTMO : pas de limite de temps ; 1 an = exigence maison)
 
 const tight = (s, k) => ({ ...s, id: `${s.id}~${k}`, evaluate(ind, i) { const r = s.evaluate(ind, i); return { ...r, sl: k * ind.atr[i] }; } });
 const pct = (c) => (c && c.tries ? (c.passed / c.tries) * 100 : 0);
@@ -36,7 +36,7 @@ const pct = (c) => (c && c.tries ? (c.passed / c.tries) * 100 : 0);
   const ind = computeAll(nd, nd, 86400, null, vix, aux);
   const T = {};
   for (const s0 of selectStrategies(IDS)) {
-    for (const s of [s0, tight(s0, 1.5)]) {
+    for (const s of process.env.TIGHT !== '1' ? [s0] : [s0, tight(s0, 1.5)]) {
       const r = backtest(s, nd, { size: 1000, feePct: 0.003, financingPct: 6, barSec: 86400, ind, daily: nd, vix, aux, market: 'nas100' });
       if (r.list.length >= 20) T[s.id] = r.list;
     }
@@ -45,7 +45,7 @@ const pct = (c) => (c && c.tries ? (c.passed / c.tries) * 100 : 0);
   // Le pire des deux taux d'abord, puis leur somme (pour départager et démarrer quand tout est à 0 %)
   const score = (ids, risk) => { const a = pct(stats(ids, risk, 0)); const b = pct(stats(ids, risk, 1)); return Math.min(a, b) * 1000 + a + b; };
 
-  console.log(`=== ${Object.keys(T).length} candidates (${IDS.length} stratégies × 2 stops) · challenge FTMO 2 étapes en < 6 mois ===\n`);
+  console.log(`=== ${Object.keys(T).length} candidates · challenge FTMO 2 étapes en moins de ${HORIZON} jours ===\n`);
   const best = [];
   for (const risk of RISKS) {
     let port = [];

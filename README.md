@@ -370,8 +370,20 @@ trade** (taille = risque ÷ distance au stop, levier max 1:30), frais d'un CFD (
   bouton « 🏦 » du panneau ; la réussite d'une étape ou un échec est publié dans le groupe.
 
 **2e compte, 100 % Nasdaq** (`/ftmo`, `/ftmo or` pour l'or ; `FTMO_NAS_STRATEGIES`, données `data/ftmo-nas.json`) :
-mêmes règles, risque 0,5 % par trade, il suit les stratégies Nasdaq à l'essai (`m_down3`, `x_lasthalf`, `x_orb5`, `sweep`,
-`n_overnight`). **Aucune n'est validée pour le challenge** (voir plus bas) : ce compte sert à voir en direct si le Nasdaq tient.
+mêmes règles, **risque 3 % par trade** (`FTMO_NAS_RISK_PCT`), aucune limite de positions ouvertes. Il suit 9 stratégies
+journalières choisies par `npm run ftmo-nas-port` : `ibs`, `cumrsi`, `n_dollarfall`, `tom`, `ema_long`, `rsi2`, `n_low10`,
+`n_rsi4`, `vixspike`.
+
+| Challenge FTMO Nasdaq (2 étapes en moins d'un an, départ chaque semaine) | 1985–1999 | 2000–2009 | 2010–2026 (vérification) |
+|---|---|---|---|
+| **Portefeuille choisi, risque 3 %** | **42 %** | **43 %** | **39 %** |
+| Même méthode, risque 4 % (7 stratégies) | 46 % | 48 % | 40 % |
+| Ancien portefeuille (9 stratégies), risque 3 % | 24 % | 16 % | 21 % |
+| N'importe quel portefeuille à 0,5 ou 1 % | 0 % | 0 % | 0 % |
+
+Choix glouton sur 1985–1999 ET 2000–2009 (on ajoute la stratégie qui relève le plus le pire des deux taux), vérification sur
+2010–2026. Les stratégies journalières sont trop rares pour faire +10 % en un an à faible risque ; à 3 %, environ 6 challenges
+sur 10 échouent quand même, surtout sur la perte du jour (−5 %) quand plusieurs positions perdent ensemble.
 
 **Banc d'essai** (`ftmo.js`, `src/ftmo.js`) : chaque stratégie est rejouée comme des challenges lancés chaque semaine ;
 « réussite » = les 2 étapes en moins de 6 mois (un challenge non fini compte comme raté).
