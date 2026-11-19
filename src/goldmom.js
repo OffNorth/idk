@@ -40,7 +40,7 @@ function augment(x) {
     sOpen[i] = o;
     p8[i] = p;
   }
-  x.gm = { inSess, endMin, or30: range(30), sOpen, p8, first: {} };
+  x.gm = { inSess, endMin, or30: range(30), or60: range(60), sOpen, p8, first: {} };
   return x;
 }
 
@@ -77,6 +77,24 @@ const GOLDMOM = [
       const cl = x.closes;
       const up = firstOfDay(x, 'orb30u', (j) => R.hi[j] !== null && cl[j] > R.hi[j] && x.min[j] < 9 * 60 + 30);
       const dn = firstOfDay(x, 'orb30d', (j) => R.lo[j] !== null && cl[j] < R.lo[j] && x.min[j] < 9 * 60 + 30);
+      if (up[i]) return { ...out, entry: 'long', sl: Math.max(0.2 * x.atr[i], cl[i] - R.lo[i]) };
+      if (dn[i]) return { ...out, entry: 'short', sl: Math.max(0.2 * x.atr[i], R.hi[i] - cl[i]) };
+      return out;
+    },
+  },
+  {
+    ...BASE,
+    tf: '5m', onlyTf: ['5m'],
+    id: 'g_orb60',
+    name: 'Or : cassure de la première heure de Londres',
+    desc: 'Range de 7 h à 8 h UTC. Première clôture 5 min au-dessus du plus haut → achat, sous le plus bas → vente (avant 9 h 30 UTC) ; stop de l’autre côté du range, sortie à 19 h 55 UTC. Or au comptant 2009–2026 : +15 % · +12 % · +16 % sur 3 tranches, ≈ 1 trade par jour.',
+    evaluate(x, i) {
+      const out = none(x, i);
+      if (flat(x, i)) return out;
+      const R = x.gm.or60;
+      const cl = x.closes;
+      const up = firstOfDay(x, 'orb60u', (j) => R.hi[j] !== null && cl[j] > R.hi[j] && x.min[j] < 9 * 60 + 30);
+      const dn = firstOfDay(x, 'orb60d', (j) => R.lo[j] !== null && cl[j] < R.lo[j] && x.min[j] < 9 * 60 + 30);
       if (up[i]) return { ...out, entry: 'long', sl: Math.max(0.2 * x.atr[i], cl[i] - R.lo[i]) };
       if (dn[i]) return { ...out, entry: 'short', sl: Math.max(0.2 * x.atr[i], R.hi[i] - cl[i]) };
       return out;
