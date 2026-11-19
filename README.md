@@ -403,6 +403,12 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > or retenu (RSI 4 < 15 en 15 min, quasi nul sur 2020–2026) n'est pas repris. Le cours de l'or du bot vient maintenant
 > du future GC=F (`GOLD_FEED=future`) et non plus de PAXG.
 >
+> **Garde-fous et `/verif`** : à chaque passage, le compte FTMO clôture toute position dont le cours a franchi le stop
+> (au cours actuel) et toute position dont la stratégie n'est plus en position en paper trading (au prix de sortie du
+> trade paper : « réconciliation ») ; en paper, le stop est vérifié avec le cours actuel quand les bougies 5 min manquent.
+> `/verif` (admins) liste les incohérences : position au-delà de son stop, stop du mauvais côté, gain enregistré différent
+> du calcul, sortie « stop loss » loin du stop, position FTMO sans position paper.
+
 > **Pas de positions opposées (`FTMO_NO_HEDGE=1`, par défaut)** : le compte FTMO n'est jamais acheteur et vendeur du même
 > marché en même temps ; un signal de sens opposé à une position FTMO déjà ouverte sur ce marché est ignoré (le paper
 > trading de la stratégie continue). L'image `/ftmo` détaille la valeur du compte : gains **latents** des positions ouvertes

@@ -351,6 +351,10 @@ class MarketTrader {
           }
         }
         if (acc.position) acc.position.checkedFrom = now;
+      } else if (acc.position && price) {
+        // Pas de bougies 5 min à ce passage : le stop est quand même vérifié avec le cours actuel
+        const hit = hitInCandle(acc.position, { h: price, l: price });
+        if (hit) events.push(this.#close(strat, acc, price, hit.reason, now));
       }
 
       // 2. Nouvelle bougie clôturée sur l'unité de temps de la stratégie → évaluation

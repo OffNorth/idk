@@ -99,6 +99,44 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     }
   }
 
+  /** Clôture d'une position FTMO (gain, solde, plus haut, gain du jour, historique, message). */
+  function closeOne(s, k, exit, exitT, reason, out) {
+    const p = s.open[k];
+    const pnl = p.notional * ((p.side === 'long' ? 1 : -1) * (exit / p.entry - 1) - (2 * fee(p.market)) / 100);
+    s.balance += pnl;
+    s.peak = Math.max(s.peak ?? s.capital, s.balance);
+    s.dayPnl = s.dayPnl || {};
+    s.dayPnl[s.day] = (s.dayPnl[s.day] || 0) + pnl;
+    s.closed.push({ ...p, exit, exitT, pnl, reason });
+    delete s.open[k];
+    out.push({ type: 'trade', s, p: { ...p, exit, pnl, reason } });
+  }
+
+  /**
+   * Garde-fous à chaque passage (une clôture manquée ne doit jamais laisser une position FTMO ouverte) :
+   *  - stop propre au compte FTMO : cours actuel au-delà du stop → clôture au cours actuel ;
+   *  - réconciliation avec le paper trading : la position de la stratégie n'est plus ouverte (même date d'entrée) →
+   *    clôture au prix de sortie du trade paper, sinon au cours actuel.
+   */
+  function reconcile(s, prices, t, out) {
+    const papers = {};
+    for (const [k, p] of Object.entries(s.open)) {
+      const px = prices[p.market];
+      if (px && p.sl && (p.side === 'long' ? px <= p.sl : px >= p.sl)) {
+        // Au cours actuel (déjà au-delà du stop) : prudent en cas de trou de cotation entre deux passages
+        closeOne(s, k, px, t, 'stop loss (compte FTMO)', out);
+        continue;
+      }
+      papers[p.market] ??= store.loadJson(`${p.market}.json`, null);
+      const acc = papers[p.market]?.accounts?.[p.sid];
+      if (!acc) continue; // stratégie inconnue du paper trading : rien à comparer
+      if (acc.position && Math.abs(acc.position.entryT - p.entryT) < 2) continue;
+      const tr = [...(acc.closed || [])].reverse().find((c) => Math.abs(c.entryT - p.entryT) < 2);
+      if (tr) closeOne(s, k, tr.exit, tr.exitT, `${tr.reason} (réconciliation)`, out);
+      else if (px) closeOne(s, k, px, t, 'réconciliation (position paper introuvable)', out);
+    }
+  }
+
   /**
    * Traite les événements du passage et vérifie les règles. Retourne les messages à publier.
    * prices : { gold: cours, nas100: cours }
@@ -134,19 +172,11 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         out.push({ type: 'open', s, p: pos });
       } else if (ev.type === 'close') {
         const k = key(ev.market.id, ev.strategy.id, ev.trade.entryT);
-        const p = s.open[k];
-        if (!p) continue;
-        const tr = ev.trade;
-        const pnl = p.notional * ((p.side === 'long' ? 1 : -1) * (tr.exit / p.entry - 1) - (2 * fee(p.market)) / 100);
-        s.balance += pnl;
-        s.peak = Math.max(s.peak ?? s.capital, s.balance);
-        s.dayPnl = s.dayPnl || {};
-        s.dayPnl[s.day] = (s.dayPnl[s.day] || 0) + pnl;
-        s.closed.push({ ...p, exit: tr.exit, exitT: tr.exitT, pnl, reason: tr.reason });
-        delete s.open[k];
-        out.push({ type: 'trade', s, p: { ...p, exit: tr.exit, pnl } });
+        if (!s.open[k]) continue;
+        closeOne(s, k, ev.trade.exit, ev.trade.exitT, ev.trade.reason, out);
       }
     }
+    reconcile(s, prices, t, out);
 
     // Règles du challenge (positions ouvertes comprises)
     if (s.phase !== 'funded') {

@@ -62,7 +62,7 @@ function tick() {
 /* Accès                                                               */
 /* ------------------------------------------------------------------ */
 
-const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic']);
+const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif']);
 const isAdmin = (ctx) => !cfg.allowedUserIds.size || (ctx.from && cfg.allowedUserIds.has(String(ctx.from.id)));
 
 // Les boutons et les commandes de consultation sont ouverts à tout le groupe ; les réglages sont réservés.
@@ -159,6 +159,9 @@ bot.command(['historique', 'trades'], async (ctx) => {
     await ctx.reply(`❌ ${esc(err.message)}`);
   }
 });
+
+// Vérification de cohérence des trades (paper + compte FTMO), réservée aux admins
+bot.command('verif', (ctx) => ctx.reply(require('./src/verify').verifyReport(cfg, store), HTML));
 
 // Simulation des stratégies sur l'historique des cours (ex-« /historique »)
 bot.command('simulation', (ctx) => {

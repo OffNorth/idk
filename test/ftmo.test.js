@@ -176,3 +176,30 @@ test('compte FTMO : jamais acheteur et vendeur du même marché en même temps ;
   assert.strictEqual(Math.round(st.realized), 0);
   assert.strictEqual(Math.round(st.openPnl(Object.values(st.s.open)[0])), 1000);
 });
+
+test('garde-fous FTMO : stop franchi, position orpheline réconciliée, /verif', () => {
+  const { cfg, store } = setup({ ftmoCombined: false, ftmoRisk: 0.5, ftmoStrategies: ['gold:x_rsi2', 'gold:g_mom8'] });
+  const { createFtmo } = require('../src/ftmoAccount');
+  const { verify } = require('../src/verify');
+  const a = createFtmo({ cfg, store, account: 'gold' });
+  const mom = { id: 'g_mom8', name: 'Momentum' };
+  // Cas de la capture du 19 nov. : achat g_mom8 à 3 717, stop 3 693 ; l'or tombe à 3 681
+  const pos = { side: 'long', entry: 3717, sl: 3693, initSl: 3693, entryT: T0, size: 1000 };
+  a.onCycle([{ type: 'open', market, strategy: mom, pos }], { gold: 3717 }, T0);
+  store.saveJson('gold.json', { lastPrice: 3681, accounts: { g_mom8: { capital: 1000, closed: [], position: pos } } });
+  const v = verify({ ...cfg, nasEnabled: false, spxEnabled: false, eurusdEnabled: false }, store);
+  assert.ok(v.issues.some((x) => /franchi le stop/.test(x)), v.issues.join(' | '));
+  const out = a.onCycle([], { gold: 3681 }, T0 + 3600);
+  assert.ok(out.some((m) => m.type === 'trade' && /stop loss/.test(m.p.reason)));
+  assert.strictEqual(Object.keys(a.load().open).length, 0);
+  const n0 = a.load().closed.length;
+  // Orpheline : la position paper a été clôturée (à 3 730) sans que le compte FTMO l'ait vu
+  const pos2 = { side: 'long', entry: 3700, sl: 3680, initSl: 3680, entryT: T0 + 7200, size: 1000 };
+  store.saveJson('gold.json', { lastPrice: 3700, accounts: { g_mom8: { capital: 1000, closed: [], position: pos2 } } }); // le paper enregistre avant le compte FTMO
+  a.onCycle([{ type: 'open', market, strategy: mom, pos: pos2 }], { gold: 3700 }, T0 + 7200);
+  store.saveJson('gold.json', { lastPrice: 3725, accounts: { g_mom8: { capital: 1000, position: null, closed: [{ ...pos2, exit: 3730, exitT: T0 + 9000, reason: 'signal de sortie', pnlPct: 0.8, pnlUsd: 8 }] } } });
+  const out2 = a.onCycle([], { gold: 3725 }, T0 + 9600);
+  const tr = out2.find((m) => m.type === 'trade');
+  assert.ok(tr && tr.p.exit === 3730 && /réconciliation/.test(tr.p.reason), JSON.stringify(out2.map((m) => m.p?.reason)));
+  assert.strictEqual(a.load().closed.length, n0 + 1);
+});
