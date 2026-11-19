@@ -294,6 +294,34 @@ function positionsImage({ market, rows, price: now }) {
   return cv.png();
 }
 
+/**
+ * Historique des trades réellement pris (clôturés), du plus récent au plus ancien.
+ * rows : [{ name, side, entry, exit, entryT, exitT, pnlPct, pnlUsd, reason }]
+ */
+function tradesImage({ market, title, subtitle, rows, footerText }) {
+  const rowH = 52;
+  const cv = new Canvas(W, 150 + Math.max(1, rows.length) * rowH + 40, THEME.bg);
+  header(cv, { market, title, subtitle });
+  const cols = [['Clôture', 28, 'left'], ['Stratégie', 168, 'left'], ['Sens', 520, 'left'], ['Entrée → sortie', 800, 'right'], ['Résultat', W - 28, 'right']];
+  for (const [k, x, a] of cols) cv.text(k.toUpperCase(), x, 100, { style: 'b', size: 13, color: THEME.muted, align: a });
+  if (!rows.length) cv.text('Aucun trade clôturé pour l’instant.', W / 2, 150, { size: 18, color: THEME.muted, align: 'center' });
+  rows.forEach((r, i) => {
+    const y = 128 + i * rowH;
+    if (i % 2 === 0) cv.roundRect(16, y - 6, W - 32, rowH - 6, 10, THEME.surface);
+    cv.text(new Date(r.exitT * 1000).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', timeZone: 'UTC' }), 28, y + 6, { style: 'b', size: 17, color: THEME.text });
+    cv.text(new Date(r.exitT * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC', 28, y + 28, { size: 13, color: THEME.muted });
+    cv.text(r.name, 168, y + 6, { style: 'b', size: 17, color: THEME.text, maxWidth: 340 });
+    if (r.reason) cv.text(r.reason, 168, y + 28, { size: 13, color: THEME.muted, maxWidth: 340 });
+    cv.text(r.side === 'long' ? '▲ achat' : '▼ vente', 520, y + 6, { style: 'b', size: 17, color: r.side === 'long' ? THEME.up : THEME.down });
+    cv.text(duration(r.exitT - r.entryT), 520, y + 28, { size: 13, color: THEME.muted });
+    cv.text(`${price(r.entry)} → ${price(r.exit)}`, 800, y + 6, { size: 17, color: THEME.text, align: 'right' });
+    cv.text(pct(r.pnlPct, 2), W - 28, y + 6, { style: 'b', size: 17, color: tone(r.pnlPct), align: 'right' });
+    cv.text(`${r.pnlUsd >= 0 ? '+' : '−'}${money(Math.abs(r.pnlUsd), 2)}`, W - 28, y + 28, { size: 13, color: tone(r.pnlUsd), align: 'right' });
+  });
+  footer(cv, footerText);
+  return cv.png();
+}
+
 /* ------------------------------------------------------------------ */
 /* Compte FTMO simulé                                                   */
 /* ------------------------------------------------------------------ */
@@ -353,4 +381,4 @@ function ftmoImage(st) {
   return cv.png();
 }
 
-module.exports = { ftmoImage, priceChartImage, tradeCardImage, strategyCardImage, rankingImage, positionsImage, positionLevels, drawCandles };
+module.exports = { ftmoImage, priceChartImage, tradeCardImage, strategyCardImage, rankingImage, positionsImage, tradesImage, positionLevels, drawCandles };

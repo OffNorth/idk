@@ -80,7 +80,7 @@ Chaque stratégie a **son propre compte**, qui démarre avec `GOLD_START_CAPITAL
 
 - La valeur de chaque compte est enregistrée **toutes les heures** (`data/gold.json`).
 - Un **graphique de l'évolution** est publié sur le canal chaque jour (`CHART_HOURS`), et à la demande avec `/portfolio`.
-- `/historique [or|nasdaq] [année]` rejoue les stratégies actives sur l'historique avec réinvestissement (or : depuis 2001 avec le future GC=F, depuis 2021 avec le PAXG).
+- `/simulation [or|nasdaq] [année]` rejoue les stratégies actives sur l'historique avec réinvestissement (or : depuis 2001 avec le future GC=F, depuis 2021 avec le PAXG).
 
 ### Historique simulé 2021 → oct. 2026 (1 000 $ au départ par stratégie, frais inclus)
 
@@ -616,7 +616,9 @@ aucune dépendance à installer).
   - 🏆 Classement : barres de gain / perte de chaque stratégie.
   - 📍 Positions : positions ouvertes avec entrée, stop et gain latent.
   - 🕯 Cours : bougies 1 jour ou 1 heure.
-  - 🕰 Historique : simulation depuis 2001, 2010, 2016… ou 1990, 2000… pour le Nasdaq.
+  - 🕰 Historique : **les trades réellement pris par le bot** sur le marché (plus récents d'abord, 10 par page), avec
+    la clôture, la stratégie, le sens, l'entrée → la sortie, le résultat en % et en $, et un bouton 🧾 par trade.
+  - 🏦 Compte FTMO / 🧾 Trades FTMO : état du compte FTMO simulé et ses trades (résultat en % du compte).
   - 📚 Stratégies : liste, puis la fiche de chacune (description, chiffres, courbe, position), avec un bouton « Tester sur l'historique ».
 - **Sous chaque ouverture / clôture** : 🧾 carte du trade (résultat, entrée, sortie, stop, durée, cours pendant le trade),
   🕯 cours avec les niveaux (entrée, stop, objectif, sortie), ℹ️ fiche de la stratégie, 🎛 menu.
@@ -643,7 +645,8 @@ aucune dépendance à installer).
 | `/nasdaq` | Bilan du Nasdaq 100 |
 | `/gold` | Bilan de chaque stratégie (valeur du compte, trades, % gagnants, position en cours) |
 | `/portfolio` | Graphique de l'évolution du portefeuille depuis le lancement |
-| `/historique [or\|nasdaq] [année]` | Simulation des stratégies actives sur l'historique (gains réinvestis), avec graphique |
+| `/historique [or\|nasdaq\|sp500\|eur\|ftmo]` | Historique des trades pris par le bot (ou par le compte FTMO) |
+| `/simulation [or\|nasdaq] [année]` | Simulation des stratégies actives sur l'historique des cours (gains réinvestis), avec graphique |
 | `/strategies` | Description des stratégies actives |
 | `/backtest [jours]` | Backtest récent sur Coinbase (90 jours par défaut, 365 max) |
 | `/bilan` | Publie le bilan sur le canal maintenant |

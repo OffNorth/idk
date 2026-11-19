@@ -6,7 +6,7 @@
  *                      (portefeuille, classement, positions, cours, historique, fiches des stratégies)
  *   /graphique [or|nasdaq] — cours en bougies
  *   /jeu, /classement — pronostic du jour (hausse / baisse) et classement des joueurs
- *   /gold, /nasdaq   — bilan texte · /portfolio · /historique [or|nasdaq] [année] · /strategies
+ *   /gold, /nasdaq   — bilan texte · /portfolio · /historique [or|nasdaq|ftmo] (trades) · /simulation [marché] [année] · /strategies
  *   Boutons sous chaque trade (carte du trade, cours avec entrée / stop / objectif, fiche) et sous le bilan.
  *
  * Réservé aux ALLOWED_TELEGRAM_USER_IDS (si la liste est remplie) :
@@ -94,7 +94,8 @@ bot.command(['start', 'aide', 'help'], (ctx) =>
       '/jeu — 🎯 pronostic du jour · /classement — points des joueurs',
       '/nasdaq · /gold — bilan texte',
       '/portfolio — graphiques des portefeuilles',
-      '/historique [nasdaq|or] [année] — simulation sur l’historique (Nasdaq par défaut)',
+      '/historique [nasdaq|or|sp500|eur|ftmo] — historique des trades pris par le bot',
+      '/simulation [nasdaq|or] [année] — simulation des stratégies sur l’historique des cours',
       '/strategies — comment fonctionne chaque stratégie',
       '',
       '<i>⚠️ Simulation uniquement, aucun argent réel. Pas un conseil financier.</i>',
@@ -144,7 +145,23 @@ bot.command('portfolio', async (ctx) => {
   for (const m of activeMarkets(cfg)) await replyImage(ctx, async () => liveChart(store, cfg, m.id), `⏳ Graphique ${m.emoji} ${m.name}…`);
 });
 
-bot.command('historique', (ctx) => {
+// Historique des trades réellement pris (paper trading en direct) ; « /historique ftmo » : trades du compte FTMO
+bot.command(['historique', 'trades'], async (ctx) => {
+  try {
+    const ftmo = /\bftmo\b/i.test(ctx.match || '');
+    await sendPanel(ctx.api, ctx.chat.id, cfg, store, {
+      view: ftmo ? 'z' : 'y',
+      marketId: ftmo ? 'gold' : marketArg(ctx.match),
+      args: ['0'],
+      extra: ctx.message?.message_thread_id ? { message_thread_id: ctx.message.message_thread_id } : {},
+    });
+  } catch (err) {
+    await ctx.reply(`❌ ${esc(err.message)}`);
+  }
+});
+
+// Simulation des stratégies sur l'historique des cours (ex-« /historique »)
+bot.command('simulation', (ctx) => {
   const args = ctx.match.trim().toLowerCase().split(/\s+/);
   const marketId = marketArg(ctx.match);
   const minYear = marketId === 'nas100' ? 1987 : 2001;
@@ -276,7 +293,8 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
     { command: 'eurusd', description: 'Bilan de l’EUR/USD (à l’essai)' },
     { command: 'gold', description: 'Bilan de l’or' },
     { command: 'portfolio', description: 'Graphiques de l’évolution des portefeuilles' },
-    { command: 'historique', description: 'Simulation : /historique 2010 (Nasdaq) · /historique or 2001' },
+    { command: 'historique', description: 'Historique des trades : /historique or · /historique ftmo' },
+    { command: 'simulation', description: 'Simulation : /simulation 2010 (Nasdaq) · /simulation or 2001' },
     { command: 'strategies', description: 'Comment fonctionne chaque stratégie' },
   ]);
   // Bouton du menu Telegram : liste des commandes (remplace l'ancien bouton « 📊 App »)

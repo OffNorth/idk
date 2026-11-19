@@ -7,7 +7,8 @@
  *  - Sous le bilan : accès direct aux images.
  *
  * Données des boutons (≤ 64 octets) :
- *   m:<vue>:<marché>[:arg[:arg]]   vue du panneau (h portefeuille, r classement, o positions, c cours, y historique,
+ *   m:<vue>:<marché>[:arg[:arg]]   vue du panneau (h portefeuille, r classement, o positions, c cours, y historique des trades,
+ *                                  z trades du compte FTMO, f compte FTMO,
  *                                  l liste des stratégies, s fiche, t test d'une stratégie sur l'historique)
  *   x:<action>:<marché>:<id>:<t>   bouton sous un trade (k carte, c cours, s fiche)
  */
@@ -44,7 +45,10 @@ function panelKeyboard(cfg, view, marketId, extra = []) {
   }
   rows.push([btn('📈 Portefeuille', `m:h:${k}`), btn('🏆 Classement', `m:r:${k}`), btn('📍 Positions', `m:o:${k}`)]);
   rows.push([btn('🕯 Cours', `m:c:${k}:1d`), btn('🕰 Historique', `m:y:${k}`), btn('📚 Stratégies', `m:l:${k}:0`)]);
-  if (cfg.ftmoEnabled) rows.push([btn('🏦 FTMO 🇺🇸 Nasdaq', 'm:f:n'), btn('🏦 FTMO 🥇 Or', 'm:f:g')].filter((b) => b.callback_data !== 'm:f:n' || cfg.ftmoNasEnabled));
+  if (cfg.ftmoEnabled) {
+    rows.push(cfg.ftmoCombined ? [btn('🏦 Compte FTMO', 'm:f:g'), btn('🧾 Trades FTMO', 'm:z:g:0')]
+      : [btn('🏦 FTMO 🇺🇸 Nasdaq', 'm:f:n'), btn('🏦 FTMO 🥇 Or', 'm:f:g')].filter((b) => b.callback_data !== 'm:f:n' || cfg.ftmoNasEnabled));
+  }
   return { inline_keyboard: [...extra, ...rows] };
 }
 
@@ -100,6 +104,25 @@ function findTrade(tr, id, entryT) {
   return trade ? { trade } : null;
 }
 
+const TRADES_PAGE = 10;
+/** Page d'une liste de trades clôturés (plus récents d'abord) : lignes, pagination, résumé. */
+function tradePage(all, askedPage, cb, unit = '') {
+  const pages = Math.max(1, Math.ceil(all.length / TRADES_PAGE));
+  const page = Math.min(Math.max(askedPage, 0), pages - 1);
+  const rows = all.slice(page * TRADES_PAGE, page * TRADES_PAGE + TRADES_PAGE);
+  const extra = [];
+  if (pages > 1) extra.push([btn('◀️ Plus récents', cb(Math.max(0, page - 1))), btn(`${page + 1} / ${pages}`, cb(page)), btn('Plus anciens ▶️', cb(Math.min(pages - 1, page + 1)))]);
+  const wins = all.filter((t) => t.pnlUsd > 0).length;
+  const total = all.reduce((s, t) => s + (t.pnlUsd || 0), 0);
+  const best = all.reduce((b, t) => (!b || t.pnlPct > b.pnlPct ? t : b), null);
+  const worst = all.reduce((w, t) => (!w || t.pnlPct < w.pnlPct ? t : w), null);
+  const caption = all.length
+    ? [`${all.length} trades · ${Math.round((wins / all.length) * 100)} % gagnants · total <b>${total >= 0 ? '+' : '−'}${money(Math.abs(total))}</b>`,
+      `Meilleur : ${esc(best.name)} ${pct(best.pnlPct)}${unit ? ` ${unit}` : ''} · pire : ${esc(worst.name)} ${pct(worst.pnlPct)}${unit ? ` ${unit}` : ''}`].join('\n')
+    : 'Aucun trade clôturé pour l’instant.';
+  return { rows, page, pages, extra, caption };
+}
+
 /* ------------------------------------------------------------------ */
 /* Vues (image + légende + clavier)                                     */
 /* ------------------------------------------------------------------ */
@@ -131,7 +154,7 @@ async function render(cfg, store, view, marketId, args = []) {
       `Stratégies suivies : ${fst.account.strategies.map((x) => `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' }[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')} · risque ${fst.account.riskOf ? [...new Set(['gold', 'nas100', 'spx', 'eurusd'].filter((m) => fst.account.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => fst.account.riskOf(m)))].join(' / ') : fst.account.risk} % par trade`,
       ...(s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt}, étape ${h.phase} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
     ];
-    return { png: C.ftmoImage(fst), caption: lines.join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'f', marketId) };
+    return { png: C.ftmoImage(fst), caption: lines.join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'f', marketId, [[btn('🧾 Trades FTMO', `m:z:${KM[marketId]}:0`)]]) };
   }
 
   if (view === 'h') {
@@ -180,16 +203,45 @@ async function render(cfg, store, view, marketId, args = []) {
     return { png, caption: `${head} · 🕯 cours ${price ? `<b>${quote(price)}</b>` : 'n/d'} (${pct(chg)} sur la période)`, keyboard: panelKeyboard(cfg, 'c', marketId, extra) };
   }
 
-  if (view === 'y' || view === 't') {
-    const id = view === 't' ? args[0] : null;
-    const year = Number(view === 't' ? args[1] : args[0]) || (marketId === 'nas100' ? 2010 : 2021);
-    const out = await queued(() => historyChart(cfg, { marketId, fromYear: year, ids: id ? [id, 'hold'] : null }));
+  if (view === 'y') {
+    // Historique des trades RÉELLEMENT pris par le bot sur ce marché (paper trading en direct), du plus récent au plus ancien
+    const names = Object.fromEntries(st.rows.map((r) => [r.strategy.id, r.strategy.name]));
+    const all = Object.entries(tr.state.accounts || {})
+      .filter(([id]) => id !== 'hold')
+      .flatMap(([id, acc]) => (acc.closed || []).map((t) => ({ ...t, sid: id, name: names[id] || id })))
+      .sort((a, b) => b.exitT - a.exitT);
+    const { rows, page, pages, extra, caption } = tradePage(all, Number(args[0]) || 0, (p) => `m:y:${KM[marketId]}:${p}`);
+    // Un bouton par trade de la page : carte du trade (même carte que sous les messages de trade)
+    const btns = rows.map((t) => btn(`🧾 ${t.sid} ${pct(t.pnlPct)}`, `x:k:${KM[marketId]}:${t.sid}:${t.entryT}`));
+    const tradeRows = [];
+    for (let i = 0; i < btns.length; i += 2) tradeRows.push(btns.slice(i, i + 2));
+    const png = C.tradesImage({ market, title: 'Historique des trades', subtitle: `${all.length} trades clôturés · page ${page + 1} / ${pages} · paper trading en direct, frais inclus`, rows });
+    return { png, caption: `${head} · 🕰 historique des trades\n${caption}`, keyboard: panelKeyboard(cfg, 'y', marketId, [...tradeRows, ...extra]) };
+  }
+
+  if (view === 'z') {
+    // Trades du compte FTMO simulé
+    const { createFtmo } = require('./ftmoAccount');
+    const acct = require('./ftmoAccount').accountOf(cfg, marketId);
+    const s = createFtmo({ cfg, store, account: acct.enabled ? marketId : 'gold' }).load();
+    const all = [...(s.closed || [])].map((t) => ({ ...t, name: `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' }[t.market] || ''} ${t.sid}`, pnlUsd: t.pnl, pnlPct: (t.pnl / s.capital) * 100 })).sort((a, b) => b.exitT - a.exitT);
+    const { rows, page, pages, extra, caption } = tradePage(all, Number(args[0]) || 0, (p) => `m:z:${KM[marketId]}:${p}`, 'du compte');
+    const hist = (s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`);
+    const png = C.tradesImage({ market: null, title: `Trades du compte FTMO · challenge n° ${s.attempt}`, subtitle: `${all.length} trades clôturés depuis le début du challenge · page ${page + 1} / ${pages} · résultat en % du compte`, rows, footerText: 'Simulation d’un challenge FTMO · argent fictif · pas un conseil financier' });
+    extra.push([btn('⬅️ Compte FTMO', `m:f:${KM[marketId]}`)]);
+    return { png, caption: [`🏦 <b>Compte FTMO simulé</b> · 🧾 trades`, caption, ...hist].join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'z', marketId, extra) };
+  }
+
+  if (view === 't') {
+    const id = args[0];
+    const year = Number(args[1]) || (marketId === 'nas100' ? 2010 : 2021);
+    const out = await queued(() => historyChart(cfg, { marketId, fromYear: year, ids: [id, 'hold'] }));
     const lines = out.results.slice(0, 6).map(({ s, stats }) => `${esc(s.name)} : <b>${pct(stats.perYear)}/an</b>`);
-    const yearsRow = YEARS[marketId].map((y) => btn(`${y === year ? '• ' : ''}${y}`, id ? `m:t:${KM[marketId]}:${id}:${y}` : `m:y:${KM[marketId]}:${y}`));
-    const extra = id ? [yearsRow, [btn('⬅️ Retour à la fiche', `m:s:${KM[marketId]}:${id}`)]] : [yearsRow];
+    const yearsRow = YEARS[marketId].map((y) => btn(`${y === year ? '• ' : ''}${y}`, `m:t:${KM[marketId]}:${id}:${y}`));
+    const extra = [yearsRow, [btn('⬅️ Retour à la fiche', `m:s:${KM[marketId]}:${id}`)]];
     return {
       png: out.png,
-      caption: `${head} · 🕰 ${id ? 'test sur l’historique' : 'historique simulé'} depuis ${year} (gains réinvestis, frais inclus)\n${lines.join('\n')}\n<i>Résultats passés ≠ résultats futurs.</i>`.slice(0, 1024),
+      caption: `${head} · 🧪 test sur l’historique depuis ${year} (simulation, gains réinvestis, frais inclus)\n${lines.join('\n')}\n<i>Résultats passés ≠ résultats futurs.</i>`.slice(0, 1024),
       keyboard: panelKeyboard(cfg, view, marketId, extra),
     };
   }
@@ -318,7 +370,7 @@ function attachInteractive(bot, { cfg, store, gameHandler = null }) {
     busy.add(key);
 
     const marketId = MK[parts[2]];
-    const slow = parts[1] === 'y' || parts[1] === 't';
+    const slow = parts[1] === 't';
     await ctx.answerCallbackQuery(slow ? { text: '⏳ Simulation en cours (jusqu’à 1 min la première fois)…' } : {}).catch(() => {});
     try {
       if (!marketId) throw new Error('marché inconnu');

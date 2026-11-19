@@ -30,7 +30,7 @@ function setup() {
 test('panneau : chaque vue donne une image, une légende et des boutons valides', async () => {
   const { cfg, store } = setup();
   const { render, tradeKeyboard } = require('../src/interactive');
-  for (const [view, args] of [['h', []], ['r', []], ['o', []], ['l', ['0']], ['l', ['1']], ['s', ['down3']]]) {
+  for (const [view, args] of [['h', []], ['r', []], ['o', []], ['l', ['0']], ['l', ['1']], ['s', ['down3']], ['y', ['0']], ['y', ['5']], ['z', ['0']], ['f', []]]) {
     const out = await render(cfg, store, view, 'gold', args);
     assert.ok(isPng(out.png), `image ${view}`);
     assert.ok(out.caption.length <= 1024, `légende ${view}`);
@@ -38,6 +38,22 @@ test('panneau : chaque vue donne une image, une légende et des boutons valides'
   }
   const kb = tradeKeyboard({ type: 'open', market: { id: 'nas100' }, strategy: { id: 'macd_long' }, pos: { entryT: 1_794_957_311 } });
   for (const b of kb.inline_keyboard.flat()) assert.ok(Buffer.byteLength(b.callback_data) <= 64);
+});
+
+test('historique : les trades réellement pris, plus récents d’abord, 10 par page, avec un bouton par trade', async () => {
+  const { cfg, store } = setup();
+  const s = store.loadJson('gold.json', {});
+  const T = 1_790_000_000;
+  s.accounts.down3 = { capital: 1000, lastEvalT: 0, position: null, closed: Array.from({ length: 13 }, (_, k) => ({ side: k % 2 ? 'short' : 'long', entry: 2000, exit: 2000 + (k % 3) - 1, entryT: T + k * 3600, exitT: T + k * 3600 + 600, pnlUsd: (k % 3) - 1, pnlPct: ((k % 3) - 1) / 20, reason: 'signal', size: 1000, sl: 1990 })) };
+  store.saveJson('gold.json', s);
+  const { render } = require('../src/interactive');
+  const p0 = await render(cfg, store, 'y', 'gold', ['0']);
+  assert.match(p0.caption, /14 trades/); // 13 + 1 trade de la stratégie « season »
+  const tradeBtns = p0.keyboard.inline_keyboard.flat().filter((b) => b.callback_data.startsWith('x:k:'));
+  assert.strictEqual(tradeBtns.length, 10);
+  assert.ok(tradeBtns[0].callback_data.endsWith(String(T + 12 * 3600)), 'le plus récent en premier');
+  const p1 = await render(cfg, store, 'y', 'gold', ['1']);
+  assert.strictEqual(p1.keyboard.inline_keyboard.flat().filter((b) => b.callback_data.startsWith('x:k:')).length, 4);
 });
 
 test('cartes : trade ouvert / clôturé, positions, classement', () => {
