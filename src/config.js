@@ -136,6 +136,8 @@ module.exports = {
   ftmoIntradayRisk: num('FTMO_INTRADAY_RISK_PCT', 0.5),
   // Un message dans le groupe à chaque ouverture et clôture du compte FTMO simulé (0 = seulement réussite / échec)
   ftmoTradeMessages: num('FTMO_TRADE_MESSAGES', 1) === 1,
+  // Le compte FTMO n'est jamais acheteur et vendeur du même marché en même temps (le 2e signal, opposé, est ignoré)
+  ftmoNoHedge: num('FTMO_NO_HEDGE', 1) === 1,
   // 2e compte FTMO simulé, 100 % Nasdaq (npm run ftmo-nas-port)
   // Compte FTMO UNIQUE or + Nasdaq (par défaut) : or au risque FTMO_RISK_PCT, Nasdaq au risque FTMO_COMBO_NAS_RISK_PCT.
   // npm run ftmo-combo : 74 % de réussite en < 6 mois (récent 45 %) contre 74 % / 39 % pour l'or seul.

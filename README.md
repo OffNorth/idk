@@ -403,6 +403,11 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > or retenu (RSI 4 < 15 en 15 min, quasi nul sur 2020–2026) n'est pas repris. Le cours de l'or du bot vient maintenant
 > du future GC=F (`GOLD_FEED=future`) et non plus de PAXG.
 >
+> **Pas de positions opposées (`FTMO_NO_HEDGE=1`, par défaut)** : le compte FTMO n'est jamais acheteur et vendeur du même
+> marché en même temps ; un signal de sens opposé à une position FTMO déjà ouverte sur ce marché est ignoré (le paper
+> trading de la stratégie continue). L'image `/ftmo` détaille la valeur du compte : gains **latents** des positions ouvertes
+> (et le gain latent de chacune) et gains **réalisés** des trades clôturés.
+
 > **Annonce des trades FTMO (`FTMO_TRADE_MESSAGES=1`, par défaut)** : chaque ouverture du compte FTMO simulé est
 > publiée dans le groupe (sens, marché, stratégie, entrée, stop, montant engagé, levier, risque en $ et en %), puis chaque
 > clôture (gain ou perte en $, solde du compte, progression vers l'objectif), avec le bouton « 🏦 Voir le compte ».

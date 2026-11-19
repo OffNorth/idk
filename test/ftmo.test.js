@@ -158,3 +158,21 @@ test('compte FTMO : chaque trade est annoncé (ouverture puis clôture)', () => 
   assert.match(t2, /🟢 clôture/);
   assert.match(t2, /\+\$1,000/);
 });
+
+test('compte FTMO : jamais acheteur et vendeur du même marché en même temps ; latent / réalisé', () => {
+  const { cfg, store } = setup({ ftmoCombined: false, ftmoRisk: 1, ftmoNoHedge: true, ftmoStrategies: ['gold:x_rsi2', 'gold:g_mom8'] });
+  const { createFtmo } = require('../src/ftmoAccount');
+  const a = createFtmo({ cfg, store, account: 'gold' });
+  const s2 = { id: 'g_mom8', name: 'Momentum' };
+  const long = { type: 'open', market, strategy, pos: { side: 'long', entry: 2000, sl: 1980, initSl: 1980, entryT: T0 } };
+  const short = { type: 'open', market, strategy: s2, pos: { side: 'short', entry: 2000, sl: 2020, initSl: 2020, entryT: T0 + 60 } };
+  const out = a.onCycle([long, short], { gold: 2000 }, T0 + 60);
+  assert.deepStrictEqual(out.map((m) => m.type), ['open'], 'la vente opposée est ignorée');
+  assert.strictEqual(Object.keys(a.load().open).length, 1);
+  assert.strictEqual(a.load().skipped, 1);
+  // +1 % sur 100 000 $ engagés → +1 000 $ latents, rien de réalisé
+  const st = a.status({ gold: 2020 });
+  assert.strictEqual(Math.round(st.unrealized), 1000);
+  assert.strictEqual(Math.round(st.realized), 0);
+  assert.strictEqual(Math.round(st.openPnl(Object.values(st.s.open)[0])), 1000);
+});

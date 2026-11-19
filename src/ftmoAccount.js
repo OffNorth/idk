@@ -117,6 +117,11 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         const stopPct = (Math.abs(p.entry - (p.initSl ?? p.sl)) / p.entry) * 100;
         if (!(stopPct > 0)) continue;
         if (cfg.ftmoDayStop > 0 && s.balance <= s.dayStart - (s.capital * cfg.ftmoDayStop) / 100) continue; // stop du jour maison
+        // Pas d'achat et de vente en même temps sur le même marché (FTMO_NO_HEDGE) : le signal opposé est ignoré
+        if (cfg.ftmoNoHedge !== false && Object.values(s.open).some((o) => o.market === ev.market.id && o.side !== p.side)) {
+          s.skipped = (s.skipped || 0) + 1;
+          continue;
+        }
         // Levier dynamique (src/sizing.js, FTMO_SIZING) : le risque du trade est ajusté selon l'état du compte
         const rule = RULES[cfg.ftmoSizing] || RULES.fixe;
         const mul = rule({ ...p, sid: `${ev.market.id}:${ev.strategy.id}` }, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: TARGET[s.phase] || 5, open: Object.keys(s.open).length });
@@ -199,6 +204,9 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       account: A,
       program: P,
       equity: eq,
+      unrealized: eq - s.balance, // gains / pertes des positions encore ouvertes (frais de sortie inclus)
+      realized: s.balance - s.capital, // gains / pertes des trades clôturés
+      openPnl: (p) => (prices[p.market] ? p.notional * ((p.side === 'long' ? 1 : -1) * (prices[p.market] / p.entry - 1) - fee(p.market) / 100) : null),
       target,
       progress: target ? Math.max(0, (eq - s.capital) / (target - s.capital)) : null,
       dailyUsed: Math.max(0, (s.dayStart - eq) / ((s.capital * P.daily) / 100)),

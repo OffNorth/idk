@@ -27,6 +27,15 @@ const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
 /** Cours : 4 décimales sous 10 (EUR/USD), entier au-delà de 1 000, 2 décimales sinon. */
 const quote = (v) => (Math.abs(v) < 10 ? `$${v.toFixed(4)}` : Math.abs(v) >= 1000 ? money(v) : `$${v.toFixed(2)}`);
 const pct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} %`;
+const signedMoney = (v) => `${v >= 0 ? '+' : '−'}${money(Math.abs(v || 0))}`;
+/** Risque par trade du compte FTMO : journalières / intraday (stratégies factices pour interroger riskOf). */
+function riskText(cfg, acct) {
+  if (!acct.riskOf) return `${acct.risk} %`;
+  const daily = [...new Set(['gold', 'nas100', 'spx', 'eurusd'].filter((m) => acct.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => acct.riskOf(m, { tf: '1d' })))];
+  const intra = acct.riskOf('gold', { tf: '5m' });
+  const hasIntra = acct.strategies.some((x) => { const s = selectStrategies([x.split(':')[1]])[0]; return s && s.tf && s.tf !== '1d'; });
+  return `${daily.join(' / ')} % (journalières)${hasIntra ? ` · ${intra} % (intraday)` : ''}`;
+}
 const PAGE = 6;
 
 /* ------------------------------------------------------------------ */
@@ -151,7 +160,9 @@ async function render(cfg, store, view, marketId, args = []) {
     const lines = [
       `🏦 <b>Compte FTMO simulé ${fst.account.emoji} ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : fst.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} · challenge n° ${s.attempt}`,
       `Valeur <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · objectif ${money(fst.target)}` : ''}`,
-      `Stratégies suivies : ${fst.account.strategies.map((x) => `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' }[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')} · risque ${fst.account.riskOf ? [...new Set(['gold', 'nas100', 'spx', 'eurusd'].filter((m) => fst.account.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => fst.account.riskOf(m)))].join(' / ') : fst.account.risk} % par trade`,
+      `dont ${signedMoney(fst.unrealized)} latents sur ${Object.keys(s.open).length} position(s) ouverte(s) · réalisé ${signedMoney(fst.realized)} sur ${s.closed.length} trade(s) clôturé(s)${s.skipped ? ` · ${s.skipped} signal(s) opposé(s) ignoré(s)` : ''}`,
+      `Stratégies suivies : ${fst.account.strategies.map((x) => `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' }[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')}`,
+      `Risque par trade : ${riskText(cfg, fst.account)}`,
       ...(s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt}, étape ${h.phase} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
     ];
     return { png: C.ftmoImage(fst), caption: lines.join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'f', marketId, [[btn('🧾 Trades FTMO', `m:z:${KM[marketId]}:0`)]]) };

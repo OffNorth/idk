@@ -344,6 +344,12 @@ function ftmoImage(st) {
   cv.text('VALEUR DU COMPTE', 48, 112, { style: 'b', size: 13, color: THEME.muted });
   cv.text(money(st.equity), 46, 134, { style: 'b', size: 56, color: THEME.text });
   cv.text(pct(ret, 2), 48 + cv.measure(money(st.equity), 'b', 56) + 12, 158, { style: 'b', size: 28, color: tone(ret) });
+  // D'où vient la valeur : gains latents des positions ouvertes / gains des trades clôturés
+  if (st.unrealized !== undefined) {
+    const nOpen = Object.keys(s.open).length;
+    const sgn = (v) => `${v >= 0 ? '+' : '−'}${money(Math.abs(v))}`;
+    cv.text(`dont ${sgn(st.unrealized)} latents (${nOpen} position${nOpen > 1 ? 's' : ''} ouverte${nOpen > 1 ? 's' : ''}) · réalisé ${sgn(st.realized)}`, 48, 192, { size: 15, color: THEME.muted, maxWidth: 560 });
+  }
   if (st.target) {
     cv.text(`Objectif ${money(st.target)} (+${s.phase === 1 ? 10 : 5} %)`, 952, 112, { size: 15, color: THEME.muted, align: 'right' });
     gauge(cv, 48, 212, 904, st.progress, THEME.up);
@@ -373,9 +379,11 @@ function ftmoImage(st) {
   if (!rows.length) cv.text('Aucun trade pour l’instant : le compte attend les signaux des stratégies suivies.', 48, 456, { size: 15, color: THEME.muted });
   rows.forEach((r, i) => {
     const y = 450 + i * 26;
-    cv.text(`${r.side === 'long' ? '▲' : '▼'} ${r.name}`, 48, y, { size: 15, color: THEME.text, maxWidth: 520 });
-    cv.text(`${price(r.entry)}${r.exit ? ` → ${price(r.exit)}` : ''} · ${money(r.notional)} engagés${r.lev ? ` (levier ${r.lev.toFixed(1)})` : ''}`, 760, y, { size: 15, color: THEME.muted, align: 'right' });
-    if (r.pnl !== undefined) cv.text(`${r.pnl >= 0 ? '+' : '−'}${money(Math.abs(r.pnl))}`, 952, y, { style: 'b', size: 15, color: tone(r.pnl), align: 'right' });
+    cv.text(`${r.side === 'long' ? '▲ achat' : '▼ vente'} · ${r.name}`, 48, y, { size: 15, color: r.side === 'long' ? THEME.up : THEME.down, maxWidth: 470 });
+    cv.text(`${price(r.entry)}${r.exit ? ` → ${price(r.exit)}` : ''} · ${money(r.notional)}${r.lev ? ` · levier ${r.lev.toFixed(1).replace('.', ',')}` : ''}`, 820, y, { size: 15, color: THEME.muted, align: 'right' });
+    // Résultat : soldé pour un trade clôturé, latent (au cours actuel) pour une position ouverte
+    const v = r.pnl !== undefined ? r.pnl : st.openPnl ? st.openPnl(r) : null;
+    if (v !== null && v !== undefined) cv.text(`${v >= 0 ? '+' : '−'}${money(Math.abs(v))}`, 952, y, { style: 'b', size: 15, color: tone(v), align: 'right' });
   });
   footer(cv, 'Simulation d’un challenge FTMO · argent fictif · pas un conseil financier');
   return cv.png();
