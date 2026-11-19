@@ -139,3 +139,22 @@ test('challenge 1 étape : perte du jour 3 %, perte max suiveuse, réussite dire
     assert.ok(failed, 'échec sur la perte max suiveuse');
   }
 });
+
+test('compte FTMO : chaque trade est annoncé (ouverture puis clôture)', () => {
+  const { cfg, store } = setup({ ftmoCombined: false, ftmoRisk: 1 });
+  const { createFtmo } = require('../src/ftmoAccount');
+  const { ftmoTradeMessage } = require('../src/cycle');
+  const a = createFtmo({ cfg, store, account: 'gold' });
+  const pos = { side: 'long', entry: 2000, sl: 1980, initSl: 1980, entryT: T0 };
+  const o = a.onCycle([{ type: 'open', market, strategy, pos }], { gold: 2000 }, T0);
+  assert.deepStrictEqual(o.map((m) => m.type), ['open']);
+  assert.strictEqual(Math.round(o[0].p.risk), 1000); // risque 1 % de 100 000 $
+  const t1 = ftmoTradeMessage(o[0], a.status({ gold: 2000 }), { id: 'gold', name: 'Or', emoji: '🥇' });
+  assert.match(t1, /ACHAT/);
+  assert.match(t1, /\$1,000 \(1\.00 % du compte\)/);
+  const c = a.onCycle([{ type: 'close', market, strategy, trade: { ...pos, exit: 2020, exitT: T0 + 600, reason: 'objectif' } }], { gold: 2020 }, T0 + 600);
+  assert.deepStrictEqual(c.map((m) => m.type), ['trade']);
+  const t2 = ftmoTradeMessage(c[0], a.status({ gold: 2020 }), { id: 'gold', name: 'Or', emoji: '🥇' });
+  assert.match(t2, /🟢 clôture/);
+  assert.match(t2, /\+\$1,000/);
+});

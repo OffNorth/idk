@@ -51,14 +51,24 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
       const ftmo = require('./ftmoAccount').createFtmo({ cfg, store, account: acct.id });
       const name = `Compte FTMO simulé ${acct.emoji} ${acct.label}`;
       const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
+      const button = ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
       for (const msg of ftmo.onCycle(all, prices)) {
-        if (msg.type === 'trade' || !publish) continue;
+        // Chaque trade du compte FTMO (ouverture et clôture) : console + message dans le groupe (FTMO_TRADE_MESSAGES)
+        if (msg.type === 'open' || msg.type === 'trade') {
+          const text = ftmoTradeMessage(msg, ftmo.status(prices), marketById(cfg, msg.p.market));
+          console.log(`[ftmo] ${msg.type === 'open' ? 'ouverture' : 'clôture'} ${msg.p.market}:${msg.p.sid} ${msg.p.side}${msg.type === 'trade' ? ` ${usd(msg.p.pnl)}` : ''}`);
+          if (publish && cfg.ftmoTradeMessages !== false) await safeSend(channel, text, button);
+          continue;
+        }
+        if (!publish) continue;
         const { ftmoImage } = require('./cards');
         const st = ftmo.status(prices);
+        const oneStep = st.program?.steps === 1;
         const text = msg.type === 'pass'
-          ? (msg.phase === 1 ? `🏦✅ <b>${name} : étape 1 réussie (+10 %)</b>\nPassage à l’étape 2 (vérification, objectif +5 %).` : `🏦🏆 <b>${name} : étape 2 réussie, compte financé !</b>\nOn suit maintenant les gains mensuels (partage 80 %).`)
+          ? (oneStep ? `🏦🏆 <b>${name} : challenge 1 étape réussi (+10 %), compte financé !</b>\nOn suit maintenant les gains mensuels (partage 80 %).`
+            : msg.phase === 1 ? `🏦✅ <b>${name} : étape 1 réussie (+10 %)</b>\nPassage à l’étape 2 (vérification, objectif +5 %).` : `🏦🏆 <b>${name} : étape 2 réussie, compte financé !</b>\nOn suit maintenant les gains mensuels (partage 80 %).`)
           : `🏦❌ <b>${name} : challenge n° ${msg.s.attempt} échoué</b>\n${msg.why}. Un nouveau challenge démarre au prochain jour de trading.`;
-        await channel.sendPhoto(ftmoImage(st), text, ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {}).catch((err) => console.error(`[ftmo] ${explainTelegramError(err)}`));
+        await channel.sendPhoto(ftmoImage(st), text, button).catch((err) => console.error(`[ftmo] ${explainTelegramError(err)}`));
       }
     } catch (err) {
       console.error('[ftmo]', err.message);
@@ -112,6 +122,30 @@ const SCALP_TF = new Set(['1m', '5m', '15m']);
 const isScalp = (s) => SCALP_TF.has(s.tf || '1h');
 const inDigest = (cfg, s) => cfg.scalpDigest && (cfg.digestAll || isScalp(s));
 const usd = (v) => `${v >= 0 ? '+' : '−'}$${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+const dollars = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
+
+/** Message d'un trade du compte FTMO : ouverture (`open`) ou clôture (`trade`). */
+function ftmoTradeMessage(msg, st, market) {
+  const p = msg.p;
+  const mk = market ? `${market.emoji} ${market.id === 'nas100' ? 'Nasdaq' : market.name}` : p.market;
+  const name = `<b>${esc(p.name || p.sid)}</b> <code>${esc(p.sid)}</code>`;
+  if (msg.type === 'open') {
+    const pct = st.s.balance ? ((p.risk || 0) / st.s.balance) * 100 : 0;
+    return [
+      `🏦 <b>FTMO</b> · ${p.side === 'long' ? '📈 <b>ACHAT</b>' : '📉 <b>VENTE</b>'} ${mk}`,
+      name,
+      `Entrée $${px(p.entry)} · stop $${px(p.sl)} · ${dollars(p.notional)} engagés (levier ${p.lev.toFixed(1)})`,
+      `Risque ${dollars(p.risk || 0)} (${pct.toFixed(2)} % du compte) · <i>compte simulé</i>`,
+    ].join('\n');
+  }
+  const goal = st.target ? ` · objectif ${dollars(st.target)} (${Math.round(Math.min(1, Math.max(0, st.progress)) * 100)} %)` : '';
+  return [
+    `🏦 <b>FTMO</b> · ${p.pnl >= 0 ? '🟢' : '🔴'} clôture ${mk}`,
+    name,
+    `$${px(p.entry)} → $${px(p.exit)} · <b>${usd(p.pnl)}</b>`,
+    `Compte ${dollars(st.equity)} (${((st.equity / st.s.capital - 1) * 100).toFixed(2)} %)${goal} · <i>compte simulé</i>`,
+  ].join('\n');
+}
 
 /** Résumé des trades (clôtures et nouvelles positions) depuis `sinceMs`, par marché et par stratégie (+ compte FTMO simulé). */
 function scalpDigest(cfg, store, markets, sinceMs) {
@@ -167,4 +201,4 @@ function portfolio(cfg, store, marketId = 'nas100') {
   return portfolioMessage(new MarketTrader(marketById(cfg, marketId), store, cfg).stats(), cfg);
 }
 
-module.exports = { runCycle, portfolio, scalpDigest, isScalp, inDigest };
+module.exports = { runCycle, portfolio, scalpDigest, isScalp, inDigest, ftmoTradeMessage };

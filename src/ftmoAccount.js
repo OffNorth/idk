@@ -123,8 +123,10 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         if (!(mul > 0)) continue;
         const cap = (P.levCap && P.levCap[ev.market.id]) || cfg.ftmoLeverage; // levier max (par marché sur le compte Swing)
         const notional = Math.min((s.balance * A.riskOf(ev.market.id, ev.strategy) * mul) / stopPct, s.balance * cap);
-        s.open[key(ev.market.id, ev.strategy.id, p.entryT)] = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, notional, entryT: p.entryT, lev: notional / s.balance, mul };
+        const pos = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, notional, entryT: p.entryT, lev: notional / s.balance, mul, risk: (notional * stopPct) / 100 };
+        s.open[key(ev.market.id, ev.strategy.id, p.entryT)] = pos;
         if (!s.days.includes(s.day)) s.days.push(s.day);
+        out.push({ type: 'open', s, p: pos });
       } else if (ev.type === 'close') {
         const k = key(ev.market.id, ev.strategy.id, ev.trade.entryT);
         const p = s.open[k];

@@ -403,6 +403,10 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > or retenu (RSI 4 < 15 en 15 min, quasi nul sur 2020–2026) n'est pas repris. Le cours de l'or du bot vient maintenant
 > du future GC=F (`GOLD_FEED=future`) et non plus de PAXG.
 >
+> **Annonce des trades FTMO (`FTMO_TRADE_MESSAGES=1`, par défaut)** : chaque ouverture du compte FTMO simulé est
+> publiée dans le groupe (sens, marché, stratégie, entrée, stop, montant engagé, levier, risque en $ et en %), puis chaque
+> clôture (gain ou perte en $, solde du compte, progression vers l'objectif), avec le bouton « 🏦 Voir le compte ».
+
 > **Stratégies intraday sur le compte FTMO (≈ 5 trades par jour demandés, `npm run ftmo-intraday`)** : or `g_orb30`,
 > `g_orb60`, `g_mom8`, `g_gap` (momentum sur l'or réel) et Nasdaq `n_noise`, `n_orb5s`, `n_mom10`, `n_orb15`, à 0,5 % par
 > trade (`FTMO_INTRADAY_RISK_PCT`), les journalières restant à 1,5 %. Ajoutées à la demande, **même si la réussite baisse** :
