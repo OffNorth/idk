@@ -403,6 +403,19 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > or retenu (RSI 4 < 15 en 15 min, quasi nul sur 2020–2026) n'est pas repris. Le cours de l'or du bot vient maintenant
 > du future GC=F (`GOLD_FEED=future`) et non plus de PAXG.
 >
+> **Stratégies intraday sur le compte FTMO (≈ 5 trades par jour demandés, `npm run ftmo-intraday`)** : or `g_orb30`,
+> `g_orb60`, `g_mom8`, `g_gap` (momentum sur l'or réel) et Nasdaq `n_noise`, `n_orb5s`, `n_mom10`, `n_orb15`, à 0,5 % par
+> trade (`FTMO_INTRADAY_RISK_PCT`), les journalières restant à 1,5 %. Ajoutées à la demande, **même si la réussite baisse** :
+>
+> | Période | Journalières seules | + intraday |
+> |---|---|---|
+> | nov. 2024 → nov. 2026 (tout) | 0,5 trade/j · < 6 mois 22 % · < 1 an 70 % (216 j) | **6,7 trades/j** · 40 % · 40 % (34 j) |
+> | 2009 → 2019 (sans Nasdaq intraday) | 0,5 trade/j · 41 % · 58 % (136 j) | 3,6 trades/j · 25 % · 26 % (53 j) |
+> | 2020 → 2026 (sans Nasdaq intraday) | 0,5 trade/j · 33 % · 67 % (176 j) | 3,7 trades/j · 30 % · 30 % (48 j) |
+>
+> Avec l'intraday, un challenge se joue en 1 à 2 mois (réussite ou échec rapides) au lieu de 4 à 7 : la réussite en
+> moins de 6 mois tient ou monte sur 2024–2026, mais la réussite finale (< 1 an) baisse nettement.
+
 > **S&P 500 (`npm run ftmo-spx`, 4e marché du bot : 🗽, `/sp500`, Yahoo ^GSPC)** : ajouter d'un coup S&P 500, Dow, DAX et
 > argent fait BAISSER la réussite (vérification 32 % / 49 % → 16 % / 26 %) : les indices actions perdent les mêmes jours.
 > Testées une par une sur le compte actuel (0,25 à 1,5 %), deux stratégies S&P 500 l'améliorent un peu et sont ajoutées
