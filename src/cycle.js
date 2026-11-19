@@ -35,7 +35,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
           `[${market.id}] ${ev.strategy.id} : ${ev.type === 'open' ? `ouverture ${ev.pos.side} à ${ev.pos.entry.toFixed(2)}` : `clôture ${ev.trade.pnlPct.toFixed(2)}% (${ev.trade.reason})`}`,
         );
         // Un message par trade (TRADE_MESSAGES=1) ; sinon trades regroupés dans le résumé du jour (DIGEST_ALL / SCALP_DIGEST)
-        if (publish && (cfg.tradeMessages || !inDigest(cfg, ev.strategy))) await safeSend(channel, goldEventMessage(ev), ui ? { reply_markup: ui.tradeKeyboard(ev) } : {});
+        if (publish && !cfg.publishFtmoOnly && (cfg.tradeMessages || !inDigest(cfg, ev.strategy))) await safeSend(channel, goldEventMessage(ev), ui ? { reply_markup: ui.tradeKeyboard(ev) } : {});
         all.push(ev);
       }
     } catch (err) {
@@ -76,7 +76,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
   }
 
   // Résumé du jour des trades de scalp (une fois par jour, après la clôture de New York)
-  if (publish && cfg.scalpDigest && cfg.channelId) {
+  if (publish && !cfg.publishFtmoOnly && cfg.scalpDigest && cfg.channelId) {
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
     if (now.getUTCHours() >= cfg.digestHourUtc && store.getMeta('lastDigestDay') !== today) {
@@ -91,13 +91,28 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
     }
   }
 
-  if (publish && channel.summaryDue()) {
+  if (publish && !cfg.publishFtmoOnly && channel.summaryDue()) {
     for (const market of markets) await safeSend(channel, portfolio(cfg, store, market.id), ui ? { reply_markup: ui.summaryKeyboard(market.id) } : {});
     channel.markSummary();
   }
 
   // Graphique de l'évolution du portefeuille (une fois par jour par défaut), un par marché
-  if (publish && markets.length && channel.chartDue()) {
+  if (publish && markets.length && channel.chartDue() && cfg.publishFtmoOnly && cfg.ftmoEnabled) {
+    // Mode « FTMO seul » : l'image du jour est celle du compte FTMO (panneau interactif si les boutons sont actifs)
+    try {
+      if (ui) {
+        const outF = await ui.render(cfg, store, 'f', 'gold');
+        await channel.sendPhoto(outF.png, outF.caption, { reply_markup: outF.keyboard });
+      } else {
+        const ftmo = require('./ftmoAccount').createFtmo({ cfg, store, account: 'gold' });
+        const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
+        await channel.sendPhoto(require('./cards').ftmoImage(ftmo.status(prices)), '🏦 <b>Compte FTMO simulé</b> · état du jour');
+      }
+    } catch (err) {
+      console.error(`[canal] image FTMO impossible : ${explainTelegramError(err)}`);
+    }
+    channel.markChart();
+  } else if (publish && markets.length && channel.chartDue()) {
     const { liveChart } = require('./portfolio');
     for (const market of markets) {
       try {

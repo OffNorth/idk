@@ -403,6 +403,12 @@ Restent actives : Nasdaq `golden`, `mom12_1`, `trendmix`, `mom12`, `sma200`, `lo
 > or retenu (RSI 4 < 15 en 15 min, quasi nul sur 2020–2026) n'est pas repris. Le cours de l'or du bot vient maintenant
 > du future GC=F (`GOLD_FEED=future`) et non plus de PAXG.
 >
+> **Le groupe ne voit que le compte FTMO (`PUBLISH_FTMO_ONLY=1`, par défaut)** : seuls les trades du compte FTMO
+> (ouverture, clôture), sa réussite / son échec et son image du jour sont publiés. Les trades paper de chaque stratégie
+> et de chaque marché sont toujours calculés et gardés (le compte FTMO les suit) et restent visibles à la demande dans
+> le panneau (`/menu`, qui s'ouvre sur le compte FTMO), `/historique`, `/nasdaq`, `/gold`… mais ne sont plus publiés
+> (ni messages par trade, ni résumé du jour, ni bilans, ni graphiques paper). `PUBLISH_FTMO_ONLY=0` pour tout publier.
+
 > **Garde-fous et `/verif`** : à chaque passage, le compte FTMO clôture toute position dont le cours a franchi le stop
 > (au cours actuel) et toute position dont la stratégie n'est plus en position en paper trading (au prix de sortie du
 > trade paper : « réconciliation ») ; en paper, le stop est vérifié avec le cours actuel quand les bougies 5 min manquent.

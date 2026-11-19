@@ -121,6 +121,9 @@ module.exports = {
   chartHours: num('CHART_HOURS', 24),
 
   // Trades de scalp (bougies 1 / 5 / 15 min) : 1 = un seul résumé par jour à DIGEST_HOUR_UTC, 0 = un message par trade
+  // Le groupe ne voit QUE le compte FTMO (trades, réussite / échec, image du jour) ; les trades paper de chaque
+  // stratégie sont toujours calculés et gardés (panneau, /historique, /verif) mais plus publiés. 0 = tout publier.
+  publishFtmoOnly: num('PUBLISH_FTMO_ONLY', 1) === 1,
   tradeMessages: num('TRADE_MESSAGES', 1) === 1, // un message par trade (ouverture et clôture), en plus du résumé du jour
   scalpDigest: num('SCALP_DIGEST', 1) === 1,
   digestHourUtc: Math.min(23, Math.max(0, num('DIGEST_HOUR_UTC', 21))),

@@ -39,3 +39,31 @@ test('résumé du jour : trades regroupés par stratégie (scalp seul, puis tout
   assert.match(all, /4 trades clôturés/);
   assert.match(all, /1 nouvelle position/);
 });
+
+test('mode FTMO seul : le groupe ne reçoit que les messages du compte FTMO', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pub-'));
+  const cfg = { ...require('../src/config'), dataDir: dir, publishFtmoOnly: true, ftmoEnabled: true, ftmoCombined: false, ftmoStrategies: ['gold:g_orb30'], ftmoRisk: 0.5, ftmoDayStop: 0, nasEnabled: false, spxEnabled: false, eurusdEnabled: false };
+  const { Store } = require('../src/store');
+  const store = new Store(dir);
+  const { MarketTrader } = require('../src/markets');
+  const orig = MarketTrader.prototype.run;
+  const now = Math.floor(Date.now() / 1000);
+  // Faux passage : une ouverture d'une stratégie suivie par le compte FTMO, une autre qui ne l'est pas
+  MarketTrader.prototype.run = async function run() {
+    const pos = (side, entry, sl) => ({ side, entry, sl, initSl: sl, size: 1000, entryT: now });
+    return [
+      { type: 'open', market: this.market, strategy: { id: 'g_orb30', name: 'ORB 30', tf: '5m' }, pos: pos('short', 3733, 3742) },
+      { type: 'open', market: this.market, strategy: { id: 'down3', name: 'Down 3', tf: '1d' }, pos: pos('long', 3733, 3700) },
+    ];
+  };
+  const sent = [];
+  const channel = { sendText: async (t) => sent.push(t), sendPhoto: async (p, c) => sent.push(c), summaryDue: () => true, chartDue: () => false, markSummary: () => {}, markChart: () => {} };
+  try {
+    await require('../src/cycle').runCycle({ cfg, store, channel, publish: true });
+  } finally {
+    MarketTrader.prototype.run = orig;
+  }
+  assert.strictEqual(sent.length, 1, sent.join('\n---\n'));
+  assert.match(sent[0], /FTMO/);
+  assert.match(sent[0], /g_orb30/);
+});

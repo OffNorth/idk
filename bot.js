@@ -120,7 +120,8 @@ async function replyImage(ctx, build, waitText) {
 bot.command(['menu', 'panneau'], async (ctx) => {
   try {
     await sendPanel(ctx.api, ctx.chat.id, cfg, store, {
-      marketId: marketArg(ctx.match),
+      // Mode « FTMO seul » : le panneau s'ouvre sur le compte FTMO (les autres vues restent dans les boutons)
+      ...(cfg.publishFtmoOnly && cfg.ftmoEnabled && !ctx.match.trim() ? { view: 'f', marketId: 'gold' } : { marketId: marketArg(ctx.match) }),
       extra: ctx.message?.message_thread_id ? { message_thread_id: ctx.message.message_thread_id } : {},
     });
   } catch (err) {
