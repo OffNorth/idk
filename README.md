@@ -572,6 +572,24 @@ sur 10 échouent quand même, surtout sur la perte du jour (−5 %) quand plusie
 | Tendances journalières (croix dorée, tendance 4 horizons, momentum 12 mois, moyenne 200 j) | 0 % | rentables, mais avec 1 % de risque sur un stop large il faut des années pour faire +10 % |
 | 6 nouvelles stratégies « style FTMO » : repli 1 h dans la tendance, cassure de la veille, cassure du range de nuit, jour intérieur, NR7, cassure de la semaine passée | 0 % | espérance nulle ou négative aux frais FTMO |
 
+### FTMO ou Lucid Trading ? (`npm run lucid-compare`)
+
+Les 25 stratégies du compte FTMO rejouées sous les règles de chaque société (sources secondaires 2026, à vérifier) :
+LucidFlex = micro-futures CME en contrats entiers, pas de perte du jour, **perte max suiveuse en fin de journée de
+2 000 $ (50K) / 3 000 $ (100K)**, objectif +6 %. Phase financée 12 mois au plus (FTMO 80 %, prix remboursé ; Lucid 90 %,
+versement par cycle de 5 jours gagnants). Réglage choisi sur 2009–2019, vérifié ensuite :
+
+| Société | Réglage | Réussite < 1 an 2009–19 / 2020–26 / nov. 24–26 | Gain net moyen par challenge 2020–26 |
+|---|---|---|---|
+| **FTMO 1 étape 100K** | risque × 0,5 | 44 % / **59 %** / 52 % | **+3 062 $** |
+| FTMO 2 étapes 100K | risque × 0,75 | 41 % / 33 % / 38 % | +481 $ |
+| LucidFlex 50K | risque × 1 | 10 % / 11 % / 17 % | −82 $ |
+| LucidFlex 100K | risque × 0,75 | 8 % / 11 % / 19 % | −104 $ |
+
+→ **FTMO 1 étape** : l'absence de perte du jour chez Lucid ne compense pas une perte max 3 à 5 fois plus serrée
+(presque tous les échecs Lucid viennent de la perte max). À risque × 0,5 (0,75 % journalières, 0,25 % intraday), le
+challenge FTMO réussit plus souvent qu'au réglage actuel × 1 (59 % contre 30 % en 2020–2026).
+
 ### 2e recherche : retour à la moyenne dans la tendance (`npm run ftmo-mr`, `src/meanrev.js`)
 
 La seule stratégie qui passait (`x_rsi2`) est un retour à la moyenne court dans la tendance : 5 variantes testées en 5 min,

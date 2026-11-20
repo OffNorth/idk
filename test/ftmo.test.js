@@ -203,3 +203,41 @@ test('garde-fous FTMO : stop franchi, position orpheline réconciliée, /verif',
   assert.ok(tr && tr.p.exit === 3730 && /réconciliation/.test(tr.p.reason), JSON.stringify(out2.map((m) => m.p?.reason)));
   assert.strictEqual(a.load().closed.length, n0 + 1);
 });
+
+test('simulateur Lucid : perte max suiveuse en fin de journée, bloquée, pas de perte du jour, contrats entiers', () => {
+  const { runPhase } = require('../src/ftmo');
+  // Trade d'une journée : stop à 1 % ; pnlPct = résultat en % du montant, worstPct = pire moment
+  const tr = (k, pnlPct, worstPct = Math.min(0, pnlPct), extra = {}) => ({ entryT: T0 + k * DAY, exitT: T0 + k * DAY + 3600, entry: 100, initSl: 99, pnlPct, worstPct, ...extra });
+  const base = { capital: 50_000, riskPct: 1, target: 100, minDays: 1, dailyPct: Infinity, maxLossUsd: 2000, eodTrailing: true, lockAt: 100, leverage: 1000 };
+  // Pas de perte du jour : −3 % en un jour (3 trades de −1 R le même jour) ne fait pas échouer, la perte max (2 000 $) oui
+  const sameDay = (j) => ({ entryT: T0 + j * 7200, exitT: T0 + j * 7200 + 3600, entry: 100, initSl: 99, pnlPct: -1, worstPct: -1 });
+  assert.strictEqual(runPhase([sameDay(0)], base).outcome, 'open');
+  assert.strictEqual(runPhase([0, 1, 2, 3, 4].map(sameDay), base).outcome, 'maxloss');
+  // Le seuil suit le plus haut solde de CLÔTURE : +3 R (+1 500 $) le jour 0 puis −1 R × 2 le jour 1 → 51 500 − 1 000 > 49 500 ✔,
+  // un 3e et un 4e trade perdant passent sous 49 500 + … ; avec le blocage à +100 $ le seuil ne dépasse pas 50 100
+  const up = tr(0, 3, 0);
+  const res = runPhase([up, tr(1, -1), tr(2, -1), tr(3, -1)], base);
+  assert.strictEqual(res.outcome, 'open'); // 51 500 → 50 000 environ, seuil = min(51 500 − 2 000, 50 100) = 49 500
+  // Gain réalisé dans la journée, chute dans la même journée : le seuil n'a pas encore monté
+  const intra = [{ entryT: T0, exitT: T0 + 600, entry: 100, initSl: 99, pnlPct: 4, worstPct: 0 }, { entryT: T0 + 1200, exitT: T0 + 1800, entry: 100, initSl: 99, pnlPct: -4, worstPct: -4 }];
+  assert.strictEqual(runPhase(intra, { ...base, lockAt: null }).outcome, 'open'); // 52 000 → 50 000 : au-dessus de 48 000
+  assert.strictEqual(runPhase([intra[0], { ...intra[1], entryT: T0 + DAY, exitT: T0 + DAY + 600 }], { ...base, lockAt: null }).outcome, 'maxloss'); // le lendemain, seuil = 50 000
+  // Contrats entiers : 500 $ de risque à 1 % de stop = 50 000 $ ; contrat de 30 000 $ → 1 contrat ; contrat de 60 000 $ → ignoré
+  const one = runPhase([tr(0, 2, 0, { contractUsd: 30_000, contractFee: 0 })], { ...base, contracts: true });
+  assert.ok(Math.abs(one.balance - 50_600) < 1e-6);
+  const none = runPhase([tr(0, 2, 0, { contractUsd: 60_000, contractFee: 0 })], { ...base, contracts: true });
+  assert.strictEqual(none.balance, 50_000);
+  // Plafond de contrats et frais par contrat
+  const capd = runPhase([tr(0, 2, 0, { contractUsd: 1000, contractFee: 2 })], { ...base, contracts: true, maxContracts: 10 });
+  assert.ok(Math.abs(capd.balance - (50_000 + 10 * 1000 * 0.02 - 20)) < 1e-6);
+});
+
+test('simulateur : phase financée avec versements (FTMO tous les 14 jours, Lucid par cycle de jours gagnants)', () => {
+  const { fundedRun } = require('../src/ftmo');
+  const wins = Array.from({ length: 30 }, (_, k) => ({ entryT: T0 + k * DAY, exitT: T0 + k * DAY + 3600, entry: 100, initSl: 99, pnlPct: 0.5, worstPct: 0 }));
+  const ftmo = fundedRun(wins, { capital: 100_000, riskPct: 1, minDays: 1, dailyPct: 3, maxPct: 10, trailingMax: true, funded: { rule: 'ftmo', every: 14, days: 40 } }, T0 - 1);
+  assert.ok(ftmo.paid > 0 && !ftmo.lost);
+  const lu = fundedRun(wins, { capital: 50_000, riskPct: 1, minDays: 1, dailyPct: Infinity, maxLossUsd: 2000, eodTrailing: true, lockAt: 100, funded: { rule: 'lucid', cycleDays: 5, minDay: 150, share: 0.5, cap: 2000, days: 40 } }, T0 - 1);
+  // 250 $ par jour gagnant → versement tous les 5 jours ≈ la moitié du gain accumulé
+  assert.ok(lu.paid > 0 && !lu.lost);
+});
