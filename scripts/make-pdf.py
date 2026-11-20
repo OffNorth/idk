@@ -148,11 +148,11 @@ for i, fam in enumerate(families, start=1):
 
 # Comptes FTMO simulés (réglages lus dans src/config.js)
 import subprocess
-fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({g:c.ftmoStrategies,gr:c.ftmoRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop,cb:c.ftmoCombined,cnr:c.ftmoComboNasRisk,prog:c.ftmoProgram}))"],
+fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({g:c.ftmoStrategies,gr:c.ftmoRisk,ir:c.ftmoIntradayRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop,cb:c.ftmoCombined,cnr:c.ftmoComboNasRisk,prog:c.ftmoProgram,sz:c.ftmoSizing,ai:c.ftmoAi,lu:c.lucidEnabled,lc:c.lucidCapital}))"],
                                cwd=ROOT, capture_output=True, text=True, check=True).stdout)
 ids = lambda l: ', '.join(x.split(':', 1)[-1] for x in l)
 story.append(PageBreak())
-story.append(Paragraph('Comptes FTMO simulés', h2))
+story.append(Paragraph('Comptes FTMO et Lucid simulés', h2))
 story.append(Paragraph(
     ('<b>Formule simulée : challenge 1 étape</b> (lancé par FTMO en février 2026 ; règles d’après des sources secondaires, à vérifier) : '
      '<b>+10 %</b> en une seule étape, au moins 4 jours de trading ; échec si la perte du jour atteint <b>3 %</b> ou si le compte perd '
@@ -171,10 +171,10 @@ ft = [[Paragraph(x, head) for x in ('Compte', 'Stratégies suivies', 'Risque / t
 if fc['cb']:
     # Compte unique or + Nasdaq (npm run ftmo-combo)
     ft = [ft[0], [Paragraph('<b>Compte unique Or + Nasdaq</b> (celui du bot)', cell), Paragraph(esc(ids(fc['g'])) + ' · ' + esc(ids(fc['n'])), cell),
-                  Paragraph(f'{fc["gr"]:g} % par trade', cell),
-                  Paragraph(('Or au comptant réel (2009–2026), 1 étape : choix 2009–2019 : 44 % en moins de 6 mois, 64 % en moins d’un an ; '
-                             'vérification 2020–2026 : <b>32 %</b> / <b>49 %</b> (139 j en médiane). Les scalps or choisis sur PAXG perdaient sur l’or réel : '
-                             'retirés au profit de stratégies journalières (or, Nasdaq, EUR/USD).')
+                  Paragraph(f'{fc["gr"]:g} % (journalières) · {fc["ir"]:g} % (intraday)', cell),
+                  Paragraph(('Or réel (HistData 2009–2026), Nasdaq, S&P 500, EUR/USD ; ≈ 6 trades par jour avec les stratégies intraday. '
+                             'Réussite en moins d’un an avec le risque qui baisse à l’approche de l’objectif : <b>37 %</b> (2009–2019), '
+                             '<b>46 %</b> (2020–2026), <b>44 %</b> (nov. 2024 → nov. 2026, Nasdaq intraday compris).')
                             if fc['prog'] == '1step' else
                             ('sept. 2020 → oct. 2024 : <b>97 % en moins de 6 mois</b> (46 j en médiane) ; 2 dernières années (vérification) : <b>46 %</b> (34 j). '
                              'Les scalps or rapportent moins depuis 2024.'), cell)]]
@@ -185,10 +185,59 @@ story += [t, Spacer(1, 5)] + ([] if fc['cb'] else [Paragraph(
     'Nasdaq : les stratégies journalières tradent trop rarement pour faire +10 % en un an à faible risque (0 % de réussite à 0,5 ou 1 %) ; à 3 %, environ '
     '6 challenges sur 10 échouent encore, surtout sur la perte du jour quand plusieurs positions perdent ensemble. Choix sur 1985–2009, vérification sur 2010–2026.', body)])
 story += [Spacer(1, 4), Paragraph(
-    '<b>Levier.</b> Chaque trade risque une part fixe du compte (taille = risque ÷ distance au stop, levier plafonné à 1:30) ; '
-    'en plus, le risque est divisé par 2 dès que 2 positions sont déjà ouvertes. Sur 12 règles de levier dynamique testées '
-    '(volatilité, forme des stratégies, état du compte), c’est la seule qui ne coûte rien : elle supprime les échecs sur la '
-    'perte du jour, à réussite égale (mesuré avec les anciens scalps or sur PAXG). Aucune ne fait réussir plus souvent.', body)]
+    '<b>Levier et risque qui baisse.</b> Chaque trade risque une part fixe du compte (taille = risque ÷ distance au stop, levier plafonné à 1:30), '
+    'divisée par 2 dès que 2 positions sont déjà ouvertes. '
+    + ('En plus, <b>le risque baisse à l’approche de l’objectif</b> : × (1 − 0,75 × avance vers les +10 %), au moins × 0,4 '
+       '(× 0,625 à +5 %, × 0,4 à partir de +8 %), pour protéger le gain acquis contre la perte du jour de 3 %. '
+       if str(fc['sz']).startswith('objectif') else ''), body)]
+
+def small_table(rows, widths):
+    t = Table([[Paragraph(x, head) for x in rows[0]]] + [[Paragraph(x, cell) for x in r] for r in rows[1:]], colWidths=widths, repeatRows=1)
+    t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), INK), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LINEBELOW', (0, 1), (-1, -1), 0.4, LINE),
+                           ('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]))
+    return t
+
+story += [Spacer(1, 3), small_table([
+    ('Challenge 1 étape, réussite en moins d’un an', '2009–2019', '2020–2026', 'nov. 2024 → nov. 2026'),
+    ('Risque fixe (avant)', '26 % (53 j)', '30 % (48 j)', '40 % (34 j)'),
+    ('<b>Risque qui baisse à l’approche de l’objectif</b>', '<b>37 %</b> (94 j)', '<b>46 %</b> (113 j)', '<b>44 %</b> (47 j)'),
+    ('Risque × 2 pour aller plus vite', '4 %', '11 %', '19 %'),
+], [72 * mm, 34 * mm, 34 * mm, 40 * mm]), Spacer(1, 2), Paragraph(
+    'Viser « 2 % par jour » n’est pas réaliste : le compte gagne en moyenne +0,1 à +0,25 % par séance ; une journée à +2,7 % arrive environ 1 séance sur 6, '
+    'mais les journées à −2 % sont presque aussi fréquentes. Doubler le risque fait échouer presque tous les challenges sur la perte du jour.', body)]
+
+story.append(Paragraph('IA validatrice des trades', h2))
+story.append(Paragraph(
+    'Pour chaque signal du compte, un modèle entraîné sur ≈ 13 000 trades passés (régression logistique) estime la chance que le trade soit gagnant, '
+    'avec ce qui est connu à l’entrée : forme récente de la stratégie et du marché, distance du stop, heure, jour, tendance, élan et volatilité du marché, VIX. '
+    + ('<b>En direct, les signaux sous le seuil (≈ 20 % des signaux) ne sont pas pris</b> (« signal refusé par l’IA ») ; chaque refus est gardé et '
+       'son trade paper dit ce qu’il aurait fait (bilan dans /ftmo).' if fc['ai'] == 'block' else 'En direct, l’IA donne seulement son avis sur chaque trade.'), body))
+story += [Spacer(1, 3), small_table([
+    ('Test (modèle entraîné sans voir la période)', 'Sans IA', 'IA, 20 % refusés'),
+    ('2020–2026 (entraîné sur 2009–2019)', '46 %', '<b>55 %</b>'),
+    ('nov. 2024 → nov. 2026', '44 %', '<b>88 %</b>'),
+    ('2017–2019 (entraîné sur 2009–2016)', '50 %', '42 % ✘'),
+    ('Année par année, 2012–2026', '—', 'garde les meilleurs trades <b>10 années sur 15</b>'),
+], [80 * mm, 30 * mm, 70 * mm]), Spacer(1, 2), Paragraph(
+    'Résultat encourageant mais pas garanti : l’IA s’est trompée plusieurs années de suite (2017–2019). Le bilan des signaux refusés en direct dira si elle aide.', body)]
+
+lucid_block = [Paragraph('FTMO ou Lucid Trading ?', h2), Paragraph(
+    'Les mêmes stratégies rejouées sous les règles de chaque société (sources secondaires 2026, à vérifier). <b>LucidFlex</b> : micro-futures CME en '
+    'contrats entiers, objectif +6 %, <b>pas de perte du jour</b>, mais perte max de <b>2 000 $ (50K) / 3 000 $ (100K)</b> sous le plus haut solde de '
+    'clôture, bloquée à capital + 100 $. Phase financée 12 mois au plus : FTMO 80 % des gains (prix remboursé), Lucid 90 %. Réglage choisi sur 2009–2019.', body)]
+lucid_block += [Spacer(1, 3), small_table([
+    ('Société', 'Réussite < 1 an : 2009–19 / 2020–26 / nov. 24–26', 'Gain net moyen par challenge (2020–26)'),
+    ('<b>FTMO 1 étape 100K</b> (risque × 0,5)', '44 % / <b>59 %</b> / 52 %', '<b>+3 062 $</b>'),
+    ('FTMO 2 étapes 100K', '41 % / 33 % / 38 %', '+481 $'),
+    ('LucidFlex 50K', '10 % / 11 % / 17 %', '−82 $'),
+    ('LucidFlex 100K', '8 % / 11 % / 19 %', '−104 $'),
+], [60 * mm, 70 * mm, 50 * mm]), Spacer(1, 2), Paragraph(
+    'FTMO l’emporte : l’absence de perte du jour chez Lucid ne compense pas une perte max 3 à 5 fois plus serrée. '
+    + (f'<b>En direct</b>, un compte <b>LucidFlex {fc["lc"] // 1000}K</b> simulé (/lucid) suit quand même les mêmes signaux, en micro-contrats entiers '
+       '(MGC, MNQ, MES, M6E), pour comparer les deux sociétés au jour le jour. ' if fc['lu'] else '')
+    + 'Plusieurs challenges identiques en même temps multiplient les gains comme les pertes : les comptes prennent les mêmes trades et réussissent '
+      'ou échouent ensemble.', body)]
+story.append(KeepTogether(lucid_block))
 
 story.append(PageBreak())
 story.append(Paragraph('Historiques simulés des stratégies actives', h2))
