@@ -99,6 +99,30 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     }
   }
 
+  const refusedFile = A.file.replace(/\.json$/, '-ia-refuses.json');
+
+  /**
+   * Bilan des signaux refusés par l'IA : ce qu'ils auraient fait sur le compte FTMO (taille qu'ils auraient eue ×
+   * résultat du trade paper correspondant ; gain latent au cours actuel s'ils sont encore ouverts).
+   */
+  function refusedReport(prices = {}) {
+    const list = store.loadJson(refusedFile, []);
+    const papers = {};
+    const rows = list.map((r) => {
+      papers[r.market] ??= store.loadJson(`${r.market}.json`, null);
+      const acc = papers[r.market]?.accounts?.[r.sid];
+      const done = (acc?.closed || []).find((c) => Math.abs(c.entryT - r.entryT) < 2);
+      if (done) return { ...r, state: 'closed', pnl: (r.notional * done.pnlPct) / 100, exit: done.exit, exitT: done.exitT };
+      const px = prices[r.market] ?? papers[r.market]?.lastPrice;
+      if (acc?.position && Math.abs(acc.position.entryT - r.entryT) < 2 && px) return { ...r, state: 'open', pnl: r.notional * ((r.side === 'long' ? 1 : -1) * (px / r.entry - 1) - fee(r.market) / 100) };
+      return { ...r, state: 'unknown', pnl: 0 };
+    });
+    const closed = rows.filter((x) => x.state === 'closed');
+    const open = rows.filter((x) => x.state === 'open');
+    const sum = (l) => l.reduce((a, x) => a + x.pnl, 0);
+    return { rows, n: rows.length, closed: closed.length, closedPnl: sum(closed), wins: closed.filter((x) => x.pnl > 0).length, open: open.length, openPnl: sum(open) };
+  }
+
   /** Avis de l'IA validatrice sur un signal (historique et contexte du paper trading du marché), ou null. */
   function aiOpinion(ev, p) {
     try {
@@ -177,17 +201,22 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         }
         // IA validatrice (src/aiFilter.js, FTMO_AI) : avis sur le signal ; en mode « block », refus sous le seuil
         const ai = cfg.ftmoAi && cfg.ftmoAi !== 'off' ? aiOpinion(ev, p) : null;
-        if (ai && !ai.ok && cfg.ftmoAi === 'block') {
-          s.aiRefused = (s.aiRefused || 0) + 1;
-          out.push({ type: 'refused', s, p: { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, entryT: p.entryT, ai } });
-          continue;
-        }
         // Levier dynamique (src/sizing.js, FTMO_SIZING) : le risque du trade est ajusté selon l'état du compte
         const rule = RULES[cfg.ftmoSizing] || RULES.fixe;
         const mul = rule({ ...p, sid: `${ev.market.id}:${ev.strategy.id}` }, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: TARGET[s.phase] ?? Infinity, open: Object.keys(s.open).length });
         if (!(mul > 0)) continue;
         const cap = (P.levCap && P.levCap[ev.market.id]) || cfg.ftmoLeverage; // levier max (par marché sur le compte Swing)
         const notional = Math.min((s.balance * A.riskOf(ev.market.id, ev.strategy) * mul) / stopPct, s.balance * cap);
+        if (ai && !ai.ok && cfg.ftmoAi === 'block') {
+          // Refusé : gardé (avec la taille qu'il aurait eue) pour le bilan des trades refusés
+          s.aiRefused = (s.aiRefused || 0) + 1;
+          const r = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, entryT: p.entryT, notional, risk: (notional * stopPct) / 100, ai: { p: ai.p, ok: ai.ok, min: ai.min } };
+          const list = store.loadJson(refusedFile, []);
+          list.push(r);
+          store.saveJson(refusedFile, list.slice(-1000));
+          out.push({ type: 'refused', s, p: r });
+          continue;
+        }
         const pos = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, notional, entryT: p.entryT, lev: notional / s.balance, mul, risk: (notional * stopPct) / 100, ...(ai ? { ai: { p: ai.p, ok: ai.ok, min: ai.min } } : {}) };
         s.open[key(ev.market.id, ev.strategy.id, p.entryT)] = pos;
         if (!s.days.includes(s.day)) s.days.push(s.day);
@@ -268,7 +297,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     };
   }
 
-  return { onCycle, status, load, account: A, reset: () => save(fresh()) };
+  return { onCycle, status, load, refusedReport, account: A, reset: () => save(fresh()) };
 }
 
 module.exports = { createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf };

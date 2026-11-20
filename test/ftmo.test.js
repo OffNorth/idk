@@ -267,7 +267,7 @@ test('risque qui baisse à l’approche de l’objectif (objectif : dégressif d
   assert.ok(o && Math.abs(o.risk - bal * 0.01 * 0.625) < 1, `risque ${o && o.risk}`);
 });
 
-test('IA validatrice : avis sur chaque trade (observation) et refus sous le seuil (block)', () => {
+test('IA validatrice : avis sur chaque trade (observation) et refus sous le seuil (block)', async () => {
   const { loadModel } = require('../src/aiFilter');
   assert.ok(loadModel(), 'src/aiModel.json présent (npm run ai-train)');
   const { createFtmo } = require('../src/ftmoAccount');
@@ -290,6 +290,22 @@ test('IA validatrice : avis sur chaque trade (observation) et refus sous le seui
   assert.ok(ref, 'signal refusé');
   assert.strictEqual(Object.keys(f.load().open).length, 0);
   assert.match(ftmoTradeMessage(ref, f.status({ gold: 4000 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /refusé par l'IA/);
+  // Bilan des refusés : encore ouvert (latent au cours actuel), puis clôturé (résultat du trade paper × taille prévue)
+  let rep = f.refusedReport({ gold: 3960 });
+  assert.strictEqual(rep.n, 1);
+  assert.strictEqual(rep.open, 1);
+  assert.ok(rep.openPnl < 0);
+  b.store.saveJson('gold.json', { accounts: { x_rsi2: { closed: [{ ...pos, exit: 3960, exitT: T0 + 3600, pnlPct: -1, reason: 'stop loss' }], position: null } }, lastPrice: 3960 });
+  rep = f.refusedReport({ gold: 3960 });
+  assert.strictEqual(rep.closed, 1);
+  assert.ok(Math.abs(rep.closedPnl - ref.p.notional * -0.01) < 1e-6);
+  const v = await require('../src/interactive').render(b.cfg, b.store, 'i', 'gold', ['0']);
+  assert.ok(v.png && v.png.length > 1000);
+  assert.match(v.caption, /Refusés par l’IA : 1 signal/);
+  assert.match(v.caption, /l’IA a eu raison/);
+  const fv = await require('../src/interactive').render(b.cfg, b.store, 'f', 'gold', []);
+  assert.match(fv.caption, /Refusés par l’IA/);
+  assert.ok(JSON.stringify(fv.keyboard).includes('m:i:'));
   // Off : pas d'avis
   const c = setup({ ftmoAi: 'off' });
   paper(c.store);

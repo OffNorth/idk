@@ -40,6 +40,13 @@ function aiText(cfg, s) {
   return [`🤖 IA validatrice (${mode}) : validés ${part(ok)} · ${cfg.ftmoAi === 'block' ? 'sous le seuil' : 'aurait refusé'} ${part(no)}${s.aiRefused ? ` · ${s.aiRefused} signal(s) refusé(s)` : ''}`];
 }
 
+/** Une ligne : ce qu'auraient fait les signaux refusés par l'IA (rep = refusedReport()). */
+function refusedLine(rep) {
+  if (!rep.n) return '';
+  const verdict = rep.closed ? (rep.closedPnl <= 0 ? '✅ l’IA a eu raison' : '⚠️ ils auraient gagné') : '';
+  return `🤖 Refusés par l’IA : ${rep.n} signal(s)${rep.closed ? ` · clôturés ${rep.closed} : auraient fait <b>${signedMoney(rep.closedPnl)}</b> (${rep.wins} gagnant(s)) ${verdict}` : ''}${rep.open ? ` · encore ouverts ${rep.open} : ${signedMoney(rep.openPnl)} latents` : ''}`;
+}
+
 /** Réduction du risque à l'approche de l'objectif (FTMO_SIZING « objectif : … »), pour la légende du compte FTMO. */
 function protectText(cfg, s) {
   if (!String(cfg.ftmoSizing).startsWith('objectif')) return '';
@@ -176,8 +183,10 @@ async function render(cfg, store, view, marketId, args = []) {
     const { createFtmo } = require('./ftmoAccount');
     const prices = Object.fromEntries(activeMarkets(cfg).map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
     const acct = require('./ftmoAccount').accountOf(cfg, marketId);
-    const fst = createFtmo({ cfg, store, account: acct.enabled ? marketId : 'gold' }).status(prices);
+    const fobj = createFtmo({ cfg, store, account: acct.enabled ? marketId : 'gold' });
+    const fst = fobj.status(prices);
     const s = fst.s;
+    const rep = cfg.ftmoAi === 'block' ? fobj.refusedReport(prices) : { n: 0 };
     const lines = [
       `🏦 <b>Compte FTMO simulé ${fst.account.emoji} ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : fst.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} · challenge n° ${s.attempt}`,
       `Valeur <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · objectif ${money(fst.target)}` : ''}`,
@@ -185,9 +194,10 @@ async function render(cfg, store, view, marketId, args = []) {
       `Stratégies suivies : ${fst.account.strategies.map((x) => `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' }[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')}`,
       `Risque par trade : ${riskText(cfg, fst.account)}${protectText(cfg, s)}`,
       ...aiText(cfg, s),
+      ...(rep.n ? [refusedLine(rep)] : []),
       ...(s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt}, étape ${h.phase} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
     ];
-    return { png: C.ftmoImage(fst), caption: lines.join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'f', marketId, [[btn('🧾 Trades FTMO', `m:z:${KM[marketId]}:0`)]]) };
+    return { png: C.ftmoImage(fst), caption: lines.join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'f', marketId, [[btn('🧾 Trades FTMO', `m:z:${KM[marketId]}:0`), ...(rep.n ? [btn('🤖 Refusés par l’IA', `m:i:${KM[marketId]}:0`)] : [])]]) };
   }
 
   if (view === 'h') {
@@ -263,6 +273,25 @@ async function render(cfg, store, view, marketId, args = []) {
     const png = C.tradesImage({ market: null, title: `Trades du compte FTMO · challenge n° ${s.attempt}`, subtitle: `${all.length} trades clôturés depuis le début du challenge · page ${page + 1} / ${pages} · résultat en % du compte`, rows, footerText: 'Simulation d’un challenge FTMO · argent fictif · pas un conseil financier' });
     extra.push([btn('⬅️ Compte FTMO', `m:f:${KM[marketId]}`)]);
     return { png, caption: [`🏦 <b>Compte FTMO simulé</b> · 🧾 trades`, caption, ...hist].join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'z', marketId, extra) };
+  }
+
+  if (view === 'i') {
+    // Signaux refusés par l'IA validatrice : ce qu'ils auraient fait sur le compte FTMO
+    const { createFtmo } = require('./ftmoAccount');
+    const acct = require('./ftmoAccount').accountOf(cfg, marketId);
+    const f = createFtmo({ cfg, store, account: acct.enabled ? marketId : 'gold' });
+    const s = f.load();
+    const prices = Object.fromEntries(activeMarkets(cfg).map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
+    const rep = f.refusedReport(prices);
+    const now = Math.floor(Date.now() / 1000);
+    const all = rep.rows.filter((r) => r.state !== 'unknown').map((r) => ({
+      ...r, name: `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' }[r.market] || ''} ${r.sid}`, pnlUsd: r.pnl, pnlPct: (r.pnl / s.capital) * 100,
+      exitT: r.exitT ?? now, exit: r.exit ?? prices[r.market] ?? r.entry, reason: `${r.state === 'open' ? 'encore ouvert · ' : ''}IA ${Math.round(r.ai.p * 100)} % (seuil ${Math.round(r.ai.min * 100)} %)`,
+    })).sort((a, b) => b.entryT - a.entryT);
+    const { rows, page, pages, extra } = tradePage(all, Number(args[0]) || 0, (p) => `m:i:${KM[marketId]}:${p}`, 'du compte');
+    const png = C.tradesImage({ market: null, title: 'Signaux refusés par l’IA', subtitle: `Ce qu’ils auraient fait sur le compte FTMO · ${all.length} signaux · page ${page + 1} / ${pages}`, rows, footerText: 'Simulation · argent fictif · pas un conseil financier' });
+    extra.push([btn('⬅️ Compte FTMO', `m:f:${KM[marketId]}`)]);
+    return { png, caption: [`🏦 <b>Compte FTMO simulé</b> · 🤖 signaux refusés par l’IA`, refusedLine(rep) || 'Aucun signal refusé pour l’instant.'].join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'i', marketId, extra) };
   }
 
   if (view === 't') {
