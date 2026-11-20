@@ -62,7 +62,7 @@ function tick() {
 /* Accès                                                               */
 /* ------------------------------------------------------------------ */
 
-const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt']);
+const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'export']);
 const isAdmin = (ctx) => !cfg.allowedUserIds.size || (ctx.from && cfg.allowedUserIds.has(String(ctx.from.id)));
 
 // Les boutons et les commandes de consultation sont ouverts à tout le groupe ; les réglages sont réservés.
@@ -93,6 +93,7 @@ bot.command(['start', 'aide', 'help'], (ctx) =>
       '/ftmo [nasdaq|or] — 🏦 comptes FTMO simulés (challenge +10 % puis +5 %)',
       '/lucid — 🟣 compte Lucid simulé (LucidFlex : +6 %, pas de perte du jour, micro-futures)',
       '/version — version du bot en service (à vérifier après un redémarrage)',
+      '/export — 📦 (admin) fichier des statistiques du bot, à envoyer à Claude pour une analyse',
       '/jeu — 🎯 pronostic du jour · /classement — points des joueurs',
       '/nasdaq · /gold — bilan texte',
       '/portfolio — graphiques des portefeuilles',
@@ -164,6 +165,17 @@ bot.command(['historique', 'trades'], async (ctx) => {
 });
 
 // Vérification de cohérence des trades (paper + compte FTMO), réservée aux admins
+// Export des statistiques (admin) : un fichier JSON avec les comptes, trades, refus de l'IA, adaptation
+bot.command('export', async (ctx) => {
+  try {
+    const data = JSON.stringify(require('./src/export').buildExport(cfg, store, version()));
+    const name = `stats-bot-${new Date().toISOString().slice(0, 10)}.json`;
+    await ctx.replyWithDocument(new InputFile(Buffer.from(data, 'utf8'), name), { caption: `📦 Statistiques du bot (version ${version()}, ${(data.length / 1024).toFixed(0)} Ko) — envoie ce fichier à Claude pour l’analyse` });
+  } catch (err) {
+    await ctx.reply(`❌ Export impossible : ${esc(err.message)}`);
+  }
+});
+
 // Version déployée et réglages clés : pour vérifier après un redémarrage que Bot-Hosting a pris la nouvelle version
 bot.command('version', (ctx) => {
   const lucid = require('./src/ftmoAccount').accountOf(cfg, 'lucid');

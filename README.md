@@ -765,6 +765,9 @@ aucune dépendance à installer).
 
 ## Commandes Telegram
 
+> `/export` (admin) : envoie un fichier `stats-bot-AAAA-MM-JJ.json` avec les comptes FTMO / Lucid, les trades paper,
+> les refus de l'IA et l'état de l'adaptation (sans aucun secret), à transmettre pour une analyse.
+
 | Commande | Rôle |
 |---|---|
 | `/menu [or\|nasdaq]` | 🎛 Panneau interactif (images qui changent avec les boutons) |
