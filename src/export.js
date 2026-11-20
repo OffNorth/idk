@@ -4,6 +4,7 @@
  * serveur. Aucun secret : ni token, ni identifiant de canal, ni chemin du serveur.
  */
 const { activeMarkets } = require('./markets');
+const { selectStrategies } = require('./strategies');
 
 const MAX_BYTES = 45 * 1024 * 1024;
 
@@ -19,6 +20,20 @@ function settings(cfg) {
   };
 }
 
+/** Résumé d'un compte : gain, trades, R par trade (gain ÷ risque prévu), règle du meilleur jour. */
+function summarize(a) {
+  const closed = a.closed || [];
+  const rs = closed.filter((t) => t.risk > 0).map((t) => t.pnl / t.risk);
+  const gain = a.balance - a.capital;
+  const best = Math.max(0, ...Object.values(a.dayPnl || {}));
+  return {
+    attempt: a.attempt, phase: a.phase, balance: Math.round(a.balance), gainPct: +((gain / a.capital) * 100).toFixed(2),
+    trades: closed.length, wins: closed.filter((t) => t.pnl > 0).length, avgR: rs.length ? +(rs.reduce((x, y) => x + y, 0) / rs.length).toFixed(2) : null,
+    worstR: rs.length ? +Math.min(...rs).toFixed(2) : null, openPositions: Object.keys(a.open || {}).length, tradingDays: (a.days || []).length,
+    bestDay: Math.round(best), bestDayShareOfGain: gain > 0 ? +((best / gain) * 100).toFixed(0) : null,
+  };
+}
+
 /** Objet exporté. version : version déployée (commit). */
 function buildExport(cfg, store, version = 'inconnue') {
   const followed = new Set([...(cfg.ftmoStrategies || []), ...(cfg.ftmoNasStrategies || [])]);
@@ -27,21 +42,26 @@ function buildExport(cfg, store, version = 'inconnue') {
     const st = store.loadJson(m.file, null);
     if (!st?.accounts) continue;
     const accounts = {};
+    // Seulement les stratégies réellement suivies en paper sur ce marché (pas les anciens comptes figés)
+    const live = new Set(selectStrategies(m.strategies || []).map((x) => x.id));
     for (const [sid, acc] of Object.entries(st.accounts)) {
+      if (!live.has(sid)) continue;
       accounts[sid] = { followedByFtmo: followed.has(`${m.id}:${sid}`), position: acc.position || null, closed: acc.closed || [] };
     }
     markets[m.id] = { lastPrice: st.lastPrice ?? null, lastUpdate: st.lastUpdate ?? null, accounts };
   }
   const samples = store.loadJson('ai-samples.json', []).map(({ x, ...rest }) => rest); // sans les caractéristiques
+  const accounts = {
+    ftmo: store.loadJson('ftmo.json', null),
+    ftmoNasdaq: store.loadJson('ftmo-nas.json', null),
+    lucid: store.loadJson('lucid.json', null),
+  };
   const out = {
     exportedAt: new Date().toISOString(),
     version,
     settings: settings(cfg),
-    accounts: {
-      ftmo: store.loadJson('ftmo.json', null),
-      ftmoNasdaq: store.loadJson('ftmo-nas.json', null),
-      lucid: store.loadJson('lucid.json', null),
-    },
+    summary: Object.fromEntries(Object.entries(accounts).filter(([, a]) => a?.capital).map(([k, a]) => [k, summarize(a)])),
+    accounts,
     aiRefused: { ftmo: store.loadJson('ftmo-ia-refuses.json', []), lucid: store.loadJson('lucid-ia-refuses.json', []) },
     aiSamples: samples,
     adapt: store.loadJson('adapt.json', null),

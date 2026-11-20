@@ -96,3 +96,26 @@ test('or : bilan et messages', () => {
   const trade = { ...pos, exit: 4040, exitT: 7200, reason: 'take profit', pnlPct: 0.9, pnlUsd: 9 };
   assert.match(goldEventMessage({ type: 'close', strategy, trade }), /\+0\.9%/);
 });
+
+test('stop franchi au cours actuel avant que la bougie 5 min soit publiée : clôture au stop (marché continu) ou au cours (écart)', async () => {
+  const { MarketTrader, goldMarket } = require('../src/markets');
+  const run = async (prevAgoSec) => {
+    const store = new Store(fs.mkdtempSync(path.join(os.tmpdir(), 'gold-stop-')));
+    const now = Math.floor(Date.now() / 1000);
+    const market = { ...goldMarket({ ...cfg, goldStrategies: ['g_mom8'] }), enabled: true };
+    // Bougies 5 min publiées : aucune ne touche le stop ; le cours actuel (3 672) est déjà sous le stop (3 693,52)
+    const stops = [{ t: now - 900, o: 3710, h: 3712, l: 3700, c: 3702 }, { t: now - 600, o: 3702, h: 3704, l: 3696, c: 3698 }];
+    market.fetch = async () => ({ price: 3672, stops, daily: [], series: {} });
+    const tr = new MarketTrader(market, store, cfg);
+    const acc = tr.account('g_mom8');
+    acc.position = { side: 'long', entry: 3717.3, sl: 3693.52, initSl: 3693.52, tp: null, size: 1000, best: 3717.3, entryT: now - 7 * 3600, checkedFrom: now - prevAgoSec };
+    const ev = await tr.run();
+    return ev.find((e) => e.type === 'close').trade;
+  };
+  const cont = await run(60);
+  assert.strictEqual(cont.exit, 3693.52);
+  assert.strictEqual(cont.reason, 'stop loss');
+  const gap = await run(3 * 3600);
+  assert.strictEqual(gap.exit, 3672);
+  assert.strictEqual(gap.reason, 'stop loss (écart)');
+});

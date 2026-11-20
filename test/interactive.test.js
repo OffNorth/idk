@@ -85,6 +85,10 @@ test('jeu : votes, vote modifié, résolution et points', async () => {
   const market = require('../src/markets').marketById(cfg, 'gold');
   market.fetch = async () => ({ series: { '1d': [] } });
   assert.ok(await game.open(fri));
+  // Le tour s'ouvre à une date fixe : on repousse sa clôture pour que le test passe à n'importe quelle heure
+  const gs = store.loadJson('game.json', {});
+  gs.round.closesAt = Date.now() + 3600_000;
+  store.saveJson('game.json', gs);
   const answers = [];
   const ctx = (uid, name) => ({ from: { id: uid, first_name: name }, answerCallbackQuery: async (o) => answers.push(o?.text), editMessageReplyMarkup: async () => true });
   await game.onVote(ctx(1, 'Alice'), ['g', '1', 'g', 'u']);

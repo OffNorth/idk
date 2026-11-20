@@ -344,6 +344,7 @@ class MarketTrader {
       const acc = this.account(strat.id);
 
       // 1. Stop / objectif touchés depuis le dernier passage (bougies 5 min)
+      const prevCheck = acc.position ? acc.position.checkedFrom ?? acc.position.entryT : null;
       if (acc.position && stops) {
         for (const c of stops.filter((x) => x.t + 300 > acc.position.checkedFrom)) {
           const hit = hitInCandle(acc.position, c);
@@ -352,12 +353,18 @@ class MarketTrader {
             break;
           }
         }
-        if (acc.position) acc.position.checkedFrom = now;
-      } else if (acc.position && price) {
-        // Pas de bougies 5 min à ce passage : le stop est quand même vérifié avec le cours actuel
-        const hit = hitInCandle(acc.position, { h: price, l: price });
-        if (hit) events.push(this.#close(strat, acc, price, hit.reason, now));
       }
+      // Cours actuel au-delà du stop (ou de l'objectif) alors que la bougie 5 min correspondante n'est pas encore
+      // publiée (délai des données) : clôture AVANT toute sortie sur signal. Marché continu depuis le passage précédent
+      // (< 1 h) → au niveau du stop, comme un vrai ordre stop ; sinon (coupure, week-end) → au cours actuel.
+      if (acc.position && price) {
+        const hit = hitInCandle(acc.position, { h: price, l: price });
+        if (hit) {
+          const continuous = prevCheck && now - prevCheck < 3600;
+          events.push(this.#close(strat, acc, continuous ? hit.price : price, continuous ? hit.reason : `${hit.reason} (écart)`, now));
+        }
+      }
+      if (acc.position && stops) acc.position.checkedFrom = now;
 
       // 2. Nouvelle bougie clôturée sur l'unité de temps de la stratégie → évaluation
       const d = byTf[`${tfOf(strat)}:${kindOf(strat)}`];
