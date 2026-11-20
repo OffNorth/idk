@@ -285,8 +285,27 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
 /* Démarrage                                                           */
 /* ------------------------------------------------------------------ */
 
+/** Version déployée (commit git si le dossier .git est là). */
+function version() {
+  try {
+    const fs = require('fs');
+    const head = fs.readFileSync(require('path').join(__dirname, '.git', 'HEAD'), 'utf8').trim();
+    const ref = head.startsWith('ref: ') ? head.slice(5) : null;
+    const sha = ref ? fs.readFileSync(require('path').join(__dirname, '.git', ref), 'utf8').trim() : head;
+    return sha.slice(0, 7);
+  } catch {
+    return 'inconnue';
+  }
+}
+
+/** Appel Telegram du démarrage, limité dans le temps (le bot ne reste jamais bloqué en silence). */
+const step = (label, p, ms = 20_000) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`${label} : pas de réponse de Telegram après ${ms / 1000} s`)), ms))]);
+
+console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) · IA validatrice : ${cfg.ftmoAi} · risque : ${cfg.ftmoSizing}`);
+
 (async () => {
-  await bot.api.setMyCommands([
+  console.log('… connexion à Telegram');
+  await step('commandes du menu', bot.api.setMyCommands([
     { command: 'menu', description: '🎛 Panneau interactif (Nasdaq ; /menu or pour l’or)' },
     { command: 'graphique', description: '🕯 Cours en bougies : /graphique (Nasdaq) · /graphique or' },
     { command: 'ftmo', description: '🏦 Comptes FTMO simulés : /ftmo (Nasdaq) · /ftmo or' },
@@ -300,10 +319,15 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
     { command: 'historique', description: 'Historique des trades : /historique or · /historique ftmo' },
     { command: 'simulation', description: 'Simulation : /simulation 2010 (Nasdaq) · /simulation or 2001' },
     { command: 'strategies', description: 'Comment fonctionne chaque stratégie' },
-  ]);
+  ])).catch((err) => {
+    if (err.error_code === 401) throw err; // token invalide : inutile de continuer
+    console.warn(`⚠️ ${err.message} (on continue)`);
+  });
   // Bouton du menu Telegram : liste des commandes (remplace l'ancien bouton « 📊 App »)
-  await bot.api.setChatMenuButton({ menu_button: { type: 'commands' } }).catch(() => {});
-  await channel.check();
+  await step('bouton du menu', bot.api.setChatMenuButton({ menu_button: { type: 'commands' } })).catch(() => {});
+  console.log('… vérification du groupe');
+  await step('vérification du groupe', channel.check()).catch((err) => console.warn(`⚠️ ${err.message} (on continue)`));
+  console.log('… premier passage sur les marchés (20 à 60 s)');
 
   // Stratégies de scalp (bougies 1 / 5 min) actives : vérification chaque minute pour entrer à la clôture de la bougie
   const { tfOf } = require('./src/strategies');
