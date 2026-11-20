@@ -586,10 +586,9 @@ refuse ≈ 20 % des signaux.
 | 2017–2019 (entraîné 2009–2016) | 50 % | 42 % ✘ |
 | Glissant année par année | — | meilleurs trades gardés **10 années sur 15** |
 
-Résultat **encourageant mais pas assez solide** pour bloquer des trades d'office : `FTMO_AI=observe` (défaut) affiche
-l'avis sur chaque trade du compte FTMO (« ✅ validé · chances estimées 62 % » ou « ⚠️ aurait refusé ») et `/ftmo`
-fait le bilan en direct (gains des trades validés contre ceux qu'elle aurait refusés). `FTMO_AI=block` : les signaux
-sous le seuil ne sont pas pris (message « refusé par l'IA ») ; `FTMO_AI=off` : sans IA. Ré-entraîner : `npm run ai-train`.
+Résultat encourageant mais pas garanti (2017–2019 ✘). **`FTMO_AI=block` (défaut, à la demande)** : les signaux sous le
+seuil ne sont pas pris (message « 🤖 signal refusé par l'IA »), les trades pris portent « ✅ validé · chances estimées
+62 % » et `/ftmo` fait le bilan. `FTMO_AI=observe` : avis seulement, rien n'est bloqué ; `FTMO_AI=off` : sans IA. Ré-entraîner : `npm run ai-train`.
 
 ### Risque qui baisse à l'approche de l'objectif (`npm run ftmo-protect`, défaut `FTMO_SIZING=objectif : dégressif doux`)
 

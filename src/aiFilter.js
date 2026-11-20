@@ -1,7 +1,7 @@
 /**
  * IA validatrice du compte FTMO : pour chaque signal d'une stratégie, un modèle (régression logistique entraînée sur
- * les trades passés, `npm run ai-train`) estime la probabilité que le trade soit gagnant. FTMO_AI=observe (défaut) :
- * avis affiché sur chaque trade du compte FTMO, rien n'est bloqué ; FTMO_AI=block : les signaux sous le seuil
+ * les trades passés, `npm run ai-train`) estime la probabilité que le trade soit gagnant. FTMO_AI=observe :
+ * avis affiché sur chaque trade du compte FTMO, rien n'est bloqué ; FTMO_AI=block (défaut) : les signaux sous le seuil
  * (FTMO_AI_MIN, défaut : ≈ 20 % des signaux refusés) ne sont pas pris ; FTMO_AI=off : sans IA.
  * Contexte de marché en direct : bougies journalières gardées par le paper trading (état du marché, champ ctx).
  *
