@@ -164,6 +164,44 @@ function trainR(trades, { l2 = 50, iters = 600, lr = 0.3 } = {}) {
   return { w, mu: s.mu, sd: s.sd, kind: 'r' };
 }
 
+/**
+ * Apprentissage prudent en direct : part du modèle `model` (mêmes normalisations), ré-ajuste ses poids sur des
+ * signaux étiquetés { x, win, r } en restant près des poids `priorW` (modèle d'origine) : la pénalité vaut `prior`
+ * signaux fictifs, donc peu de données live → poids presque inchangés, beaucoup → le live prend le dessus.
+ */
+function fineTune(model, priorW, samples, { prior = 300, iters = 300, lr = 0.5 } = {}) {
+  const X = samples.map((t) => norm(t.x, model));
+  const y = samples.map((t) => (t.win ? 1 : 0));
+  const wt = samples.map((t) => clip(Math.abs(t.r ?? 1), 0.25, 3));
+  const W = wt.reduce((a, b) => a + b, 0) || 1;
+  const n = model.w.length;
+  const w = [...model.w];
+  const lam = prior / Math.max(1, samples.length);
+  for (let it = 0; it < iters; it++) {
+    const g = new Array(n).fill(0);
+    for (let i = 0; i < X.length; i++) {
+      const e = (sigmoid(X[i].reduce((a, v, j) => a + v * w[j], 0)) - y[i]) * wt[i];
+      for (let j = 0; j < n; j++) g[j] += e * X[i][j];
+    }
+    // Pénalité ≈ « prior » signaux fictifs (information d’un signal ≈ p(1 − p) ≈ 0,2 sur des données normalisées)
+    for (let j = 0; j < n; j++) w[j] -= lr * (g[j] / W + lam * 0.2 * (w[j] - priorW[j]));
+  }
+  return { ...model, w };
+}
+
+/** Log-loss moyenne (pondérée comme l'entraînement) d'un modèle sur des signaux étiquetés : plus bas = meilleur. */
+function logLoss(model, samples) {
+  let L = 0;
+  let W = 0;
+  for (const t of samples) {
+    const p = clip(predict(model, t.x), 1e-6, 1 - 1e-6);
+    const w = clip(Math.abs(t.r ?? 1), 0.25, 3);
+    L += -w * (t.win ? Math.log(p) : Math.log(1 - p));
+    W += w;
+  }
+  return W ? L / W : Infinity;
+}
+
 /** Score du trade : probabilité de gain (modèle logistique) ou gain attendu en R (modèle 'r'). */
 const predict = (model, x) => {
   const z = norm(x, model).reduce((a, v, j) => a + v * model.w[j], 0);
@@ -171,13 +209,31 @@ const predict = (model, x) => {
 };
 
 const MODEL_FILE = path.join(__dirname, 'aiModel.json');
+const LIVE_FILE = 'aiModel.live.json'; // modèle ré-appris en direct (src/adapt.js), dans le dossier de données
 let cached;
-/** Modèle entraîné (src/aiModel.json, écrit par `npm run ai-train`) ou null. */
-function loadModel() {
+const liveCache = new Map();
+/** Modèle d'origine (src/aiModel.json, écrit par `npm run ai-train`) ou null. */
+function originModel() {
   if (cached === undefined) {
     try { cached = JSON.parse(fs.readFileSync(MODEL_FILE, 'utf8')); } catch { cached = null; }
   }
   return cached;
+}
+/** Modèle utilisé : celui ré-appris en direct (data/aiModel.live.json) s'il existe, sinon celui d'origine. */
+function loadModel(cfg = null) {
+  const dir = cfg?.dataDir;
+  if (dir) {
+    const f = path.join(dir, LIVE_FILE);
+    try {
+      const m = fs.statSync(f).mtimeMs;
+      const c = liveCache.get(f);
+      if (c && c.m === m) return c.model;
+      const model = JSON.parse(fs.readFileSync(f, 'utf8'));
+      liveCache.set(f, { m, model });
+      return model;
+    } catch { /* pas de modèle live */ }
+  }
+  return originModel();
 }
 
 /**
@@ -185,15 +241,16 @@ function loadModel() {
  * paperAcc : compte paper de la stratégie (closed = trades fermés) ; marketClosed : trades fermés du marché.
  */
 function judge(cfg, sig, paperAcc, marketClosed, ctxData = null) {
-  const model = loadModel();
+  const model = loadModel(cfg);
   if (!model) return null;
   const past = [...(paperAcc?.closed || [])].sort((a, b) => a.exitT - b.exitT).filter((t) => t.exitT <= sig.entryT);
   const mk = [...(marketClosed || [])].sort((a, b) => a.exitT - b.exitT).filter((t) => t.exitT <= sig.entryT);
   const stops = past.map(stopPct); // distances de stop des derniers signaux de la stratégie
   const ctx = model.ctx ? contextOf({ [sig.market]: ctxData?.daily || [] }, ctxData?.vix || null)(sig) : [];
-  const p = predict(model, features(sig, past, mk, stops, ctx));
+  const x = features(sig, past, mk, stops, ctx);
+  const p = predict(model, x);
   const min = Number.isFinite(cfg.ftmoAiMin) ? cfg.ftmoAiMin : model.min;
-  return { p, ok: p >= min, min, kind: model.kind || 'win' };
+  return { p, ok: p >= min, min, kind: model.kind || 'win', x, version: model.version || 0 };
 }
 
-module.exports = { features, featurize, contextOf, CTX_NAMES, train, trainR, predict, judge, loadModel, NAMES, MODEL_FILE, rOf };
+module.exports = { features, featurize, contextOf, CTX_NAMES, train, trainR, fineTune, logLoss, predict, judge, loadModel, originModel, NAMES, MODEL_FILE, LIVE_FILE, rOf };

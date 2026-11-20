@@ -100,6 +100,17 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
   }
 
   // Graphique de l'évolution du portefeuille (une fois par jour par défaut), un par marché
+  // Adaptation automatique : revue hebdomadaire (dimanche) de l'IA et des stratégies, annoncée dans le groupe
+  if (cfg.ftmoEnabled && require('./adapt').reviewDue(cfg, store)) {
+    try {
+      const { text } = require('./adapt').weeklyReview(cfg, store);
+      console.log(`[adapt] ${text.replace(/<[^>]+>/g, '').split('\n').join(' | ')}`);
+      if (publish) await channel.sendText(text, ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Compte FTMO', callback_data: 'm:f:g' }]] } } : {});
+    } catch (err) {
+      console.error('[adapt] revue impossible :', err.message);
+    }
+  }
+
   if (publish && markets.length && channel.chartDue() && cfg.publishFtmoOnly && cfg.ftmoEnabled) {
     // Mode « FTMO seul » : l'image du jour est celle du compte FTMO (panneau interactif si les boutons sont actifs)
     try {

@@ -43,7 +43,8 @@
     "ftmo-intraday": "node --max-old-space-size=12288 ftmo-intraday.js",
     "lucid-compare": "node --max-old-space-size=12288 lucid-compare.js",
     "ftmo-protect": "node --max-old-space-size=12288 ftmo-protect.js",
-    "ai-train": "node --max-old-space-size=12288 ai-train.js"
+    "ai-train": "node --max-old-space-size=12288 ai-train.js",
+    "adapt-sim": "node --max-old-space-size=12288 adapt-sim.js"
   },
   "engines": {
     "node": ">=20"

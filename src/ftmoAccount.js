@@ -109,7 +109,9 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     return s;
   };
   const save = (s) => store.saveJson(FILE, s);
-  const follows = (ev) => A.strategies.includes(`${ev.market.id}:${ev.strategy.id}`);
+  const adapt = require('./adapt');
+  // Stratégies suivies + candidates promues par l'adaptation automatique (AUTO_ADAPT)
+  const follows = (ev) => A.strategies.includes(`${ev.market.id}:${ev.strategy.id}`) || adapt.promotedOf(cfg, store).includes(`${ev.market.id}:${ev.strategy.id}`);
   const key = (marketId, sid, entryT) => `${marketId}:${sid}:${entryT}`;
   const fee = (marketId) => (marketId === 'nas100' ? cfg.ftmoFeeNas : cfg.ftmoFeeGold);
   /** Frais d'une position : par contrat (futures, Lucid) ou en % du montant (CFD, FTMO) ; sides = 1 (sortie) ou 2. */
@@ -230,6 +232,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     if (!A.enabled) return [];
     const s = load();
     const out = [];
+    const aiMode = adapt.aiModeOf(cfg, store); // l'adaptation peut repasser l'IA en observation
     rollDay(s, t);
     if (s.waitDay && s.day !== s.waitDay) s.waitDay = null; // nouveau challenge : reprise le jour suivant
 
@@ -246,13 +249,24 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           continue;
         }
         // IA validatrice (src/aiFilter.js, FTMO_AI) : avis sur le signal ; en mode « block », refus sous le seuil
-        const ai = cfg.ftmoAi && cfg.ftmoAi !== 'off' ? aiOpinion(ev, p) : null;
+        const ai = aiMode && aiMode !== 'off' ? aiOpinion(ev, p) : null;
+        const skey = `${ev.market.id}:${ev.strategy.id}`;
+        // Signal jugé mémorisé pour l'apprentissage de l'IA (compte FTMO seulement : Lucid voit les mêmes signaux)
+        if (ai && cfg.autoAdapt && A.id !== 'lucid') {
+          adapt.recordSignal(store, { market: ev.market.id, sid: ev.strategy.id, entryT: p.entryT, x: ai.x, p: ai.p, ok: ai.ok, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, v: ai.version });
+        }
+        // Poids appris par l'adaptation (× 0 = stratégie suspendue, × 0,5 réduite, × 1,25 renforcée)
+        const wAdapt = adapt.weightOf(cfg, store, skey);
+        if (!(wAdapt > 0)) {
+          s.suspendedSkip = (s.suspendedSkip || 0) + 1;
+          continue;
+        }
         // Levier dynamique (src/sizing.js, FTMO_SIZING) : le risque du trade est ajusté selon l'état du compte
         const rule = RULES[cfg.ftmoSizing] || RULES.fixe;
         const mul = rule({ ...p, sid: `${ev.market.id}:${ev.strategy.id}` }, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: targetPct(s) ?? Infinity, open: Object.keys(s.open).length });
         if (!(mul > 0)) continue;
         const cap = (P.levCap && P.levCap[ev.market.id]) || cfg.ftmoLeverage; // levier max (par marché sur le compte Swing)
-        let notional = Math.min((s.balance * A.riskOf(ev.market.id, ev.strategy) * mul) / stopPct, s.balance * cap);
+        let notional = Math.min((s.balance * A.riskOf(ev.market.id, ev.strategy) * mul * wAdapt) / stopPct, s.balance * cap);
         let lots = null;
         if (P.contracts) {
           // Futures (Lucid) : contrats entiers de micro-futures, arrondis vers le bas, plafond de contrats ouverts
@@ -266,7 +280,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           }
           notional = lots * p.entry * mc.mult;
         }
-        if (ai && !ai.ok && cfg.ftmoAi === 'block') {
+        if (ai && !ai.ok && aiMode === 'block') {
           // Refusé : gardé (avec la taille qu'il aurait eue) pour le bilan des trades refusés
           s.aiRefused = (s.aiRefused || 0) + 1;
           const r = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, entryT: p.entryT, notional, risk: (notional * stopPct) / 100, ai: { p: ai.p, ok: ai.ok, min: ai.min } };
@@ -276,7 +290,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           out.push({ type: 'refused', s, p: r });
           continue;
         }
-        const pos = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, notional, entryT: p.entryT, lev: notional / s.balance, mul, risk: (notional * stopPct) / 100, ...(lots ? { n: lots, cfee: MICRO[ev.market.id].fee, contract: MICRO[ev.market.id].name } : {}), ...(ai ? { ai: { p: ai.p, ok: ai.ok, min: ai.min } } : {}) };
+        const pos = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, notional, entryT: p.entryT, lev: notional / s.balance, mul, risk: (notional * stopPct) / 100, ...(wAdapt !== 1 ? { wAdapt } : {}), ...(lots ? { n: lots, cfee: MICRO[ev.market.id].fee, contract: MICRO[ev.market.id].name } : {}), ...(ai ? { ai: { p: ai.p, ok: ai.ok, min: ai.min } } : {}) };
         s.open[key(ev.market.id, ev.strategy.id, p.entryT)] = pos;
         if (!s.days.includes(s.day)) s.days.push(s.day);
         out.push({ type: 'open', s, p: pos });

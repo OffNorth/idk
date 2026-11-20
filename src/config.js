@@ -167,6 +167,12 @@ module.exports = {
   // (avis seulement) ou off ; FTMO_AI_MIN : seuil de probabilité (défaut : celui du modèle, ≈ 20 % des signaux refusés)
   ftmoAi: ['observe', 'block', 'off'].includes((process.env.FTMO_AI || '').trim()) ? process.env.FTMO_AI.trim() : 'block',
   ftmoAiMin: process.env.FTMO_AI_MIN ? Number(process.env.FTMO_AI_MIN) : NaN,
+  // Adaptation automatique (src/adapt.js) : revue chaque dimanche — IA ré-apprise sur les signaux live, poids des
+  // stratégies selon leurs trades live, candidates suivies en paper et promues si elles font mieux
+  autoAdapt: num('AUTO_ADAPT', 1) === 1,
+  // Poids des stratégies et candidates : coupé par défaut (npm run adapt-sim : n'améliore pas la réussite sur 2015–2026)
+  adaptStrategies: num('ADAPT_STRATEGIES', 0) === 1,
+  adaptCandidates: list('ADAPT_CANDIDATES', 'gold:g_low10,gold:g_weekrev,gold:g_oilfall,nas100:n_weekrev,nas100:n_rsi4,nas100:n_rsspx,nas100:tom,spx:ibs,spx:rsi2'),
   ftmoProgram: FTMO_PROGRAM,
   ftmoDayStop: upgraded('FTMO_DAY_STOP_PCT', '2', ONE ? 1 : 2), // plus de nouveau trade dans la journée après −2 % (0 = jamais)
   ftmoFeeGold: num('FTMO_FEE_GOLD_PCT', 0.005),
@@ -190,7 +196,9 @@ module.exports = {
   cfg.trialStrategies = list('TRIAL_STRATEGIES', '');
   if (cfg.ftmoOnly) {
     const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : [])];
-    const of = (m) => [...new Set([...all, ...cfg.trialStrategies].filter((x) => x.startsWith(`${m}:`)).map((x) => x.slice(m.length + 1))), 'hold'];
+    // + candidates de l'adaptation automatique (suivies en paper sans être publiées, promues si elles font mieux)
+    const cand = cfg.autoAdapt && cfg.adaptStrategies ? cfg.adaptCandidates : [];
+    const of = (m) => [...new Set([...all, ...cfg.trialStrategies, ...cand].filter((x) => x.startsWith(`${m}:`)).map((x) => x.slice(m.length + 1))), 'hold'];
     cfg.goldStrategies = of('gold');
     cfg.nasStrategies = of('nas100');
     cfg.eurusdStrategies = of('eurusd');

@@ -62,7 +62,7 @@ function tick() {
 /* Accès                                                               */
 /* ------------------------------------------------------------------ */
 
-const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif']);
+const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt']);
 const isAdmin = (ctx) => !cfg.allowedUserIds.size || (ctx.from && cfg.allowedUserIds.has(String(ctx.from.id)));
 
 // Les boutons et les commandes de consultation sont ouverts à tout le groupe ; les réglages sont réservés.
@@ -164,6 +164,22 @@ bot.command(['historique', 'trades'], async (ctx) => {
 
 // Vérification de cohérence des trades (paper + compte FTMO), réservée aux admins
 bot.command('verif', (ctx) => ctx.reply(require('./src/verify').verifyReport(cfg, store), HTML));
+
+// Adaptation automatique (admin) : /adapt (état), /adapt now (revue tout de suite), /adapt reset (retour à l'origine)
+bot.command('adapt', async (ctx) => {
+  const ad = require('./src/adapt');
+  if (!cfg.autoAdapt) return ctx.reply('Adaptation automatique désactivée (AUTO_ADAPT=0 dans le .env).');
+  const arg = (ctx.match || '').trim().toLowerCase();
+  if (arg === 'reset') {
+    ad.reset(cfg, store);
+    return ctx.reply('🧠 Adaptation remise à zéro : IA d’origine, tous les poids à × 1, aucune candidate promue.');
+  }
+  if (arg === 'now') return ctx.reply(ad.weeklyReview(cfg, store).text, HTML);
+  const st = ad.loadState(store);
+  const w = Object.entries(st.weights || {}).filter(([, v]) => v !== 1).map(([k, v]) => `• <code>${esc(k)}</code> ${v === 0 ? 'suspendue' : `× ${String(v).replace('.', ',')}`}`);
+  const n = store.loadJson('ai-samples.json', []).length;
+  return ctx.reply([ad.summary(cfg, store), `Signaux jugés mémorisés : ${n}`, ...(w.length ? ['Poids appris :', ...w] : ['Aucun poids modifié pour l’instant.']), (st.promoted || []).length ? `Candidates promues : ${st.promoted.map((k) => `<code>${esc(k)}</code>`).join(', ')}` : '', `Candidates en observation : ${cfg.adaptCandidates.map((k) => `<code>${esc(k)}</code>`).join(', ')}`].filter(Boolean).join('\n').slice(0, 4000), HTML);
+});
 
 // Simulation des stratégies sur l'historique des cours (ex-« /historique »)
 bot.command('simulation', (ctx) => {

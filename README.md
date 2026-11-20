@@ -572,6 +572,32 @@ sur 10 échouent quand même, surtout sur la perte du jour (−5 %) quand plusie
 | Tendances journalières (croix dorée, tendance 4 horizons, momentum 12 mois, moyenne 200 j) | 0 % | rentables, mais avec 1 % de risque sur un stop large il faut des années pour faire +10 % |
 | 6 nouvelles stratégies « style FTMO » : repli 1 h dans la tendance, cassure de la veille, cassure du range de nuit, jour intérieur, NR7, cassure de la semaine passée | 0 % | espérance nulle ou négative aux frais FTMO |
 
+### 🧠 Adaptation automatique (`src/adapt.js`, `AUTO_ADAPT=1`, `/adapt` admin, `npm run adapt-sim`)
+
+Chaque dimanche, une **revue automatique** (message « 🧠 Revue automatique de la semaine » dans le groupe) :
+- **L'IA apprend en direct** : chaque signal jugé (pris ou refusé) est mémorisé avec ses caractéristiques
+  (`data/ai-samples.json`) puis étiqueté par le résultat de son trade paper. Dès 150 signaux, le modèle est ré-ajusté
+  prudemment (il reste près du modèle d'origine tant qu'il y a peu de données) et **n'est adopté que s'il fait mieux**
+  sur les 25 % de signaux les plus récents ; seuil recalé pour refuser ≈ 20 % des signaux (`data/aiModel.live.json`).
+- **Sécurité** : si ses refus récents gagnent plus que les trades qu'elle garde, l'IA repasse seule en observation,
+  et revient au blocage quand ça s'inverse.
+- **Stratégies** (`ADAPT_STRATEGIES=1`, coupé par défaut) : poids × 0,5 / × 1,25, suspension, réintégration selon les
+  trades live, candidates (`ADAPT_CANDIDATES`) suivies en paper et promues.
+
+Rejoué semaine par semaine sur 2015–2026 (`npm run adapt-sim`, IA de départ entraînée sur 2009–2014), réussite du
+challenge en moins d'un an :
+
+| | 2015–2019 | 2020–2026 |
+|---|---|---|
+| sans IA | 37 % | 46 % |
+| IA figée | 39 % | 50 % |
+| **IA qui apprend** (défaut) | **51 %** | 47 % |
+| stratégies qui s'adaptent | 32 % ✘ | 47 % |
+| tout adaptatif | 49 % | 47 % |
+
+→ l'IA qui apprend est activée ; l'adaptation des poids des stratégies n'aide pas et reste coupée.
+`/adapt` : état · `/adapt now` : revue tout de suite · `/adapt reset` : retour à l'origine · `AUTO_ADAPT=0` : tout coupé.
+
 ### 🟣 Compte Lucid simulé en direct (`/lucid`, `LUCID=1`)
 
 À côté du compte FTMO, un compte **LucidFlex 50K** (`LUCID_CAPITAL`) suit les mêmes signaux (même IA validatrice,

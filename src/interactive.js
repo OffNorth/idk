@@ -202,6 +202,7 @@ async function render(cfg, store, view, marketId, args = []) {
       `Risque par trade : ${riskText(cfg, fst.account)}${protectText(cfg, s, fst.targetPct)}`,
       ...aiText(cfg, s),
       ...(rep.n ? [refusedLine(rep)] : []),
+      ...(cfg.autoAdapt ? [require('./adapt').summary(cfg, store)] : []),
       ...(s.history || []).slice(-3).map((h) => `• ${isLucid ? 'évaluation' : 'challenge'} n° ${h.attempt}${isLucid ? '' : `, étape ${h.phase}`} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
     ];
     const rows = [[btn(`🧾 Trades ${isLucid ? 'Lucid' : 'FTMO'}`, `m:z:${KM[marketId]}:0${sfx}`), ...(rep.n ? [btn('🤖 Refusés par l’IA', `m:i:${KM[marketId]}:0${sfx}`)] : [])]];
