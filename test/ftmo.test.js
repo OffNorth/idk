@@ -6,7 +6,7 @@ const path = require('path');
 
 function setup(extra = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ftmo-'));
-  const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, ftmoStrategies: ['gold:x_rsi2'], ftmoCapital: 100000, ftmoRisk: 1, ftmoLeverage: 30, ftmoDayStop: 0, ftmoFeeGold: 0, ftmoFeeNas: 0, ftmoProgram: '2step', ...extra };
+  const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, ftmoStrategies: ['gold:x_rsi2'], ftmoCapital: 100000, ftmoRisk: 1, ftmoLeverage: 30, ftmoDayStop: 0, ftmoFeeGold: 0, ftmoFeeNas: 0, ftmoProgram: '2step', ftmoSizing: 'plusieurs positions → moins', ...extra };
   const { Store } = require('../src/store');
   return { cfg, store: new Store(dir) };
 }
@@ -240,4 +240,29 @@ test('simulateur : phase financée avec versements (FTMO tous les 14 jours, Luci
   const lu = fundedRun(wins, { capital: 50_000, riskPct: 1, minDays: 1, dailyPct: Infinity, maxLossUsd: 2000, eodTrailing: true, lockAt: 100, funded: { rule: 'lucid', cycleDays: 5, minDay: 150, share: 0.5, cap: 2000, days: 40 } }, T0 - 1);
   // 250 $ par jour gagnant → versement tous les 5 jours ≈ la moitié du gain accumulé
   assert.ok(lu.paid > 0 && !lu.lost);
+});
+
+test('risque qui baisse à l’approche de l’objectif (objectif : dégressif doux)', () => {
+  const { RULES } = require('../src/sizing');
+  const r = RULES['objectif : dégressif doux'];
+  const st = (gainPct, open = 0, target = 10) => ({ balance: 100_000 * (1 + gainPct / 100), capital: 100_000, dayStart: 100_000, target, open });
+  assert.strictEqual(r({}, st(0)), 1);
+  assert.ok(Math.abs(r({}, st(5)) - 0.625) < 1e-9); // à mi-chemin : × 0,625
+  assert.strictEqual(r({}, st(9.5)), 0.4); // plancher × 0,4
+  assert.strictEqual(r({}, st(-2)), 1); // en perte : pas de réduction
+  assert.ok(Math.abs(r({}, st(5, 2)) - 0.3125) < 1e-9); // + « plusieurs positions → moins »
+  assert.strictEqual(r({}, st(50, 0, Infinity)), 1); // compte financé : pas d'objectif
+  // Compte en direct : après +5 % (trade à +5 R, risque 1 %), le trade suivant risque 0,625 × 1 % du solde
+  const { cfg, store } = setup({ ftmoSizing: 'objectif : dégressif doux', ftmoProgram: '1step' });
+  const { createFtmo } = require('../src/ftmoAccount');
+  const f = createFtmo({ cfg, store });
+  const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
+  f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0);
+  f.onCycle([{ type: 'close', market, strategy, trade: { ...pos, exit: 4200, exitT: T0 + 1800, reason: 'signal' } }], { gold: 4200 }, T0 + 1800);
+  const bal = f.load().balance;
+  assert.ok(Math.abs(bal - 105_000) < 1, String(bal));
+  const pos2 = { ...pos, entry: 4200, sl: 4158, initSl: 4158, entryT: T0 + DAY };
+  f.onCycle([{ type: 'open', market, strategy, pos: pos2 }], { gold: 4200 }, T0 + DAY);
+  const o = Object.values(f.load().open)[0];
+  assert.ok(o && Math.abs(o.risk - bal * 0.01 * 0.625) < 1, `risque ${o && o.risk}`);
 });

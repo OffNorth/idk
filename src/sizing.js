@@ -56,4 +56,16 @@ const RULES = {
   'volatilité + forme': (t) => clamp(1 / (t.volRatio || 1), 0.5, 1.5) * (t.recentR > 2 ? 1.25 : t.recentR < -2 ? 0.6 : 1),
 };
 
-module.exports = { annotate, RULES, clamp, stopPctOf };
+// Avance vers l'objectif du challenge (0 au départ, 1 à l'objectif) ; 0 sans objectif (compte financé)
+const progress = (s) => (Number.isFinite(s.target) && s.target > 0 ? Math.max(0, ((s.balance / s.capital - 1) * 100) / s.target) : 0);
+const several = (s) => (s.open >= 2 ? 0.5 : 1);
+// Risque qui baisse à l'approche de l'objectif (protège le gain acquis), avec « plusieurs positions → moins »
+Object.assign(RULES, {
+  'objectif : × 0,5 dès 50 %': (t, s) => several(s) * (progress(s) >= 0.5 ? 0.5 : 1),
+  'objectif : × 0,5 dès 30 %': (t, s) => several(s) * (progress(s) >= 0.3 ? 0.5 : 1),
+  'objectif : paliers': (t, s) => { const p = progress(s); return several(s) * (p >= 0.85 ? 0.25 : p >= 0.6 ? 0.5 : p >= 0.3 ? 0.75 : 1); },
+  'objectif : dégressif': (t, s) => several(s) * clamp(1 - progress(s), 0.25, 1),
+  'objectif : dégressif doux': (t, s) => several(s) * clamp(1 - 0.75 * progress(s), 0.4, 1),
+});
+
+module.exports = { annotate, RULES, clamp, stopPctOf, progress };

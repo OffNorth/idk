@@ -41,7 +41,8 @@
     "ftmo-real": "node --max-old-space-size=12288 ftmo-real.js",
     "ftmo-spx": "node --max-old-space-size=8192 ftmo-spx.js",
     "ftmo-intraday": "node --max-old-space-size=12288 ftmo-intraday.js",
-    "lucid-compare": "node --max-old-space-size=12288 lucid-compare.js"
+    "lucid-compare": "node --max-old-space-size=12288 lucid-compare.js",
+    "ftmo-protect": "node --max-old-space-size=12288 ftmo-protect.js"
   },
   "engines": {
     "node": ">=20"

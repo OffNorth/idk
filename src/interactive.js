@@ -28,6 +28,15 @@ const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
 const quote = (v) => (Math.abs(v) < 10 ? `$${v.toFixed(4)}` : Math.abs(v) >= 1000 ? money(v) : `$${v.toFixed(2)}`);
 const pct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} %`;
 const signedMoney = (v) => `${v >= 0 ? '+' : '−'}${money(Math.abs(v || 0))}`;
+/** Réduction du risque à l'approche de l'objectif (FTMO_SIZING « objectif : … »), pour la légende du compte FTMO. */
+function protectText(cfg, s) {
+  if (!String(cfg.ftmoSizing).startsWith('objectif')) return '';
+  const { RULES } = require('./sizing');
+  const { TARGET } = require('./ftmoAccount');
+  const mul = (RULES[cfg.ftmoSizing] || (() => 1))({}, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: TARGET[s.phase] ?? Infinity, open: 0 });
+  return mul < 0.999 ? ` · <b>réduit × ${mul.toFixed(2).replace('.', ',')}</b> (gain proche de l'objectif)` : ' · baisse à l\'approche de l\'objectif';
+}
+
 /** Risque par trade du compte FTMO : journalières / intraday (stratégies factices pour interroger riskOf). */
 function riskText(cfg, acct) {
   if (!acct.riskOf) return `${acct.risk} %`;
@@ -162,7 +171,7 @@ async function render(cfg, store, view, marketId, args = []) {
       `Valeur <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · objectif ${money(fst.target)}` : ''}`,
       `dont ${signedMoney(fst.unrealized)} latents sur ${Object.keys(s.open).length} position(s) ouverte(s) · réalisé ${signedMoney(fst.realized)} sur ${s.closed.length} trade(s) clôturé(s)${s.skipped ? ` · ${s.skipped} signal(s) opposé(s) ignoré(s)` : ''}`,
       `Stratégies suivies : ${fst.account.strategies.map((x) => `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' }[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')}`,
-      `Risque par trade : ${riskText(cfg, fst.account)}`,
+      `Risque par trade : ${riskText(cfg, fst.account)}${protectText(cfg, s)}`,
       ...(s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt}, étape ${h.phase} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
     ];
     return { png: C.ftmoImage(fst), caption: lines.join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'f', marketId, [[btn('🧾 Trades FTMO', `m:z:${KM[marketId]}:0`)]]) };

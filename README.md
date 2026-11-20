@@ -572,6 +572,20 @@ sur 10 échouent quand même, surtout sur la perte du jour (−5 %) quand plusie
 | Tendances journalières (croix dorée, tendance 4 horizons, momentum 12 mois, moyenne 200 j) | 0 % | rentables, mais avec 1 % de risque sur un stop large il faut des années pour faire +10 % |
 | 6 nouvelles stratégies « style FTMO » : repli 1 h dans la tendance, cassure de la veille, cassure du range de nuit, jour intérieur, NR7, cassure de la semaine passée | 0 % | espérance nulle ou négative aux frais FTMO |
 
+### Risque qui baisse à l'approche de l'objectif (`npm run ftmo-protect`, défaut `FTMO_SIZING=objectif : dégressif doux`)
+
+Risque de chaque trade × (1 − 0,75 × avance vers l'objectif), au moins × 0,4 (à +5 % sur +10 % : × 0,625 ; à +8 % :
+× 0,4), en plus de « plusieurs positions → moins ». Protège le gain acquis contre la perte du jour de 3 %. Challenge
+1 étape, réussite en moins d'un an :
+
+| Réglage | 2009–2019 | 2020–2026 | nov. 2024 → nov. 2026 |
+|---|---|---|---|
+| avant (risque fixe) | 26 % (53 j) | 30 % (48 j) | 40 % (34 j) |
+| **dégressif doux** | **37 %** (94 j) | **46 %** (113 j) | **44 %** (47 j) |
+
+Plus de réussite, mais plus lent : la fin du parcours se fait à risque réduit. La légende `/ftmo` affiche la réduction
+en cours.
+
 ### FTMO ou Lucid Trading ? (`npm run lucid-compare`)
 
 Les 25 stratégies du compte FTMO rejouées sous les règles de chaque société (sources secondaires 2026, à vérifier) :
