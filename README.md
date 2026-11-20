@@ -572,6 +572,15 @@ sur 10 échouent quand même, surtout sur la perte du jour (−5 %) quand plusie
 | Tendances journalières (croix dorée, tendance 4 horizons, momentum 12 mois, moyenne 200 j) | 0 % | rentables, mais avec 1 % de risque sur un stop large il faut des années pour faire +10 % |
 | 6 nouvelles stratégies « style FTMO » : repli 1 h dans la tendance, cassure de la veille, cassure du range de nuit, jour intérieur, NR7, cassure de la semaine passée | 0 % | espérance nulle ou négative aux frais FTMO |
 
+### 🟣 Compte Lucid simulé en direct (`/lucid`, `LUCID=1`)
+
+À côté du compte FTMO, un compte **LucidFlex 50K** (`LUCID_CAPITAL`) suit les mêmes signaux (même IA validatrice,
+même risque × `LUCID_RISK_MUL`) avec les règles Lucid : objectif +6 %, pas de perte du jour, perte max 2 000 $
+(3 000 $ en 100K) sous le plus haut solde de **clôture** de séance CME (17 h New York), bloquée à capital + 100 $,
+meilleur jour ≤ 50 %, 2 jours minimum, **micro-futures en contrats entiers** (MGC, MNQ, MES, M6E ; 40 au plus, frais
+par contrat). Messages « 🟣 Lucid » dans le groupe, panneau `/lucid` (bouton « 🟣 Compte Lucid » dans `/ftmo`).
+En simulation sur l'historique (`npm run lucid-compare`), il réussit nettement moins souvent que le compte FTMO.
+
 ### 🤖 IA validatrice (`npm run ai-train`, `src/aiFilter.js`, `FTMO_AI`)
 
 Pour chaque signal du compte FTMO, un modèle (régression logistique, entraîné sur ≈ 13 000 trades des stratégies du

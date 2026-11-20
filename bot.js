@@ -91,6 +91,7 @@ bot.command(['start', 'aide', 'help'], (ctx) =>
       '/menu — 🎛 panneau interactif (images qui changent avec les boutons)',
       '/graphique [nasdaq|or] — 🕯 cours en bougies (Nasdaq par défaut)',
       '/ftmo [nasdaq|or] — 🏦 comptes FTMO simulés (challenge +10 % puis +5 %)',
+      '/lucid — 🟣 compte Lucid simulé (LucidFlex : +6 %, pas de perte du jour, micro-futures)',
       '/jeu — 🎯 pronostic du jour · /classement — points des joueurs',
       '/nasdaq · /gold — bilan texte',
       '/portfolio — graphiques des portefeuilles',
@@ -195,6 +196,17 @@ bot.command('ftmo', async (ctx) => {
   } catch (err) {
     await ctx.reply(`❌ ${esc(err.message)}`);
   }
+});
+
+// Compte Lucid simulé (LucidFlex, micro-futures) : mêmes signaux que le compte FTMO, règles Lucid
+bot.command('lucid', async (ctx) => {
+  try {
+    if (!require('./src/ftmoAccount').accountOf(cfg, 'lucid').enabled) return ctx.reply('Le compte Lucid simulé est désactivé (LUCID=0 dans le .env).');
+    await sendPanel(ctx.api, ctx.chat.id, cfg, store, { view: 'f', marketId: 'gold', args: ['l'] });
+  } catch (err) {
+    await ctx.reply(`❌ ${esc(err.message)}`);
+  }
+  return null;
 });
 
 bot.command('jeu', (ctx) => ctx.reply(game.status(), HTML));
@@ -309,6 +321,7 @@ console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) �
     { command: 'menu', description: '🎛 Panneau interactif (Nasdaq ; /menu or pour l’or)' },
     { command: 'graphique', description: '🕯 Cours en bougies : /graphique (Nasdaq) · /graphique or' },
     { command: 'ftmo', description: '🏦 Comptes FTMO simulés : /ftmo (Nasdaq) · /ftmo or' },
+    { command: 'lucid', description: '🟣 Compte Lucid simulé (LucidFlex, micro-futures)' },
     { command: 'jeu', description: '🎯 Pronostic du jour' },
     { command: 'classement', description: '🏆 Classement des joueurs' },
     { command: 'nasdaq', description: 'Bilan du Nasdaq 100' },

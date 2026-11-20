@@ -152,6 +152,10 @@ module.exports = {
   ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:rsi2,nas100:ibs,nas100:down3,nas100:dip5,nas100:n_low10,nas100:n_drop,nas100:n_2down,nas100:n_dollarfall,nas100:rates,nas100:g_yieldfall,nas100:n_noise,nas100:n_orb5s,nas100:n_mom10,nas100:n_orb15'),
   ftmoNasRisk: process.env.FTMO_NAS_RISK_PCT === '0.5' ? 3 : num('FTMO_NAS_RISK_PCT', 3), // 0,5 = ancienne valeur par défaut, mise à jour ; // npm run ftmo-nas-port : 3 % → 42 % · 43 % · 39 % de challenges réussis
   ftmoCapital: num('FTMO_CAPITAL', 100000),
+  // Compte Lucid simulé (LucidFlex, micro-futures) à côté du compte FTMO : mêmes signaux, règles Lucid (/lucid)
+  lucidEnabled: num('LUCID', 1) === 1,
+  lucidCapital: num('LUCID_CAPITAL', 50000), // 50000 ou 100000
+  lucidRiskMul: num('LUCID_RISK_MUL', 1), // × le risque du compte FTMO (npm run lucid-compare : × 1 sur 50K)
   ftmoRisk: upgraded('FTMO_RISK_PCT', ['0.5', '0.35'], 1.5), // % du solde risqué par trade (distance au stop)
   ftmoLeverage: num('FTMO_LEVERAGE', 30),
   // Levier dynamique (src/sizing.js) : « plusieurs positions → moins » = risque ÷ 2 dès 2 positions déjà ouvertes

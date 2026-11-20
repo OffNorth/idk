@@ -337,8 +337,10 @@ function gauge(cv, x, y, w, frac, col) {
 function ftmoImage(st) {
   const s = st.s;
   const cv = new Canvas(W, 600, THEME.bg);
-  const phase = s.phase === 'funded' ? 'Compte financé' : st.program?.steps === 1 ? 'Challenge 1 étape' : `Étape ${s.phase} sur 2`;
-  header(cv, { market: st.account ? { id: st.account.id, name: st.account.label } : null, title: `Compte FTMO simulé · ${phase}`, subtitle: `Challenge n° ${s.attempt} · capital ${money(s.capital)} · risque par trade selon le stop · depuis le ${date(s.startedAt)}` });
+  const firm = st.account?.firm || 'FTMO';
+  const lucid = firm === 'Lucid';
+  const phase = s.phase === 'funded' ? 'Compte financé' : lucid ? 'Évaluation LucidFlex' : st.program?.steps === 1 ? 'Challenge 1 étape' : `Étape ${s.phase} sur 2`;
+  header(cv, { market: st.account ? { id: st.account.id === 'lucid' ? 'gold' : st.account.id, name: st.account.label } : null, title: `Compte ${firm} simulé · ${phase}`, subtitle: `${lucid ? 'Évaluation' : 'Challenge'} n° ${s.attempt} · capital ${money(s.capital)} · ${lucid ? 'micro-futures, contrats entiers' : 'risque par trade selon le stop'} · depuis le ${date(s.startedAt)}` });
   const ret = (st.equity / s.capital - 1) * 100;
   cv.roundRect(24, 96, 952, 150, 16, THEME.surface);
   cv.text('VALEUR DU COMPTE', 48, 112, { style: 'b', size: 13, color: THEME.muted });
@@ -351,12 +353,13 @@ function ftmoImage(st) {
     cv.text(`dont ${sgn(st.unrealized)} latents (${nOpen} position${nOpen > 1 ? 's' : ''} ouverte${nOpen > 1 ? 's' : ''}) · réalisé ${sgn(st.realized)}`, 48, 192, { size: 15, color: THEME.muted, maxWidth: 560 });
   }
   if (st.target) {
-    cv.text(`Objectif ${money(st.target)} (+${s.phase === 1 ? 10 : 5} %)`, 952, 112, { size: 15, color: THEME.muted, align: 'right' });
+    cv.text(`Objectif ${money(st.target)} (+${st.targetPct ?? (s.phase === 1 ? 10 : 5)} %)`, 952, 112, { size: 15, color: THEME.muted, align: 'right' });
     gauge(cv, 48, 212, 904, st.progress, THEME.up);
     cv.text(`${Math.round(Math.min(1, st.progress) * 100)} % de l’objectif`, 952, 186, { style: 'b', size: 15, color: THEME.up, align: 'right' });
   } else {
     const gain = s.balance - s.capital;
-    cv.text(`Gain depuis le financement : ${gain >= 0 ? '+' : '−'}${money(Math.abs(gain))} · part du trader (80 %) : ${money(Math.max(0, gain) * 0.8)}`, 48, 212, { size: 15, color: THEME.muted });
+    const split = st.program?.split || 80;
+    cv.text(`Gain depuis le financement : ${gain >= 0 ? '+' : '−'}${money(Math.abs(gain))} · part du trader (${split} %) : ${money((Math.max(0, gain) * split) / 100)}`, 48, 212, { size: 15, color: THEME.muted });
   }
   const box = (x, title, used, label) => {
     cv.roundRect(x, 262, 300, 130, 16, THEME.surface);
@@ -365,11 +368,14 @@ function ftmoImage(st) {
     gauge(cv, x + 20, 348, 260, used, used > 0.6 ? THEME.down : used > 0.3 ? THEME.gold : THEME.up);
   };
   const P = st.program || { daily: 5, max: 10, trailing: false };
-  box(24, `PERTE DU JOUR (MAX ${P.daily} %)`, st.dailyUsed, `${Math.round(st.dailyUsed * 100)} % utilisé`);
-  box(350, `PERTE MAX (${P.max} %${P.trailing ? ', SUIVEUSE' : ''})`, st.maxUsed, `${Math.round(st.maxUsed * 100)} % utilisé`);
+  if (Number.isFinite(P.daily)) box(24, `PERTE DU JOUR (MAX ${P.daily} %)`, st.dailyUsed, `${Math.round(st.dailyUsed * 100)} % utilisé`);
+  else box(24, 'PERTE DU JOUR', 0, 'aucune limite');
+  if (P.maxUsd) box(350, `PERTE MAX ${money(P.maxUsd)} SUIVEUSE`, st.maxUsed, `seuil ${money(st.floor)}`);
+  else box(350, `PERTE MAX (${P.max} %${P.trailing ? ', SUIVEUSE' : ''})`, st.maxUsed, `${Math.round(st.maxUsed * 100)} % utilisé`);
   cv.roundRect(676, 262, 300, 130, 16, THEME.surface);
   cv.text('JOURS DE TRADING', 696, 278, { style: 'b', size: 13, color: THEME.muted });
-  cv.text(`${s.days.length}${s.phase === 'funded' ? '' : ' / 4 minimum'}`, 696, 302, { style: 'b', size: 22, color: s.days.length >= 4 ? THEME.up : THEME.text });
+  const minD = P.minDays ?? 4;
+  cv.text(`${s.days.length}${s.phase === 'funded' ? '' : ` / ${minD} minimum`}`, 696, 302, { style: 'b', size: 22, color: s.days.length >= minD ? THEME.up : THEME.text });
   cv.text(`${st.trades} trades · ${st.trades ? Math.round((st.wins / st.trades) * 100) : 0} % gagnants`, 696, 344, { size: 15, color: THEME.muted });
 
   cv.roundRect(24, 408, 952, 150, 16, THEME.surface);
@@ -380,12 +386,12 @@ function ftmoImage(st) {
   rows.forEach((r, i) => {
     const y = 450 + i * 26;
     cv.text(`${r.side === 'long' ? '▲ achat' : '▼ vente'} · ${r.name}`, 48, y, { size: 15, color: r.side === 'long' ? THEME.up : THEME.down, maxWidth: 470 });
-    cv.text(`${price(r.entry)}${r.exit ? ` → ${price(r.exit)}` : ''} · ${money(r.notional)}${r.lev ? ` · levier ${r.lev.toFixed(1).replace('.', ',')}` : ''}`, 820, y, { size: 15, color: THEME.muted, align: 'right' });
+    cv.text(`${price(r.entry)}${r.exit ? ` → ${price(r.exit)}` : ''} · ${r.n ? `${r.n} ${r.contract || 'micro'}` : `${money(r.notional)}${r.lev ? ` · levier ${r.lev.toFixed(1).replace('.', ',')}` : ''}`}`, 820, y, { size: 15, color: THEME.muted, align: 'right' });
     // Résultat : soldé pour un trade clôturé, latent (au cours actuel) pour une position ouverte
     const v = r.pnl !== undefined ? r.pnl : st.openPnl ? st.openPnl(r) : null;
     if (v !== null && v !== undefined) cv.text(`${v >= 0 ? '+' : '−'}${money(Math.abs(v))}`, 952, y, { style: 'b', size: 15, color: tone(v), align: 'right' });
   });
-  footer(cv, 'Simulation d’un challenge FTMO · argent fictif · pas un conseil financier');
+  footer(cv, `Simulation ${lucid ? 'd’une évaluation Lucid' : 'd’un challenge FTMO'} · argent fictif · pas un conseil financier`);
   return cv.png();
 }
 

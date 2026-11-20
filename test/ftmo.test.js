@@ -6,7 +6,7 @@ const path = require('path');
 
 function setup(extra = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ftmo-'));
-  const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, ftmoStrategies: ['gold:x_rsi2'], ftmoCapital: 100000, ftmoRisk: 1, ftmoLeverage: 30, ftmoDayStop: 0, ftmoFeeGold: 0, ftmoFeeNas: 0, ftmoProgram: '2step', ftmoSizing: 'plusieurs positions → moins', ftmoAi: 'off', ...extra };
+  const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, ftmoStrategies: ['gold:x_rsi2'], ftmoCapital: 100000, ftmoRisk: 1, ftmoLeverage: 30, ftmoDayStop: 0, ftmoFeeGold: 0, ftmoFeeNas: 0, ftmoProgram: '2step', ftmoSizing: 'plusieurs positions → moins', ftmoAi: 'off', lucidEnabled: false, ...extra };
   const { Store } = require('../src/store');
   return { cfg, store: new Store(dir) };
 }
@@ -311,4 +311,40 @@ test('IA validatrice : avis sur chaque trade (observation) et refus sous le seui
   paper(c.store);
   const out3 = createFtmo({ cfg: c.cfg, store: c.store }).onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0);
   assert.ok(!out3.find((o) => o.type === 'open').p.ai);
+});
+
+test('compte Lucid en direct : micro-contrats entiers, pas de perte du jour, perte max suiveuse en fin de journée', async () => {
+  const { cfg, store } = setup({ lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1, ftmoCombined: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoIntradayRisk: 0 });
+  const { createFtmo, ftmoAccounts } = require('../src/ftmoAccount');
+  assert.ok(ftmoAccounts(cfg).some((a) => a.id === 'lucid'));
+  const lu = createFtmo({ cfg, store, account: 'lucid' });
+  const strat = { id: 'x_rsi2', name: 'Scalp RSI 2', tf: '1d' };
+  // Risque 1 % de 50 000 $ = 500 $ ; stop à 1 % → 50 000 $ ; MGC à 4 000 $ = 40 000 $ le contrat → 1 contrat
+  const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
+  const out = lu.onCycle([{ type: 'open', market, strategy: strat, pos }], { gold: 4000 }, T0);
+  const o = out.find((x) => x.type === 'open');
+  assert.ok(o, 'position ouverte');
+  assert.strictEqual(o.p.n, 1);
+  assert.strictEqual(o.p.notional, 40_000);
+  const { ftmoTradeMessage } = require('../src/cycle');
+  assert.match(ftmoTradeMessage(o, lu.status({ gold: 4000 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /🟣 <b>Lucid<\/b>.*\n.*\n.*1 micro-contrat MGC/);
+  // −4 % dans la journée (−1 600 $) : sur FTMO 1 étape ce serait −3 % du jour ; ici pas de perte du jour, et au-dessus de 48 000 $
+  const out2 = lu.onCycle([{ type: 'close', market, strategy: strat, trade: { ...pos, exit: 3840, exitT: T0 + 600, reason: 'stop loss' } }], { gold: 3840 }, T0 + 600);
+  assert.ok(!out2.some((x) => x.type === 'fail'));
+  const bal = lu.load().balance;
+  assert.ok(Math.abs(bal - (50_000 - 1600 - 3.5)) < 1e-6, String(bal));
+  // Le lendemain : nouveau trade perdant qui passe sous 48 000 $ → échec sur la perte max
+  const t1 = T0 + DAY;
+  const pos2 = { ...pos, entryT: t1 };
+  lu.onCycle([{ type: 'open', market, strategy: strat, pos: pos2 }], { gold: 4000 }, t1);
+  const out3 = lu.onCycle([{ type: 'close', market, strategy: strat, trade: { ...pos2, exit: 3960, exitT: t1 + 600, reason: 'stop loss' } }], { gold: 3960 }, t1 + 600);
+  const fail = out3.find((x) => x.type === 'fail');
+  assert.ok(fail, 'échec perte max');
+  assert.match(fail.why, /2.000 \$ sous le plus haut solde de clôture/);
+  // Panneau : vue du compte Lucid
+  const v = await require('../src/interactive').render(cfg, store, 'f', 'gold', ['l']);
+  assert.match(v.caption, /Compte Lucid simulé/);
+  assert.ok(JSON.stringify(v.keyboard).includes('m:f:g'));
+  const z = await require('../src/interactive').render(cfg, store, 'z', 'gold', ['0', 'l']);
+  assert.match(z.caption, /Compte Lucid simulé/);
 });

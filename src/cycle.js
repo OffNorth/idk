@@ -49,14 +49,16 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
   for (const acct of cfg.ftmoEnabled ? require('./ftmoAccount').ftmoAccounts(cfg) : []) {
     try {
       const ftmo = require('./ftmoAccount').createFtmo({ cfg, store, account: acct.id });
-      const name = `Compte FTMO simulé ${acct.emoji} ${acct.label}`;
+      const firm = acct.firm || 'FTMO';
+      const name = `Compte ${firm} simulé ${acct.emoji} ${acct.label}`;
       const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-      const button = ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
+      const button = ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: acct.id === 'lucid' ? 'm:f:g:l' : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
       for (const msg of ftmo.onCycle(all, prices)) {
         // Chaque trade du compte FTMO (ouverture et clôture) : console + message dans le groupe (FTMO_TRADE_MESSAGES)
         if (msg.type === 'open' || msg.type === 'trade' || msg.type === 'refused') {
           const text = ftmoTradeMessage(msg, ftmo.status(prices), marketById(cfg, msg.p.market));
-          console.log(`[ftmo] ${{ open: 'ouverture', trade: 'clôture', refused: 'refusé par l\'IA' }[msg.type]} ${msg.p.market}:${msg.p.sid} ${msg.p.side}${msg.type === 'trade' ? ` ${usd(msg.p.pnl)}` : ''}${msg.p.ai ? ` (IA ${Math.round(msg.p.ai.p * 100)} %)` : ''}`);
+          if (msg.type === 'refused' && acct.id === 'lucid') continue; // même signal déjà annoncé par le compte FTMO
+          console.log(`[${firm.toLowerCase()}] ${{ open: 'ouverture', trade: 'clôture', refused: 'refusé par l\'IA' }[msg.type]} ${msg.p.market}:${msg.p.sid} ${msg.p.side}${msg.type === 'trade' ? ` ${usd(msg.p.pnl)}` : ''}${msg.p.ai ? ` (IA ${Math.round(msg.p.ai.p * 100)} %)` : ''}`);
           if (publish && cfg.ftmoTradeMessages !== false) await safeSend(channel, text, button);
           continue;
         }
@@ -64,10 +66,11 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
         const { ftmoImage } = require('./cards');
         const st = ftmo.status(prices);
         const oneStep = st.program?.steps === 1;
+        const split = st.program?.split || 80;
         const text = msg.type === 'pass'
-          ? (oneStep ? `🏦🏆 <b>${name} : challenge 1 étape réussi (+10 %), compte financé !</b>\nOn suit maintenant les gains mensuels (partage 80 %).`
+          ? (oneStep ? `🏦🏆 <b>${name} : ${firm === 'Lucid' ? 'évaluation' : 'challenge 1 étape'} réussi${firm === 'Lucid' ? 'e' : ''} (+${st.program?.target || 10} %), compte financé !</b>\nOn suit maintenant les gains mensuels (partage ${split} %).`
             : msg.phase === 1 ? `🏦✅ <b>${name} : étape 1 réussie (+10 %)</b>\nPassage à l’étape 2 (vérification, objectif +5 %).` : `🏦🏆 <b>${name} : étape 2 réussie, compte financé !</b>\nOn suit maintenant les gains mensuels (partage 80 %).`)
-          : `🏦❌ <b>${name} : challenge n° ${msg.s.attempt} échoué</b>\n${msg.why}. Un nouveau challenge démarre au prochain jour de trading.`;
+          : `🏦❌ <b>${name} : ${firm === 'Lucid' ? 'évaluation' : 'challenge'} n° ${msg.s.attempt} échoué${firm === 'Lucid' ? 'e' : ''}</b>\n${msg.why}. Un nouveau challenge démarre au prochain jour de trading.`;
         await channel.sendPhoto(ftmoImage(st), text, button).catch((err) => console.error(`[ftmo] ${explainTelegramError(err)}`));
       }
     } catch (err) {
@@ -151,26 +154,27 @@ function ftmoTradeMessage(msg, st, market) {
   const p = msg.p;
   const mk = market ? `${market.emoji} ${market.id === 'nas100' ? 'Nasdaq' : market.name}` : p.market;
   const name = `<b>${esc(p.name || p.sid)}</b> <code>${esc(p.sid)}</code>`;
+  const tag = st.account?.firm === 'Lucid' ? '🟣 <b>Lucid</b>' : '🏦 <b>FTMO</b>';
   if (msg.type === 'open') {
     const pct = st.s.balance ? ((p.risk || 0) / st.s.balance) * 100 : 0;
     return [
-      `🏦 <b>FTMO</b> · ${p.side === 'long' ? '📈 <b>ACHAT</b>' : '📉 <b>VENTE</b>'} ${mk}`,
+      `${tag} · ${p.side === 'long' ? '📈 <b>ACHAT</b>' : '📉 <b>VENTE</b>'} ${mk}`,
       name,
-      `Entrée $${px(p.entry)} · stop $${px(p.sl)} · ${dollars(p.notional)} engagés (levier ${p.lev.toFixed(1)})`,
+      `Entrée $${px(p.entry)} · stop $${px(p.sl)} · ${p.n ? `${p.n} micro-contrat${p.n > 1 ? 's' : ''} ${p.contract} (${dollars(p.notional)})` : `${dollars(p.notional)} engagés (levier ${p.lev.toFixed(1)})`}`,
       `Risque ${dollars(p.risk || 0)} (${pct.toFixed(2)} % du compte) · <i>compte simulé</i>`,
       ...(p.ai ? [aiLine(p.ai)] : []),
     ].join('\n');
   }
   if (msg.type === 'refused') {
     return [
-      `🏦 <b>FTMO</b> · 🤖 signal <b>refusé par l'IA</b> ${mk}`,
+      `${tag} · 🤖 signal <b>refusé par l'IA</b> ${mk}`,
       name,
       `${p.side === 'long' ? 'Achat' : 'Vente'} à $${px(p.entry)} · stop $${px(p.sl)} · chances estimées ${Math.round(p.ai.p * 100)} % (seuil ${Math.round(p.ai.min * 100)} %) · pas de trade`,
     ].join('\n');
   }
   const goal = st.target ? ` · objectif ${dollars(st.target)} (${Math.round(Math.min(1, Math.max(0, st.progress)) * 100)} %)` : '';
   return [
-    `🏦 <b>FTMO</b> · ${p.pnl >= 0 ? '🟢' : '🔴'} clôture ${mk}`,
+    `${tag} · ${p.pnl >= 0 ? '🟢' : '🔴'} clôture ${mk}`,
     name,
     `$${px(p.entry)} → $${px(p.exit)} · <b>${usd(p.pnl)}</b>`,
     `Compte ${dollars(st.equity)} (${((st.equity / st.s.capital - 1) * 100).toFixed(2)} %)${goal} · <i>compte simulé</i>`,
@@ -219,7 +223,7 @@ function scalpDigest(cfg, store, markets, sinceMs) {
     const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
     const st = require('./ftmoAccount').createFtmo({ cfg, store, account: acct.id }).status(prices);
     const s = st.s;
-    lines.push('', `🏦 <b>Compte FTMO simulé ${acct.emoji} ${acct.label}</b> : ${s.phase === 'funded' ? 'compte financé' : st.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} (challenge n° ${s.attempt}) · ${usd(st.equity - s.capital)} (${((st.equity / s.capital - 1) * 100).toFixed(2)} %)${st.target ? ` · ${Math.round(Math.min(1, st.progress) * 100)} % de l’objectif` : ''} · ${s.days.length} jour${s.days.length > 1 ? 's' : ''} de trading`);
+    lines.push('', `🏦 <b>Compte ${acct.firm || 'FTMO'} simulé ${acct.emoji} ${acct.label}</b> : ${s.phase === 'funded' ? 'compte financé' : st.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} (challenge n° ${s.attempt}) · ${usd(st.equity - s.capital)} (${((st.equity / s.capital - 1) * 100).toFixed(2)} %)${st.target ? ` · ${Math.round(Math.min(1, st.progress) * 100)} % de l’objectif` : ''} · ${s.days.length} jour${s.days.length > 1 ? 's' : ''} de trading`);
     any = true;
   }
   lines.push('', '<i>Montants : chaque stratégie a son propre compte de paper trading. Argent fictif.</i>');
