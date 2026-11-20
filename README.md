@@ -572,6 +572,25 @@ sur 10 échouent quand même, surtout sur la perte du jour (−5 %) quand plusie
 | Tendances journalières (croix dorée, tendance 4 horizons, momentum 12 mois, moyenne 200 j) | 0 % | rentables, mais avec 1 % de risque sur un stop large il faut des années pour faire +10 % |
 | 6 nouvelles stratégies « style FTMO » : repli 1 h dans la tendance, cassure de la veille, cassure du range de nuit, jour intérieur, NR7, cassure de la semaine passée | 0 % | espérance nulle ou négative aux frais FTMO |
 
+### 🤖 IA validatrice (`npm run ai-train`, `src/aiFilter.js`, `FTMO_AI`)
+
+Pour chaque signal du compte FTMO, un modèle (régression logistique, entraîné sur ≈ 13 000 trades des stratégies du
+compte) estime la chance que le trade soit gagnant. Il utilise uniquement ce qui est connu à l'entrée : forme récente
+de la stratégie et du marché, distance du stop, heure, jour, tendance, élan et volatilité du marché, VIX. Le seuil
+refuse ≈ 20 % des signaux.
+
+| Test (modèle entraîné sans voir la période) | Sans IA | IA, 20 % refusés |
+|---|---|---|
+| 2020–2026 (entraîné 2009–2019) | 46 % | 55 % |
+| nov. 2024 → nov. 2026 | 44 % | 88 % |
+| 2017–2019 (entraîné 2009–2016) | 50 % | 42 % ✘ |
+| Glissant année par année | — | meilleurs trades gardés **10 années sur 15** |
+
+Résultat **encourageant mais pas assez solide** pour bloquer des trades d'office : `FTMO_AI=observe` (défaut) affiche
+l'avis sur chaque trade du compte FTMO (« ✅ validé · chances estimées 62 % » ou « ⚠️ aurait refusé ») et `/ftmo`
+fait le bilan en direct (gains des trades validés contre ceux qu'elle aurait refusés). `FTMO_AI=block` : les signaux
+sous le seuil ne sont pas pris (message « refusé par l'IA ») ; `FTMO_AI=off` : sans IA. Ré-entraîner : `npm run ai-train`.
+
 ### Risque qui baisse à l'approche de l'objectif (`npm run ftmo-protect`, défaut `FTMO_SIZING=objectif : dégressif doux`)
 
 Risque de chaque trade × (1 − 0,75 × avance vers l'objectif), au moins × 0,4 (à +5 % sur +10 % : × 0,625 ; à +8 % :

@@ -159,6 +159,10 @@ module.exports = {
   // « objectif : dégressif doux » (défaut) : en plus, risque × (1 − 0,75 × avance vers l'objectif), au moins × 0,4
   // (npm run ftmo-protect : réussite < 1 an 26 → 37 % sur 2009–2019, 30 → 46 % sur 2020–2026, au prix d'une durée plus longue)
   ftmoSizing: ['', 'plusieurs positions → moins'].includes((process.env.FTMO_SIZING || '').trim()) ? 'objectif : dégressif doux' : process.env.FTMO_SIZING.trim(),
+  // IA validatrice (src/aiFilter.js, npm run ai-train) : observe (défaut, avis seulement), block (refuse les signaux
+  // sous le seuil) ou off ; FTMO_AI_MIN : seuil de probabilité (défaut : celui du modèle, ≈ 20 % des signaux refusés)
+  ftmoAi: ['observe', 'block', 'off'].includes((process.env.FTMO_AI || '').trim()) ? process.env.FTMO_AI.trim() : 'observe',
+  ftmoAiMin: process.env.FTMO_AI_MIN ? Number(process.env.FTMO_AI_MIN) : NaN,
   ftmoProgram: FTMO_PROGRAM,
   ftmoDayStop: upgraded('FTMO_DAY_STOP_PCT', '2', ONE ? 1 : 2), // plus de nouveau trade dans la journée après −2 % (0 = jamais)
   ftmoFeeGold: num('FTMO_FEE_GOLD_PCT', 0.005),

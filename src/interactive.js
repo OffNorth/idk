@@ -28,6 +28,18 @@ const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
 const quote = (v) => (Math.abs(v) < 10 ? `$${v.toFixed(4)}` : Math.abs(v) >= 1000 ? money(v) : `$${v.toFixed(2)}`);
 const pct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} %`;
 const signedMoney = (v) => `${v >= 0 ? '+' : '−'}${money(Math.abs(v || 0))}`;
+/** Bilan de l'IA validatrice sur les trades clôturés du compte FTMO (validés / qu'elle aurait refusés). */
+function aiText(cfg, s) {
+  if (!cfg.ftmoAi || cfg.ftmoAi === 'off') return [];
+  const judged = (s.closed || []).filter((t) => t.ai);
+  const mode = cfg.ftmoAi === 'block' ? 'bloque les signaux sous le seuil' : 'observation, ne bloque rien';
+  if (!judged.length) return [`🤖 IA validatrice (${mode}) : pas encore de trade jugé clôturé${s.aiRefused ? ` · ${s.aiRefused} signal(s) refusé(s)` : ''}`];
+  const part = (l) => `${l.length} trade(s), ${signedMoney(l.reduce((a, t) => a + t.pnl, 0))}, ${l.length ? Math.round((l.filter((t) => t.pnl > 0).length / l.length) * 100) : 0} % gagnants`;
+  const ok = judged.filter((t) => t.ai.ok);
+  const no = judged.filter((t) => !t.ai.ok);
+  return [`🤖 IA validatrice (${mode}) : validés ${part(ok)} · ${cfg.ftmoAi === 'block' ? 'sous le seuil' : 'aurait refusé'} ${part(no)}${s.aiRefused ? ` · ${s.aiRefused} signal(s) refusé(s)` : ''}`];
+}
+
 /** Réduction du risque à l'approche de l'objectif (FTMO_SIZING « objectif : … »), pour la légende du compte FTMO. */
 function protectText(cfg, s) {
   if (!String(cfg.ftmoSizing).startsWith('objectif')) return '';
@@ -172,6 +184,7 @@ async function render(cfg, store, view, marketId, args = []) {
       `dont ${signedMoney(fst.unrealized)} latents sur ${Object.keys(s.open).length} position(s) ouverte(s) · réalisé ${signedMoney(fst.realized)} sur ${s.closed.length} trade(s) clôturé(s)${s.skipped ? ` · ${s.skipped} signal(s) opposé(s) ignoré(s)` : ''}`,
       `Stratégies suivies : ${fst.account.strategies.map((x) => `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' }[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')}`,
       `Risque par trade : ${riskText(cfg, fst.account)}${protectText(cfg, s)}`,
+      ...aiText(cfg, s),
       ...(s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt}, étape ${h.phase} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
     ];
     return { png: C.ftmoImage(fst), caption: lines.join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'f', marketId, [[btn('🧾 Trades FTMO', `m:z:${KM[marketId]}:0`)]]) };

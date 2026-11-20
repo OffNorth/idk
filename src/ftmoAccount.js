@@ -99,6 +99,21 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     }
   }
 
+  /** Avis de l'IA validatrice sur un signal (historique et contexte du paper trading du marché), ou null. */
+  function aiOpinion(ev, p) {
+    try {
+      const paper = store.loadJson(`${ev.market.id}.json`, null);
+      if (!paper?.accounts) return null;
+      const marketClosed = Object.values(paper.accounts).flatMap((a) => a.closed || []);
+      const tf = require('./strategies').tfOf(ev.strategy);
+      const sig = { entryT: p.entryT, entry: p.entry, sl: p.initSl ?? p.sl, side: p.side, market: ev.market.id, intraday: tf !== '1d' };
+      return require('./aiFilter').judge(cfg, sig, paper.accounts[ev.strategy.id], marketClosed, paper.ctx);
+    } catch (err) {
+      console.warn('[ftmo] IA validatrice indisponible :', err.message);
+      return null;
+    }
+  }
+
   /** Clôture d'une position FTMO (gain, solde, plus haut, gain du jour, historique, message). */
   function closeOne(s, k, exit, exitT, reason, out) {
     const p = s.open[k];
@@ -160,13 +175,20 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           s.skipped = (s.skipped || 0) + 1;
           continue;
         }
+        // IA validatrice (src/aiFilter.js, FTMO_AI) : avis sur le signal ; en mode « block », refus sous le seuil
+        const ai = cfg.ftmoAi && cfg.ftmoAi !== 'off' ? aiOpinion(ev, p) : null;
+        if (ai && !ai.ok && cfg.ftmoAi === 'block') {
+          s.aiRefused = (s.aiRefused || 0) + 1;
+          out.push({ type: 'refused', s, p: { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, entryT: p.entryT, ai } });
+          continue;
+        }
         // Levier dynamique (src/sizing.js, FTMO_SIZING) : le risque du trade est ajusté selon l'état du compte
         const rule = RULES[cfg.ftmoSizing] || RULES.fixe;
         const mul = rule({ ...p, sid: `${ev.market.id}:${ev.strategy.id}` }, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: TARGET[s.phase] ?? Infinity, open: Object.keys(s.open).length });
         if (!(mul > 0)) continue;
         const cap = (P.levCap && P.levCap[ev.market.id]) || cfg.ftmoLeverage; // levier max (par marché sur le compte Swing)
         const notional = Math.min((s.balance * A.riskOf(ev.market.id, ev.strategy) * mul) / stopPct, s.balance * cap);
-        const pos = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, notional, entryT: p.entryT, lev: notional / s.balance, mul, risk: (notional * stopPct) / 100 };
+        const pos = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, notional, entryT: p.entryT, lev: notional / s.balance, mul, risk: (notional * stopPct) / 100, ...(ai ? { ai: { p: ai.p, ok: ai.ok, min: ai.min } } : {}) };
         s.open[key(ev.market.id, ev.strategy.id, p.entryT)] = pos;
         if (!s.days.includes(s.day)) s.days.push(s.day);
         out.push({ type: 'open', s, p: pos });

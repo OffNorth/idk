@@ -54,9 +54,9 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
       const button = ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
       for (const msg of ftmo.onCycle(all, prices)) {
         // Chaque trade du compte FTMO (ouverture et clôture) : console + message dans le groupe (FTMO_TRADE_MESSAGES)
-        if (msg.type === 'open' || msg.type === 'trade') {
+        if (msg.type === 'open' || msg.type === 'trade' || msg.type === 'refused') {
           const text = ftmoTradeMessage(msg, ftmo.status(prices), marketById(cfg, msg.p.market));
-          console.log(`[ftmo] ${msg.type === 'open' ? 'ouverture' : 'clôture'} ${msg.p.market}:${msg.p.sid} ${msg.p.side}${msg.type === 'trade' ? ` ${usd(msg.p.pnl)}` : ''}`);
+          console.log(`[ftmo] ${{ open: 'ouverture', trade: 'clôture', refused: 'refusé par l\'IA' }[msg.type]} ${msg.p.market}:${msg.p.sid} ${msg.p.side}${msg.type === 'trade' ? ` ${usd(msg.p.pnl)}` : ''}${msg.p.ai ? ` (IA ${Math.round(msg.p.ai.p * 100)} %)` : ''}`);
           if (publish && cfg.ftmoTradeMessages !== false) await safeSend(channel, text, button);
           continue;
         }
@@ -140,6 +140,13 @@ const usd = (v) => `${v >= 0 ? '+' : '−'}$${Math.abs(v).toLocaleString('en-US'
 const dollars = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
 
 /** Message d'un trade du compte FTMO : ouverture (`open`) ou clôture (`trade`). */
+/** Avis de l'IA validatrice sur un trade du compte FTMO. */
+function aiLine(ai) {
+  const pc = Math.round(ai.p * 100);
+  if (ai.ok) return `🤖 IA : ✅ validé · chances estimées ${pc} %`;
+  return `🤖 IA (observation) : ⚠️ aurait refusé · chances estimées ${pc} % (seuil ${Math.round(ai.min * 100)} %)`;
+}
+
 function ftmoTradeMessage(msg, st, market) {
   const p = msg.p;
   const mk = market ? `${market.emoji} ${market.id === 'nas100' ? 'Nasdaq' : market.name}` : p.market;
@@ -151,6 +158,14 @@ function ftmoTradeMessage(msg, st, market) {
       name,
       `Entrée $${px(p.entry)} · stop $${px(p.sl)} · ${dollars(p.notional)} engagés (levier ${p.lev.toFixed(1)})`,
       `Risque ${dollars(p.risk || 0)} (${pct.toFixed(2)} % du compte) · <i>compte simulé</i>`,
+      ...(p.ai ? [aiLine(p.ai)] : []),
+    ].join('\n');
+  }
+  if (msg.type === 'refused') {
+    return [
+      `🏦 <b>FTMO</b> · 🤖 signal <b>refusé par l'IA</b> ${mk}`,
+      name,
+      `${p.side === 'long' ? 'Achat' : 'Vente'} à $${px(p.entry)} · stop $${px(p.sl)} · chances estimées ${Math.round(p.ai.p * 100)} % (seuil ${Math.round(p.ai.min * 100)} %) · pas de trade`,
     ].join('\n');
   }
   const goal = st.target ? ` · objectif ${dollars(st.target)} (${Math.round(Math.min(1, Math.max(0, st.progress)) * 100)} %)` : '';

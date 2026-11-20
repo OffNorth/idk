@@ -64,7 +64,7 @@ async function buildTrades(cfg, CACHE) {
     all.push(...r.list.map((t) => ({ ...t, sid: k, market: m, intraday: tf !== '1d', riskPct: A.riskOf(m, s), contractUsd: t.entry * mc.mult, contractFee: mc.fee })));
   }
   annotate(all);
-  return { all, q5, A };
+  return { all, q5, A, daily, vix };
 }
 
 module.exports = { buildTrades, MICRO };

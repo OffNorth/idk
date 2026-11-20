@@ -305,7 +305,7 @@ class MarketTrader {
     if (!M.enabled) return [];
     const tfs = [...new Set(this.strategies.map(tfOf))];
     const needsFx = this.strategies.some((s) => s.needsFx);
-    const needsVix = this.strategies.some((s) => s.needsVix);
+    const needsVix = this.strategies.some((s) => s.needsVix) || (this.cfg.ftmoEnabled && this.cfg.ftmoAi && this.cfg.ftmoAi !== 'off'); // VIX : contexte de l'IA validatrice
     const auxList = require('./aux').auxKeys(this.strategies);
     let data;
     try {
@@ -337,6 +337,8 @@ class MarketTrader {
     const events = [];
     this.state.lastPrice = price;
     this.state.lastUpdate = Date.now();
+    // Contexte de marché pour l'IA validatrice du compte FTMO (60 dernières bougies journalières, VIX)
+    if (daily?.length) this.state.ctx = { daily: daily.slice(-60).map((k) => ({ t: k.t, c: k.c })), vix: vix?.length ? vix.slice(-5).map((k) => ({ t: k.t, c: k.c })) : null };
 
     for (const strat of this.strategies) {
       const acc = this.account(strat.id);

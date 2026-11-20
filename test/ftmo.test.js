@@ -266,3 +266,33 @@ test('risque qui baisse à l’approche de l’objectif (objectif : dégressif d
   const o = Object.values(f.load().open)[0];
   assert.ok(o && Math.abs(o.risk - bal * 0.01 * 0.625) < 1, `risque ${o && o.risk}`);
 });
+
+test('IA validatrice : avis sur chaque trade (observation) et refus sous le seuil (block)', () => {
+  const { loadModel } = require('../src/aiFilter');
+  assert.ok(loadModel(), 'src/aiModel.json présent (npm run ai-train)');
+  const { createFtmo } = require('../src/ftmoAccount');
+  const { ftmoTradeMessage } = require('../src/cycle');
+  const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
+  const paper = (store) => store.saveJson('gold.json', { accounts: { x_rsi2: { closed: [], position: pos } }, ctx: { daily: [], vix: null } });
+  // Observation : la position est prise, avec l'avis de l'IA
+  const a = setup({ ftmoAi: 'observe' });
+  paper(a.store);
+  const out = createFtmo({ cfg: a.cfg, store: a.store }).onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0);
+  const open = out.find((o) => o.type === 'open');
+  assert.ok(open && open.p.ai && open.p.ai.p > 0 && open.p.ai.p < 1);
+  assert.match(ftmoTradeMessage(open, createFtmo({ cfg: a.cfg, store: a.store }).status({ gold: 4000 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /🤖 IA/);
+  // Block avec un seuil impossible : signal refusé, pas de position, message « refusé par l'IA »
+  const b = setup({ ftmoAi: 'block', ftmoAiMin: 0.99 });
+  paper(b.store);
+  const f = createFtmo({ cfg: b.cfg, store: b.store });
+  const out2 = f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0);
+  const ref = out2.find((o) => o.type === 'refused');
+  assert.ok(ref, 'signal refusé');
+  assert.strictEqual(Object.keys(f.load().open).length, 0);
+  assert.match(ftmoTradeMessage(ref, f.status({ gold: 4000 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /refusé par l'IA/);
+  // Off : pas d'avis
+  const c = setup({ ftmoAi: 'off' });
+  paper(c.store);
+  const out3 = createFtmo({ cfg: c.cfg, store: c.store }).onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0);
+  assert.ok(!out3.find((o) => o.type === 'open').p.ai);
+});
