@@ -88,7 +88,7 @@ function riskText(cfg, acct) {
   const daily = [...new Set(['gold', 'nas100', 'spx', 'eurusd'].filter((m) => acct.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => acct.riskOf(m, { tf: '1d' })))];
   const intra = acct.riskOf('gold', { tf: '5m' });
   const hasIntra = acct.strategies.some((x) => { const s = selectStrategies([x.split(':')[1]])[0]; return s && s.tf && s.tf !== '1d'; });
-  return `${daily.join(' / ')} % (journalières)${hasIntra ? ` · ${intra} % (intraday)` : ''}`;
+  return `${daily.join(' / ')} % (journalières)${hasIntra ? (intra > 0 ? ` · ${intra} % (intraday)` : ' · intraday non pris sur ce compte') : ''}`;
 }
 const PAGE = 6;
 

@@ -375,3 +375,15 @@ test('légende Telegram : jamais coupée au milieu d’une ligne, 1 024 caractè
   assert.ok(!c.includes('<code>')); // la ligne trop longue est sautée en entier, pas coupée
   assert.ok(c.endsWith('fin 🤖'));
 });
+
+test('compte Lucid : les stratégies intraday ne sont pas prises (LUCID_INTRADAY_RISK_PCT=0)', () => {
+  const { cfg, store } = setup({ lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1.25, lucidIntradayRisk: 0, ftmoCombined: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoIntradayRisk: 0.15, ftmoRisk: 2 });
+  const { createFtmo } = require('../src/ftmoAccount');
+  const lu = createFtmo({ cfg, store, account: 'lucid' });
+  const pos = { side: 'long', entry: 4000, sl: 3990, initSl: 3990, entryT: T0 };
+  const out = lu.onCycle([{ type: 'open', market, strategy: { id: 'x_rsi2', name: 'x', tf: '5m' }, pos }], { gold: 4000 }, T0);
+  assert.ok(!out.some((x) => x.type === 'open'));
+  // Journalière : risque 2 % × 1,25 = 2,5 % de 50 000 $ = 1 250 $ ; stop 1 % → 125 000 $ → 3 MGC à 40 000 $
+  const out2 = lu.onCycle([{ type: 'open', market, strategy: { id: 'x_rsi2', name: 'x', tf: '1d' }, pos: { ...pos, sl: 3960, initSl: 3960, entryT: T0 + 60 } }], { gold: 4000 }, T0 + 60);
+  assert.strictEqual(out2.find((x) => x.type === 'open').p.n, 3);
+});

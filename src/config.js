@@ -136,7 +136,9 @@ module.exports = {
   // stratégies JOURNALIÈRES sur l'or (GC=F), le Nasdaq et l'EUR/USD (les « gold:… » de cette liste peuvent viser un autre marché)
   // + stratégies INTRADAY (≈ 5 trades par jour demandés) : momentum or sur l'or réel et Nasdaq, à FTMO_INTRADAY_RISK_PCT
   ftmoStrategies: list('FTMO_STRATEGIES', 'gold:down3,gold:pctb,gold:ema_long,gold:g_yieldfall,eurusd:ibs,spx:down3,spx:n_goldfall,gold:g_orb30,gold:g_orb60,gold:g_mom8,gold:g_gap'),
-  ftmoIntradayRisk: num('FTMO_INTRADAY_RISK_PCT', 0.5),
+  // npm run lucid-tune : intraday 0,15 % + journalières 2 % → réussite < 1 an 64 % / 67 % / 83 % (2009–19 / 2020–26 / nov. 24–26)
+  // contre 37 % / 46 % / 44 % avec 0,5 % + 1,5 % (l'intraday ajoute surtout de la variance : on le garde, en petit)
+  ftmoIntradayRisk: upgraded('FTMO_INTRADAY_RISK_PCT', ['0.5'], 0.15),
   // Un message dans le groupe à chaque ouverture et clôture du compte FTMO simulé (0 = seulement réussite / échec)
   ftmoTradeMessages: num('FTMO_TRADE_MESSAGES', 1) === 1,
   // Le compte FTMO n'est jamais acheteur et vendeur du même marché en même temps (le 2e signal, opposé, est ignoré)
@@ -145,9 +147,9 @@ module.exports = {
   // Compte FTMO UNIQUE or + Nasdaq (par défaut) : or au risque FTMO_RISK_PCT, Nasdaq au risque FTMO_COMBO_NAS_RISK_PCT.
   // npm run ftmo-combo : 74 % de réussite en < 6 mois (récent 45 %) contre 74 % / 39 % pour l'or seul.
   ftmoCombined: num('FTMO_COMBINED', 1) === 1,
-  ftmoComboNasRisk: upgraded('FTMO_COMBO_NAS_RISK_PCT', ['1', '0.5'], 1.5),
-  ftmoEurRisk: num('FTMO_EUR_RISK_PCT', 1.5),
-  ftmoSpxRisk: num('FTMO_SPX_RISK_PCT', 1.5),
+  ftmoComboNasRisk: upgraded('FTMO_COMBO_NAS_RISK_PCT', ['1', '0.5', '1.5'], 2),
+  ftmoEurRisk: upgraded('FTMO_EUR_RISK_PCT', ['1.5'], 2),
+  ftmoSpxRisk: upgraded('FTMO_SPX_RISK_PCT', ['1.5'], 2),
   ftmoNasEnabled: num('FTMO_NAS', 1) === 1,
   ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:rsi2,nas100:ibs,nas100:down3,nas100:dip5,nas100:n_low10,nas100:n_drop,nas100:n_2down,nas100:n_dollarfall,nas100:rates,nas100:g_yieldfall,nas100:n_noise,nas100:n_orb5s,nas100:n_mom10,nas100:n_orb15'),
   ftmoNasRisk: process.env.FTMO_NAS_RISK_PCT === '0.5' ? 3 : num('FTMO_NAS_RISK_PCT', 3), // 0,5 = ancienne valeur par défaut, mise à jour ; // npm run ftmo-nas-port : 3 % → 42 % · 43 % · 39 % de challenges réussis
@@ -155,8 +157,10 @@ module.exports = {
   // Compte Lucid simulé (LucidFlex, micro-futures) à côté du compte FTMO : mêmes signaux, règles Lucid (/lucid)
   lucidEnabled: num('LUCID', 1) === 1,
   lucidCapital: num('LUCID_CAPITAL', 50000), // 50000 ou 100000
-  lucidRiskMul: num('LUCID_RISK_MUL', 1), // × le risque du compte FTMO (npm run lucid-compare : × 1 sur 50K)
-  ftmoRisk: upgraded('FTMO_RISK_PCT', ['0.5', '0.35'], 1.5), // % du solde risqué par trade (distance au stop)
+  // npm run lucid-tune : Lucid sans intraday, journalières à 2,5 % → 62 % / 67 % / 73 % (contre 13 % / 11 % / 21 %)
+  lucidRiskMul: upgraded('LUCID_RISK_MUL', ['1'], 1.25), // × le risque des journalières du compte FTMO (2 % → 2,5 %)
+  lucidIntradayRisk: num('LUCID_INTRADAY_RISK_PCT', 0), // 0 = le compte Lucid ne prend pas les stratégies intraday
+  ftmoRisk: upgraded('FTMO_RISK_PCT', ['0.5', '0.35', '1.5'], 2), // % du solde risqué par trade (distance au stop)
   ftmoLeverage: num('FTMO_LEVERAGE', 30),
   // Levier dynamique (src/sizing.js) : « plusieurs positions → moins » = risque ÷ 2 dès 2 positions déjà ouvertes
   // (npm run ftmo-sizing : supprime les échecs sur la perte du jour, réussite égale) ; « fixe » = risque constant

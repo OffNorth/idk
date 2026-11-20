@@ -1157,6 +1157,7 @@ STRATEGIES.push(...require('./gold2').GOLD2);
 STRATEGIES.push(...require('./nasintra').NASINTRA);
 STRATEGIES.push(...require('./research2').RESEARCH2);
 STRATEGIES.push(...require('./goldmom').GOLDMOM);
+STRATEGIES.push(...require('./events').EVENTS);
 
 /* Intraday NAS100 (formation TradingView, module 5) : voir src/intraday.js */
 STRATEGIES.push(...require('./intraday').INTRADAY);

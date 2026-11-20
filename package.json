@@ -44,7 +44,9 @@
     "lucid-compare": "node --max-old-space-size=12288 lucid-compare.js",
     "ftmo-protect": "node --max-old-space-size=12288 ftmo-protect.js",
     "ai-train": "node --max-old-space-size=12288 ai-train.js",
-    "adapt-sim": "node --max-old-space-size=12288 adapt-sim.js"
+    "adapt-sim": "node --max-old-space-size=12288 adapt-sim.js",
+    "ftmo-events": "node --max-old-space-size=12288 ftmo-events.js",
+    "lucid-tune": "node --max-old-space-size=12288 lucid-tune.js"
   },
   "engines": {
     "node": ">=20"

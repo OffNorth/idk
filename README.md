@@ -572,6 +572,27 @@ sur 10 échouent quand même, surtout sur la perte du jour (−5 %) quand plusie
 | Tendances journalières (croix dorée, tendance 4 horizons, momentum 12 mois, moyenne 200 j) | 0 % | rentables, mais avec 1 % de risque sur un stop large il faut des années pour faire +10 % |
 | 6 nouvelles stratégies « style FTMO » : repli 1 h dans la tendance, cassure de la veille, cassure du range de nuit, jour intérieur, NR7, cassure de la semaine passée | 0 % | espérance nulle ou négative aux frais FTMO |
 
+### 🎯 Réglage du risque FTMO et Lucid (`npm run lucid-tune`) et stratégies d'événements (`npm run ftmo-events`)
+
+Sous-ensembles de stratégies × risque intraday × risque journalier, choix sur 2009–2019, vérification ensuite.
+Réussite en moins d'un an (2009–2019 / 2020–2026 / nov. 2024 → nov. 2026) :
+
+| Compte | Réglage | Réussite | Durée médiane |
+|---|---|---|---|
+| FTMO 1 étape (avant) | intraday 0,5 % · journalières 1,5 % | 37 % / 46 % / 44 % | 47 à 113 j |
+| **FTMO 1 étape** | **intraday 0,15 % · journalières 2 %** | **64 % / 67 % / 83 %** | 123 à 204 j |
+| LucidFlex 50K (avant) | idem FTMO | 13 % / 11 % / 21 % | 29 à 52 j |
+| **LucidFlex 50K** | **sans intraday · journalières 2,5 %** | **62 % / 67 % / 73 %** | 100 à 187 j |
+
+Les stratégies intraday ajoutent surtout de la variance : sur FTMO elles restent (≈ 6 trades par jour demandés) mais en
+tout petit ; sur Lucid (perte max serrée) elles sont retirées (`LUCID_INTRADAY_RISK_PCT=0`), le compte ne trade
+que les journalières (quelques trades par mois). Contrepartie : des challenges plus longs.
+
+Stratégies d'événements (`src/events.js`) : **veille de la Fed** (Lucca & Moench 2015) et **veille de jour férié**
+(Ariel 1990) sur S&P 500, Nasdaq, or. Fortes sur 2009–2012 et 2020–2026 mais perdantes sur 2017–2019 (effet
+affaibli après 2015) ; seule la veille de la Fed sur l'or passe les 3 périodes et elle fait baisser la réussite du
+compte (46 → 42 %) : aucune n'est ajoutée.
+
 ### 🧠 Adaptation automatique (`src/adapt.js`, `AUTO_ADAPT=1`, `/adapt` admin, `npm run adapt-sim`)
 
 Chaque dimanche, une **revue automatique** (message « 🧠 Revue automatique de la semaine » dans le groupe) :

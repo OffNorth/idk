@@ -41,7 +41,9 @@ function accountOf(cfg, id = 'gold') {
     const mul = cfg.lucidRiskMul ?? 1;
     return {
       ...base, id: 'lucid', firm: 'Lucid', label: `LucidFlex ${Math.round(capital / 1000)}K`, emoji: '🟣', file: 'lucid.json',
-      enabled: !!(cfg.ftmoEnabled && cfg.lucidEnabled), capital, program: lucidProgram(capital), riskOf: (m, st) => base.riskOf(m, st) * mul,
+      enabled: !!(cfg.ftmoEnabled && cfg.lucidEnabled), capital, program: lucidProgram(capital),
+      // Intraday : LUCID_INTRADAY_RISK_PCT (0 par défaut = pas pris) ; journalières : risque FTMO × LUCID_RISK_MUL
+      riskOf: (m, st) => (st && st.tf && st.tf !== '1d' ? cfg.lucidIntradayRisk ?? 0 : base.riskOf(m, st) * mul),
     };
   }
   if (id === 'nas100') {
@@ -266,7 +268,9 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         const mul = rule({ ...p, sid: `${ev.market.id}:${ev.strategy.id}` }, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: targetPct(s) ?? Infinity, open: Object.keys(s.open).length });
         if (!(mul > 0)) continue;
         const cap = (P.levCap && P.levCap[ev.market.id]) || cfg.ftmoLeverage; // levier max (par marché sur le compte Swing)
-        let notional = Math.min((s.balance * A.riskOf(ev.market.id, ev.strategy) * mul * wAdapt) / stopPct, s.balance * cap);
+        const riskPct = A.riskOf(ev.market.id, ev.strategy);
+        if (!(riskPct > 0)) continue; // stratégie non prise par ce compte (ex. intraday sur Lucid)
+        let notional = Math.min((s.balance * riskPct * mul * wAdapt) / stopPct, s.balance * cap);
         let lots = null;
         if (P.contracts) {
           // Futures (Lucid) : contrats entiers de micro-futures, arrondis vers le bas, plafond de contrats ouverts
