@@ -58,7 +58,7 @@ const rMultiple = (t) => t.pnlPct / Math.max(1e-9, stopPct(t));
  * Retourne l'issue (target / daily / maxloss / open), le solde et le nombre de jours de trading.
  */
 function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity, riskMul = 1, sizer = null, trailingMax = false, bestDayPct = 0, levCap = null,
-  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, dayOf = ftmoDay, until = Infinity, payout = null } = {}) {
+  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null } = {}) {
   const maxLoss = maxLossUsd ?? (capital * maxPct) / 100;
   const events = [];
   for (const t of trades) {
@@ -106,6 +106,11 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       if (contracts) {
         // Futures : contrats entiers (arrondi vers le bas), plafond de contrats ouverts en tout
         n = Math.min(Math.floor(notional / e.tr.contractUsd), maxContracts - lots);
+        // 1 contrat quand même si son risque reste ≤ 1,5 × le risque prévu et ≤ minOneRisk × la perte max (compte Lucid)
+        if (!(n >= 1) && minOneRisk > 0 && maxContracts - lots >= 1) {
+          const oneRisk = (e.tr.contractUsd * sp) / 100;
+          if (oneRisk <= Math.min((1.5 * notional * sp) / 100, minOneRisk * maxLoss)) n = 1;
+        }
         if (!(n >= 1)) continue;
         notional = n * e.tr.contractUsd;
         lots += n;

@@ -348,3 +348,30 @@ test('compte Lucid en direct : micro-contrats entiers, pas de perte du jour, per
   const z = await require('../src/interactive').render(cfg, store, 'z', 'gold', ['0', 'l']);
   assert.match(z.caption, /Compte Lucid simulé/);
 });
+
+test('compte Lucid : 1 micro quand le risque prévu est trop petit mais raisonnable, signal sauté s’il est trop gros', () => {
+  const { cfg, store } = setup({ lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1, ftmoCombined: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoIntradayRisk: 0, ftmoRisk: 1 });
+  const { createFtmo } = require('../src/ftmoAccount');
+  const strat = { id: 'x_rsi2', name: 'Scalp RSI 2', tf: '1d' };
+  // Stop 1,5 % : 500 $ de risque → 33 333 $ < 1 MGC (40 000 $) ; 1 micro risque 600 $ ≤ 750 $ et ≤ 800 $ → 1 contrat
+  let lu = createFtmo({ cfg, store, account: 'lucid' });
+  const ok = lu.onCycle([{ type: 'open', market, strategy: strat, pos: { side: 'long', entry: 4000, sl: 3940, initSl: 3940, entryT: T0 } }], { gold: 4000 }, T0).find((x) => x.type === 'open');
+  assert.ok(ok && ok.p.n === 1, 'un micro pris');
+  // Stop 8 % : 1 micro risquerait 3 200 $ > 40 % de la perte max → sauté, compté
+  const { cfg: cfg2, store: store2 } = setup({ lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1, ftmoCombined: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoIntradayRisk: 0, ftmoRisk: 1 });
+  lu = createFtmo({ cfg: cfg2, store: store2, account: 'lucid' });
+  const out = lu.onCycle([{ type: 'open', market, strategy: strat, pos: { side: 'long', entry: 4000, sl: 3680, initSl: 3680, entryT: T0 } }], { gold: 4000 }, T0);
+  assert.ok(!out.some((x) => x.type === 'open'));
+  const s = lu.load();
+  assert.strictEqual(s.tooBig, 1);
+  assert.strictEqual(s.tooBigBy['gold:x_rsi2'], 3200);
+});
+
+test('légende Telegram : jamais coupée au milieu d’une ligne, 1 024 caractères au plus', () => {
+  const { fitCaption } = require('../src/interactive');
+  const lines = ['<b>titre</b>', 'x'.repeat(600), `<code>${'y'.repeat(500)}</code>`, 'fin 🤖'];
+  const c = fitCaption(lines);
+  assert.ok(c.length <= 1024);
+  assert.ok(!c.includes('<code>')); // la ligne trop longue est sautée en entier, pas coupée
+  assert.ok(c.endsWith('fin 🤖'));
+});

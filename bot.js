@@ -92,6 +92,7 @@ bot.command(['start', 'aide', 'help'], (ctx) =>
       '/graphique [nasdaq|or] — 🕯 cours en bougies (Nasdaq par défaut)',
       '/ftmo [nasdaq|or] — 🏦 comptes FTMO simulés (challenge +10 % puis +5 %)',
       '/lucid — 🟣 compte Lucid simulé (LucidFlex : +6 %, pas de perte du jour, micro-futures)',
+      '/version — version du bot en service (à vérifier après un redémarrage)',
       '/jeu — 🎯 pronostic du jour · /classement — points des joueurs',
       '/nasdaq · /gold — bilan texte',
       '/portfolio — graphiques des portefeuilles',
@@ -163,6 +164,16 @@ bot.command(['historique', 'trades'], async (ctx) => {
 });
 
 // Vérification de cohérence des trades (paper + compte FTMO), réservée aux admins
+// Version déployée et réglages clés : pour vérifier après un redémarrage que Bot-Hosting a pris la nouvelle version
+bot.command('version', (ctx) => {
+  const lucid = require('./src/ftmoAccount').accountOf(cfg, 'lucid');
+  return ctx.reply([
+    `🔖 Version <code>${version()}</code> · Node ${process.version}`,
+    `🏦 Compte FTMO : ${cfg.ftmoEnabled ? 'actif' : 'coupé'} · 🟣 compte Lucid : ${lucid.enabled ? `actif (${lucid.label})` : 'coupé (LUCID=0)'}`,
+    `🤖 IA validatrice : ${cfg.ftmoAi} · 🧠 adaptation : ${cfg.autoAdapt ? `IA qui apprend${cfg.adaptStrategies ? ' + stratégies' : ''}` : 'coupée'} · risque : ${esc(cfg.ftmoSizing)}`,
+  ].join('\n'), HTML);
+});
+
 bot.command('verif', (ctx) => ctx.reply(require('./src/verify').verifyReport(cfg, store), HTML));
 
 // Adaptation automatique (admin) : /adapt (état), /adapt now (revue tout de suite), /adapt reset (retour à l'origine)
@@ -338,6 +349,7 @@ console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) �
     { command: 'graphique', description: '🕯 Cours en bougies : /graphique (Nasdaq) · /graphique or' },
     { command: 'ftmo', description: '🏦 Comptes FTMO simulés : /ftmo (Nasdaq) · /ftmo or' },
     { command: 'lucid', description: '🟣 Compte Lucid simulé (LucidFlex, micro-futures)' },
+    { command: 'version', description: '🔖 Version du bot en service' },
     { command: 'jeu', description: '🎯 Pronostic du jour' },
     { command: 'classement', description: '🏆 Classement des joueurs' },
     { command: 'nasdaq', description: 'Bilan du Nasdaq 100' },

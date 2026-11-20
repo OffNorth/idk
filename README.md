@@ -605,6 +605,10 @@ même risque × `LUCID_RISK_MUL`) avec les règles Lucid : objectif +6 %, pas de
 (3 000 $ en 100K) sous le plus haut solde de **clôture** de séance CME (17 h New York), bloquée à capital + 100 $,
 meilleur jour ≤ 50 %, 2 jours minimum, **micro-futures en contrats entiers** (MGC, MNQ, MES, M6E ; 40 au plus, frais
 par contrat). Messages « 🟣 Lucid » dans le groupe, panneau `/lucid` (bouton « 🟣 Compte Lucid » dans `/ftmo`).
+Si le risque prévu est trop petit pour 1 contrat, le compte prend **1 micro** quand son risque reste ≤ 1,5 × le risque
+prévu et ≤ 40 % de la perte max ; sinon le signal est sauté (affiché dans `/lucid`). En pratique, l'or et le Nasdaq
+**journaliers** ne sont pas tradables sur 50K (1 seul micro risquerait ≈ 2 300 à 3 100 $, plus que la perte max) : le
+compte Lucid vit surtout de l'intraday, de l'EUR/USD et du S&P 500.
 En simulation sur l'historique (`npm run lucid-compare`), il réussit nettement moins souvent que le compte FTMO.
 
 ### 🤖 IA validatrice (`npm run ai-train`, `src/aiFilter.js`, `FTMO_AI`)

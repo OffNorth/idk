@@ -28,6 +28,32 @@ const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
 const quote = (v) => (Math.abs(v) < 10 ? `$${v.toFixed(4)}` : Math.abs(v) >= 1000 ? money(v) : `$${v.toFixed(2)}`);
 const pct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} %`;
 const signedMoney = (v) => `${v >= 0 ? '+' : '−'}${money(Math.abs(v || 0))}`;
+const MARKET_EMOJI = { gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' };
+/** Stratégies suivies : noms si la ligne reste courte, sinon nombre par marché. */
+function strategiesLine(list) {
+  const full = `Stratégies suivies : ${list.map((x) => `${MARKET_EMOJI[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')}`;
+  if (full.length <= 380) return full;
+  const by = {};
+  for (const x of list) by[x.split(':')[0]] = (by[x.split(':')[0]] || 0) + 1;
+  return `Stratégies suivies : ${list.length} (${Object.entries(by).map(([m, n]) => `${MARKET_EMOJI[m] || m} ${n}`).join(' · ')}) — liste dans /strategies`;
+}
+
+/**
+ * Légende Telegram (1 024 caractères au plus) construite ligne par ligne : une ligne n'est ajoutée que si elle tient
+ * en entier (jamais de balise HTML ou d'emoji coupé, ce que Telegram refuse).
+ */
+function fitCaption(lines, max = 1024) {
+  const out = [];
+  let len = 0;
+  for (const l of lines.filter((x) => x !== undefined && x !== null && x !== '')) {
+    const add = (out.length ? 1 : 0) + l.length;
+    if (len + add > max) continue;
+    out.push(l);
+    len += add;
+  }
+  return out.join('\n');
+}
+
 /** Bilan de l'IA validatrice sur les trades clôturés du compte FTMO (validés / qu'elle aurait refusés). */
 function aiText(cfg, s) {
   if (!cfg.ftmoAi || cfg.ftmoAi === 'off') return [];
@@ -195,10 +221,11 @@ async function render(cfg, store, view, marketId, args = []) {
       isLucid
         ? `🟣 <b>Compte Lucid simulé · ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : 'évaluation'} n° ${s.attempt}`
         : `🏦 <b>Compte FTMO simulé ${fst.account.emoji} ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : fst.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} · challenge n° ${s.attempt}`,
-      ...(isLucid ? [`Règles : +${P.target} %, pas de perte du jour, perte max ${money(P.maxUsd)} sous le plus haut solde de clôture (seuil actuel ${money(fst.floor)}), micro-futures en contrats entiers (${P.maxContracts} au plus)${s.tooSmall ? ` · ${s.tooSmall} signal(s) trop petit(s) pour 1 contrat` : ''}`] : []),
+      ...(isLucid ? [`Règles : +${P.target} %, pas de perte du jour, perte max ${money(P.maxUsd)} sous le plus haut solde de clôture (seuil actuel ${money(fst.floor)}), micro-futures en contrats entiers (${P.maxContracts} au plus)`] : []),
+      ...(isLucid && s.tooBig ? [`⚠️ ${s.tooBig} signal(s) sauté(s), trop gros pour ce compte (1 seul micro-contrat risquerait plus de 40 % de la perte max) : ${Object.entries(s.tooBigBy || {}).slice(0, 6).map(([k, v]) => `<code>${esc(k)}</code> ${money(v)}`).join(', ')} — ces stratégies restent sur le compte FTMO`] : []),
       `Valeur <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · objectif ${money(fst.target)}` : ''}`,
       `dont ${signedMoney(fst.unrealized)} latents sur ${Object.keys(s.open).length} position(s) ouverte(s) · réalisé ${signedMoney(fst.realized)} sur ${s.closed.length} trade(s) clôturé(s)${s.skipped ? ` · ${s.skipped} signal(s) opposé(s) ignoré(s)` : ''}`,
-      `Stratégies suivies : ${fst.account.strategies.map((x) => `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' }[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')}`,
+      strategiesLine(fst.account.strategies),
       `Risque par trade : ${riskText(cfg, fst.account)}${protectText(cfg, s, fst.targetPct)}`,
       ...aiText(cfg, s),
       ...(rep.n ? [refusedLine(rep)] : []),
@@ -207,7 +234,7 @@ async function render(cfg, store, view, marketId, args = []) {
     ];
     const rows = [[btn(`🧾 Trades ${isLucid ? 'Lucid' : 'FTMO'}`, `m:z:${KM[marketId]}:0${sfx}`), ...(rep.n ? [btn('🤖 Refusés par l’IA', `m:i:${KM[marketId]}:0${sfx}`)] : [])]];
     if (lucidOn) rows.push([isLucid ? btn('🏦 Compte FTMO', `m:f:${KM[marketId]}`) : btn('🟣 Compte Lucid', `m:f:${KM[marketId]}:l`)]);
-    return { png: C.ftmoImage(fst), caption: lines.join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'f', marketId, rows) };
+    return { png: C.ftmoImage(fst), caption: fitCaption(lines), keyboard: panelKeyboard(cfg, 'f', marketId, rows) };
   }
 
   if (view === 'h') {
@@ -285,7 +312,7 @@ async function render(cfg, store, view, marketId, args = []) {
     const firm = isLucid ? 'Lucid' : 'FTMO';
     const png = C.tradesImage({ market: null, title: `Trades du compte ${firm} · ${isLucid ? 'évaluation' : 'challenge'} n° ${s.attempt}`, subtitle: `${all.length} trades clôturés depuis le début · page ${page + 1} / ${pages} · résultat en % du compte`, rows, footerText: `Simulation · compte ${firm} · argent fictif · pas un conseil financier` });
     extra.push([btn(`⬅️ Compte ${firm}`, `m:f:${KM[marketId]}${sfx}`)]);
-    return { png, caption: [`${isLucid ? '🟣' : '🏦'} <b>Compte ${firm} simulé</b> · 🧾 trades`, caption, ...hist].join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'z', marketId, extra) };
+    return { png, caption: fitCaption([`${isLucid ? '🟣' : '🏦'} <b>Compte ${firm} simulé</b> · 🧾 trades`, caption, ...hist]), keyboard: panelKeyboard(cfg, 'z', marketId, extra) };
   }
 
   if (view === 'i') {
@@ -306,7 +333,7 @@ async function render(cfg, store, view, marketId, args = []) {
     const { rows, page, pages, extra } = tradePage(all, Number(args[0]) || 0, (p) => `m:i:${KM[marketId]}:${p}${sfx}`, 'du compte');
     const png = C.tradesImage({ market: null, title: 'Signaux refusés par l’IA', subtitle: `Ce qu’ils auraient fait sur le compte FTMO · ${all.length} signaux · page ${page + 1} / ${pages}`, rows, footerText: 'Simulation · argent fictif · pas un conseil financier' });
     extra.push([btn(`⬅️ Compte ${isLucid ? 'Lucid' : 'FTMO'}`, `m:f:${KM[marketId]}${sfx}`)]);
-    return { png, caption: [`${isLucid ? '🟣' : '🏦'} <b>Compte ${isLucid ? 'Lucid' : 'FTMO'} simulé</b> · 🤖 signaux refusés par l’IA`, refusedLine(rep) || 'Aucun signal refusé pour l’instant.'].join('\n').slice(0, 1024), keyboard: panelKeyboard(cfg, 'i', marketId, extra) };
+    return { png, caption: fitCaption([`${isLucid ? '🟣' : '🏦'} <b>Compte ${isLucid ? 'Lucid' : 'FTMO'} simulé</b> · 🤖 signaux refusés par l’IA`, refusedLine(rep) || 'Aucun signal refusé pour l’instant.']), keyboard: panelKeyboard(cfg, 'i', marketId, extra) };
   }
 
   if (view === 't') {
@@ -474,4 +501,4 @@ async function sendPanel(api, chatId, cfg, store, { view = 'h', marketId = 'nas1
   return api.sendPhoto(chatId, new InputFile(out.png, 'image.png'), { caption: out.caption, parse_mode: 'HTML', reply_markup: out.keyboard, ...extra });
 }
 
-module.exports = { attachInteractive, sendPanel, render, renderTrade, panelKeyboard, tradeKeyboard, summaryKeyboard, MK, KM };
+module.exports = { fitCaption, attachInteractive, sendPanel, render, renderTrade, panelKeyboard, tradeKeyboard, summaryKeyboard, MK, KM };

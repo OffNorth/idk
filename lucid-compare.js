@@ -27,7 +27,7 @@ const FTMO_FUNDED = { rule: 'ftmo', every: 14, split: 0.8, fee: 600, refund: tru
 const lucidFunded = (fee, cap) => ({ rule: 'lucid', cycleDays: 5, minDay: 150, share: 0.5, cap, split: 0.9, fee, refund: false, days: 365 });
 const lucid = (capital, maxLossUsd, maxContracts, fee, cap) => ({
   capital, steps: 1, target1: 6, dailyPct: Infinity, maxLossUsd, eodTrailing: true, lockAt: 100, bestDayPct: 50, minDays: 2,
-  contracts: true, maxContracts, leverage: 1000, dayOf: cmeDay, funded: lucidFunded(fee, cap),
+  contracts: true, maxContracts, minOneRisk: 0.4, leverage: 1000, dayOf: cmeDay, funded: lucidFunded(fee, cap),
 });
 const FORMULAS = {
   'FTMO 1 étape 100K': { capital: 100_000, steps: 1, dailyPct: 3, maxPct: 10, trailingMax: true, bestDayPct: 50, leverage: 30, funded: FTMO_FUNDED },

@@ -273,9 +273,23 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           const mc = MICRO[ev.market.id];
           if (!mc) continue;
           const used = Object.values(s.open).reduce((a, o) => a + (o.n || 0), 0);
-          lots = Math.min(Math.floor(notional / (p.entry * mc.mult)), P.maxContracts - used);
+          const room = P.maxContracts - used;
+          lots = Math.min(Math.floor(notional / (p.entry * mc.mult)), room);
+          if (!(lots >= 1) && room >= 1) {
+            // Risque prévu trop petit pour 1 contrat : 1 micro quand même si son risque reste raisonnable
+            // (≤ 1,5 × le risque prévu et ≤ 40 % de la perte max) ; sinon le signal est trop gros pour ce compte
+            const oneRisk = (p.entry * mc.mult * stopPct) / 100;
+            const want = (notional * stopPct) / 100;
+            if (oneRisk <= Math.min(1.5 * want, 0.4 * (P.maxUsd || Infinity))) lots = 1;
+            else {
+              s.tooBig = (s.tooBig || 0) + 1;
+              s.tooBigBy = s.tooBigBy || {};
+              s.tooBigBy[skey] = Math.round(oneRisk);
+              continue;
+            }
+          }
           if (!(lots >= 1)) {
-            s.tooSmall = (s.tooSmall || 0) + 1; // risque trop petit pour 1 contrat (ou plafond atteint)
+            s.tooSmall = (s.tooSmall || 0) + 1; // plafond de contrats atteint
             continue;
           }
           notional = lots * p.entry * mc.mult;
