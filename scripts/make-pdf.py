@@ -148,7 +148,7 @@ for i, fam in enumerate(families, start=1):
 
 # Comptes FTMO simulés (réglages lus dans src/config.js)
 import subprocess
-fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({g:c.ftmoStrategies,gr:c.ftmoRisk,ir:c.ftmoIntradayRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop,cb:c.ftmoCombined,cnr:c.ftmoComboNasRisk,prog:c.ftmoProgram,sz:c.ftmoSizing,ai:c.ftmoAi,lu:c.lucidEnabled,lc:c.lucidCapital}))"],
+fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({aa:c.autoAdapt,as:c.adaptStrategies,g:c.ftmoStrategies,gr:c.ftmoRisk,ir:c.ftmoIntradayRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop,cb:c.ftmoCombined,cnr:c.ftmoComboNasRisk,prog:c.ftmoProgram,sz:c.ftmoSizing,ai:c.ftmoAi,lu:c.lucidEnabled,lc:c.lucidCapital}))"],
                                cwd=ROOT, capture_output=True, text=True, check=True).stdout)
 ids = lambda l: ', '.join(x.split(':', 1)[-1] for x in l)
 story.append(PageBreak())
@@ -227,17 +227,37 @@ lucid_block = [Paragraph('FTMO ou Lucid Trading ?', h2), Paragraph(
     'clôture, bloquée à capital + 100 $. Phase financée 12 mois au plus : FTMO 80 % des gains (prix remboursé), Lucid 90 %. Réglage choisi sur 2009–2019.', body)]
 lucid_block += [Spacer(1, 3), small_table([
     ('Société', 'Réussite < 1 an : 2009–19 / 2020–26 / nov. 24–26', 'Gain net moyen par challenge (2020–26)'),
-    ('<b>FTMO 1 étape 100K</b> (risque × 0,5)', '44 % / <b>59 %</b> / 52 %', '<b>+3 062 $</b>'),
-    ('FTMO 2 étapes 100K', '41 % / 33 % / 38 %', '+481 $'),
-    ('LucidFlex 50K', '10 % / 11 % / 17 %', '−82 $'),
-    ('LucidFlex 100K', '8 % / 11 % / 19 %', '−104 $'),
+    ('<b>FTMO 1 étape 100K</b> (réglage du bot)', '37 % / <b>46 %</b> / 44 %', '<b>+1 113 $</b>'),
+    ('FTMO 2 étapes 100K', '44 % / 33 % / 27 %', '+1 016 $'),
+    ('LucidFlex 50K', '13 % / 11 % / 21 %', '−67 $'),
+    ('LucidFlex 100K', '11 % / 9 % / 17 %', '−171 $'),
 ], [60 * mm, 70 * mm, 50 * mm]), Spacer(1, 2), Paragraph(
     'FTMO l’emporte : l’absence de perte du jour chez Lucid ne compense pas une perte max 3 à 5 fois plus serrée. '
     + (f'<b>En direct</b>, un compte <b>LucidFlex {fc["lc"] // 1000}K</b> simulé (/lucid) suit quand même les mêmes signaux, en micro-contrats entiers '
-       '(MGC, MNQ, MES, M6E), pour comparer les deux sociétés au jour le jour. ' if fc['lu'] else '')
+       '(MGC, MNQ, MES, M6E), pour comparer les deux sociétés au jour le jour. Quand le risque prévu est trop petit pour 1 contrat, '
+       'il prend 1 micro si son risque reste raisonnable (≤ 1,5 × le risque prévu et ≤ 40 % de la perte max) ; l’or et le Nasdaq journaliers '
+       'n’y sont pas tradables en 50K (1 seul micro risquerait 2 300 à 3 100 $, plus que la perte max) : il vit surtout de l’intraday, '
+       'de l’EUR/USD et du S&P 500. ' if fc['lu'] else '')
     + 'Plusieurs challenges identiques en même temps multiplient les gains comme les pertes : les comptes prennent les mêmes trades et réussissent '
       'ou échouent ensemble.', body)]
 story.append(KeepTogether(lucid_block))
+
+if fc['aa']:
+    story.append(KeepTogether([Paragraph('Adaptation automatique', h2), Paragraph(
+        'Chaque dimanche, une <b>revue automatique</b> (annoncée dans le groupe) : chaque signal jugé par l’IA, pris ou refusé, est mémorisé '
+        'puis étiqueté par le résultat de son trade paper ; dès 150 signaux, l’IA est <b>ré-apprise prudemment</b> (elle reste proche de son modèle '
+        'd’origine tant qu’il y a peu de données) et la nouvelle version <b>n’est adoptée que si elle juge mieux</b> les signaux les plus récents. '
+        'Sécurité : si ses refus récents gagnent plus que les trades qu’elle garde, elle repasse seule en observation. '
+        + ('Les poids des stratégies s’adaptent aussi (réduites, renforcées, suspendues, candidates promues). ' if fc['as'] else
+           'L’adaptation automatique des poids des stratégies existe mais reste coupée : elle n’a pas aidé sur l’historique. '), body),
+        Spacer(1, 3), small_table([
+            ('Rejoué semaine par semaine (IA de départ : 2009–2014)', '2015–2019', '2020–2026'),
+            ('Sans IA', '37 %', '46 %'),
+            ('IA figée', '39 %', '50 %'),
+            ('<b>IA qui apprend</b> (activée)', '<b>51 %</b>', '47 %'),
+            ('Stratégies qui s’adaptent', '32 % ✘', '47 %'),
+            ('Tout adaptatif', '49 %', '47 %'),
+        ], [100 * mm, 40 * mm, 40 * mm]), Spacer(1, 2), Paragraph('Réussite du challenge 1 étape en moins d’un an.', body)]))
 
 story.append(PageBreak())
 story.append(Paragraph('Historiques simulés des stratégies actives', h2))

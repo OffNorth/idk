@@ -654,14 +654,14 @@ versement par cycle de 5 jours gagnants). Réglage choisi sur 2009–2019, véri
 
 | Société | Réglage | Réussite < 1 an 2009–19 / 2020–26 / nov. 24–26 | Gain net moyen par challenge 2020–26 |
 |---|---|---|---|
-| **FTMO 1 étape 100K** | risque × 0,5 | 44 % / **59 %** / 52 % | **+3 062 $** |
-| FTMO 2 étapes 100K | risque × 0,75 | 41 % / 33 % / 38 % | +481 $ |
-| LucidFlex 50K | risque × 1 | 10 % / 11 % / 17 % | −82 $ |
-| LucidFlex 100K | risque × 0,75 | 8 % / 11 % / 19 % | −104 $ |
+| **FTMO 1 étape 100K** | réglage du bot (risque qui baisse) | 37 % / **46 %** / 44 % | **+1 113 $** |
+| FTMO 2 étapes 100K | risque × 0,75 | 44 % / 33 % / 27 % | +1 016 $ |
+| LucidFlex 50K | risque × 1 (1 micro minimum) | 13 % / 11 % / 21 % | −67 $ |
+| LucidFlex 100K | risque × 0,75 | 11 % / 9 % / 17 % | −171 $ |
 
 → **FTMO 1 étape** : l'absence de perte du jour chez Lucid ne compense pas une perte max 3 à 5 fois plus serrée
 (presque tous les échecs Lucid viennent de la perte max). À risque × 0,5 (0,75 % journalières, 0,25 % intraday), le
-challenge FTMO réussit plus souvent qu'au réglage actuel × 1 (59 % contre 30 % en 2020–2026).
+challenge FTMO réussissait plus souvent (59 % contre 30 % en 2020–2026) avant la règle du risque qui baisse.
 
 ### 2e recherche : retour à la moyenne dans la tendance (`npm run ftmo-mr`, `src/meanrev.js`)
 
