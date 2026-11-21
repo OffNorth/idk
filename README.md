@@ -770,6 +770,16 @@ positions avec entrée / SL / TP, derniers trades, refus de l'IA) à la fonction
 marches-eight.vercel.app l'affiche en direct avec des graphiques TradingView (Lightweight Charts). Clé d'écriture
 générée par le bot au 1er envoi (`data/bot-push-key.json`). `/interface` donne le lien ; `LIVE_PUSH=0` coupe l'envoi.
 
+## 🎬 Vidéos PnL (`/video`, `src/pnlVideo.js`, `src/videoBot.js`)
+
+`/video` (admin) : choix d'un des 10 derniers trades clôturés des comptes FTMO / Lucid, puis du fond → le bot envoie
+une vidéo verticale 1080×1920 (≈ 7 s) : carte animée dessinée par le moteur d'images du bot sur les **vraies bougies**
+du marché (Yahoo : 5 min, 15 min, 1 h ou 1 jour selon la durée et l'ancienneté du trade), P&L qui compte, entrée, stop,
+zone de gain, sortie. Fonds : Uni, Grille animée, Particules, ou **ta propre vidéo** (envoie-la au bot avec la légende
+`/fond nom`, 20 Mo au plus, 10 fonds ; `/fonds` pour la liste et la suppression). Bouton « 🎬 Vidéo » sous chaque
+clôture du compte FTMO. Encodage : `ffmpeg-static` (installé par `npm install`) ; sans ffmpeg, la carte est envoyée en
+image.
+
 ## Commandes Telegram
 
 > `/export` (admin) : envoie un fichier `stats-bot-AAAA-MM-JJ.json` avec les comptes FTMO / Lucid, les trades paper,

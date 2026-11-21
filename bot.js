@@ -62,7 +62,7 @@ function tick() {
 /* Accès                                                               */
 /* ------------------------------------------------------------------ */
 
-const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'export']);
+const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'export', 'video', 'fonds']);
 const isAdmin = (ctx) => !cfg.allowedUserIds.size || (ctx.from && cfg.allowedUserIds.has(String(ctx.from.id)));
 
 // Les boutons et les commandes de consultation sont ouverts à tout le groupe ; les réglages sont réservés.
@@ -72,6 +72,8 @@ bot.use(async (ctx, next) => {
   return next();
 });
 
+// Vidéos PnL (/video, /fond, /fonds) : boutons « v:… », enregistrés avant le panneau interactif
+require('./src/videoBot').attachVideo(bot, { cfg, store, isAdmin });
 attachInteractive(bot, { cfg, store, gameHandler: (ctx, parts) => game.onVote(ctx, parts) });
 
 /* ------------------------------------------------------------------ */
@@ -95,6 +97,7 @@ bot.command(['start', 'aide', 'help'], (ctx) =>
       '/interface — 🖥 interface en direct sur le site (graphiques, SL / TP, comptes FTMO et Lucid)',
       '/version — version du bot en service (à vérifier après un redémarrage)',
       '/export — 📦 (admin) fichier des statistiques du bot, à envoyer à Claude pour une analyse',
+      '/video — 🎬 (admin) vidéo PnL d’un trade (fond au choix) · /fond nom en légende d’une vidéo pour l’ajouter · /fonds',
       '/jeu — 🎯 pronostic du jour · /classement — points des joueurs',
       '/nasdaq · /gold — bilan texte',
       '/portfolio — graphiques des portefeuilles',
@@ -366,6 +369,7 @@ console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) �
     { command: 'ftmo', description: '🏦 Comptes FTMO simulés : /ftmo (Nasdaq) · /ftmo or' },
     { command: 'lucid', description: '🟣 Compte Lucid simulé (LucidFlex, micro-futures)' },
     { command: 'interface', description: '🖥 Interface en direct (graphiques, comptes FTMO / Lucid)' },
+    { command: 'video', description: '🎬 Vidéo PnL d’un trade (fond au choix)' },
     { command: 'version', description: '🔖 Version du bot en service' },
     { command: 'jeu', description: '🎯 Pronostic du jour' },
     { command: 'classement', description: '🏆 Classement des joueurs' },

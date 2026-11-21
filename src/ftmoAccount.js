@@ -211,7 +211,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     s.dayPnl[s.day] = (s.dayPnl[s.day] || 0) + pnl;
     s.closed.push({ ...p, exit, exitT, pnl, reason });
     delete s.open[k];
-    out.push({ type: 'trade', s, p: { ...p, exit, pnl, reason } });
+    out.push({ type: 'trade', s, p: { ...p, exit, exitT, pnl, reason } });
   }
 
   /**

@@ -59,7 +59,11 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
           const text = ftmoTradeMessage(msg, ftmo.status(prices), marketById(cfg, msg.p.market));
           if (msg.type === 'refused' && acct.id === 'lucid') continue; // même signal déjà annoncé par le compte FTMO
           console.log(`[${firm.toLowerCase()}] ${{ open: 'ouverture', trade: 'clôture', refused: 'refusé par l\'IA' }[msg.type]} ${msg.p.market}:${msg.p.sid} ${msg.p.side}${msg.type === 'trade' ? ` ${usd(msg.p.pnl)}` : ''}${msg.p.ai ? ` (IA ${Math.round(msg.p.ai.p * 100)} %)` : ''}`);
-          if (publish && cfg.ftmoTradeMessages !== false) await safeSend(channel, text, button);
+          // Clôture : bouton « 🎬 Vidéo » (PnL card animée, réservé à l'administrateur)
+          const extra = msg.type === 'trade' && ui && msg.p.exitT
+            ? { reply_markup: { inline_keyboard: [[...(button.reply_markup?.inline_keyboard?.[0] || []), { text: '🎬 Vidéo', callback_data: `v:t:${acct.id === 'lucid' ? 'lucid' : 'ftmo'}:${msg.p.exitT}:${msg.p.sid}`.slice(0, 64) }]] } }
+            : button;
+          if (publish && cfg.ftmoTradeMessages !== false) await safeSend(channel, text, extra);
           continue;
         }
         if (!publish) continue;
