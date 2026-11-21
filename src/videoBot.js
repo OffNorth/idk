@@ -57,10 +57,14 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
     return { inline_keyboard: rows };
   };
 
-  async function render(ctx, t, bgId, sourceFile = null) {
+  async function render(ctx, t, bgId, sourceFile = null, ack = null) {
     if (!sourceFile) { state.bg = bgId; saveState(); }
     const what = sourceFile ? 'sur ta vidéo' : `fond « ${esc(V.backgrounds(cfg).find((b) => b.id === bgId)?.label || bgId)} »`;
-    const wait = await ctx.reply(`⏳ Vidéo en préparation (${esc(tradeLabel(t))}, ${what})… environ 10 à 60 s.`, { parse_mode: 'HTML' }).catch(() => null);
+    const msg = `⏳ Vidéo en préparation (${esc(tradeLabel(t))}, ${what})… environ 10 à 60 s.`;
+    // accusé de réception déjà affiché : on le modifie plutôt que d'envoyer un nouveau message
+    const wait = ack
+      ? await ctx.api.editMessageText(ack.chat.id, ack.message_id, `${ack.head}\n${msg}`, { parse_mode: 'HTML' }).then(() => ack, () => ack)
+      : await ctx.reply(msg, { parse_mode: 'HTML' }).catch(() => null);
     await ctx.replyWithChatAction('upload_video').catch(() => {});
     const R = t.risk > 0 ? ` · ${(t.pnl / t.risk).toFixed(1).replace('.', ',')} R` : '';
     const caption = `🎬 <b>${esc(NAME[t.market] || t.market)}</b> · ${t.side === 'long' ? 'achat' : 'vente'} · <b>${money(t.pnl)}</b>${R}\n${esc(t.account)} · ${esc(t.program)} · <i>compte simulé, argent fictif</i>`;
@@ -134,6 +138,15 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
     if ((video.file_size || 0) > 20 * 1024 * 1024) return ctx.reply('❌ Vidéo trop lourde : 20 Mo au plus (limite de Telegram pour les bots). Raccourcis-la ou baisse sa qualité.');
     const trades = recentTrades(cfg, store);
     if (!trades.length) return ctx.reply('Aucun trade clôturé sur les comptes FTMO / Lucid pour l’instant.');
+    // Accusé de réception immédiat (avant le téléchargement), avec ce que Telegram dit de la vidéo
+    const info = [
+      video.duration ? `${video.duration} s` : null,
+      video.file_size ? `${(video.file_size / 1024 / 1024).toFixed(1).replace('.', ',')} Mo` : null,
+      video.width && video.height ? `${video.width}×${video.height}` : null,
+    ].filter(Boolean).join(' · ');
+    const head = `✅ <b>Vidéo reçue</b>${info ? ` (${info})` : ''}${video.duration > 30 ? '\n<i>Seules les 30 premières secondes seront utilisées.</i>' : ''}`;
+    const ackMsg = await ctx.reply(`📥 <b>Vidéo reçue</b>${info ? ` (${info})` : ''} — téléchargement…`, { parse_mode: 'HTML' }).catch(() => null);
+    const edit = (text, extra = {}) => (ackMsg ? ctx.api.editMessageText(ackMsg.chat.id, ackMsg.message_id, text, { parse_mode: 'HTML', ...extra }).catch(() => ctx.reply(text, { parse_mode: 'HTML', ...extra })) : ctx.reply(text, { parse_mode: 'HTML', ...extra }));
     try {
       const fsx = require('fs');
       fsx.mkdirSync(tmpDir, { recursive: true });
@@ -142,11 +155,12 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
       const file = require('path').join(tmpDir, `src-${ctx.chat.id}.mp4`);
       fsx.writeFileSync(file, await download(video));
       pending.set(String(ctx.chat.id), { file, at: Date.now() });
-      if (waited) { awaiting.delete(String(ctx.chat.id)); return render(ctx, wait.trade, null, file); }
-      if (/dernier|last/i.test(cap)) return render(ctx, trades[0], null, file);
-      return ctx.reply('🎬 Vidéo reçue. Quel trade mettre dessus ?', { reply_markup: { inline_keyboard: trades.map((t) => [{ text: tradeLabel(t), callback_data: `v:o:${keyOf(t)}`.slice(0, 64) }]) } });
+      const ack = ackMsg ? { chat: ackMsg.chat, message_id: ackMsg.message_id, head } : null;
+      if (waited) { awaiting.delete(String(ctx.chat.id)); return render(ctx, wait.trade, null, file, ack); }
+      if (/dernier|last/i.test(cap)) return render(ctx, trades[0], null, file, ack);
+      return edit(`${head}\n🎬 Quel trade mettre dessus ?`, { reply_markup: { inline_keyboard: trades.map((t) => [{ text: tradeLabel(t), callback_data: `v:o:${keyOf(t)}`.slice(0, 64) }]) } });
     } catch (err) {
-      return ctx.reply(`❌ Vidéo non reçue : ${esc(err.message)}`, { parse_mode: 'HTML' });
+      return edit(`❌ Vidéo reçue mais pas téléchargée : ${esc(err.message)}. Renvoie-la (20 Mo au plus).`);
     }
   });
   bot.command('fond', (ctx) => saveFond(ctx, (ctx.match || '').trim(), videoOf(ctx.message.reply_to_message)));

@@ -91,7 +91,8 @@ test('Telegram : « 📤 Ma vidéo » puis envoi d’une vidéo → la carte est
   try {
     require('../src/videoBot').attachVideo(bot, { cfg, store, isAdmin: () => true });
     const sent = [];
-    const ctx = (extra) => ({ chat: { id: 42, type: 'group' }, from: { id: 1 }, reply: async (t, o) => { sent.push({ t, o }); return { chat: { id: 42 }, message_id: 1 }; }, replyWithChatAction: async () => {}, replyWithVideo: async () => sent.push({ video: true }), answerCallbackQuery: async () => {}, api: { deleteMessage: async () => {} }, ...extra });
+    const edits = [];
+    const ctx = (extra) => ({ chat: { id: 42, type: 'group' }, from: { id: 1 }, reply: async (t, o) => { sent.push({ t, o }); return { chat: { id: 42 }, message_id: 1 }; }, replyWithChatAction: async () => {}, replyWithVideo: async () => sent.push({ video: true }), answerCallbackQuery: async () => {}, api: { deleteMessage: async () => {}, editMessageText: async (c, m, t, o) => { edits.push({ t, o }); return true; } }, ...extra });
     // /video → choix du trade → clavier des fonds avec « Ma vidéo » en premier
     await H.cmd.video(ctx({ match: '' }));
     const key = `ftmo:${trade.exitT}:${trade.sid}`;
@@ -101,12 +102,22 @@ test('Telegram : « 📤 Ma vidéo » puis envoi d’une vidéo → la carte est
     // bouton « Ma vidéo » → le bot attend la vidéo ; vidéo envoyée dans le groupe (sans légende) → rendu sur elle
     await H.cb[0](ctx({ callbackQuery: { data: kb[0][0].callback_data } }));
     let passed = false;
-    await H.on[0](ctx({ message: { video: { file_id: 'f', file_size: 1000 } } }), async () => { passed = true; });
+    const before = sent.length;
+    await H.on[0](ctx({ message: { video: { file_id: 'f', file_size: 3 * 1024 * 1024, duration: 12, width: 1080, height: 1920 } } }), async () => { passed = true; });
     assert.strictEqual(passed, false);
+    // accusé de réception immédiat avec durée, taille, format ; puis modifié en « en préparation »
+    assert.match(sent[before].t, /Vidéo reçue<\/b> \(12 s · 3,0 Mo · 1080×1920\)/);
+    assert.ok(edits.some((e) => /Vidéo reçue/.test(e.t) && /Vidéo en préparation/.test(e.t)));
     assert.strictEqual(calls.length, 1);
     assert.strictEqual(calls[0].t.sid, 'n_noise');
     assert.match(calls[0].src, /src-42\.mp4$/);
     assert.ok(sent.some((x) => x.video));
+    // en privé, sans bouton : accusé puis choix du trade sur le même message
+    edits.length = 0;
+    await H.on[0](ctx({ chat: { id: 7, type: 'private' }, message: { video: { file_id: 'h', file_size: 1000, duration: 45 } } }), async () => {});
+    const choice = edits.find((e) => /Quel trade/.test(e.t));
+    assert.ok(choice && choice.o.reply_markup.inline_keyboard.length >= 1);
+    assert.match(choice.t, /30 premières secondes/);
     // une autre vidéo dans le groupe, sans attente ni légende : ignorée
     await H.on[0](ctx({ message: { video: { file_id: 'g', file_size: 1000 } } }), async () => { passed = true; });
     assert.strictEqual(passed, true);
