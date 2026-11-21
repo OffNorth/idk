@@ -97,7 +97,7 @@ bot.command(['start', 'aide', 'help'], (ctx) =>
       '/interface — 🖥 interface en direct sur le site (graphiques, SL / TP, comptes FTMO et Lucid)',
       '/version — version du bot en service (à vérifier après un redémarrage)',
       '/export — 📦 (admin) fichier des statistiques du bot, à envoyer à Claude pour une analyse',
-      '/video — 🎬 (admin) vidéo PnL d’un trade (fond au choix) · /fond nom en légende d’une vidéo pour l’ajouter · /fonds',
+      '🎬 Envoie une vidéo au bot (en privé) : il te demande le trade et te la renvoie avec la PnL card transparente par-dessus (admin) · /video : fond intégré · /fond, /fonds',
       '/jeu — 🎯 pronostic du jour · /classement — points des joueurs',
       '/nasdaq · /gold — bilan texte',
       '/portfolio — graphiques des portefeuilles',

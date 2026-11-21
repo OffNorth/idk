@@ -772,6 +772,10 @@ générée par le bot au 1er envoi (`data/bot-push-key.json`). `/interface` donn
 
 ## 🎬 Vidéos PnL (`/video`, `src/pnlVideo.js`, `src/videoBot.js`)
 
+**Sur ta vidéo** (admin) : envoie une vidéo au bot en privé (ou avec la légende `/video` dans un groupe ; `/video dernier`
+pour le dernier trade) → il demande le trade et renvoie **ta vidéo avec la PnL card transparente par-dessus** (textes
+avec ombre, bougies, niveaux ; format vertical / horizontal / carré, durée jusqu'à 30 s et son gardés ; 20 Mo au plus).
+
 `/video` (admin) : choix d'un des 10 derniers trades clôturés des comptes FTMO / Lucid, puis du fond → le bot envoie
 une vidéo verticale 1080×1920 (≈ 7 s) : carte animée dessinée par le moteur d'images du bot sur les **vraies bougies**
 du marché (Yahoo : 5 min, 15 min, 1 h ou 1 jour selon la durée et l'ancienneté du trade), P&L qui compte, entrée, stop,

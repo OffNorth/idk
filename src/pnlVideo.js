@@ -13,8 +13,6 @@ const { Canvas } = require('./draw');
 
 const W = 540; // carte dessinée en 540×675 (polices du moteur ≤ 56 px), agrandie ×1,78 par ffmpeg
 const H = 675;
-const OUT_W = 960;
-const OUT_H = 1200;
 const FPS = 30;
 const ANIM_S = 5;
 const HOLD_S = 2.2;
@@ -80,13 +78,6 @@ function backgroundInput(cfg, id, seconds) {
   return { args: ['-f', 'lavfi', '-t', d, '-i', 'color=c=0x0b0f14:s=1080x1920:r=30'], filter: '[0:v]setsar=1[bg]' };
 }
 
-/** Masque des coins arrondis de la carte (niveaux de gris, blanc = visible). */
-function maskPng() {
-  const m = new Canvas(OUT_W, OUT_H, [0, 0, 0]);
-  m.roundRect(0, 0, OUT_W, OUT_H, 52, [255, 255, 255]);
-  return m.png();
-}
-
 /* ------------------------------------------------------------------ */
 /* Données                                                             */
 /* ------------------------------------------------------------------ */
@@ -121,16 +112,66 @@ const dur = (s) => { const m = Math.round(s / 60); return m < 60 ? `${m} min` : 
 const day = (t) => new Date(t * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' }).toUpperCase();
 const hm = (t) => new Date(t * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
 
-function cloneCanvas(base) {
-  const c = Object.create(Canvas.prototype);
-  c.w = base.w; c.h = base.h; c.px = Buffer.from(base.px);
-  return c;
+const WHITE = [255, 255, 255];
+const BLACK = [0, 0, 0];
+const copyCanvas = (src) => { const c = Object.create(Canvas.prototype); c.w = src.w; c.h = src.h; c.px = Buffer.from(src.px); return c; };
+/**
+ * Calque transparent : chaque tracé est fait deux fois, en couleur (prémultipliée, sur noir) et en blanc sur le masque
+ * d'opacité. rgba() rend l'image RGBA (couleur « dé-prémultipliée ») que ffmpeg superpose à la vidéo.
+ * Le texte a une ombre portée noire pour rester lisible sur n'importe quelle vidéo.
+ */
+class Layer {
+  constructor(w, h, from = null) {
+    this.w = w; this.h = h;
+    this.c = from ? copyCanvas(from.c) : new Canvas(w, h, BLACK);
+    this.a = from ? copyCanvas(from.a) : new Canvas(w, h, BLACK);
+  }
+  clone() { return new Layer(this.w, this.h, this); }
+  measure(...args) { return this.c.measure(...args); }
+  fillRect(x, y, w, h, rgb, a = 1) { this.c.fillRect(x, y, w, h, rgb, a); this.a.fillRect(x, y, w, h, WHITE, a); }
+  roundRect(x, y, w, h, r, rgb, a = 1) { this.c.roundRect(x, y, w, h, r, rgb, a); this.a.roundRect(x, y, w, h, r, WHITE, a); }
+  circle(cx, cy, r, rgb, a = 1) { this.c.circle(cx, cy, r, rgb, a); this.a.circle(cx, cy, r, WHITE, a); }
+  line(x0, y0, x1, y1, rgb, width = 1, dash = 0, a = 1) { this.c.line(x0, y0, x1, y1, rgb, width, dash, a); this.a.line(x0, y0, x1, y1, WHITE, width, dash, a); }
+  text(str, x, y, opts = {}) {
+    if (opts.shadow !== false) {
+      const o = { ...opts, color: BLACK };
+      this.c.text(str, x + 1.5, y + 2, o);
+      this.a.text(str, x + 1.5, y + 2, { ...o, color: [150, 150, 150] }); // ombre à ≈ 60 %
+    }
+    this.a.text(str, x, y, { ...opts, color: WHITE });
+    return this.c.text(str, x, y, opts);
+  }
+  rgba() {
+    const n = this.w * this.h;
+    const out = Buffer.alloc(n * 4);
+    const c = this.c.px; const a = this.a.px;
+    for (let i = 0; i < n; i++) {
+      const al = a[i * 3];
+      out[i * 4 + 3] = al;
+      if (!al) continue;
+      const k = 255 / al;
+      out[i * 4] = Math.min(255, c[i * 3] * k);
+      out[i * 4 + 1] = Math.min(255, c[i * 3 + 1] * k);
+      out[i * 4 + 2] = Math.min(255, c[i * 3 + 2] * k);
+    }
+    return out;
+  }
+  /** Aperçu PNG : le calque posé sur un fond sombre. */
+  png(bg = [11, 15, 20]) {
+    const cv = new Canvas(this.w, this.h, bg);
+    const rgba = this.rgba();
+    for (let i = 0; i < this.w * this.h; i++) {
+      const al = rgba[i * 4 + 3] / 255;
+      if (!al) continue;
+      cv.blend(i % this.w, Math.floor(i / this.w), [rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2]], al);
+    }
+    return cv.png();
+  }
 }
-function chip(cv, x, y, text, color, border) {
+function chip(cv, x, y, text, color) {
   const w = cv.measure(text, 'r', 15) + 22;
-  cv.roundRect(x, y, w, 28, 14, border);
-  cv.roundRect(x + 1, y + 1, w - 2, 26, 13, [12, 17, 23]);
-  cv.text(text, x + 11, y + 6, { size: 15, color });
+  cv.roundRect(x, y, w, 28, 14, BLACK, 0.45);
+  cv.text(text, x + 11, y + 6, { size: 15, color, shadow: false });
   return w;
 }
 
@@ -138,24 +179,24 @@ function chip(cv, x, y, text, color, border) {
  * Prépare la carte d'un trade. trade : { market, sid, name, side, entry, exit, sl, entryT, exitT, pnl, risk,
  * account (« FTMO » / « Lucid »), program, capital }. Retourne { frame(p) → Buffer RGB, frames, png() }.
  */
-function prepareCard(trade, data) {
+function prepareCard(trade, data, { seconds = 0 } = {}) {
   const C = data.candles;
   const long = trade.side === 'long';
   const win = trade.pnl >= 0;
   const accent = win ? COL.gain : COL.loss;
-  const base = new Canvas(W, H, COL.card);
+  const base = new Layer(W, H); // transparent : seuls les textes, bougies et niveaux sont visibles
   // en-tête
   base.text(`${trade.account || 'FTMO'} · ${(trade.program || 'Challenge').toUpperCase()}`, 30, 26, { size: 13, color: COL.mute });
   base.text(day(trade.exitT), W - 30, 26, { size: 13, color: COL.mute, align: 'right' });
   const sideTxt = long ? 'ACHAT' : 'VENTE';
   const bw = base.measure(sideTxt, 'b', 15) + 24;
   base.roundRect(30, 58, bw, 28, 14, long ? COL.gain : COL.loss);
-  base.text(sideTxt, 42, 63, { style: 'b', size: 15, color: COL.dark });
+  base.text(sideTxt, 42, 63, { style: 'b', size: 15, color: COL.dark, shadow: false });
   const nw = base.text(NAME[trade.market] || trade.market, 30 + bw + 12, 60, { style: 'b', size: 22, color: COL.ink });
   base.text(`${data.interval} · ${trade.sid}`, 30 + bw + 24 + nw, 66, { size: 13, color: COL.mute, maxWidth: W - (30 + bw + 24 + nw) - 30 });
   // bas : niveaux, durée
   const statsY = H - 112;
-  base.line(30, statsY - 14, W - 30, statsY - 14, COL.line, 1);
+  base.line(30, statsY - 14, W - 30, statsY - 14, WHITE, 1, 0, 0.25);
   const stats = [['ENTRÉE', frNum(trade.entry, pxDigits(trade.market))], ['SORTIE', frNum(trade.exit, pxDigits(trade.market))], ['STOP', frNum(trade.sl, pxDigits(trade.market))], ['DURÉE', dur(trade.exitT - trade.entryT)]];
   const colW = (W - 60) / 4;
   stats.forEach(([k, v], i) => {
@@ -170,9 +211,9 @@ function prepareCard(trade, data) {
   const mkPct = (trade.exit / trade.entry - 1) * 100;
   let cx = 30;
   const chipsY = 176;
-  if (R !== null) cx += chip(base, cx, chipsY, `${R >= 0 ? '+' : ''}${frNum(R, 1)} R`, accent, [40, 70, 58]) + 10;
-  if (capPct !== null) cx += chip(base, cx, chipsY, `${capPct >= 0 ? '+' : ''}${frNum(capPct)} % du capital`, COL.ink, COL.line) + 10;
-  chip(base, cx, chipsY, `${mkPct >= 0 ? '+' : ''}${frNum(mkPct)} % sur le marché`, COL.ink, COL.line);
+  if (R !== null) cx += chip(base, cx, chipsY, `${R >= 0 ? '+' : ''}${frNum(R, 1)} R`, accent) + 10;
+  if (capPct !== null) cx += chip(base, cx, chipsY, `${capPct >= 0 ? '+' : ''}${frNum(capPct)} % du capital`, COL.ink) + 10;
+  chip(base, cx, chipsY, `${mkPct >= 0 ? '+' : ''}${frNum(mkPct)} % sur le marché`, COL.ink);
 
   // graphique
   const top = 226; const bottom = statsY - 46; const right = W - 92; const left = 22;
@@ -193,21 +234,21 @@ function prepareCard(trade, data) {
   const tickStep = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((k) => k >= raw);
   for (let v = Math.ceil(lo / tickStep) * tickStep; v <= hi; v += tickStep) {
     const y = Y(v);
-    base.line(left, y, right, y, COL.line, 1);
+    base.line(left, y, right, y, WHITE, 1, 0, 0.12);
     if (![trade.entry, trade.sl, trade.exit].some((L) => Math.abs(Y(L) - y) < 16)) base.text(frNum(v, pxDigits(trade.market) === 5 ? 4 : 0), right + 8, y - 7, { size: 13, color: COL.mute });
   }
   // heures
   const every = Math.max(1, Math.round(C.length / 5));
   for (let i = every; i < C.length; i += every) base.text(data.sec >= 86400 ? new Date(C[i].t * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : hm(C[i].t), X(i), bottom + 8, { size: 13, color: COL.mute, align: 'center' });
 
-  const total = Math.round(FPS * (ANIM_S + HOLD_S));
+  const total = Math.round(FPS * Math.max(ANIM_S + HOLD_S, seconds || 0));
   const animN = FPS * ANIM_S;
   const ease = (x) => 1 - Math.pow(1 - x, 3);
   const bodyW = Math.max(1, step * 0.62);
 
   function frame(f) {
     const p = f >= animN ? 1 : ease(f / animN);
-    const cv = cloneCanvas(base);
+    const cv = base.clone();
     const shown = p * C.length;
     const entered = shown > iEntry;
     const exited = shown > iExit + 0.6;
@@ -223,7 +264,7 @@ function prepareCard(trade, data) {
         const px = i === iExit && exited ? trade.exit : C[i].c;
         const good = long ? px > trade.entry : px < trade.entry;
         const y2 = Y(px);
-        cv.fillRect(x, Math.min(y1, y2), 1, Math.abs(y2 - y1), good ? COL.gain : COL.loss, 0.13);
+        cv.fillRect(x, Math.min(y1, y2), 1, Math.abs(y2 - y1), good ? COL.gain : COL.loss, 0.2);
       }
       cv.line(X(iEntry) - step / 2, Y(trade.sl), right, Y(trade.sl), COL.loss, 1.2, 4);
       cv.line(X(iEntry) - step / 2, Y(trade.entry), right, Y(trade.entry), COL.level, 1.2);
@@ -242,8 +283,8 @@ function prepareCard(trade, data) {
     // étiquettes des niveaux (à droite)
     const tag = (v, text, color, dy = 0) => {
       const y = Y(v) + dy;
-      cv.roundRect(right + 4, y - 10, W - right - 10, 20, 4, color, 0.18);
-      cv.text(text, right + 9, y - 7, { size: 13, color });
+      cv.roundRect(right + 4, y - 10, W - right - 10, 20, 4, BLACK, 0.5);
+      cv.text(text, right + 9, y - 7, { size: 13, color, shadow: false });
     };
     if (entered) {
       const close = Math.abs(Y(trade.sl) - Y(trade.entry)) < 22;
@@ -265,31 +306,74 @@ function prepareCard(trade, data) {
     cv.text(usd(shownPnl), 28, 100, { style: 'b', size: 56, color: shownPnl >= 0 ? COL.gain : COL.loss });
     return cv;
   }
-  return { frame: (f) => frame(f).px, frames: total, png: () => frame(total - 1).png() };
+  return { frame: (f) => frame(f).rgba(), frames: total, png: () => frame(total - 1).png() };
 }
 
 /* ------------------------------------------------------------------ */
 /* Vidéo                                                               */
 /* ------------------------------------------------------------------ */
 
-/** Arguments complets de ffmpeg (exposés pour les tests). */
-function ffmpegArgs(cfg, bgId, maskFile, outFile, seconds) {
-  const bg = backgroundInput(cfg, bgId, seconds);
+/** Durée, taille (rotation comprise) et son d'une vidéo, lus par ffmpeg. */
+function probe(bin, file) {
+  return new Promise((resolve) => {
+    const ff = spawn(bin, ['-hide_banner', '-i', file], { stdio: ['ignore', 'ignore', 'pipe'] });
+    let err = '';
+    ff.stderr.on('data', (d) => { err += d; });
+    ff.on('close', () => {
+      const d = err.match(/Duration: (\d+):(\d+):([\d.]+)/);
+      const v = err.match(/Video: [^\n]*?(\d{2,5})x(\d{2,5})/);
+      const rot = err.match(/rotat(?:e\s*:\s*|ion of )(-?\d+)/);
+      let w = v ? Number(v[1]) : 1080; let h = v ? Number(v[2]) : 1920;
+      if (rot && Math.abs(Number(rot[1])) % 180 === 90) [w, h] = [h, w];
+      resolve({ duration: d ? Number(d[1]) * 3600 + Number(d[2]) * 60 + Number(d[3]) : 0, w, h, audio: /Audio: /.test(err) });
+    });
+    ff.on('error', () => resolve({ duration: 0, w: 1080, h: 1920, audio: false }));
+  });
+}
+
+/** Format de sortie selon la vidéo source : vertical 1080×1920, horizontal 1920×1080 ou carré 1080×1080. */
+function targetFor(src) {
+  if (!src) return { tw: 1080, th: 1920 };
+  const r = src.w / src.h;
+  return r > 1.15 ? { tw: 1920, th: 1080 } : r < 0.87 ? { tw: 1080, th: 1920 } : { tw: 1080, th: 1080 };
+}
+/** Taille de la carte (4:5) : 90 % de la largeur, 82 % de la hauteur au plus ; dimensions paires. */
+function cardSize(tw, th) {
+  let cw = tw * 0.9; let ch = cw * (H / W);
+  if (ch > th * 0.82) { ch = th * 0.82; cw = ch * (W / H); }
+  return { cw: Math.round(cw / 2) * 2, ch: Math.round(ch / 2) * 2 };
+}
+
+/**
+ * Arguments complets de ffmpeg (exposés pour les tests). bg : fond intégré, fond enregistré « u:nom », ou
+ * { file } (vidéo envoyée au bot, gardée telle quelle : format, son).
+ */
+function ffmpegArgs(cfg, bgId, outFile, seconds, src = null) {
+  const { tw, th } = targetFor(src);
+  const { cw, ch } = cardSize(tw, th);
+  let bg;
+  if (src && src.file) {
+    bg = { args: ['-stream_loop', '-1', '-t', seconds.toFixed(2), '-i', src.file], filter: `[0:v]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th},fps=30,eq=brightness=-0.08,setsar=1[bg]` };
+  } else {
+    bg = backgroundInput(cfg, bgId, seconds);
+  }
   return [
     '-hide_banner', '-loglevel', 'error', '-y',
     ...bg.args,
-    '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', `${W}x${H}`, '-r', String(FPS), '-i', 'pipe:0',
-    '-loop', '1', '-t', seconds.toFixed(2), '-i', maskFile,
-    '-filter_complex',
-    `${bg.filter};[1:v]scale=${OUT_W}:${OUT_H}:flags=lanczos,format=rgba[card];[2:v]scale=${OUT_W}:${OUT_H},format=gray[mask];[card][mask]alphamerge[cardm];[bg][cardm]overlay=(W-w)/2:(H-h)/2:shortest=1,format=yuv420p[out]`,
-    '-map', '[out]', '-r', String(FPS), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-movflags', '+faststart', '-t', seconds.toFixed(2), outFile,
+    '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${W}x${H}`, '-r', String(FPS), '-i', 'pipe:0',
+    '-filter_complex', `${bg.filter};[1:v]scale=${cw}:${ch}:flags=lanczos,format=rgba[card];[bg][card]overlay=(W-w)/2:(H-h)/2:format=auto,format=yuv420p[out]`,
+    '-map', '[out]', ...(src && src.audio ? ['-map', '0:a:0?', '-c:a', 'aac', '-b:a', '128k'] : []),
+    '-r', String(FPS), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-movflags', '+faststart', '-t', seconds.toFixed(2), outFile,
   ];
 }
 
 let chain = Promise.resolve();
 let busy = 0;
-/** Vidéo MP4 d'un trade (Buffer). Une seule à la fois ; refuse au-delà de 2 en attente. */
-function makeVideo(cfg, trade, bgId, { fetcher } = {}) {
+/**
+ * Vidéo MP4 d'un trade (Buffer). bgId : fond intégré ou « u:nom » ; sourceFile : vidéo envoyée au bot sur laquelle
+ * poser la carte transparente (sa durée, 30 s au plus, et son son sont gardés). Une seule vidéo à la fois.
+ */
+function makeVideo(cfg, trade, bgId, { fetcher, sourceFile } = {}) {
   if (busy >= 3) return Promise.reject(new Error('trop de vidéos en attente, réessaie dans une minute'));
   busy++;
   const job = chain.then(async () => {
@@ -297,18 +381,18 @@ function makeVideo(cfg, trade, bgId, { fetcher } = {}) {
     if (!bin) throw Object.assign(new Error('ffmpeg absent sur le serveur'), { code: 'NOFFMPEG' });
     const data = await candlesFor(trade, fetcher);
     if (data.candles.length < 5) throw new Error('bougies indisponibles pour ce trade');
-    const card = prepareCard(trade, data);
+    let src = null;
+    if (sourceFile) src = { file: sourceFile, ...(await probe(bin, sourceFile)) };
+    const seconds = Math.min(30, Math.max(ANIM_S + HOLD_S, src?.duration || 0));
+    const card = prepareCard(trade, data, { seconds });
     const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'pnlv-'));
-    const mask = path.join(dir, 'mask.png');
     const out = path.join(dir, 'video.mp4');
-    fs.writeFileSync(mask, maskPng());
-    const seconds = card.frames / FPS;
     try {
       await new Promise((resolve, reject) => {
-        const ff = spawn(bin, ffmpegArgs(cfg, bgId, mask, out, seconds), { stdio: ['pipe', 'ignore', 'pipe'] });
+        const ff = spawn(bin, ffmpegArgs(cfg, bgId, out, card.frames / FPS, src), { stdio: ['pipe', 'ignore', 'pipe'] });
         let err = '';
         ff.stderr.on('data', (d) => { err += d; });
-        const timer = setTimeout(() => ff.kill('SIGKILL'), 180_000);
+        const timer = setTimeout(() => ff.kill('SIGKILL'), 240_000);
         ff.on('error', reject);
         ff.on('close', (code) => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error(`ffmpeg : ${err.trim().split('\n').pop() || `code ${code}`}`)); });
         ff.stdin.on('error', () => { /* ffmpeg arrêté : l'erreur sort par « close » */ });
@@ -348,4 +432,4 @@ function deleteBackground(cfg, name) {
   try { fs.unlinkSync(path.join(fondsDir(cfg), `${safeName(name)}.mp4`)); return true; } catch { return false; }
 }
 
-module.exports = { makeVideo, cardPng, prepareCard, ffmpegArgs, ffmpegPath, backgrounds, saveBackground, deleteBackground, intervalFor, candlesFor, safeName, BUILTIN, SYMBOL };
+module.exports = { makeVideo, cardPng, prepareCard, ffmpegArgs, ffmpegPath, probe, targetFor, cardSize, backgrounds, saveBackground, deleteBackground, intervalFor, candlesFor, safeName, BUILTIN, SYMBOL };

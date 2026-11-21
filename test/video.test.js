@@ -13,20 +13,26 @@ const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'video-'));
 
 test('vidéo PnL : carte image par image, fonds, arguments ffmpeg', async () => {
   const card = V.prepareCard(trade, { interval: '5m', sec: 300, candles });
-  assert.strictEqual(card.frame(0).length, 540 * 675 * 3);
+  assert.strictEqual(card.frame(0).length, 540 * 675 * 4); // RGBA (transparent)
   assert.ok(card.frames >= 200);
   const png = card.png();
   assert.strictEqual(png.subarray(1, 4).toString(), 'PNG');
   const cfg = { dataDir: tmp() };
   assert.deepStrictEqual(V.backgrounds(cfg).map((b) => b.id), ['uni', 'grille', 'particules']);
   for (const id of ['uni', 'grille', 'particules']) {
-    const a = V.ffmpegArgs(cfg, id, '/m.png', '/o.mp4', 7.2);
-    assert.ok(a.includes('pipe:0') && a.includes('/o.mp4') && a.join(' ').includes('alphamerge'));
+    const a = V.ffmpegArgs(cfg, id, '/o.mp4', 7.2);
+    assert.ok(a.includes('pipe:0') && a.includes('/o.mp4') && a.includes('rgba') && a.join(' ').includes('overlay'));
   }
   // fond perso : enregistré, listé, utilisé, supprimé ; nom nettoyé ; 10 au plus
   assert.strictEqual(V.saveBackground(cfg, 'Plage été!', Buffer.from('x')), 'plage-ete');
   assert.ok(V.backgrounds(cfg).some((b) => b.id === 'u:plage-ete'));
-  assert.ok(V.ffmpegArgs(cfg, 'u:plage-ete', '/m.png', '/o.mp4', 7).join(' ').includes('plage-ete.mp4'));
+  assert.ok(V.ffmpegArgs(cfg, 'u:plage-ete', '/o.mp4', 7).join(' ').includes('plage-ete.mp4'));
+  // vidéo envoyée : format gardé (horizontal → 1920×1080), son conservé, carte 4:5 qui tient dans l'image
+  const a2 = V.ffmpegArgs(cfg, null, '/o.mp4', 12, { file: '/ma.mp4', w: 1280, h: 720, audio: true }).join(' ');
+  assert.ok(a2.includes('/ma.mp4') && a2.includes('scale=1920:1080') && a2.includes('0:a:0?'));
+  assert.deepStrictEqual(V.targetFor({ w: 720, h: 1280 }), { tw: 1080, th: 1920 });
+  const cs = V.cardSize(1920, 1080);
+  assert.ok(cs.ch <= 1080 * 0.82 + 1 && cs.cw % 2 === 0);
   for (let i = 0; i < 9; i++) V.saveBackground(cfg, `f${i}`, Buffer.from('x'));
   assert.throws(() => V.saveBackground(cfg, 'onzieme', Buffer.from('x')), /10 fonds/);
   assert.ok(V.deleteBackground(cfg, 'plage-ete'));

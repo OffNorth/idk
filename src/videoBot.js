@@ -4,6 +4,8 @@
  *   /video dernier  → dernier trade, dernier fond choisi
  *   /fond <nom>     → en légende d'une vidéo (ou en réponse à une vidéo) : l'enregistre comme fond
  *   /fonds          → liste des fonds, avec suppression
+ *   Envoie une vidéo au bot (en privé, ou avec la légende /video dans un groupe) → il demande le trade et renvoie
+ *   ta vidéo avec la PnL card transparente par-dessus (format, durée ≤ 30 s et son gardés).
  * Boutons : v:t:<compte>:<sortie>:<stratégie> (trade), v:b:…:<n° de fond> (fond), v:x:<nom> (supprimer un fond).
  */
 const { InputFile } = require('grammy');
@@ -51,16 +53,16 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
     return { inline_keyboard: rows };
   };
 
-  async function render(ctx, t, bgId) {
-    state.bg = bgId;
-    saveState();
-    const wait = await ctx.reply(`⏳ Vidéo en préparation (${esc(tradeLabel(t))}, fond « ${esc(V.backgrounds(cfg).find((b) => b.id === bgId)?.label || bgId)} »)… environ 10 à 30 s.`, { parse_mode: 'HTML' }).catch(() => null);
+  async function render(ctx, t, bgId, sourceFile = null) {
+    if (!sourceFile) { state.bg = bgId; saveState(); }
+    const what = sourceFile ? 'sur ta vidéo' : `fond « ${esc(V.backgrounds(cfg).find((b) => b.id === bgId)?.label || bgId)} »`;
+    const wait = await ctx.reply(`⏳ Vidéo en préparation (${esc(tradeLabel(t))}, ${what})… environ 10 à 60 s.`, { parse_mode: 'HTML' }).catch(() => null);
     await ctx.replyWithChatAction('upload_video').catch(() => {});
     const R = t.risk > 0 ? ` · ${(t.pnl / t.risk).toFixed(1).replace('.', ',')} R` : '';
     const caption = `🎬 <b>${esc(NAME[t.market] || t.market)}</b> · ${t.side === 'long' ? 'achat' : 'vente'} · <b>${money(t.pnl)}</b>${R}\n${esc(t.account)} · ${esc(t.program)} · <i>compte simulé, argent fictif</i>`;
     try {
-      const buf = await V.makeVideo(cfg, t, bgId);
-      await ctx.replyWithVideo(new InputFile(buf, 'pnl.mp4'), { caption, parse_mode: 'HTML', width: 1080, height: 1920, supports_streaming: true });
+      const buf = await V.makeVideo(cfg, t, bgId, { sourceFile });
+      await ctx.replyWithVideo(new InputFile(buf, 'pnl.mp4'), { caption, parse_mode: 'HTML', supports_streaming: true });
     } catch (err) {
       if (err.code === 'NOFFMPEG') {
         const png = await V.cardPng(t).catch(() => null);
@@ -104,11 +106,40 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
     }
   }
   const videoOf = (m) => m?.video || (m?.document && /^video\//.test(m.document.mime_type || '') ? m.document : null) || m?.animation || null;
+  // Vidéo envoyée au bot : « /fond nom » → fond enregistré ; sinon (en privé, ou légende /video en groupe) → la PnL
+  // card transparente est posée sur cette vidéo, pour le trade choisi
+  const pending = new Map(); // chat → { file, at }
+  const tmpDir = require('path').join(cfg.dataDir, 'tmp');
+  async function download(video) {
+    const file = await bot.api.getFile(video.file_id);
+    const res = await fetch(`https://api.telegram.org/file/bot${cfg.telegramToken}/${file.file_path}`, { signal: AbortSignal.timeout(60_000) });
+    if (!res.ok) throw new Error(`téléchargement : HTTP ${res.status}`);
+    return Buffer.from(await res.arrayBuffer());
+  }
   bot.on(['message:video', 'message:document', 'message:animation'], async (ctx, next) => {
-    const cap = ctx.message.caption || '';
+    const cap = (ctx.message.caption || '').trim();
     const m = cap.match(/^\/fond(?:@\w+)?\s*(.*)$/i);
-    if (!m) return next();
-    return saveFond(ctx, m[1].trim(), videoOf(ctx.message));
+    if (m) return saveFond(ctx, m[1].trim(), videoOf(ctx.message));
+    const video = videoOf(ctx.message);
+    const asked = /^\/video\b/i.test(cap);
+    if (!video || (ctx.chat.type !== 'private' && !asked)) return next();
+    if (!isAdmin(ctx)) return asked ? ctx.reply('Réservé à l’administrateur du bot.') : next();
+    if ((video.file_size || 0) > 20 * 1024 * 1024) return ctx.reply('❌ Vidéo trop lourde : 20 Mo au plus (limite de Telegram pour les bots). Raccourcis-la ou baisse sa qualité.');
+    const trades = recentTrades(cfg, store);
+    if (!trades.length) return ctx.reply('Aucun trade clôturé sur les comptes FTMO / Lucid pour l’instant.');
+    try {
+      const fsx = require('fs');
+      fsx.mkdirSync(tmpDir, { recursive: true });
+      // ménage : vidéos de plus d'une heure
+      for (const f of fsx.readdirSync(tmpDir)) { const pth = require('path').join(tmpDir, f); if (Date.now() - fsx.statSync(pth).mtimeMs > 3600_000) fsx.rmSync(pth, { force: true }); }
+      const file = require('path').join(tmpDir, `src-${ctx.chat.id}.mp4`);
+      fsx.writeFileSync(file, await download(video));
+      pending.set(String(ctx.chat.id), { file, at: Date.now() });
+      if (/dernier|last/i.test(cap)) return render(ctx, trades[0], null, file);
+      return ctx.reply('🎬 Vidéo reçue. Quel trade mettre dessus ?', { reply_markup: { inline_keyboard: trades.map((t) => [{ text: tradeLabel(t), callback_data: `v:o:${keyOf(t)}`.slice(0, 64) }]) } });
+    } catch (err) {
+      return ctx.reply(`❌ Vidéo non reçue : ${esc(err.message)}`, { parse_mode: 'HTML' });
+    }
   });
   bot.command('fond', (ctx) => saveFond(ctx, (ctx.match || '').trim(), videoOf(ctx.message.reply_to_message)));
 
@@ -136,6 +167,12 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
     if (p[1] === 't') {
       await ctx.answerCallbackQuery().catch(() => {});
       return ctx.reply(`🎞 Fond de la vidéo pour ${esc(tradeLabel(t))} :`, { parse_mode: 'HTML', reply_markup: bgKeyboard(t) });
+    }
+    if (p[1] === 'o') {
+      const pend = pending.get(String(ctx.chat?.id));
+      if (!pend || !require('fs').existsSync(pend.file) || Date.now() - pend.at > 3600_000) return ctx.answerCallbackQuery({ text: 'Vidéo expirée : renvoie-la au bot.' }).catch(() => {});
+      await ctx.answerCallbackQuery({ text: '🎬 Vidéo en préparation…' }).catch(() => {});
+      return render(ctx, t, null, pend.file);
     }
     if (p[1] === 'b') {
       const bg = V.backgrounds(cfg)[Number(p[5])];
