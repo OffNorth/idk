@@ -220,14 +220,15 @@ function chip(cv, x, y, text, color) {
  * Prépare la carte d'un trade. trade : { market, sid, name, side, entry, exit, sl, entryT, exitT, pnl, risk,
  * account (« FTMO » / « Lucid »), program, capital }. Retourne { frame(p) → Buffer RGB, frames, png() }.
  */
-function prepareCard(trade, data, { seconds = 0 } = {}) {
+function prepareCard(trade, data, { seconds = 0, handle = '' } = {}) {
   const C = data.candles;
   const long = trade.side === 'long';
   const win = trade.pnl >= 0;
   const accent = win ? COL.gain : COL.loss;
   const base = new Layer(W, H); // transparent : seuls les textes, bougies et niveaux sont visibles
   // en-tête
-  base.text(`${trade.account || 'FTMO'} · ${(trade.program || 'Challenge').toUpperCase()}`, 30, 26, { size: 13, color: COL.mute });
+  // « DÉMO » : trades d'un compte simulé (paper trading du bot), à garder visible même une fois la vidéo partagée
+  base.text(`${trade.account || 'FTMO'} · ${(trade.program || 'Challenge').toUpperCase()} · DÉMO`, 30, 26, { size: 13, color: COL.mute });
   base.text(day(trade.exitT), W - 30, 26, { size: 13, color: COL.mute, align: 'right' });
   const sideTxt = long ? 'ACHAT' : 'VENTE';
   const bw = base.measure(sideTxt, 'b', 15) + 24;
@@ -244,8 +245,8 @@ function prepareCard(trade, data, { seconds = 0 } = {}) {
     base.text(k, 30 + i * colW, statsY, { size: 13, color: COL.mute });
     base.text(v, 30 + i * colW, statsY + 20, { style: 'b', size: 18, color: COL.ink, maxWidth: colW - 6 });
   });
-  base.text(`Stratégie ${trade.name ? trade.name.replace(/^[^:]+:\s*/, '') : trade.sid}`, 30, H - 40, { size: 13, color: COL.mute, maxWidth: W * 0.58 });
-  base.text('Compte simulé · argent fictif', W - 30, H - 40, { size: 13, color: COL.mute, align: 'right' });
+  // Signature (VIDEO_HANDLE ou /signature), centrée en bas
+  if (handle) base.text(handle, W / 2, H - 46, { style: 'b', size: 22, color: COL.ink, align: 'center', maxWidth: W - 60 });
   // puces fixes
   const R = trade.risk > 0 ? trade.pnl / trade.risk : null;
   const capPct = trade.capital ? (trade.pnl / trade.capital) * 100 : null;
@@ -458,7 +459,7 @@ let busy = 0;
  * Vidéo MP4 d'un trade (Buffer). bgId : fond intégré ou « u:nom » ; sourceFile : vidéo envoyée au bot sur laquelle
  * poser la carte transparente (sa durée, 30 s au plus, et son son sont gardés). Une seule vidéo à la fois.
  */
-function makeVideo(cfg, trade, bgId, { fetcher, sourceFile } = {}) {
+function makeVideo(cfg, trade, bgId, { fetcher, sourceFile, handle = '' } = {}) {
   if (busy >= 3) return Promise.reject(new Error('trop de vidéos en attente, réessaie dans une minute'));
   busy++;
   const job = chain.then(async () => {
@@ -468,7 +469,7 @@ function makeVideo(cfg, trade, bgId, { fetcher, sourceFile } = {}) {
     let src = null;
     if (sourceFile) src = { file: sourceFile, ...(await probe(bin, sourceFile)) };
     const seconds = Math.min(30, Math.max(ANIM_S + HOLD_S, src?.duration || 0));
-    const card = prepareCard(trade, data, { seconds });
+    const card = prepareCard(trade, data, { seconds, handle });
     let lastErr = null;
     for (const level of LEVELS) {
       try {
@@ -486,9 +487,9 @@ function makeVideo(cfg, trade, bgId, { fetcher, sourceFile } = {}) {
 }
 
 /** Image fixe de la carte (repli sans ffmpeg). */
-async function cardPng(trade, { fetcher } = {}) {
+async function cardPng(trade, { fetcher, handle = '' } = {}) {
   const data = await candlesFor(trade, fetcher);
-  return prepareCard(trade, data).png();
+  return prepareCard(trade, data, { handle }).png();
 }
 
 /** Enregistre une vidéo de fond (Buffer) sous un nom ; 10 fonds au plus. */

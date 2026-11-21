@@ -62,7 +62,7 @@ function tick() {
 /* Accès                                                               */
 /* ------------------------------------------------------------------ */
 
-const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'export', 'video', 'fonds']);
+const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'export', 'video', 'fonds', 'signature']);
 const isAdmin = (ctx) => !cfg.allowedUserIds.size || (ctx.from && cfg.allowedUserIds.has(String(ctx.from.id)));
 
 // Les boutons et les commandes de consultation sont ouverts à tout le groupe ; les réglages sont réservés.
@@ -97,7 +97,7 @@ bot.command(['start', 'aide', 'help'], (ctx) =>
       '/interface — 🖥 interface en direct sur le site (graphiques, SL / TP, comptes FTMO et Lucid)',
       '/version — version du bot en service (à vérifier après un redémarrage)',
       '/export — 📦 (admin) fichier des statistiques du bot, à envoyer à Claude pour une analyse',
-      '🎬 Envoie une vidéo au bot (en privé) : il te demande le trade et te la renvoie avec la PnL card transparente par-dessus (admin) · /video : fond intégré · /fond, /fonds',
+      '🎬 Envoie une vidéo au bot (en privé) : il te demande le trade et te la renvoie avec la PnL card transparente par-dessus (admin) · /video : fond intégré · /fond, /fonds · /signature @nom',
       '/jeu — 🎯 pronostic du jour · /classement — points des joueurs',
       '/nasdaq · /gold — bilan texte',
       '/portfolio — graphiques des portefeuilles',

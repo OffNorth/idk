@@ -126,3 +126,13 @@ test('Telegram : « 📤 Ma vidéo » puis envoi d’une vidéo → la carte est
     V.makeVideo = realMake; global.fetch = realFetch; V.ensureFfmpeg = realEnsure;
   }
 });
+
+test('vidéo PnL : signature en bas de la carte (à la place de la ligne « compte simulé »)', () => {
+  const data = { interval: '5m', sec: 300, candles };
+  const last = (h) => { const c = V.prepareCard(trade, data, { handle: h }); return c.frame(c.frames - 1); };
+  const a = last('@realzigg'); const b = last('');
+  // pixels opaques dans la bande du bas (y 600 → 650) : présents avec la signature, absents sans
+  const band = (buf) => { let n = 0; for (let y = 600; y < 650; y++) for (let x = 0; x < 540; x++) if (buf[(y * 540 + x) * 4 + 3] > 200) n++; return n; };
+  assert.ok(band(a) > 300);
+  assert.strictEqual(band(b), 0);
+});

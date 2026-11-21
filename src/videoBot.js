@@ -46,6 +46,8 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
   // ffmpeg préparé dès le démarrage (téléchargé par le bot s'il manque), pour que la 1re vidéo soit rapide
   V.ensureFfmpeg(cfg).then((p) => console.log(`[vidéo] ffmpeg prêt : ${p}`), (err) => console.warn(`[vidéo] ${err.message}`));
   const state = store.loadJson('video.json', { bg: 'uni' });
+  // Signature des vidéos : /signature, sinon VIDEO_HANDLE, sinon @realzigg ; « aucune » = sans signature
+  const handle = () => (state.handle !== undefined ? state.handle : process.env.VIDEO_HANDLE ?? '@realzigg');
   const saveState = () => store.saveJson('video.json', state);
 
   const bgKeyboard = (t) => {
@@ -69,11 +71,11 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
     const R = t.risk > 0 ? ` · ${(t.pnl / t.risk).toFixed(1).replace('.', ',')} R` : '';
     const caption = `🎬 <b>${esc(NAME[t.market] || t.market)}</b> · ${t.side === 'long' ? 'achat' : 'vente'} · <b>${money(t.pnl)}</b>${R}\n${esc(t.account)} · ${esc(t.program)} · <i>compte simulé, argent fictif</i>`;
     try {
-      const buf = await V.makeVideo(cfg, t, bgId, { sourceFile });
+      const buf = await V.makeVideo(cfg, t, bgId, { sourceFile, handle: handle() });
       await ctx.replyWithVideo(new InputFile(buf, 'pnl.mp4'), { caption, parse_mode: 'HTML', supports_streaming: true });
     } catch (err) {
       if (err.code === 'NOFFMPEG') {
-        const png = await V.cardPng(t).catch(() => null);
+        const png = await V.cardPng(t, { handle: handle() }).catch(() => null);
         if (png) await ctx.replyWithPhoto(new InputFile(png, 'pnl.png'), { caption: `${caption}\n⚠️ Vidéo impossible : ${esc(err.message)}. Carte en image.`, parse_mode: 'HTML' });
         else await ctx.reply('❌ Vidéo impossible : ffmpeg absent sur le serveur, et bougies indisponibles.');
       } else {
@@ -164,6 +166,15 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
     }
   });
   bot.command('fond', (ctx) => saveFond(ctx, (ctx.match || '').trim(), videoOf(ctx.message.reply_to_message)));
+
+  bot.command('signature', (ctx) => {
+    if (!isAdmin(ctx)) return ctx.reply('Commande réservée à l’administrateur du bot.');
+    const arg = (ctx.match || '').trim();
+    if (!arg) return ctx.reply(`✍️ Signature des vidéos : ${handle() ? esc(handle()) : 'aucune'}\nChanger : /signature @nom · retirer : /signature aucune`, { parse_mode: 'HTML' });
+    state.handle = /^(aucune|non|off|none)$/i.test(arg) ? '' : arg.slice(0, 40);
+    saveState();
+    return ctx.reply(`✅ Signature des vidéos : ${state.handle ? esc(state.handle) : 'aucune'}`, { parse_mode: 'HTML' });
+  });
 
   bot.command('fonds', (ctx) => {
     if (!isAdmin(ctx)) return ctx.reply('Commande réservée à l’administrateur du bot.');
