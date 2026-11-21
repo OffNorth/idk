@@ -51,6 +51,8 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
   const bgKeyboard = (t) => {
     const list = V.backgrounds(cfg);
     const rows = [];
+    // 1er choix : ta propre vidéo (le bot attend que tu l'envoies), puis les fonds intégrés et enregistrés
+    rows.push([{ text: '📤 Ma vidéo (je l’envoie)', callback_data: `v:w:${keyOf(t)}`.slice(0, 64) }]);
     for (let i = 0; i < list.length; i += 2) rows.push(list.slice(i, i + 2).map((b, j) => ({ text: `${b.id === state.bg ? '• ' : ''}${b.label}`, callback_data: `v:b:${keyOf(t)}:${i + j}`.slice(0, 64) })));
     return { inline_keyboard: rows };
   };
@@ -83,7 +85,7 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
     const trades = recentTrades(cfg, store);
     if (!trades.length) return ctx.reply('Aucun trade clôturé sur les comptes FTMO / Lucid pour l’instant.');
     if (/dernier|last/i.test(ctx.match || '')) return render(ctx, trades[0], state.bg || 'uni');
-    return ctx.reply('🎬 <b>Vidéo PnL</b> : choisis un trade.', {
+    return ctx.reply('🎬 <b>Vidéo PnL</b> : choisis un trade, puis « 📤 Ma vidéo » pour mettre la carte sur ta vidéo (ou un fond intégré).\n<i>Astuce : en privé, envoie directement une vidéo au bot.</i>', {
       parse_mode: 'HTML',
       reply_markup: { inline_keyboard: trades.map((t) => [{ text: tradeLabel(t), callback_data: `v:t:${keyOf(t)}`.slice(0, 64) }]) },
     });
@@ -110,7 +112,8 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
   const videoOf = (m) => m?.video || (m?.document && /^video\//.test(m.document.mime_type || '') ? m.document : null) || m?.animation || null;
   // Vidéo envoyée au bot : « /fond nom » → fond enregistré ; sinon (en privé, ou légende /video en groupe) → la PnL
   // card transparente est posée sur cette vidéo, pour le trade choisi
-  const pending = new Map(); // chat → { file, at }
+  const pending = new Map(); // chat → { file, at } : vidéo reçue, trade à choisir
+  const awaiting = new Map(); // chat → { trade, at } : trade choisi, vidéo attendue (bouton « Ma vidéo »)
   const tmpDir = require('path').join(cfg.dataDir, 'tmp');
   async function download(video) {
     const file = await bot.api.getFile(video.file_id);
@@ -124,7 +127,9 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
     if (m) return saveFond(ctx, m[1].trim(), videoOf(ctx.message));
     const video = videoOf(ctx.message);
     const asked = /^\/video\b/i.test(cap);
-    if (!video || (ctx.chat.type !== 'private' && !asked)) return next();
+    const wait = awaiting.get(String(ctx.chat.id));
+    const waited = wait && Date.now() - wait.at < 15 * 60_000;
+    if (!video || (ctx.chat.type !== 'private' && !asked && !waited)) return next();
     if (!isAdmin(ctx)) return asked ? ctx.reply('Réservé à l’administrateur du bot.') : next();
     if ((video.file_size || 0) > 20 * 1024 * 1024) return ctx.reply('❌ Vidéo trop lourde : 20 Mo au plus (limite de Telegram pour les bots). Raccourcis-la ou baisse sa qualité.');
     const trades = recentTrades(cfg, store);
@@ -137,6 +142,7 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
       const file = require('path').join(tmpDir, `src-${ctx.chat.id}.mp4`);
       fsx.writeFileSync(file, await download(video));
       pending.set(String(ctx.chat.id), { file, at: Date.now() });
+      if (waited) { awaiting.delete(String(ctx.chat.id)); return render(ctx, wait.trade, null, file); }
       if (/dernier|last/i.test(cap)) return render(ctx, trades[0], null, file);
       return ctx.reply('🎬 Vidéo reçue. Quel trade mettre dessus ?', { reply_markup: { inline_keyboard: trades.map((t) => [{ text: tradeLabel(t), callback_data: `v:o:${keyOf(t)}`.slice(0, 64) }]) } });
     } catch (err) {
@@ -169,6 +175,11 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
     if (p[1] === 't') {
       await ctx.answerCallbackQuery().catch(() => {});
       return ctx.reply(`🎞 Fond de la vidéo pour ${esc(tradeLabel(t))} :`, { parse_mode: 'HTML', reply_markup: bgKeyboard(t) });
+    }
+    if (p[1] === 'w') {
+      awaiting.set(String(ctx.chat?.id), { trade: t, at: Date.now() });
+      await ctx.answerCallbackQuery().catch(() => {});
+      return ctx.reply(`📤 Envoie maintenant ta vidéo ici (20 Mo au plus) : la PnL card de ${esc(tradeLabel(t))} sera posée dessus, en gardant son format, sa durée (30 s au plus) et son son.`, { parse_mode: 'HTML' });
     }
     if (p[1] === 'o') {
       const pend = pending.get(String(ctx.chat?.id));

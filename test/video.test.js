@@ -73,3 +73,44 @@ test('vidéo PnL : derniers trades des comptes (challenge en cours + archive)', 
   assert.strictEqual(list[0].account, 'FTMO');
   assert.match(require('../src/videoBot').tradeLabel(list[0]), /Nasdaq vente · \+7.290 \$/);
 });
+
+test('Telegram : « 📤 Ma vidéo » puis envoi d’une vidéo → la carte est posée sur cette vidéo', async () => {
+  const dir = tmp();
+  const { Store } = require('../src/store');
+  const store = new Store(dir);
+  const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, lucidEnabled: false, telegramToken: '1:X' };
+  store.saveJson('ftmo.json', { attempt: 2, phase: 1, capital: 100000, balance: 107000, closed: [{ ...trade }], open: {}, days: [], program: '1step' });
+  // faux bot : on garde les gestionnaires
+  const H = { cmd: {}, on: [], cb: [] };
+  const bot = { command: (n, f) => { H.cmd[n] = f; }, on: (ev, f) => H.on.push(f), callbackQuery: (re, f) => H.cb.push(f), api: { getFile: async () => ({ file_path: 'v.mp4' }) } };
+  const calls = [];
+  const realMake = V.makeVideo; const realFetch = global.fetch; const realEnsure = V.ensureFfmpeg;
+  V.makeVideo = async (c, t, bg, o) => { calls.push({ t, bg, src: o.sourceFile }); return Buffer.from('mp4'); };
+  V.ensureFfmpeg = () => Promise.resolve('ffmpeg');
+  global.fetch = async () => ({ ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer });
+  try {
+    require('../src/videoBot').attachVideo(bot, { cfg, store, isAdmin: () => true });
+    const sent = [];
+    const ctx = (extra) => ({ chat: { id: 42, type: 'group' }, from: { id: 1 }, reply: async (t, o) => { sent.push({ t, o }); return { chat: { id: 42 }, message_id: 1 }; }, replyWithChatAction: async () => {}, replyWithVideo: async () => sent.push({ video: true }), answerCallbackQuery: async () => {}, api: { deleteMessage: async () => {} }, ...extra });
+    // /video → choix du trade → clavier des fonds avec « Ma vidéo » en premier
+    await H.cmd.video(ctx({ match: '' }));
+    const key = `ftmo:${trade.exitT}:${trade.sid}`;
+    await H.cb[0](ctx({ callbackQuery: { data: `v:t:${key}` } }));
+    const kb = sent[sent.length - 1].o.reply_markup.inline_keyboard;
+    assert.match(kb[0][0].text, /Ma vidéo/);
+    // bouton « Ma vidéo » → le bot attend la vidéo ; vidéo envoyée dans le groupe (sans légende) → rendu sur elle
+    await H.cb[0](ctx({ callbackQuery: { data: kb[0][0].callback_data } }));
+    let passed = false;
+    await H.on[0](ctx({ message: { video: { file_id: 'f', file_size: 1000 } } }), async () => { passed = true; });
+    assert.strictEqual(passed, false);
+    assert.strictEqual(calls.length, 1);
+    assert.strictEqual(calls[0].t.sid, 'n_noise');
+    assert.match(calls[0].src, /src-42\.mp4$/);
+    assert.ok(sent.some((x) => x.video));
+    // une autre vidéo dans le groupe, sans attente ni légende : ignorée
+    await H.on[0](ctx({ message: { video: { file_id: 'g', file_size: 1000 } } }), async () => { passed = true; });
+    assert.strictEqual(passed, true);
+  } finally {
+    V.makeVideo = realMake; global.fetch = realFetch; V.ensureFfmpeg = realEnsure;
+  }
+});
