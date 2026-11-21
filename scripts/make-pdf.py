@@ -173,8 +173,8 @@ if fc['cb']:
     ft = [ft[0], [Paragraph('<b>Compte unique Or + Nasdaq</b> (celui du bot)', cell), Paragraph(esc(ids(fc['g'])) + ' · ' + esc(ids(fc['n'])), cell),
                   Paragraph(f'{fc["gr"]:g} % (journalières) · {fc["ir"]:g} % (intraday)', cell),
                   Paragraph(('Or réel (HistData 2009–2026), Nasdaq, S&P 500, EUR/USD ; ≈ 6 trades par jour avec les stratégies intraday. '
-                             'Réussite en moins d’un an avec le risque qui baisse à l’approche de l’objectif : <b>37 %</b> (2009–2019), '
-                             '<b>46 %</b> (2020–2026), <b>44 %</b> (nov. 2024 → nov. 2026, Nasdaq intraday compris).')
+                             'Réussite en moins d’un an avec le réglage actuel (risque qui baisse à l’approche de l’objectif, intraday en petit) : '
+                             '<b>64 %</b> (2009–2019), <b>67 %</b> (2020–2026), <b>83 %</b> (nov. 2024 → nov. 2026, Nasdaq intraday compris).')
                             if fc['prog'] == '1step' else
                             ('sept. 2020 → oct. 2024 : <b>97 % en moins de 6 mois</b> (46 j en médiane) ; 2 dernières années (vérification) : <b>46 %</b> (34 j). '
                              'Les scalps or rapportent moins depuis 2024.'), cell)]]
@@ -258,6 +258,27 @@ if fc['aa']:
             ('Stratégies qui s’adaptent', '32 % ✘', '47 %'),
             ('Tout adaptatif', '49 %', '47 %'),
         ], [100 * mm, 40 * mm, 40 * mm]), Spacer(1, 2), Paragraph('Réussite du challenge 1 étape en moins d’un an.', body)]))
+
+story.append(KeepTogether([Paragraph('Réglage du risque (FTMO et Lucid)', h2), Paragraph(
+    'Des centaines de combinaisons testées (stratégies gardées × risque intraday × risque journalier), choix sur 2009–2019 puis vérification. '
+    'Les stratégies intraday ajoutent surtout de la variance : sur FTMO elles restent (≈ 6 trades par jour) mais en tout petit ; sur Lucid, dont la '
+    'perte max est très serrée, elles sont retirées et le compte ne trade que les journalières (quelques trades par mois). Contrepartie : des '
+    'challenges plus longs (4 à 7 mois en médiane).', body), Spacer(1, 3), small_table([
+    ('Compte', 'Réglage', '2009–2019', '2020–2026', 'nov. 24–26'),
+    ('FTMO (avant)', 'intraday 0,5 % · journalières 1,5 %', '37 %', '46 %', '44 %'),
+    ('<b>FTMO (actuel)</b>', f'intraday {fc["ir"]:g} % · journalières {fc["gr"]:g} %', '<b>64 %</b>', '<b>67 %</b>', '<b>83 %</b>'),
+    ('Lucid (avant)', 'idem FTMO', '13 %', '11 %', '21 %'),
+    ('<b>Lucid (actuel)</b>', 'sans intraday · journalières 2,5 %', '<b>62 %</b>', '<b>67 %</b>', '<b>73 %</b>'),
+], [32 * mm, 58 * mm, 30 * mm, 30 * mm, 30 * mm]), Spacer(1, 2), Paragraph(
+    'Réussite en moins d’un an, sans l’IA validatrice (active en plus en direct). Stratégies d’événements testées et non retenues : veille de la Fed '
+    '(Lucca & Moench 2015) et veille de jour férié (Ariel 1990) — fortes sur 2009–2012 et 2020–2026 mais perdantes sur 2017–2019.', body)]))
+
+story.append(KeepTogether([Paragraph('Suivi en direct', h2), Paragraph(
+    'Catégorie <b>« Bot »</b> du site marches-eight.vercel.app : comptes FTMO et Lucid simulés (valeur, objectif, perte du jour et perte max avec leur '
+    'seuil), graphique TradingView (Lightweight Charts) avec l’entrée, le stop loss et l’objectif de chaque position ouverte et les repères des trades, '
+    'historique complet (challenge en cours, anciens challenges, trades de chaque stratégie). Mise à jour toutes les 15 s environ. Telegram : '
+    'messages de chaque trade du compte FTMO, /ftmo, /lucid, /interface, /export. Le stop est vérifié au cours actuel avant toute sortie programmée '
+    '(sortie au niveau du stop, comme un vrai ordre).', body)]))
 
 story.append(PageBreak())
 story.append(Paragraph('Historiques simulés des stratégies actives', h2))
