@@ -34,7 +34,7 @@ test('panneau : chaque vue donne une image, une légende et des boutons valides'
     const out = await render(cfg, store, view, 'gold', args);
     assert.ok(isPng(out.png), `image ${view}`);
     assert.ok(out.caption.length <= 1024, `légende ${view}`);
-    for (const b of out.keyboard.inline_keyboard.flat()) assert.ok(Buffer.byteLength(b.callback_data) <= 64, b.callback_data);
+    for (const b of out.keyboard.inline_keyboard.flat()) assert.ok(b.url || Buffer.byteLength(b.callback_data) <= 64, b.callback_data);
   }
   const kb = tradeKeyboard({ type: 'open', market: { id: 'nas100' }, strategy: { id: 'macd_long' }, pos: { entryT: 1_794_957_311 } });
   for (const b of kb.inline_keyboard.flat()) assert.ok(Buffer.byteLength(b.callback_data) <= 64);

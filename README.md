@@ -763,6 +763,13 @@ aucune dépendance à installer).
   le résultat et le classement, puis relance un tour. `/classement` affiche le tableau des points, `/jeu` l'état du tour.
   Prénoms et points sont gardés dans `data/game.json`, sur le serveur du bot uniquement.
 
+## 🖥 Interface en direct (site, catégorie « Bot »)
+
+À chaque passage (au plus toutes les 15 s), le bot envoie son état (`src/livePush.js` : comptes FTMO et Lucid,
+positions avec entrée / SL / TP, derniers trades, refus de l'IA) à la fonction Supabase `bot` ; la catégorie « Bot » de
+marches-eight.vercel.app l'affiche en direct avec des graphiques TradingView (Lightweight Charts). Clé d'écriture
+générée par le bot au 1er envoi (`data/bot-push-key.json`). `/interface` donne le lien ; `LIVE_PUSH=0` coupe l'envoi.
+
 ## Commandes Telegram
 
 > `/export` (admin) : envoie un fichier `stats-bot-AAAA-MM-JJ.json` avec les comptes FTMO / Lucid, les trades paper,

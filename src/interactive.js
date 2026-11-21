@@ -234,6 +234,7 @@ async function render(cfg, store, view, marketId, args = []) {
     ];
     const rows = [[btn(`🧾 Trades ${isLucid ? 'Lucid' : 'FTMO'}`, `m:z:${KM[marketId]}:0${sfx}`), ...(rep.n ? [btn('🤖 Refusés par l’IA', `m:i:${KM[marketId]}:0${sfx}`)] : [])]];
     if (lucidOn) rows.push([isLucid ? btn('🏦 Compte FTMO', `m:f:${KM[marketId]}`) : btn('🟣 Compte Lucid', `m:f:${KM[marketId]}:l`)]);
+    if (cfg.siteUrl) rows.push([{ text: '🖥 Interface en direct', url: `${cfg.siteUrl}/#bot` }]);
     return { png: C.ftmoImage(fst), caption: fitCaption(lines), keyboard: panelKeyboard(cfg, 'f', marketId, rows) };
   }
 

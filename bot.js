@@ -92,6 +92,7 @@ bot.command(['start', 'aide', 'help'], (ctx) =>
       '/graphique [nasdaq|or] — 🕯 cours en bougies (Nasdaq par défaut)',
       '/ftmo [nasdaq|or] — 🏦 comptes FTMO simulés (challenge +10 % puis +5 %)',
       '/lucid — 🟣 compte Lucid simulé (LucidFlex : +6 %, pas de perte du jour, micro-futures)',
+      '/interface — 🖥 interface en direct sur le site (graphiques, SL / TP, comptes FTMO et Lucid)',
       '/version — version du bot en service (à vérifier après un redémarrage)',
       '/export — 📦 (admin) fichier des statistiques du bot, à envoyer à Claude pour une analyse',
       '/jeu — 🎯 pronostic du jour · /classement — points des joueurs',
@@ -175,6 +176,9 @@ bot.command('export', async (ctx) => {
     await ctx.reply(`❌ Export impossible : ${esc(err.message)}`);
   }
 });
+
+// Interface en direct sur le site (catégorie « Bot ») : graphiques avec entrée / SL / TP, comptes FTMO et Lucid
+bot.command(['interface', 'site'], (ctx) => ctx.reply(`🖥 <b>Interface en direct du bot</b>\n${cfg.siteUrl}/#bot\nGraphiques TradingView avec les trades en cours (entrée, SL, TP), comptes FTMO et Lucid simulés, historique des trades.`, { ...HTML, reply_markup: { inline_keyboard: [[{ text: '🖥 Ouvrir l’interface', url: `${cfg.siteUrl}/#bot` }]] } }));
 
 // Version déployée et réglages clés : pour vérifier après un redémarrage que Bot-Hosting a pris la nouvelle version
 bot.command('version', (ctx) => {
@@ -361,6 +365,7 @@ console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) �
     { command: 'graphique', description: '🕯 Cours en bougies : /graphique (Nasdaq) · /graphique or' },
     { command: 'ftmo', description: '🏦 Comptes FTMO simulés : /ftmo (Nasdaq) · /ftmo or' },
     { command: 'lucid', description: '🟣 Compte Lucid simulé (LucidFlex, micro-futures)' },
+    { command: 'interface', description: '🖥 Interface en direct (graphiques, comptes FTMO / Lucid)' },
     { command: 'version', description: '🔖 Version du bot en service' },
     { command: 'jeu', description: '🎯 Pronostic du jour' },
     { command: 'classement', description: '🏆 Classement des joueurs' },

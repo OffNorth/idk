@@ -173,6 +173,10 @@ module.exports = {
   ftmoAiMin: process.env.FTMO_AI_MIN ? Number(process.env.FTMO_AI_MIN) : NaN,
   // Adaptation automatique (src/adapt.js) : revue chaque dimanche — IA ré-apprise sur les signaux live, poids des
   // stratégies selon leurs trades live, candidates suivies en paper et promues si elles font mieux
+  // Catégorie « Bot » du site : état en direct envoyé à la fonction Supabase « bot » (désactivé pendant les tests)
+  livePush: num('LIVE_PUSH', 1) === 1 && !process.env.NODE_TEST_CONTEXT,
+  livePushUrl: process.env.LIVE_PUSH_URL || '',
+  siteUrl: process.env.SITE_URL || 'https://marches-eight.vercel.app',
   autoAdapt: num('AUTO_ADAPT', 1) === 1,
   // Poids des stratégies et candidates : coupé par défaut (npm run adapt-sim : n'améliore pas la réussite sur 2015–2026)
   adaptStrategies: num('ADAPT_STRATEGIES', 0) === 1,

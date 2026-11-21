@@ -144,6 +144,8 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
     }
     channel.markChart();
   }
+  // Catégorie « Bot » du site : état en direct (non bloquant, au plus toutes les 15 s)
+  if (cfg.livePush) require('./livePush').pushLive(cfg, store).catch(() => {});
   return out;
 }
 
