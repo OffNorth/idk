@@ -95,27 +95,28 @@ function backgrounds(cfg) {
 }
 
 /** Arguments ffmpeg de l'entrée de fond (1080×1920, bouclée, assombrie). */
-function backgroundInput(cfg, id, seconds) {
+function backgroundInput(cfg, id, seconds, tw = 1080, th = 1920) {
   const d = `${seconds.toFixed(2)}`;
+  const k = tw / 1080; // tailles de la grille proportionnelles à la sortie
   if (id && id.startsWith('u:')) {
     const file = path.join(fondsDir(cfg), `${safeName(id.slice(2))}.mp4`);
     if (fs.existsSync(file)) {
-      return { args: ['-stream_loop', '-1', '-t', d, '-i', file], filter: '[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,eq=brightness=-0.12:saturation=0.85,setsar=1[bg]' };
+      return { args: ['-threads', '1', '-stream_loop', '-1', '-t', d, '-i', file], filter: `[0:v]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th},fps=30,eq=brightness=-0.12:saturation=0.85,setsar=1[bg]` };
     }
   }
   if (id === 'grille') {
     return {
-      args: ['-f', 'lavfi', '-t', d, '-i', 'color=c=0x0b0f14:s=1080x1920:r=30'],
-      filter: "[0:v]drawgrid=w=90:h=90:t=1:c=0x1b2633@1,scroll=v=0.0012:h=0.0006,drawgrid=w=270:h=270:t=2:c=0x22303d@1,setsar=1[bg]",
+      args: ['-f', 'lavfi', '-t', d, '-i', `color=c=0x0b0f14:s=${tw}x${th}:r=30`],
+      filter: `[0:v]drawgrid=w=${Math.round(90 * k)}:h=${Math.round(90 * k)}:t=1:c=0x1b2633@1,scroll=v=0.0012:h=0.0006,drawgrid=w=${Math.round(270 * k)}:h=${Math.round(270 * k)}:t=2:c=0x22303d@1,setsar=1[bg]`,
     };
   }
   if (id === 'particules') {
     return {
-      args: ['-f', 'lavfi', '-t', d, '-i', 'life=s=270x480:mold=24:r=10:ratio=0.08:death_color=0x0b0f14:life_color=0x1f3a33:mold_color=0x12201d,fps=30'],
-      filter: '[0:v]scale=1080:1920:flags=neighbor,setsar=1[bg]',
+      args: ['-f', 'lavfi', '-t', d, '-i', `life=s=${Math.round(tw / 4)}x${Math.round(th / 4)}:mold=24:r=10:ratio=0.08:death_color=0x0b0f14:life_color=0x1f3a33:mold_color=0x12201d,fps=30`],
+      filter: `[0:v]scale=${tw}:${th}:flags=neighbor,setsar=1[bg]`,
     };
   }
-  return { args: ['-f', 'lavfi', '-t', d, '-i', 'color=c=0x0b0f14:s=1080x1920:r=30'], filter: '[0:v]setsar=1[bg]' };
+  return { args: ['-f', 'lavfi', '-t', d, '-i', `color=c=0x0b0f14:s=${tw}x${th}:r=30`], filter: '[0:v]setsar=1[bg]' };
 }
 
 /* ------------------------------------------------------------------ */
@@ -372,11 +373,21 @@ function probe(bin, file) {
 }
 
 /** Format de sortie selon la vidéo source : vertical 1080×1920, horizontal 1920×1080 ou carré 1080×1080. */
-function targetFor(src) {
-  if (!src) return { tw: 1080, th: 1920 };
+/**
+ * Format de sortie : vertical, horizontal ou carré selon la vidéo source, petit côté `short` pixels (720 par défaut :
+ * l'encodage en 1080×1920 demande trop de mémoire aux petits serveurs ; VIDEO_SHORT pour changer).
+ */
+function targetFor(src, short = 720) {
+  const long = Math.round((short * 16) / 9 / 2) * 2;
+  if (!src) return { tw: short, th: long };
   const r = src.w / src.h;
-  return r > 1.15 ? { tw: 1920, th: 1080 } : r < 0.87 ? { tw: 1080, th: 1920 } : { tw: 1080, th: 1080 };
+  return r > 1.15 ? { tw: long, th: short } : r < 0.87 ? { tw: short, th: long } : { tw: short, th: short };
 }
+/** Réglages d'encodage, du plus beau au plus léger (repli si le serveur coupe ffmpeg faute de mémoire). */
+const LEVELS = [
+  { short: Number(process.env.VIDEO_SHORT) || 720, preset: 'veryfast', threads: 2 },
+  { short: 540, preset: 'ultrafast', threads: 1 },
+];
 /** Taille de la carte (4:5) : 90 % de la largeur, 82 % de la hauteur au plus ; dimensions paires. */
 function cardSize(tw, th) {
   let cw = tw * 0.9; let ch = cw * (H / W);
@@ -388,23 +399,57 @@ function cardSize(tw, th) {
  * Arguments complets de ffmpeg (exposés pour les tests). bg : fond intégré, fond enregistré « u:nom », ou
  * { file } (vidéo envoyée au bot, gardée telle quelle : format, son).
  */
-function ffmpegArgs(cfg, bgId, outFile, seconds, src = null) {
-  const { tw, th } = targetFor(src);
+function ffmpegArgs(cfg, bgId, outFile, seconds, src = null, level = LEVELS[0]) {
+  const { tw, th } = targetFor(src, level.short);
   const { cw, ch } = cardSize(tw, th);
   let bg;
   if (src && src.file) {
-    bg = { args: ['-stream_loop', '-1', '-t', seconds.toFixed(2), '-i', src.file], filter: `[0:v]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th},fps=30,eq=brightness=-0.08,setsar=1[bg]` };
+    bg = { args: ['-threads', '1', '-stream_loop', '-1', '-t', seconds.toFixed(2), '-i', src.file], filter: `[0:v]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th},fps=30,eq=brightness=-0.08,setsar=1[bg]` };
   } else {
-    bg = backgroundInput(cfg, bgId, seconds);
+    bg = backgroundInput(cfg, bgId, seconds, tw, th);
   }
   return [
-    '-hide_banner', '-loglevel', 'error', '-y',
+    '-hide_banner', '-loglevel', 'error', '-y', '-filter_threads', '1', '-filter_complex_threads', '1',
     ...bg.args,
     '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${W}x${H}`, '-r', String(FPS), '-i', 'pipe:0',
     '-filter_complex', `${bg.filter};[1:v]scale=${cw}:${ch}:flags=lanczos,format=rgba[card];[bg][card]overlay=(W-w)/2:(H-h)/2:format=auto,format=yuv420p[out]`,
     '-map', '[out]', ...(src && src.audio ? ['-map', '0:a:0?', '-c:a', 'aac', '-b:a', '128k'] : []),
-    '-r', String(FPS), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-movflags', '+faststart', '-t', seconds.toFixed(2), outFile,
+    '-r', String(FPS), '-c:v', 'libx264', '-preset', level.preset, '-crf', '22', '-threads', String(level.threads), '-x264-params', 'rc-lookahead=10:ref=1:bframes=1',
+    '-movflags', '+faststart', '-t', seconds.toFixed(2), outFile,
   ];
+}
+
+/** Un encodage : images de la carte envoyées à ffmpeg ; rejette avec { killed, signal } si le système l'arrête. */
+async function encode(bin, cfg, bgId, card, src, level) {
+  const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'pnlv-'));
+  const out = path.join(dir, 'video.mp4');
+  try {
+    await new Promise((resolve, reject) => {
+      const ff = spawn(bin, ffmpegArgs(cfg, bgId, out, card.frames / FPS, src, level), { stdio: ['pipe', 'ignore', 'pipe'] });
+      let err = '';
+      ff.stderr.on('data', (d) => { err = (err + d).slice(-4000); });
+      let timedOut = false;
+      const timer = setTimeout(() => { timedOut = true; ff.kill('SIGKILL'); }, 240_000);
+      ff.on('error', reject);
+      ff.on('close', (code, signal) => {
+        clearTimeout(timer);
+        if (code === 0) return resolve();
+        if (timedOut) return reject(new Error('ffmpeg trop long (plus de 4 min)'));
+        if (signal || code === null) return reject(Object.assign(new Error(`ffmpeg arrêté (${signal || 'signal'})`), { killed: true, signal: signal || 'SIGKILL' }));
+        return reject(new Error(`ffmpeg : ${err.trim().split('\n').pop() || `code ${code}`}`));
+      });
+      ff.stdin.on('error', () => { /* ffmpeg arrêté : l'erreur sort par « close » */ });
+      (async () => {
+        for (let f = 0; f < card.frames; f++) {
+          if (!ff.stdin.write(card.frame(f))) await new Promise((r) => ff.stdin.once('drain', r));
+        }
+        ff.stdin.end();
+      })().catch(reject);
+    });
+    return fs.readFileSync(out);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 let chain = Promise.resolve();
@@ -424,28 +469,17 @@ function makeVideo(cfg, trade, bgId, { fetcher, sourceFile } = {}) {
     if (sourceFile) src = { file: sourceFile, ...(await probe(bin, sourceFile)) };
     const seconds = Math.min(30, Math.max(ANIM_S + HOLD_S, src?.duration || 0));
     const card = prepareCard(trade, data, { seconds });
-    const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'pnlv-'));
-    const out = path.join(dir, 'video.mp4');
-    try {
-      await new Promise((resolve, reject) => {
-        const ff = spawn(bin, ffmpegArgs(cfg, bgId, out, card.frames / FPS, src), { stdio: ['pipe', 'ignore', 'pipe'] });
-        let err = '';
-        ff.stderr.on('data', (d) => { err += d; });
-        const timer = setTimeout(() => ff.kill('SIGKILL'), 240_000);
-        ff.on('error', reject);
-        ff.on('close', (code) => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error(`ffmpeg : ${err.trim().split('\n').pop() || `code ${code}`}`)); });
-        ff.stdin.on('error', () => { /* ffmpeg arrêté : l'erreur sort par « close » */ });
-        (async () => {
-          for (let f = 0; f < card.frames; f++) {
-            if (!ff.stdin.write(card.frame(f))) await new Promise((r) => ff.stdin.once('drain', r));
-          }
-          ff.stdin.end();
-        })().catch(reject);
-      });
-      return fs.readFileSync(out);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
+    let lastErr = null;
+    for (const level of LEVELS) {
+      try {
+        return await encode(bin, cfg, bgId, card, src, level);
+      } catch (err) {
+        lastErr = err;
+        if (!err.killed) throw err; // erreur de ffmpeg (fichier illisible…) : inutile de réessayer
+        console.warn(`[vidéo] ffmpeg coupé (${err.signal}) en ${level.short} px, nouvel essai plus léger`);
+      }
     }
+    throw new Error(`ffmpeg arrêté par le serveur (${lastErr.signal}) même en 540 px : mémoire du serveur probablement insuffisante`);
   });
   chain = job.catch(() => {}).finally(() => { busy--; });
   return job;
@@ -471,4 +505,4 @@ function deleteBackground(cfg, name) {
   try { fs.unlinkSync(path.join(fondsDir(cfg), `${safeName(name)}.mp4`)); return true; } catch { return false; }
 }
 
-module.exports = { resetFfmpeg: () => { ready = null; }, makeVideo, cardPng, prepareCard, ffmpegArgs, ffmpegPath, ensureFfmpeg, probe, targetFor, cardSize, backgrounds, saveBackground, deleteBackground, intervalFor, candlesFor, safeName, BUILTIN, SYMBOL };
+module.exports = { LEVELS, resetFfmpeg: () => { ready = null; }, makeVideo, cardPng, prepareCard, ffmpegArgs, ffmpegPath, ensureFfmpeg, probe, targetFor, cardSize, backgrounds, saveBackground, deleteBackground, intervalFor, candlesFor, safeName, BUILTIN, SYMBOL };

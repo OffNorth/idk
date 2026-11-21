@@ -29,8 +29,9 @@ test('vidéo PnL : carte image par image, fonds, arguments ffmpeg', async () => 
   assert.ok(V.ffmpegArgs(cfg, 'u:plage-ete', '/o.mp4', 7).join(' ').includes('plage-ete.mp4'));
   // vidéo envoyée : format gardé (horizontal → 1920×1080), son conservé, carte 4:5 qui tient dans l'image
   const a2 = V.ffmpegArgs(cfg, null, '/o.mp4', 12, { file: '/ma.mp4', w: 1280, h: 720, audio: true }).join(' ');
-  assert.ok(a2.includes('/ma.mp4') && a2.includes('scale=1920:1080') && a2.includes('0:a:0?'));
-  assert.deepStrictEqual(V.targetFor({ w: 720, h: 1280 }), { tw: 1080, th: 1920 });
+  assert.ok(a2.includes('/ma.mp4') && a2.includes('scale=1280:720') && a2.includes('0:a:0?')); // 720 px par défaut (mémoire)
+  assert.deepStrictEqual(V.targetFor({ w: 720, h: 1280 }), { tw: 720, th: 1280 });
+  assert.deepStrictEqual(V.targetFor({ w: 720, h: 1280 }, 1080), { tw: 1080, th: 1920 });
   const cs = V.cardSize(1920, 1080);
   assert.ok(cs.ch <= 1080 * 0.82 + 1 && cs.cw % 2 === 0);
   for (let i = 0; i < 9; i++) V.saveBackground(cfg, `f${i}`, Buffer.from('x'));
