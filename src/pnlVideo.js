@@ -32,10 +32,45 @@ function ffmpegPath() {
   if (process.env.FFMPEG_PATH) return fs.existsSync(process.env.FFMPEG_PATH) ? process.env.FFMPEG_PATH : null;
   try {
     const p = require('ffmpeg-static');
-    return p && fs.existsSync(p) ? p : null;
-  } catch {
-    return null;
-  }
+    if (p && fs.existsSync(p)) return p;
+  } catch { /* paquet absent */ }
+  return null;
+}
+
+const RELEASE = 'b6.0'; // même binaire que le paquet ffmpeg-static
+let ready = null;
+let lastError = '';
+/**
+ * Chemin de ffmpeg, en cherchant dans l'ordre : FFMPEG_PATH, paquet ffmpeg-static, copie du bot (data/bin/ffmpeg),
+ * ffmpeg du système ; sinon le bot le télécharge lui-même (GitHub, binaire statique ≈ 30 Mo compressé) dans data/bin.
+ * Le résultat est gardé ; en cas d'échec, une nouvelle tentative a lieu au prochain appel.
+ */
+function ensureFfmpeg(cfg) {
+  if (ready) return ready;
+  ready = (async () => {
+    const env = ffmpegPath();
+    if (env) return env;
+    const own = path.join(cfg.dataDir, 'bin', 'ffmpeg');
+    if (fs.existsSync(own)) return own;
+    try {
+      const r = require('child_process').spawnSync('ffmpeg', ['-version'], { timeout: 10_000 });
+      if (r.status === 0) return 'ffmpeg';
+    } catch { /* pas de ffmpeg système */ }
+    const os = require('os');
+    const url = `https://github.com/eugeneware/ffmpeg-static/releases/download/${RELEASE}/ffmpeg-${os.platform()}-${os.arch()}.gz`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(180_000) });
+    if (!res.ok) throw new Error(`téléchargement de ffmpeg impossible (HTTP ${res.status}, ${os.platform()}-${os.arch()})`);
+    const bin = require('zlib').gunzipSync(Buffer.from(await res.arrayBuffer()));
+    fs.mkdirSync(path.dirname(own), { recursive: true });
+    fs.writeFileSync(`${own}.part`, bin, { mode: 0o755 });
+    fs.renameSync(`${own}.part`, own);
+    return own;
+  })().then((p) => { lastError = ''; return p; }, (err) => {
+    ready = null;
+    lastError = String(err.cause?.code || err.message || err);
+    throw Object.assign(new Error(`ffmpeg absent sur le serveur (${lastError})`), { code: 'NOFFMPEG' });
+  });
+  return ready;
 }
 
 /* ------------------------------------------------------------------ */
@@ -377,8 +412,7 @@ function makeVideo(cfg, trade, bgId, { fetcher, sourceFile } = {}) {
   if (busy >= 3) return Promise.reject(new Error('trop de vidéos en attente, réessaie dans une minute'));
   busy++;
   const job = chain.then(async () => {
-    const bin = ffmpegPath();
-    if (!bin) throw Object.assign(new Error('ffmpeg absent sur le serveur'), { code: 'NOFFMPEG' });
+    const bin = await ensureFfmpeg(cfg);
     const data = await candlesFor(trade, fetcher);
     if (data.candles.length < 5) throw new Error('bougies indisponibles pour ce trade');
     let src = null;
@@ -432,4 +466,4 @@ function deleteBackground(cfg, name) {
   try { fs.unlinkSync(path.join(fondsDir(cfg), `${safeName(name)}.mp4`)); return true; } catch { return false; }
 }
 
-module.exports = { makeVideo, cardPng, prepareCard, ffmpegArgs, ffmpegPath, probe, targetFor, cardSize, backgrounds, saveBackground, deleteBackground, intervalFor, candlesFor, safeName, BUILTIN, SYMBOL };
+module.exports = { makeVideo, cardPng, prepareCard, ffmpegArgs, ffmpegPath, ensureFfmpeg, probe, targetFor, cardSize, backgrounds, saveBackground, deleteBackground, intervalFor, candlesFor, safeName, BUILTIN, SYMBOL };

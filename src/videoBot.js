@@ -43,6 +43,8 @@ function tradeLabel(t) {
 }
 
 function attachVideo(bot, { cfg, store, isAdmin }) {
+  // ffmpeg préparé dès le démarrage (téléchargé par le bot s'il manque), pour que la 1re vidéo soit rapide
+  V.ensureFfmpeg(cfg).then((p) => console.log(`[vidéo] ffmpeg prêt : ${p}`), (err) => console.warn(`[vidéo] ${err.message}`));
   const state = store.loadJson('video.json', { bg: 'uni' });
   const saveState = () => store.saveJson('video.json', state);
 
@@ -66,7 +68,7 @@ function attachVideo(bot, { cfg, store, isAdmin }) {
     } catch (err) {
       if (err.code === 'NOFFMPEG') {
         const png = await V.cardPng(t).catch(() => null);
-        if (png) await ctx.replyWithPhoto(new InputFile(png, 'pnl.png'), { caption: `${caption}\n⚠️ Vidéo impossible (ffmpeg absent sur le serveur) : carte en image.`, parse_mode: 'HTML' });
+        if (png) await ctx.replyWithPhoto(new InputFile(png, 'pnl.png'), { caption: `${caption}\n⚠️ Vidéo impossible : ${esc(err.message)}. Carte en image.`, parse_mode: 'HTML' });
         else await ctx.reply('❌ Vidéo impossible : ffmpeg absent sur le serveur, et bougies indisponibles.');
       } else {
         await ctx.reply(`❌ Vidéo impossible : ${esc(err.message)}`, { parse_mode: 'HTML' });
