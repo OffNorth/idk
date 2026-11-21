@@ -28,6 +28,8 @@ test('interface en direct : état des comptes avec entrée / SL / TP, sans secre
   assert.deepStrictEqual([o.entry, o.sl, o.tp, o.side], [4000, 3960, 4080, 'long']);
   assert.ok(o.pnl > 0, 'latent au dernier cours');
   assert.strictEqual(live.markets[0].symbol, 'GC=F');
+  assert.ok(Array.isArray(ftmo.archive));
+  assert.ok(Array.isArray(live.paper));
   const json = JSON.stringify(live);
   assert.ok(!json.includes('SECRET') && !json.includes('-100777') && !json.includes(dir));
 });
@@ -47,4 +49,19 @@ test('interface en direct : envoi avec la clé du bot, au plus toutes les 15 s, 
   // même clé ensuite
   await L.pushLive(cfg, store, { now: 1_040_000, fetchImpl: ok });
   assert.strictEqual(calls[1].o.headers['x-bot-key'], calls[0].o.headers['x-bot-key']);
+});
+
+test('interface en direct : anciens trades (archive des challenges et trades paper), taille bornée', () => {
+  const { cfg, store } = setup();
+  const mk = (i) => ({ side: 'short', entry: 4000, exit: 3990, initSl: 4010, entryT: T0 + i * 600, exitT: T0 + i * 600 + 300, pnlPct: 0.25, reason: 'signal de sortie', size: 1000 });
+  store.saveJson('gold.json', { lastPrice: 4000, accounts: { g_mom8: { closed: Array.from({ length: 900 }, (_, i) => mk(i)), position: null }, autre: { closed: [mk(1)] } } });
+  store.saveJson('ftmo-archive.json', Array.from({ length: 400 }, (_, i) => ({ market: 'gold', sid: 'g_mom8', side: 'long', entry: 1, exit: 2, entryT: i, exitT: i + 1, pnl: 10, attempt: 1 })));
+  const live = require('../src/livePush').buildLive(cfg, store);
+  assert.strictEqual(live.paper.length, 500); // 500 plus récents, stratégies suivies seulement
+  assert.ok(live.paper.every((t) => t.sid === 'g_mom8'));
+  assert.strictEqual(live.paper[499].entryT, T0 + 899 * 600);
+  const ftmo = live.accounts.find((a) => a.id === 'ftmo');
+  assert.strictEqual(ftmo.archive.length, 300);
+  assert.strictEqual(ftmo.archive[0].attempt, 1);
+  assert.ok(JSON.stringify(live).length < 400_000);
 });

@@ -63,6 +63,11 @@ function accountView(cfg, store, id, prices) {
       pnl: Math.round(t.pnl), risk: t.risk ? Math.round(t.risk) : null, reason: t.reason, n: t.n || null,
     })),
     history: (s.history || []).slice(-5),
+    // Trades des challenges précédents (archive), les plus récents
+    archive: f.archived().slice(-300).map((t) => ({
+      market: t.market, sid: t.sid, name: t.name, side: t.side, entry: r6(t.entry), exit: r6(t.exit), sl: r6(t.sl), entryT: t.entryT, exitT: t.exitT,
+      pnl: Math.round(t.pnl), risk: t.risk ? Math.round(t.risk) : null, reason: t.reason, n: t.n || null, attempt: t.attempt,
+    })),
     refused: rep.n ? { n: rep.n, closed: rep.closed, closedPnl: Math.round(rep.closedPnl), wins: rep.wins, open: rep.open, openPnl: Math.round(rep.openPnl),
       last: rep.rows.slice(-15).map((r) => ({ market: r.market, sid: r.sid, side: r.side, entry: r6(r.entry), entryT: r.entryT, state: r.state, pnl: Math.round(r.pnl), p: Math.round(r.ai.p * 100) })) } : null,
   };
@@ -74,6 +79,17 @@ function buildLive(cfg, store, version = '') {
   const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
   const accounts = ['gold', 'lucid'].map((id) => accountView(cfg, store, id, prices)).filter(Boolean);
   const adapt = cfg.autoAdapt ? require('./adapt').summary(cfg, store) : '';
+  // Trades paper des stratégies suivies (tous marchés, depuis le démarrage), 500 les plus récents
+  const followed = new Set([...(cfg.ftmoStrategies || []), ...(cfg.ftmoNasStrategies || [])]);
+  const paper = [];
+  for (const m of markets) {
+    const st = store.loadJson(m.file, null);
+    for (const [sid, acc] of Object.entries(st?.accounts || {})) {
+      if (!followed.has(`${m.id}:${sid}`)) continue;
+      for (const t of acc.closed || []) paper.push({ market: m.id, sid, side: t.side, entry: r6(t.entry), exit: r6(t.exit), sl: r6(t.initSl ?? t.sl), entryT: t.entryT, exitT: t.exitT, pnlPct: r6(t.pnlPct), reason: t.reason });
+    }
+  }
+  paper.sort((a, b) => a.exitT - b.exitT);
   return {
     v: 1,
     at: Date.now(),
@@ -82,6 +98,7 @@ function buildLive(cfg, store, version = '') {
     accounts,
     ai: cfg.ftmoAi,
     adapt,
+    paper: paper.slice(-500),
   };
 }
 

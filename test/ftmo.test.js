@@ -387,3 +387,26 @@ test('compte Lucid : les stratégies intraday ne sont pas prises (LUCID_INTRADAY
   const out2 = lu.onCycle([{ type: 'open', market, strategy: { id: 'x_rsi2', name: 'x', tf: '1d' }, pos: { ...pos, sl: 3960, initSl: 3960, entryT: T0 + 60 } }], { gold: 4000 }, T0 + 60);
   assert.strictEqual(out2.find((x) => x.type === 'open').p.n, 3);
 });
+
+test('archive des challenges : les trades d’un challenge échoué ou arrêté sont gardés (sans doublon)', () => {
+  const { cfg, store } = setup({ ftmoProgram: '1step' });
+  const { createFtmo } = require('../src/ftmoAccount');
+  const f = createFtmo({ cfg, store });
+  const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
+  f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0);
+  f.onCycle([{ type: 'close', market, strategy, trade: { ...pos, exit: 4040, exitT: T0 + 600, reason: 'signal' } }], { gold: 4040 }, T0 + 600);
+  assert.strictEqual(f.load().closed.length, 1);
+  // Changement de formule : nouveau challenge ; load() appelé plusieurs fois → archivé une seule fois
+  const cfg2 = { ...cfg, ftmoProgram: '2step' };
+  const g = createFtmo({ cfg: cfg2, store });
+  g.load(); g.load(); g.status({});
+  const arch = g.archived();
+  assert.strictEqual(arch.length, 1);
+  assert.strictEqual(arch[0].attempt, 1);
+  // Échec sur la perte du jour : les trades du challenge n° 2 sont archivés aussi
+  g.onCycle([], { gold: 4000 }, T0 + 700);
+  const p2 = { ...pos, entryT: T0 + 800 };
+  g.onCycle([{ type: 'open', market, strategy, pos: p2 }], { gold: 4000 }, T0 + 800);
+  g.onCycle([{ type: 'close', market, strategy, trade: { ...p2, exit: 3700, exitT: T0 + 900, reason: 'stop loss' } }], { gold: 3700 }, T0 + 900);
+  assert.ok(g.archived().some((t) => t.attempt === 2));
+});

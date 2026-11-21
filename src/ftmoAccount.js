@@ -104,6 +104,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     if (!s || !s.capital) return fresh();
     // Changement de formule (FTMO_PROGRAM) : nouveau challenge, l'ancien reste dans l'historique
     if ((s.program || '2step') !== PKEY) {
+      archive(s);
       const next = fresh((s.attempt || 0) + 1);
       next.history = [...(s.history || []), { attempt: s.attempt, phase: s.phase, outcome: `arrêté (passage au ${P.label.toLowerCase()})`, at: Math.floor(Date.now() / 1000), balance: s.balance }].slice(-20);
       return next;
@@ -111,6 +112,18 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     return s;
   };
   const save = (s) => store.saveJson(FILE, s);
+  const ARCHIVE = FILE.replace(/\.json$/, '-archive.json');
+  /** Garde les trades clôturés d'un challenge (ou d'une étape) qui se termine : <compte>-archive.json, 3 000 au plus. */
+  const archive = (s) => {
+    if (!s?.closed?.length) return;
+    const list = store.loadJson(ARCHIVE, []);
+    const k = (t) => `${t.attempt}:${t.market}:${t.sid}:${t.entryT}:${t.exitT}`;
+    const seen = new Set(list.map(k));
+    const add = s.closed.map((t) => ({ ...t, attempt: s.attempt, phase: s.phase })).filter((t) => !seen.has(k(t)));
+    if (!add.length) return;
+    list.push(...add);
+    store.saveJson(ARCHIVE, list.slice(-3000));
+  };
   const adapt = require('./adapt');
   // Stratégies suivies + candidates promues par l'adaptation automatique (AUTO_ADAPT)
   const follows = (ev) => A.strategies.includes(`${ev.market.id}:${ev.strategy.id}`) || adapt.promotedOf(cfg, store).includes(`${ev.market.id}:${ev.strategy.id}`);
@@ -331,6 +344,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           ? (P.maxUsd ? `perte maximale (${P.maxUsd.toLocaleString('fr-FR')} $ sous le plus haut solde de clôture) atteinte` : `perte maximale (−${P.max} %${P.trailing ? ' depuis le plus haut' : ''}) atteinte`)
           : `perte du jour (−${P.daily} %) atteinte`;
         out.push({ type: 'fail', s: { ...s }, why });
+        archive(s);
         const next = fresh(s.attempt + 1);
         next.history = [...(s.history || []), { attempt: s.attempt, phase: s.phase, outcome: 'échec', why, at: t, balance: s.balance }].slice(-20);
         next.waitDay = dayOf(t);
@@ -345,8 +359,10 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         s.history = [...(s.history || []), { attempt: s.attempt, phase: done, outcome: 'réussie', at: t, balance: s.balance, days: s.days.length }].slice(-20);
         out.push({ type: 'pass', s: { ...s }, phase: done });
         if (done === 1 && P.steps === 2) {
+          archive(s);
           Object.assign(s, { phase: 2, balance: s.capital, dayStart: s.capital, days: [], closed: [], startedAt: t, peak: s.capital, dayPnl: {} });
         } else {
+          archive(s);
           Object.assign(s, { phase: 'funded', balance: s.capital, dayStart: s.capital, days: [], closed: [], startedAt: t, funded: { since: t }, peak: s.capital, eodPeak: s.capital, dayPnl: {} });
         }
       }
@@ -356,6 +372,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       if (eq <= dailyFloor(s) || eq <= maxFloor(s)) {
         closeAll(s, prices, t, `règle ${A.firm || 'FTMO'}`);
         out.push({ type: 'fail', s: { ...s }, why: 'compte financé perdu (limite de perte)' });
+        archive(s);
         const next = fresh(s.attempt + 1);
         next.history = [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'perdu', at: t, balance: s.balance }].slice(-20);
         next.waitDay = dayOf(t);
@@ -394,7 +411,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     };
   }
 
-  return { onCycle, status, load, refusedReport, account: A, reset: () => save(fresh()) };
+  return { onCycle, status, load, refusedReport, archived: () => store.loadJson(ARCHIVE, []), account: A, reset: () => save(fresh()) };
 }
 
 module.exports = { createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram };
