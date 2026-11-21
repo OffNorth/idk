@@ -48,6 +48,11 @@ let lastError = '';
 function ensureFfmpeg(cfg) {
   if (ready) return ready;
   ready = (async () => {
+    // FFMPEG_PATH réglé à la main : on n'utilise que lui
+    if (process.env.FFMPEG_PATH) {
+      if (fs.existsSync(process.env.FFMPEG_PATH)) return process.env.FFMPEG_PATH;
+      throw new Error(`FFMPEG_PATH introuvable : ${process.env.FFMPEG_PATH}`);
+    }
     const env = ffmpegPath();
     if (env) return env;
     const own = path.join(cfg.dataDir, 'bin', 'ffmpeg');
@@ -466,4 +471,4 @@ function deleteBackground(cfg, name) {
   try { fs.unlinkSync(path.join(fondsDir(cfg), `${safeName(name)}.mp4`)); return true; } catch { return false; }
 }
 
-module.exports = { makeVideo, cardPng, prepareCard, ffmpegArgs, ffmpegPath, ensureFfmpeg, probe, targetFor, cardSize, backgrounds, saveBackground, deleteBackground, intervalFor, candlesFor, safeName, BUILTIN, SYMBOL };
+module.exports = { resetFfmpeg: () => { ready = null; }, makeVideo, cardPng, prepareCard, ffmpegArgs, ffmpegPath, ensureFfmpeg, probe, targetFor, cardSize, backgrounds, saveBackground, deleteBackground, intervalFor, candlesFor, safeName, BUILTIN, SYMBOL };

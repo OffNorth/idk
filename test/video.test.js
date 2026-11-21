@@ -51,10 +51,12 @@ test('vidéo PnL : MP4 produit par ffmpeg, sans ffmpeg → erreur claire', { tim
   }
   const old = process.env.FFMPEG_PATH;
   process.env.FFMPEG_PATH = '/introuvable/ffmpeg';
+  V.resetFfmpeg();
   try {
     await assert.rejects(V.makeVideo(cfg, trade, 'uni', { fetcher }), (e) => e.code === 'NOFFMPEG');
   } finally {
     if (old === undefined) delete process.env.FFMPEG_PATH; else process.env.FFMPEG_PATH = old;
+    V.resetFfmpeg();
   }
 });
 
