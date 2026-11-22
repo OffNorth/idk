@@ -46,14 +46,24 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
   }
 
   // Compte FTMO simulé : suit les trades des stratégies choisies, applique les règles du challenge
-  for (const acct of cfg.ftmoEnabled ? require('./ftmoAccount').ftmoAccounts(cfg) : []) {
+  const accts = cfg.ftmoEnabled ? require('./ftmoAccount').ftmoAccounts(cfg) : [];
+  const books = Object.fromEntries(accts.map((a) => [a.id, require('./ftmoAccount').createFtmo({ cfg, store, account: a.id })]));
+  // Délai signal → exécution (FILL_DELAY_SEC, 30 s) : entrées et sorties sur signal au cours de ce moment-là
+  let fills = null;
+  try {
+    fills = await require('./fill').delayedFills(cfg, all, Object.values(books));
+    if (fills && Object.keys(fills).length) console.log(`[exécution] cours ${cfg.fillDelaySec} s après le signal : ${Object.entries(fills).map(([k, f]) => `${k} ${px(f.price)}`).join(', ')}`);
+  } catch (err) {
+    console.warn('[exécution] cours après délai indisponible :', err.message);
+  }
+  for (const acct of accts) {
     try {
-      const ftmo = require('./ftmoAccount').createFtmo({ cfg, store, account: acct.id });
+      const ftmo = books[acct.id];
       const firm = acct.firm || 'FTMO';
       const name = `Compte ${firm} simulé ${acct.emoji} ${acct.label}`;
       const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
       const button = ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: acct.id === 'lucid' ? 'm:f:g:l' : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
-      for (const msg of ftmo.onCycle(all, prices)) {
+      for (const msg of ftmo.onCycle(all, prices, undefined, { fills })) {
         // Chaque trade du compte FTMO (ouverture et clôture) : console + message dans le groupe (FTMO_TRADE_MESSAGES)
         if (msg.type === 'open' || msg.type === 'trade' || msg.type === 'refused') {
           const text = ftmoTradeMessage(msg, ftmo.status(prices), marketById(cfg, msg.p.market));
@@ -64,6 +74,13 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
             ? { reply_markup: { inline_keyboard: [[...(button.reply_markup?.inline_keyboard?.[0] || []), { text: '🎬 Vidéo', callback_data: `v:t:${acct.id === 'lucid' ? 'lucid' : 'ftmo'}:${msg.p.exitT}:${msg.p.sid}`.slice(0, 64) }]] } }
             : button;
           if (publish && cfg.ftmoTradeMessages !== false) await safeSend(channel, text, extra);
+          continue;
+        }
+        if (msg.type === 'payout') {
+          const pct = Math.round((msg.trader / msg.amount) * 100);
+          const text = `${firm === 'Lucid' ? '🟣' : '🏦'}💸 <b>${name} : retrait simulé n° ${msg.n}</b>\n${dollars(msg.amount)} retirés du compte financé → <b>${dollars(msg.trader)} pour toi</b> (${pct} %) · total ${dollars(msg.total)}\n<i>Compte simulé : aucun argent réel.</i>`;
+          console.log(`[${firm.toLowerCase()}] retrait simulé ${dollars(msg.amount)} (${dollars(msg.trader)} pour le trader)`);
+          if (publish) await safeSend(channel, text, button);
           continue;
         }
         if (!publish) continue;
@@ -158,6 +175,12 @@ const isScalp = (s) => SCALP_TF.has(s.tf || '1h');
 const inDigest = (cfg, s) => cfg.scalpDigest && (cfg.digestAll || isScalp(s));
 const usd = (v) => `${v >= 0 ? '+' : '−'}$${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 const dollars = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
+/** Écart d'exécution (délai signal → ordre) : « +0,8 $ en ta faveur » / « 1,2 $ contre toi ». */
+function slip(p, signal, fill, exit = false) {
+  const d = (fill - signal) * (p.side === 'long' ? 1 : -1) * (exit ? 1 : -1);
+  const v = Math.abs(fill - signal);
+  return `${Math.abs(fill) < 10 ? v.toFixed(4) : v.toFixed(2)} ${d >= 0 ? 'en ta faveur' : 'contre toi'}`;
+}
 
 /** Message d'un trade du compte FTMO : ouverture (`open`) ou clôture (`trade`). */
 /** Avis de l'IA validatrice sur un trade du compte FTMO. */
@@ -177,7 +200,7 @@ function ftmoTradeMessage(msg, st, market) {
     return [
       `${tag} · ${p.side === 'long' ? '📈 <b>ACHAT</b>' : '📉 <b>VENTE</b>'} ${mk}`,
       name,
-      `Entrée $${px(p.entry)} · stop $${px(p.sl)} · ${p.n ? `${p.n} micro-contrat${p.n > 1 ? 's' : ''} ${p.contract} (${dollars(p.notional)})` : `${dollars(p.notional)} engagés (levier ${p.lev.toFixed(1)})`}`,
+      `Entrée $${px(p.entry)}${p.signal ? ` (signal $${px(p.signal)}, ${slip(p, p.signal, p.entry)})` : ''} · stop $${px(p.sl)} · ${p.n ? `${p.n} micro-contrat${p.n > 1 ? 's' : ''} ${p.contract} (${dollars(p.notional)})` : `${dollars(p.notional)} engagés (levier ${p.lev.toFixed(1)})`}`,
       `Risque ${dollars(p.risk || 0)} (${pct.toFixed(2)} % du compte) · <i>compte simulé</i>`,
       ...(p.ai ? [aiLine(p.ai)] : []),
     ].join('\n');
@@ -193,7 +216,7 @@ function ftmoTradeMessage(msg, st, market) {
   return [
     `${tag} · ${p.pnl >= 0 ? '🟢' : '🔴'} clôture ${mk}`,
     name,
-    `$${px(p.entry)} → $${px(p.exit)} · <b>${usd(p.pnl)}</b>`,
+    `$${px(p.entry)} → $${px(p.exit)}${p.signalExit ? ` (signal $${px(p.signalExit)}, ${slip(p, p.signalExit, p.exit, true)})` : ''} · <b>${usd(p.pnl)}</b>`,
     `Compte ${dollars(st.equity)} (${((st.equity / st.s.capital - 1) * 100).toFixed(2)} %)${goal} · <i>compte simulé</i>`,
   ].join('\n');
 }

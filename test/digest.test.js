@@ -42,7 +42,7 @@ test('résumé du jour : trades regroupés par stratégie (scalp seul, puis tout
 
 test('mode FTMO seul : le groupe ne reçoit que les messages du compte FTMO', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pub-'));
-  const cfg = { ...require('../src/config'), dataDir: dir, publishFtmoOnly: true, ftmoEnabled: true, lucidEnabled: false, ftmoCombined: false, ftmoStrategies: ['gold:g_orb30'], ftmoRisk: 0.5, ftmoDayStop: 0, nasEnabled: false, spxEnabled: false, eurusdEnabled: false };
+  const cfg = { ...require('../src/config'), dataDir: dir, publishFtmoOnly: true, ftmoEnabled: true, lucidEnabled: false, ftmoCombined: false, ftmoStrategies: ['gold:g_orb30'], ftmoRisk: 0.5, ftmoDayStop: 0, nasEnabled: false, spxEnabled: false, eurusdEnabled: false, autoAdapt: false };
   const { Store } = require('../src/store');
   const store = new Store(dir);
   const { MarketTrader } = require('../src/markets');

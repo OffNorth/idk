@@ -23,8 +23,8 @@ const Y = (y) => Date.UTC(y, 0, 1) / 1000;
   const sizer = RULES[cfg.ftmoSizing] || RULES.fixe;
   const F = programOf(cfg);
   const RULESETS = {
-    'LucidFlex 50K': { capital: 50_000, steps: 1, target1: 6, dailyPct: Infinity, maxLossUsd: 2000, eodTrailing: true, lockAt: 100, bestDayPct: 50, minDays: 2, contracts: true, maxContracts: 40, minOneRisk: 0.4, leverage: 1000, dayOf: cmeDay },
-    'LucidFlex 100K': { capital: 100_000, steps: 1, target1: 6, dailyPct: Infinity, maxLossUsd: 3000, eodTrailing: true, lockAt: 100, bestDayPct: 50, minDays: 2, contracts: true, maxContracts: 60, minOneRisk: 0.4, leverage: 1000, dayOf: cmeDay },
+    'LucidFlex 50K': { capital: 50_000, steps: 1, target1: 6, dailyPct: Infinity, maxLossUsd: 2000, eodTrailing: true, lockAt: 100, bestDayPct: cfg.lucidConsistency ?? 40, minDays: 2, contracts: true, maxContracts: 40, minOneRisk: 0.4, leverage: 1000, dayOf: cmeDay },
+    'LucidFlex 100K': { capital: 100_000, steps: 1, target1: 6, dailyPct: Infinity, maxLossUsd: 3000, eodTrailing: true, lockAt: 100, bestDayPct: cfg.lucidConsistency ?? 40, minDays: 2, contracts: true, maxContracts: 60, minOneRisk: 0.4, leverage: 1000, dayOf: cmeDay },
     [`FTMO ${F.label}`]: { steps: F.steps, dailyPct: F.daily, maxPct: F.max, trailingMax: F.trailing, bestDayPct: F.bestDay },
   };
   const SUBSETS = {

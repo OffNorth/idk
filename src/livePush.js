@@ -53,8 +53,10 @@ function accountView(cfg, store, id, prices) {
     minDays: P.minDays ?? 4,
     bestDayPct: P.bestDay || 0,
     split: P.split || 80,
+    payouts: s.phase === 'funded' ? { n: s.funded?.payouts?.length || 0, paid: Math.round(s.funded?.paid || 0), trader: Math.round(s.funded?.traderPaid || 0), list: (s.funded?.payouts || []).slice(-20) } : null,
+    fillDelaySec: cfg.fillDelaySec || 0,
     open: Object.values(s.open || {}).map((p) => ({
-      market: p.market, sid: p.sid, name: p.name, side: p.side, entry: r6(p.entry), sl: r6(p.sl), tp: r6(tpOf(p)), entryT: p.entryT,
+      market: p.market, sid: p.sid, name: p.name, side: p.side, entry: r6(p.entry), sl: r6(p.sl), tp: r6(tpOf(p)), entryT: p.entryT, signal: p.signal ? r6(p.signal) : null,
       notional: Math.round(p.notional), n: p.n || null, contract: p.contract || null, risk: Math.round(p.risk || 0),
       pnl: r6(st.openPnl(p)), ai: p.ai ? Math.round(p.ai.p * 100) : null,
     })),

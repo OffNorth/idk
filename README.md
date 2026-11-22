@@ -624,13 +624,36 @@ challenge en moins d'un an :
 À côté du compte FTMO, un compte **LucidFlex 50K** (`LUCID_CAPITAL`) suit les mêmes signaux (même IA validatrice,
 même risque × `LUCID_RISK_MUL`) avec les règles Lucid : objectif +6 %, pas de perte du jour, perte max 2 000 $
 (3 000 $ en 100K) sous le plus haut solde de **clôture** de séance CME (17 h New York), bloquée à capital + 100 $,
-meilleur jour ≤ 50 %, 2 jours minimum, **micro-futures en contrats entiers** (MGC, MNQ, MES, M6E ; 40 au plus, frais
+meilleur jour ≤ **40 %** du gain pendant l'évaluation (`LUCID_CONSISTENCY_PCT`, 40 % depuis le 19/10/2026), 2 jours minimum, **micro-futures en contrats entiers** (MGC, MNQ, MES, M6E ; 40 au plus, frais
 par contrat). Messages « 🟣 Lucid » dans le groupe, panneau `/lucid` (bouton « 🟣 Compte Lucid » dans `/ftmo`).
 Si le risque prévu est trop petit pour 1 contrat, le compte prend **1 micro** quand son risque reste ≤ 1,5 × le risque
 prévu et ≤ 40 % de la perte max ; sinon le signal est sauté (affiché dans `/lucid`). En pratique, l'or et le Nasdaq
 **journaliers** ne sont pas tradables sur 50K (1 seul micro risquerait ≈ 2 300 à 3 100 $, plus que la perte max) : le
 compte Lucid vit surtout de l'intraday, de l'EUR/USD et du S&P 500.
 En simulation sur l'historique (`npm run lucid-compare`), il réussit nettement moins souvent que le compte FTMO.
+
+**Règles Lucid vérifiées (sources secondaires nov. 2026, à confirmer sur le site de Lucid)** : bots et copieurs de
+trades autorisés (le trader répond des erreurs du bot) ; **couverture interdite** (jamais acheteur et vendeur en même
+temps, déjà bloqué par `FTMO_NO_HEDGE`) ; haute fréquence interdite et compte signalé si plus de 50 % des gains
+viennent de trades tenus ≤ 5 s (le bot garde ses trades des minutes ou des jours) ; annonces autorisées sur LucidFlex.
+Avec la règle des 40 %, la réussite simulée bouge peu : 64 % / 65 % / 71 % en moins d'un an (2009–19 / 2020–26 /
+nov. 24–26) contre 65 % / 67 % / 71 % à 50 %.
+
+**Compte financé** (FTMO et Lucid) : plus de règle de régularité ; **retraits simulés** — Lucid après 5 jours gagnants
+≥ 150 $ (`LUCID_PAYOUT_MIN_DAY`), 50 % du gain au plus, 2 000 $ (50K) / 3 000 $ (100K) au plus, 500 $ au moins, 90 %
+pour le trader ; FTMO : tout le gain tous les 14 jours, 80 %, le compte repart du capital. Message « 💸 Retrait simulé »
+dans le groupe, total dans `/ftmo` et `/lucid`. Le risque reste le même qu'en évaluation : le réduire de moitié en
+financé diminue le gain net par évaluation achetée sur toutes les périodes.
+
+### ⏱ Exécution « comme en vrai » (`FILL_DELAY_SEC`, 30 s par défaut)
+
+Les comptes FTMO et Lucid ne sont plus remplis au prix exact du signal : le bot attend **30 secondes** (le temps qu'un
+vrai bot reçoive le signal et envoie l'ordre) puis prend le cours de ce moment-là (dernière bougie 1 min de Yahoo,
+même source que les signaux). Concerne les **entrées** et les **sorties sur signal** (ordres au marché) ; les **stops**
+et objectifs, posés à l'avance chez le courtier, restent exécutés au niveau. Le stop garde son niveau : la taille est
+recalculée sur la nouvelle distance, et si le cours a déjà dépassé le stop pendant le délai, le trade n'est pas pris
+(« signal manqué » dans le panneau). Le message d'ouverture affiche l'écart : « Entrée $4002.00 (signal $4000.00, 2.00
+contre toi) ». Marché fermé ou cours indisponible : prix du signal. `FILL_DELAY_SEC=0` pour couper.
 
 ### 🤖 IA validatrice (`npm run ai-train`, `src/aiFilter.js`, `FTMO_AI`)
 

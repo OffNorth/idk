@@ -42,6 +42,17 @@ function strategiesLine(list) {
  * Légende Telegram (1 024 caractères au plus) construite ligne par ligne : une ligne n'est ajoutée que si elle tient
  * en entier (jamais de balise HTML ou d'emoji coupé, ce que Telegram refuse).
  */
+/** Retraits simulés du compte financé (et règle du prochain retrait). */
+function payoutText(s, P, isLucid) {
+  const f = s.funded || {};
+  const n = f.payouts?.length || 0;
+  const done = n ? `${n} retrait(s) simulé(s), ${money(f.traderPaid || 0)} pour toi` : 'aucun retrait pour l’instant';
+  const next = isLucid
+    ? `prochain après ${Math.max(0, (P.payout?.cycleDays || 5) - (f.good || 0))} jour(s) gagnant(s) ≥ ${money(P.payout?.minDay || 150)} (50 % du gain, ${money(P.payout?.cap || 2000)} au plus)`
+    : 'tout le gain tous les 14 jours (80 % pour toi)';
+  return `💸 ${done} · ${next}`;
+}
+
 function fitCaption(lines, max = 1024) {
   const out = [];
   let len = 0;
@@ -221,7 +232,9 @@ async function render(cfg, store, view, marketId, args = []) {
       isLucid
         ? `🟣 <b>Compte Lucid simulé · ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : 'évaluation'} n° ${s.attempt}`
         : `🏦 <b>Compte FTMO simulé ${fst.account.emoji} ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : fst.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} · challenge n° ${s.attempt}`,
-      ...(isLucid ? [`Règles : +${P.target} %, pas de perte du jour, perte max ${money(P.maxUsd)} sous le plus haut solde de clôture (seuil actuel ${money(fst.floor)}), micro-futures en contrats entiers (${P.maxContracts} au plus)`] : []),
+      ...(isLucid ? [`Règles : +${P.target} %, meilleur jour ≤ ${P.bestDay} % du gain (évaluation), pas de perte du jour, perte max ${money(P.maxUsd)} sous le plus haut solde de clôture (seuil actuel ${money(fst.floor)}), micro-futures en contrats entiers (${P.maxContracts} au plus), jamais acheteur et vendeur en même temps`] : []),
+      ...(s.phase === 'funded' ? [payoutText(s, P, isLucid)] : []),
+      ...(cfg.fillDelaySec > 0 ? [`⏱ Exécution ${cfg.fillDelaySec} s après le signal (cours de ce moment-là) ; stops au niveau${s.missed ? ` · ${s.missed} signal(s) manqué(s) (stop dépassé pendant le délai)` : ''}`] : []),
       ...(isLucid && s.tooBig ? [`⚠️ ${s.tooBig} signal(s) sauté(s), trop gros pour ce compte (1 seul micro-contrat risquerait plus de 40 % de la perte max) : ${Object.entries(s.tooBigBy || {}).slice(0, 6).map(([k, v]) => `<code>${esc(k)}</code> ${money(v)}`).join(', ')} — ces stratégies restent sur le compte FTMO`] : []),
       `Valeur <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · objectif ${money(fst.target)}` : ''}`,
       `dont ${signedMoney(fst.unrealized)} latents sur ${Object.keys(s.open).length} position(s) ouverte(s) · réalisé ${signedMoney(fst.realized)} sur ${s.closed.length} trade(s) clôturé(s)${s.skipped ? ` · ${s.skipped} signal(s) opposé(s) ignoré(s)` : ''}`,

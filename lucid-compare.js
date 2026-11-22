@@ -5,7 +5,7 @@
  *   FTMO 1 étape   : +10 %, perte du jour 3 %, perte max 10 % suiveuse, meilleur jour ≤ 50 %, CFD (taille au $ près)
  *   FTMO 2 étapes  : +10 % puis +5 %, perte du jour 5 %, perte max 10 % fixe
  *   LucidFlex 50K  : +3 000 $, pas de perte du jour, perte max 2 000 $ suiveuse en fin de journée (bloquée à +100 $),
- *                    meilleur jour ≤ 50 %, micro-futures CME en contrats entiers (40 au plus)
+ *                    meilleur jour ≤ 40 %, micro-futures CME en contrats entiers (40 au plus)
  *   LucidFlex 100K : +6 000 $, perte max 3 000 $, 60 micros
  * Phase financée (12 mois au plus) : FTMO 80 % des gains retirés tous les 14 jours, prix du challenge remboursé au
  * 1er versement ; Lucid 90 %, versement après 5 jours gagnants ≥ 150 $, ≤ 50 % du gain et ≤ 2 000 / 3 000 $.
@@ -26,7 +26,7 @@ const Y = (y) => Date.UTC(y, 0, 1) / 1000;
 const FTMO_FUNDED = { rule: 'ftmo', every: 14, split: 0.8, fee: 600, refund: true, days: 365 };
 const lucidFunded = (fee, cap) => ({ rule: 'lucid', cycleDays: 5, minDay: 150, share: 0.5, cap, split: 0.9, fee, refund: false, days: 365 });
 const lucid = (capital, maxLossUsd, maxContracts, fee, cap) => ({
-  capital, steps: 1, target1: 6, dailyPct: Infinity, maxLossUsd, eodTrailing: true, lockAt: 100, bestDayPct: 50, minDays: 2,
+  capital, steps: 1, target1: 6, dailyPct: Infinity, maxLossUsd, eodTrailing: true, lockAt: 100, bestDayPct: cfg.lucidConsistency ?? 40, minDays: 2,
   contracts: true, maxContracts, minOneRisk: 0.4, leverage: 1000, dayOf: cmeDay, funded: lucidFunded(fee, cap),
 });
 const FORMULAS = {

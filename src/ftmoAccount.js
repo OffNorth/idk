@@ -22,15 +22,21 @@ const MICRO = {
 };
 
 /**
- * Évaluation LucidFlex (sources secondaires 2026, à vérifier sur le site de Lucid) : +6 %, pas de perte du jour,
- * perte max 2 000 $ (50K) / 3 000 $ (100K) suiveuse en fin de journée (séance CME, 17 h New York), bloquée à
- * capital + 100 $, meilleur jour ≤ 50 % du gain, micro-futures en contrats entiers (40 / 60 au plus), 90 % des gains.
+ * Évaluation LucidFlex (sources secondaires nov. 2026, à vérifier sur le site de Lucid) : +6 %, pas de perte du jour
+ * (option payante, « souple »), perte max 2 000 $ (50K) / 3 000 $ (100K) suiveuse en fin de journée (séance CME, 17 h
+ * New York), bloquée à capital + 100 $, meilleur jour ≤ 40 % du gain (évaluation seulement), micro-futures en contrats
+ * entiers (40 / 60 au plus), pas d'achat et de vente en même temps (couverture interdite).
+ * Compte financé : pas de règle de régularité ; retrait après 5 jours gagnants ≥ 150 $, ≤ 50 % du gain et ≤ 2 000 /
+ * 3 000 $, 500 $ au moins, 90 % pour le trader.
  */
-const lucidProgram = (capital) => ({
+const lucidProgram = (capital, cfg = {}) => ({
   key: `lucid${Math.round(capital / 1000)}k`, label: 'Évaluation LucidFlex', firm: 'Lucid', steps: 1, target: 6, daily: Infinity,
-  maxUsd: capital > 75_000 ? 3000 : 2000, lockAt: 100, eod: true, bestDay: 50, minDays: 2, contracts: true,
+  maxUsd: capital > 75_000 ? 3000 : 2000, lockAt: 100, eod: true, bestDay: cfg.lucidConsistency ?? 40, minDays: 2, contracts: true,
   maxContracts: capital > 75_000 ? 60 : 40, levCap: null, split: 90,
+  payout: { rule: 'lucid', cycleDays: 5, minDay: cfg.lucidPayoutMinDay ?? 150, share: 0.5, cap: capital > 75_000 ? 3000 : 2000, min: 500 },
 });
+/** Retraits FTMO (compte financé) : tout le gain tous les 14 jours, 80 % pour le trader, le compte repart du capital. */
+const FTMO_PAYOUT = { rule: 'ftmo', every: 14 };
 
 /** Réglages d'un compte simulé : 'gold' (FTMO, or ou compte combiné), 'nas100' (FTMO Nasdaq) ou 'lucid' (LucidFlex). */
 function accountOf(cfg, id = 'gold') {
@@ -41,7 +47,7 @@ function accountOf(cfg, id = 'gold') {
     const mul = cfg.lucidRiskMul ?? 1;
     return {
       ...base, id: 'lucid', firm: 'Lucid', label: `LucidFlex ${Math.round(capital / 1000)}K`, emoji: '🟣', file: 'lucid.json',
-      enabled: !!(cfg.ftmoEnabled && cfg.lucidEnabled), capital, program: lucidProgram(capital),
+      enabled: !!(cfg.ftmoEnabled && cfg.lucidEnabled), capital, program: lucidProgram(capital, cfg),
       // Intraday : LUCID_INTRADAY_RISK_PCT (0 par défaut = pas pris) ; journalières : risque FTMO × LUCID_RISK_MUL
       riskOf: (m, st) => (st && st.tf && st.tf !== '1d' ? cfg.lucidIntradayRisk ?? 0 : base.riskOf(m, st) * mul),
     };
@@ -133,13 +139,51 @@ function createFtmo({ cfg, store, account = 'gold' }) {
   const costOf = (p, sides) => (p.n ? (p.n * p.cfee * sides) / 2 : (p.notional * sides * fee(p.market)) / 100);
   const pnlAt = (p, px, sides) => p.notional * (p.side === 'long' ? 1 : -1) * (px / p.entry - 1) - costOf(p, sides);
 
+  /** Nouveau jour de trading : solde de clôture de la veille ; retourne le jour qui se termine (ou null). */
   function rollDay(s, t) {
     const d = dayOf(t);
     if (s.day !== d) {
+      const prev = s.day;
       if (s.day) s.eodPeak = Math.max(s.eodPeak ?? s.capital, s.balance); // solde de clôture de la journée précédente
       s.day = d;
       s.dayStart = s.balance;
+      return prev;
     }
+    return null;
+  }
+
+  const PAY = P.payout || FTMO_PAYOUT;
+  /**
+   * Retrait simulé du compte financé, décidé à la clôture d'une journée (positions toutes fermées) :
+   *  - Lucid : après PAY.cycleDays jours gagnants ≥ PAY.minDay $, retrait ≤ PAY.share du gain et ≤ PAY.cap $ (≥ PAY.min $) ;
+   *  - FTMO : tout le gain tous les 14 jours, le compte repart du capital.
+   */
+  function payoutCheck(s, prevDay, t, out) {
+    s.funded = s.funded || { since: t };
+    const f = s.funded;
+    f.payouts = f.payouts || [];
+    const gain = s.balance - s.capital;
+    let amount = 0;
+    if (PAY.rule === 'lucid') {
+      if ((s.dayPnl?.[prevDay] || 0) >= PAY.minDay) f.good = (f.good || 0) + 1;
+      if ((f.good || 0) < PAY.cycleDays || gain <= 0 || Object.keys(s.open).length) return;
+      amount = Math.min(gain * PAY.share, PAY.cap);
+      if (amount < (PAY.min || 0)) return;
+      f.good = 0;
+    } else {
+      const last = f.payouts.length ? f.payouts[f.payouts.length - 1].t : f.since;
+      if (t - last < PAY.every * 86400 || gain <= 0 || Object.keys(s.open).length) return;
+      amount = gain;
+    }
+    amount = Math.round(amount * 100) / 100;
+    const trader = Math.round(amount * (P.split || 80)) / 100;
+    s.balance -= amount;
+    s.dayStart = s.balance;
+    if (PAY.rule !== 'lucid') s.peak = s.balance; // FTMO : le compte repart du capital
+    f.payouts.push({ t, amount, trader });
+    f.paid = (f.paid || 0) + amount;
+    f.traderPaid = (f.traderPaid || 0) + trader;
+    out.push({ type: 'payout', s, amount, trader, total: f.traderPaid, n: f.payouts.length });
   }
 
   /** Valeur du compte avec les positions ouvertes au cours actuel. */
@@ -202,16 +246,17 @@ function createFtmo({ cfg, store, account = 'gold' }) {
   }
 
   /** Clôture d'une position FTMO (gain, solde, plus haut, gain du jour, historique, message). */
-  function closeOne(s, k, exit, exitT, reason, out) {
+  function closeOne(s, k, exit, exitT, reason, out, signalExit = null) {
     const p = s.open[k];
     const pnl = pnlAt(p, exit, 2);
     s.balance += pnl;
     s.peak = Math.max(s.peak ?? s.capital, s.balance);
     s.dayPnl = s.dayPnl || {};
     s.dayPnl[s.day] = (s.dayPnl[s.day] || 0) + pnl;
-    s.closed.push({ ...p, exit, exitT, pnl, reason });
+    const done = { ...p, exit, exitT, pnl, reason, ...(signalExit && signalExit !== exit ? { signalExit } : {}) };
+    s.closed.push(done);
     delete s.open[k];
-    out.push({ type: 'trade', s, p: { ...p, exit, exitT, pnl, reason } });
+    out.push({ type: 'trade', s, p: done });
   }
 
   /**
@@ -243,19 +288,28 @@ function createFtmo({ cfg, store, account = 'gold' }) {
    * Traite les événements du passage et vérifie les règles. Retourne les messages à publier.
    * prices : { gold: cours, nas100: cours }
    */
-  function onCycle(events, prices, t = Math.floor(Date.now() / 1000)) {
+  function onCycle(events, prices, t = Math.floor(Date.now() / 1000), { fills = null } = {}) {
     if (!A.enabled) return [];
     const s = load();
     const out = [];
     const aiMode = adapt.aiModeOf(cfg, store); // l'adaptation peut repasser l'IA en observation
-    rollDay(s, t);
+    const prevDay = rollDay(s, t);
+    if (prevDay && s.phase === 'funded') payoutCheck(s, prevDay, t, out);
     if (s.waitDay && s.day !== s.waitDay) s.waitDay = null; // nouveau challenge : reprise le jour suivant
 
     for (const ev of events) {
       if (!follows(ev)) continue;
       if (ev.type === 'open' && !s.waitDay) {
         const p = ev.pos;
-        const stopPct = (Math.abs(p.entry - (p.initSl ?? p.sl)) / p.entry) * 100;
+        // Exécution FILL_DELAY_SEC secondes après le signal (cours de ce moment-là) ; le stop reste au même niveau
+        const fill = fills?.[ev.market.id];
+        const entry = fill?.price || p.entry;
+        const sl = p.initSl ?? p.sl;
+        if (fill && (p.side === 'long' ? entry <= sl : entry >= sl)) {
+          s.missed = (s.missed || 0) + 1; // le cours a déjà dépassé le stop pendant le délai : pas de trade
+          continue;
+        }
+        const stopPct = (Math.abs(entry - sl) / entry) * 100;
         if (!(stopPct > 0)) continue;
         if (cfg.ftmoDayStop > 0 && s.balance <= s.dayStart - (s.capital * cfg.ftmoDayStop) / 100) continue; // stop du jour maison
         // Pas d'achat et de vente en même temps sur le même marché (FTMO_NO_HEDGE) : le signal opposé est ignoré
@@ -291,11 +345,11 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           if (!mc) continue;
           const used = Object.values(s.open).reduce((a, o) => a + (o.n || 0), 0);
           const room = P.maxContracts - used;
-          lots = Math.min(Math.floor(notional / (p.entry * mc.mult)), room);
+          lots = Math.min(Math.floor(notional / (entry * mc.mult)), room);
           if (!(lots >= 1) && room >= 1) {
             // Risque prévu trop petit pour 1 contrat : 1 micro quand même si son risque reste raisonnable
             // (≤ 1,5 × le risque prévu et ≤ 40 % de la perte max) ; sinon le signal est trop gros pour ce compte
-            const oneRisk = (p.entry * mc.mult * stopPct) / 100;
+            const oneRisk = (entry * mc.mult * stopPct) / 100;
             const want = (notional * stopPct) / 100;
             if (oneRisk <= Math.min(1.5 * want, 0.4 * (P.maxUsd || Infinity))) lots = 1;
             else {
@@ -309,7 +363,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
             s.tooSmall = (s.tooSmall || 0) + 1; // plafond de contrats atteint
             continue;
           }
-          notional = lots * p.entry * mc.mult;
+          notional = lots * entry * mc.mult;
         }
         if (ai && !ai.ok && aiMode === 'block') {
           // Refusé : gardé (avec la taille qu'il aurait eue) pour le bilan des trades refusés
@@ -321,14 +375,19 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           out.push({ type: 'refused', s, p: r });
           continue;
         }
-        const pos = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, notional, entryT: p.entryT, lev: notional / s.balance, mul, risk: (notional * stopPct) / 100, ...(wAdapt !== 1 ? { wAdapt } : {}), ...(lots ? { n: lots, cfee: MICRO[ev.market.id].fee, contract: MICRO[ev.market.id].name } : {}), ...(ai ? { ai: { p: ai.p, ok: ai.ok, min: ai.min } } : {}) };
+        const pos = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry, sl, notional, entryT: p.entryT, ...(fill ? { signal: p.entry, fillT: fill.t } : {}), lev: notional / s.balance, mul, risk: (notional * stopPct) / 100, ...(wAdapt !== 1 ? { wAdapt } : {}), ...(lots ? { n: lots, cfee: MICRO[ev.market.id].fee, contract: MICRO[ev.market.id].name } : {}), ...(ai ? { ai: { p: ai.p, ok: ai.ok, min: ai.min } } : {}) };
         s.open[key(ev.market.id, ev.strategy.id, p.entryT)] = pos;
         if (!s.days.includes(s.day)) s.days.push(s.day);
         out.push({ type: 'open', s, p: pos });
       } else if (ev.type === 'close') {
         const k = key(ev.market.id, ev.strategy.id, ev.trade.entryT);
         if (!s.open[k]) continue;
-        closeOne(s, k, ev.trade.exit, ev.trade.exitT, ev.trade.reason, out);
+        // Stop / objectif : ordre posé à l'avance, exécuté au niveau ; autre sortie (signal, fin de séance…) : ordre au
+        // marché, exécuté FILL_DELAY_SEC secondes plus tard au cours de ce moment-là
+        const fill = fills?.[ev.market.id];
+        const resting = /^(stop loss|take profit)$/.test(ev.trade.reason || '');
+        if (fill && !resting) closeOne(s, k, fill.price, fill.t, ev.trade.reason, out, ev.trade.exit);
+        else closeOne(s, k, ev.trade.exit, ev.trade.exitT, ev.trade.reason, out);
       }
     }
     reconcile(s, prices, t, out);
@@ -371,10 +430,11 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       const eq = equity(s, prices);
       if (eq <= dailyFloor(s) || eq <= maxFloor(s)) {
         closeAll(s, prices, t, `règle ${A.firm || 'FTMO'}`);
-        out.push({ type: 'fail', s: { ...s }, why: 'compte financé perdu (limite de perte)' });
+        const paidTxt = s.funded?.traderPaid ? ` après ${s.funded.payouts.length} retrait${s.funded.payouts.length > 1 ? 's' : ''} (${Math.round(s.funded.traderPaid).toLocaleString('fr-FR')} $ pour toi)` : ' sans retrait';
+        out.push({ type: 'fail', s: { ...s }, why: `compte financé perdu (limite de perte)${paidTxt}` });
         archive(s);
         const next = fresh(s.attempt + 1);
-        next.history = [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'perdu', at: t, balance: s.balance }].slice(-20);
+        next.history = [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'perdu', at: t, balance: s.balance, payouts: s.funded?.payouts?.length || 0, traderPaid: Math.round(s.funded?.traderPaid || 0) }].slice(-20);
         next.waitDay = dayOf(t);
         save(next);
         return out;
@@ -411,7 +471,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     };
   }
 
-  return { onCycle, status, load, refusedReport, archived: () => store.loadJson(ARCHIVE, []), account: A, reset: () => save(fresh()) };
+  return { onCycle, status, load, refusedReport, follows, archived: () => store.loadJson(ARCHIVE, []), account: A, reset: () => save(fresh()) };
 }
 
-module.exports = { createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram };
+module.exports = { createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram, FTMO_PAYOUT };

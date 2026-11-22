@@ -160,6 +160,14 @@ module.exports = {
   // npm run lucid-tune : Lucid sans intraday, journalières à 2,5 % → 62 % / 67 % / 73 % (contre 13 % / 11 % / 21 %)
   lucidRiskMul: upgraded('LUCID_RISK_MUL', ['1'], 1.25), // × le risque des journalières du compte FTMO (2 % → 2,5 %)
   lucidIntradayRisk: num('LUCID_INTRADAY_RISK_PCT', 0), // 0 = le compte Lucid ne prend pas les stratégies intraday
+  // Règle de régularité de l'évaluation LucidFlex : meilleur jour ≤ 40 % du gain (40 % depuis le 19/10/2026, 50 % en option payante)
+  lucidConsistency: num('LUCID_CONSISTENCY_PCT', 40),
+  // Retraits LucidFlex (compte financé) : après 5 jours gagnants ≥ LUCID_PAYOUT_MIN_DAY $, ≤ 50 % du gain, 2 000 $ (50K) /
+  // 3 000 $ (100K) au plus, 500 $ au moins ; partage 90 %
+  lucidPayoutMinDay: num('LUCID_PAYOUT_MIN_DAY', 150),
+  // Délai entre le signal et l'exécution sur les comptes FTMO / Lucid (comme un vrai ordre) : l'entrée et les sorties sur
+  // signal se font au cours FILL_DELAY_SEC secondes plus tard ; stops et objectifs (ordres posés à l'avance) restent au niveau
+  fillDelaySec: process.env.NODE_TEST_CONTEXT && !process.env.FILL_DELAY_SEC ? 0 : Math.max(0, num('FILL_DELAY_SEC', 30)),
   ftmoRisk: upgraded('FTMO_RISK_PCT', ['0.5', '0.35', '1.5'], 2), // % du solde risqué par trade (distance au stop)
   ftmoLeverage: num('FTMO_LEVERAGE', 30),
   // Levier dynamique (src/sizing.js) : « plusieurs positions → moins » = risque ÷ 2 dès 2 positions déjà ouvertes
