@@ -715,7 +715,12 @@ seuil ne sont pas pris (message « 🤖 signal refusé par l'IA »), les trades 
 avec la taille qu'il aurait eue ; son trade paper donne ce qu'il aurait fait (« ✅ l’IA a eu raison » si le total est
 négatif), latent au cours actuel s'il est encore ouvert. `FTMO_AI=observe` : avis seulement, rien n'est bloqué ; `FTMO_AI=off` : sans IA. Ré-entraîner : `npm run ai-train`.
 
-### Risque qui baisse à l'approche de l'objectif (`npm run ftmo-protect`, défaut `FTMO_SIZING=objectif : dégressif doux`)
+### Risque qui baisse à l'approche de l'objectif (`npm run ftmo-protect`, `FTMO_SIZING=objectif : dégressif doux`)
+
+**Retiré par défaut depuis le 23/11/2026** : `FTMO_SIZING=plusieurs positions → moins` (risque ÷ 2 seulement avec 2
+positions déjà ouvertes, taille normale sinon). Réussite < 1 an (2009–19 / 2020–26 / nov. 24–26) : FTMO 58 / 54 / 71 %
+en 87 j médians (contre 64 / 68 / 82 % en 123 j avec le dégressif), Lucid 57 / 71 / 100 % en 80 j (contre
+63 / 66 / 71 %). Plus rapide, mais FTMO réussit moins souvent. Pour le remettre : `FTMO_SIZING=objectif : dégressif doux`.
 
 Risque de chaque trade × (1 − 0,75 × avance vers l'objectif), au moins × 0,4 (à +5 % sur +10 % : × 0,625 ; à +8 % :
 × 0,4), en plus de « plusieurs positions → moins ». Protège le gain acquis contre la perte du jour de 3 %. Challenge

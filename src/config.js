@@ -183,7 +183,10 @@ module.exports = {
   // (npm run ftmo-sizing : supprime les échecs sur la perte du jour, réussite égale) ; « fixe » = risque constant
   // « objectif : dégressif doux » (défaut) : en plus, risque × (1 − 0,75 × avance vers l'objectif), au moins × 0,4
   // (npm run ftmo-protect : réussite < 1 an 26 → 37 % sur 2009–2019, 30 → 46 % sur 2020–2026, au prix d'une durée plus longue)
-  ftmoSizing: ['', 'plusieurs positions → moins'].includes((process.env.FTMO_SIZING || '').trim()) ? 'objectif : dégressif doux' : process.env.FTMO_SIZING.trim(),
+  // Défaut (nov. 2026, demande de l'utilisateur) : « plusieurs positions → moins », sans réduction à l'approche de
+  // l'objectif — challenges ≈ 1 mois plus rapides ; réussite FTMO 58 / 54 / 71 % contre 64 / 68 / 82 % avec le
+  // dégressif doux, Lucid 57 / 71 / 100 % contre 63 / 66 / 71 % (FTMO_SIZING=objectif : dégressif doux pour le remettre)
+  ftmoSizing: (process.env.FTMO_SIZING || '').trim() || 'plusieurs positions → moins',
   // IA validatrice (src/aiFilter.js, npm run ai-train) : block (défaut, refuse les signaux sous le seuil), observe
   // (avis seulement) ou off ; FTMO_AI_MIN : seuil de probabilité (défaut : celui du modèle, ≈ 20 % des signaux refusés)
   ftmoAi: ['observe', 'block', 'off'].includes((process.env.FTMO_AI || '').trim()) ? process.env.FTMO_AI.trim() : 'block',
