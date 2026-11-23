@@ -58,7 +58,7 @@ const rMultiple = (t) => t.pnlPct / Math.max(1e-9, stopPct(t));
  * Retourne l'issue (target / daily / maxloss / open), le solde et le nombre de jours de trading.
  */
 function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity, riskMul = 1, sizer = null, trailingMax = false, bestDayPct = 0, levCap = null,
-  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null } = {}) {
+  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true } = {}) {
   const maxLoss = maxLossUsd ?? (capital * maxPct) / 100;
   const events = [];
   for (const t of trades) {
@@ -98,7 +98,9 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       const sp = stopPct(e.tr);
       if (!(sp > 0)) continue;
       // risque propre au trade si fourni (comptes multi-marchés) ; `sizer` : multiplicateur de risque selon le trade et l'état du compte
-      const mul = sizer ? sizer(e.tr, { balance, capital, dayStart, target, open: open.size }) : 1;
+      // Objectif vu par la règle de taille : relevé si la règle du meilleur jour demande plus de gain (effectiveTarget)
+      const tgt = effTarget ? effectiveTarget(target, bestDayPct, capital, dayPnl.size ? Math.max(...dayPnl.values()) : 0) : target;
+      const mul = sizer ? sizer(e.tr, { balance, capital, dayStart, target: tgt, open: open.size }) : 1;
       if (!(mul > 0)) continue;
       const cap = (levCap && e.tr.market && levCap[e.tr.market]) || leverage; // levier max par marché (compte Swing)
       let notional = Math.min((balance * (e.tr.riskPct ?? riskPct) * riskMul * mul) / sp, balance * cap);
@@ -147,6 +149,15 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
     }
   }
   return { outcome: 'open', at: events.length ? events[events.length - 1].t : from, balance, days: days.size, paid };
+}
+
+/**
+ * Objectif (en % du capital) qu'il faut vraiment atteindre : avec la règle du meilleur jour (le meilleur jour ≤
+ * bestDayPct % du gain total), un gros jour oblige à gagner au moins meilleur jour ÷ bestDayPct %.
+ */
+function effectiveTarget(target, bestDayPct, capital, bestDay) {
+  if (!(bestDayPct > 0) || !(bestDay > 0) || !Number.isFinite(target)) return target;
+  return Math.max(target, ((bestDay / (bestDayPct / 100)) / capital) * 100);
 }
 
 /**
@@ -268,4 +279,4 @@ function rStats(trades) {
   };
 }
 
-module.exports = { runPhase, challengeStats, fundedRun, rStats, rMultiple, stopPct, ftmoDay, cmeDay };
+module.exports = { runPhase, challengeStats, fundedRun, rStats, rMultiple, stopPct, ftmoDay, cmeDay, effectiveTarget };

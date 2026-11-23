@@ -116,3 +116,24 @@ test('compte financé FTMO : retrait de tout le gain tous les 14 jours, le compt
   assert.strictEqual(Math.round(p.trader), 800);
   assert.strictEqual(Math.round(f.load().balance), 100000);
 });
+
+test('règle du meilleur jour : objectif effectif pour la taille des trades (pas d’écrasement à × 0,4)', async () => {
+  const { effectiveTarget } = require('../src/ftmo');
+  assert.ok(Math.abs(effectiveTarget(10, 50, 100000, 7569) - 15.138) < 1e-9);
+  assert.strictEqual(effectiveTarget(10, 0, 100000, 7569), 10);
+  assert.strictEqual(effectiveTarget(10, 50, 100000, 3000), 10);
+  const { cfg, store } = setup({ ftmoSizing: 'objectif : dégressif doux', ftmoRisk: 1 });
+  const { createFtmo } = require('../src/ftmoAccount');
+  const f = createFtmo({ cfg, store });
+  // Compte à +10,27 %, meilleur jour 7 569 $ (74 % du gain) : objectif effectif 15,138 %
+  store.saveJson('ftmo.json', { ...f.load(), balance: 110270, peak: 110270, eodPeak: 110270, dayStart: 110270, day: '2026-11-16', days: ['a', 'b', 'c'], dayPnl: { a: 2768, b: 7569, c: -67 } });
+  const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
+  const o = f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0).find((m) => m.type === 'open').p;
+  const want = 1 - 0.75 * (10.27 / 15.138);
+  assert.ok(Math.abs(o.mul - want) < 0.01, `${o.mul} ≈ ${want}`);
+  assert.ok(o.mul > 0.45);
+  const st = f.status({ gold: 4000 });
+  assert.strictEqual(Math.round(st.needed), 15138);
+  const v = await require('../src/interactive').render(cfg, store, 'f', 'gold');
+  assert.match(v.caption, /Règle du meilleur jour/);
+});

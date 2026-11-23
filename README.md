@@ -645,6 +645,18 @@ pour le trader ; FTMO : tout le gain tous les 14 jours, 80 %, le compte repart d
 dans le groupe, total dans `/ftmo` et `/lucid`. Le risque reste le même qu'en évaluation : le réduire de moitié en
 financé diminue le gain net par évaluation achetée sur toutes les périodes.
 
+### 📏 Règle du meilleur jour et taille des trades
+
+Après un très gros jour, la règle du meilleur jour (FTMO 1 étape ≤ 50 %, Lucid ≤ 40 % du gain) oblige à gagner plus
+que l'objectif : avec un jour à +7 569 $, il faut 15 138 $ de gain (pas 10 000 $). Le risque qui baisse à l'approche de
+l'objectif suit maintenant ce **vrai objectif** (avant : il voyait l'objectif atteint et restait au plancher × 0,4, des
+trades de 60 $ qui ne débloquaient jamais le challenge). Historique : réussite inchangée (FTMO 64 / 68 / 82 %, Lucid
+63 / 66 / 71 %). Le panneau `/ftmo` affiche « 📏 Règle du meilleur jour : il faut … de gain au total (encore …) ».
+
+Les stratégies **journalières** suivies sont des achats de repli **seulement au-dessus de la moyenne 200 jours** :
+quand le Nasdaq, l'or et le S&P passent dessous (novembre 2026), elles ne tradent plus — voulu, c'est ce qui les
+protège d'un marché qui baisse. Le compte Lucid, qui ne prend que les journalières, attend alors.
+
 ### ⏱ Exécution « comme en vrai » (`FILL_DELAY_SEC`, 30 s par défaut)
 
 Les comptes FTMO et Lucid ne sont plus remplis au prix exact du signal : le bot attend **30 secondes** (le temps qu'un

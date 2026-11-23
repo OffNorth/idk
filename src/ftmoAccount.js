@@ -7,7 +7,7 @@
  * Deux comptes indépendants : « gold » (data/ftmo.json, stratégies FTMO_STRATEGIES) et « nas100 »
  * (data/ftmo-nas.json, stratégies FTMO_NAS_STRATEGIES).
  */
-const { ftmoDay, cmeDay } = require('./ftmo');
+const { ftmoDay, cmeDay, effectiveTarget } = require('./ftmo');
 const { RULES } = require('./sizing');
 
 /**
@@ -100,6 +100,10 @@ function createFtmo({ cfg, store, account = 'gold' }) {
   });
   /** Objectif de la phase en % (null en compte financé). */
   const targetPct = (s) => (s.phase === 'funded' ? null : P.target ?? TARGET[s.phase]);
+  /** Meilleur jour du challenge en cours ($). */
+  const bestDayOf = (s) => Math.max(0, ...Object.values(s.dayPnl || {}));
+  /** Objectif à vraiment atteindre (%) : relevé par la règle du meilleur jour après un gros jour. */
+  const effTarget = (s) => (targetPct(s) === null ? null : effectiveTarget(targetPct(s), P.bestDay, s.capital, bestDayOf(s)));
   /** Seuil de perte max : Lucid = plus haut solde de clôture − perte max ($), bloqué à capital + 100 $ ; FTMO = 10 %. */
   const maxFloor = (s) => (P.maxUsd
     ? Math.min((s.eodPeak ?? s.capital) - P.maxUsd, s.capital + (P.lockAt ?? Infinity))
@@ -332,7 +336,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         }
         // Levier dynamique (src/sizing.js, FTMO_SIZING) : le risque du trade est ajusté selon l'état du compte
         const rule = RULES[cfg.ftmoSizing] || RULES.fixe;
-        const mul = rule({ ...p, sid: `${ev.market.id}:${ev.strategy.id}` }, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: targetPct(s) ?? Infinity, open: Object.keys(s.open).length });
+        const mul = rule({ ...p, sid: `${ev.market.id}:${ev.strategy.id}` }, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: effTarget(s) ?? Infinity, open: Object.keys(s.open).length });
         if (!(mul > 0)) continue;
         const cap = (P.levCap && P.levCap[ev.market.id]) || cfg.ftmoLeverage; // levier max (par marché sur le compte Swing)
         const riskPct = A.riskOf(ev.market.id, ev.strategy);
@@ -464,6 +468,9 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       targetPct: tp,
       floor,
       progress: target ? Math.max(0, (eq - s.capital) / (target - s.capital)) : null,
+      // Règle du meilleur jour : gain total nécessaire (≥ objectif) et ce qu'il manque
+      needed: tp === null ? null : (s.capital * effTarget(s)) / 100,
+      bestDay: bestDayOf(s),
       dailyUsed: Number.isFinite(P.daily) ? Math.max(0, (s.dayStart - eq) / ((s.capital * P.daily) / 100)) : 0,
       maxUsed: P.maxUsd ? Math.max(0, 1 - (eq - floor) / P.maxUsd) : Math.max(0, ((P.trailing ? s.peak ?? s.capital : s.capital) - eq) / ((s.capital * P.max) / 100)),
       wins: s.closed.filter((c) => c.pnl > 0).length,
