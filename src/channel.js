@@ -5,6 +5,8 @@ const HTML = { parse_mode: 'HTML', link_preview_options: { is_disabled: true } }
 
 function explainTelegramError(err) {
   const d = err?.description || err?.message || String(err);
+  if (/upgraded to a supergroup/i.test(d)) return `${d} → le groupe est devenu un « supergroupe » : son ID a changé (nouvel ID : ${err?.parameters?.migrate_to_chat_id ?? '?'}) ; mets-le dans TELEGRAM_CHANNEL_ID.`;
+  if (/can't parse entities/i.test(d)) return `${d} → message mal formé (HTML) : signale-le pour correction.`;
   if (err?.error_code === 401 || /unauthorized/i.test(d)) return `${d} → TELEGRAM_BOT_TOKEN invalide (vérifie le token donné par @BotFather).`;
   if (/chat not found/i.test(d)) return `${d} → TELEGRAM_CHANNEL_ID est faux (utilise @nom_du_canal ou l'ID -100…).`;
   if (/not enough rights|need administrator|have no rights|not a member|kicked/i.test(d)) {
@@ -18,11 +20,49 @@ function explainTelegramError(err) {
  * @param {object} cfg
  * @param {import('./store').Store} store
  */
-function createChannel(api, cfg, store) {
+function createChannel(api, cfg, store, { onError = null } = {}) {
+  // Groupe devenu supergroupe (nouvel ID) : l'ID mémorisé remplace celui du .env tant que celui-ci n'a pas changé
+  const moved = store.getMeta('channelMoved');
+  if (moved && String(cfg.channelId) === String(moved.from)) cfg.channelId = String(moved.to);
+
+  /**
+   * Envoi sur le groupe avec suivi : dernier envoi réussi / dernière erreur (affichés par /version et /testcanal),
+   * nouvel essai automatique si le groupe est devenu un supergroupe, alerte (onError) en cas d'échec.
+   */
+  async function deliver(send) {
+    try {
+      const out = await send(cfg.channelId);
+      store.setMeta('channelLastOk', Date.now());
+      return out;
+    } catch (err) {
+      const to = err?.parameters?.migrate_to_chat_id;
+      if (to) {
+        store.setMeta('channelMoved', { from: String(cfg.channelId), to: String(to) });
+        console.warn(`[canal] groupe devenu supergroupe : ${cfg.channelId} → ${to} (mets ${to} dans TELEGRAM_CHANNEL_ID)`);
+        cfg.channelId = String(to);
+        const out = await send(cfg.channelId);
+        store.setMeta('channelLastOk', Date.now());
+        return out;
+      }
+      store.setMeta('channelLastError', { at: Date.now(), text: explainTelegramError(err) });
+      if (onError) Promise.resolve(onError(err)).catch(() => {});
+      throw err;
+    }
+  }
+
   /** Message HTML sur le canal (ignoré si aucun canal n'est configuré). */
   async function sendText(text, extra = {}) {
     if (!cfg.channelId) return null;
-    return api.sendMessage(cfg.channelId, text, { ...HTML, ...extra });
+    return deliver((id) => api.sendMessage(id, text, { ...HTML, ...extra }));
+  }
+
+  /** État des envois au groupe (une ligne, pour /version et /testcanal). */
+  function status() {
+    if (!cfg.channelId) return '📬 Groupe : TELEGRAM_CHANNEL_ID non défini → aucun message envoyé';
+    const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} j`; };
+    const ok = store.getMeta('channelLastOk');
+    const bad = store.getMeta('channelLastError');
+    return `📬 Groupe ${cfg.channelId} : ${ok ? `dernier envoi réussi il y a ${ago(ok)}` : 'aucun envoi réussi enregistré'}${bad && (!ok || bad.at > ok) ? ` · ❌ dernière erreur il y a ${ago(bad.at)} : ${bad.text}` : ''}`;
   }
 
   /** Le bilan périodique est-il dû (selon SUMMARY_HOURS) ? */
@@ -40,7 +80,7 @@ function createChannel(api, cfg, store) {
   async function sendPhoto(png, caption, extra = {}) {
     if (!cfg.channelId) return null;
     const { InputFile } = require('grammy');
-    return api.sendPhoto(cfg.channelId, new InputFile(png, 'image.png'), { caption, parse_mode: 'HTML', ...extra });
+    return deliver((id) => api.sendPhoto(id, new InputFile(png, 'image.png'), { caption, parse_mode: 'HTML', ...extra }));
   }
 
   /** Le graphique du portefeuille est-il dû (selon CHART_HOURS) ? */
@@ -85,7 +125,7 @@ function createChannel(api, cfg, store) {
     }
   }
 
-  return { sendText, sendPhoto, summaryDue, markSummary, chartDue, markChart, check };
+  return { sendText, sendPhoto, summaryDue, markSummary, chartDue, markChart, check, status };
 }
 
 module.exports = { createChannel, explainTelegramError, HTML };

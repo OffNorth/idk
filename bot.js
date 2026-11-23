@@ -29,7 +29,17 @@ if (!cfg.telegramToken) throw new Error('TELEGRAM_BOT_TOKEN manquant (voir .env.
 
 const bot = new Bot(cfg.telegramToken);
 const store = new Store(cfg.dataDir);
-const channel = createChannel(bot.api, cfg, store);
+// Échec d'envoi au groupe : message privé aux administrateurs (ALLOWED_USER_IDS), au plus une fois par heure
+let lastAlert = 0;
+const channel = createChannel(bot.api, cfg, store, {
+  onError: async (err) => {
+    if (Date.now() - lastAlert < 3_600_000) return;
+    lastAlert = Date.now();
+    for (const id of cfg.allowedUserIds) {
+      await bot.api.sendMessage(id, `⚠️ <b>Le bot n’arrive pas à envoyer dans le groupe</b>\n${esc(explainTelegramError(err))}\nTeste avec /testcanal.`, { parse_mode: 'HTML' }).catch(() => {});
+    }
+  },
+});
 const game = createGame({ cfg, store, api: bot.api });
 
 let paused = false;
@@ -190,6 +200,8 @@ bot.command('version', (ctx) => {
     `🔖 Version <code>${version()}</code> · Node ${process.version}`,
     `🏦 Compte FTMO : ${cfg.ftmoEnabled ? 'actif' : 'coupé'} · 🟣 compte Lucid : ${lucid.enabled ? `actif (${lucid.label})` : 'coupé (LUCID=0)'}`,
     `🤖 IA validatrice : ${cfg.ftmoAi} · 🧠 adaptation : ${cfg.autoAdapt ? `IA qui apprend${cfg.adaptStrategies ? ' + stratégies' : ''}` : 'coupée'} · risque : ${esc(cfg.ftmoSizing)}`,
+    esc(channel.status()),
+    `📣 Achats / ventes FTMO et Lucid annoncés dans le groupe : ${cfg.ftmoTradeMessages === false ? 'non (FTMO_TRADE_MESSAGES=0)' : paused ? 'en pause (/resume)' : 'oui'}`,
   ].join('\n'), HTML);
 });
 
@@ -313,10 +325,10 @@ bot.command('bilan', async (ctx) => {
 bot.command('testcanal', async (ctx) => {
   if (!cfg.channelId) return ctx.reply('❌ TELEGRAM_CHANNEL_ID n’est pas défini dans le .env.');
   try {
-    await channel.sendText('✅ <b>Test</b> : le bot de paper trading (or + Nasdaq 100) peut publier ici.');
-    await ctx.reply('✅ Message de test publié sur le canal.');
+    await channel.sendText('✅ <b>Test</b> : le bot peut publier ici (achats / ventes des comptes FTMO et Lucid).');
+    await ctx.reply(`✅ Message de test publié sur le groupe.\n${esc(channel.status())}${paused ? '\n⏸ Publications en pause : /resume pour les relancer.' : ''}${cfg.ftmoTradeMessages === false ? '\n⚠️ FTMO_TRADE_MESSAGES=0 : les trades ne sont pas annoncés.' : ''}`);
   } catch (err) {
-    await ctx.reply(`❌ ${explainTelegramError(err)}`);
+    await ctx.reply(`❌ ${esc(explainTelegramError(err))}\n${esc(channel.status())}`);
   }
 });
 
