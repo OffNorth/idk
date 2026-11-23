@@ -42,6 +42,17 @@ function strategiesLine(list) {
  * Légende Telegram (1 024 caractères au plus) construite ligne par ligne : une ligne n'est ajoutée que si elle tient
  * en entier (jamais de balise HTML ou d'emoji coupé, ce que Telegram refuse).
  */
+/** Ligne « Time Machine » (chances du compte en cours) ; rien si la simulation échoue. */
+function timeMachineLine(cfg, store, accountId) {
+  if (!cfg.timeMachine) return [];
+  try {
+    return [require('./timeMachine').line(require('./timeMachine').cached(cfg, store, accountId))];
+  } catch (err) {
+    console.warn('[time machine]', err.message);
+    return [];
+  }
+}
+
 /** Retraits simulés du compte financé (et règle du prochain retrait). */
 function payoutText(s, P, isLucid) {
   const f = s.funded || {};
@@ -240,8 +251,9 @@ async function render(cfg, store, view, marketId, args = []) {
       `dont ${signedMoney(fst.unrealized)} latents sur ${Object.keys(s.open).length} position(s) ouverte(s) · réalisé ${signedMoney(fst.realized)} sur ${s.closed.length} trade(s) clôturé(s)${s.skipped ? ` · ${s.skipped} signal(s) opposé(s) ignoré(s)` : ''}`,
       strategiesLine(fst.account.strategies),
       `Risque par trade : ${riskText(cfg, fst.account)}${protectText(cfg, s, fst.needed ? ((fst.needed / s.capital) * 100) : fst.targetPct)}`,
-      ...(fst.target && fst.needed > fst.target - s.capital + 1 ? [`📏 Règle du meilleur jour (≤ ${P.bestDay} % du gain) : ton meilleur jour fait ${money(fst.bestDay)} → il faut <b>${money(fst.needed)}</b> de gain au total (encore ${money(Math.max(0, fst.needed - (fst.equity - s.capital)))}) ; la taille des trades suit ce vrai objectif`] : []),
+      ...(fst.target && fst.needed > fst.target - s.capital + 1 ? [`📏 Règle du meilleur jour (≤ ${P.bestDay} % du gain) : ton meilleur jour fait ${money(fst.bestDay)} → il faut <b>${money(fst.needed)}</b> de gain au total (encore ${money(Math.max(0, fst.needed - (fst.equity - s.capital)))})${String(cfg.ftmoSizing).startsWith('objectif') ? ' ; la taille des trades suit ce vrai objectif' : ''}`] : []),
       ...aiText(cfg, s),
+      ...timeMachineLine(cfg, store, isLucid ? 'lucid' : fst.account.id),
       ...(rep.n ? [refusedLine(rep)] : []),
       ...(cfg.autoAdapt ? [require('./adapt').summary(cfg, store)] : []),
       ...(s.history || []).slice(-3).map((h) => `• ${isLucid ? 'évaluation' : 'challenge'} n° ${h.attempt}${isLucid ? '' : `, étape ${h.phase}`} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),

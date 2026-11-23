@@ -655,6 +655,17 @@ forcée » (la réponse dit si, en vrai, elle aurait été refusée et pourquoi)
 repart de son capital en **compte financé** : plus d'objectif, donc **risque normal** (plus de réduction à l'approche
 de l'objectif), mêmes limites de perte, retraits simulés. Les positions ouvertes sont gardées.
 
+### 🔮 Time Machine (`/timemachine`, `npm run mc-build`)
+
+Chances du compte **en cours** (FTMO et Lucid) : 1 000 années simulées, chacune enchaîne des journées de trading
+tirées au hasard parmi les vraies journées simulées des stratégies du bot (`src/mcDays.json`, nov. 2024 → nov. 2026,
+3 257 trades sur 500 jours ouvrés ; les trades d'une même journée restent ensemble), rejouées avec les mêmes règles
+que les backtests, les réglages actuels, en partant de l'**état actuel** du compte (solde, plus haut, meilleur jour,
+jours déjà tradés). Ligne « 🔮 » dans `/ftmo` et `/lucid` ; détail (fourchette de délai, causes d'échec) avec
+`/timemachine` ; compte financé : part des comptes encore en vie à 3 / 6 / 12 mois. Contrôle : depuis un compte FTMO
+neuf, 70 % de réussite (backtest sur la même période : 71 %). Positions ouvertes et IA validatrice non comptées ;
+`npm run mc-build` régénère les journées (données de recherche nécessaires). `TIME_MACHINE=0` pour couper.
+
 ### 📏 Règle du meilleur jour et taille des trades
 
 Après un très gros jour, la règle du meilleur jour (FTMO 1 étape ≤ 50 %, Lucid ≤ 40 % du gain) oblige à gagner plus

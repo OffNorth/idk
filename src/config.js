@@ -176,6 +176,8 @@ module.exports = {
   lucidPayoutMinDay: num('LUCID_PAYOUT_MIN_DAY', 150),
   // Délai entre le signal et l'exécution sur les comptes FTMO / Lucid (comme un vrai ordre) : l'entrée et les sorties sur
   // signal se font au cours FILL_DELAY_SEC secondes plus tard ; stops et objectifs (ordres posés à l'avance) restent au niveau
+  // Time Machine (src/timeMachine.js) : chances du compte en cours dans /ftmo et /lucid (coupé pendant les tests)
+  timeMachine: num('TIME_MACHINE', 1) === 1 && !process.env.NODE_TEST_CONTEXT,
   fillDelaySec: process.env.NODE_TEST_CONTEXT && !process.env.FILL_DELAY_SEC ? 0 : Math.max(0, num('FILL_DELAY_SEC', 30)),
   ftmoRisk: upgraded('FTMO_RISK_PCT', ['0.5', '0.35', '1.5'], 2), // % du solde risqué par trade (distance au stop)
   ftmoLeverage: num('FTMO_LEVERAGE', 30),

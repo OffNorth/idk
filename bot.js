@@ -196,6 +196,11 @@ bot.command('version', (ctx) => {
 bot.command('verif', (ctx) => ctx.reply(require('./src/verify').verifyReport(cfg, store), HTML));
 
 // Passage forcé en compte financé (admin) : /financer (FTMO et Lucid), /financer ftmo, /financer lucid
+bot.command('timemachine', async (ctx) => {
+  await ctx.reply('🔮 Simulation de 1 000 années en cours…');
+  return ctx.reply(require('./src/timeMachine').report(cfg, store), HTML);
+});
+
 bot.command('financer', (ctx) => ctx.reply(require('./src/ftmoAccount').financerReport(cfg, store, ctx.match), HTML));
 
 // Adaptation automatique (admin) : /adapt (état), /adapt now (revue tout de suite), /adapt reset (retour à l'origine)
@@ -371,6 +376,7 @@ console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) �
     { command: 'graphique', description: '🕯 Cours en bougies : /graphique (Nasdaq) · /graphique or' },
     { command: 'ftmo', description: '🏦 Comptes FTMO simulés : /ftmo (Nasdaq) · /ftmo or' },
     { command: 'lucid', description: '🟣 Compte Lucid simulé (LucidFlex, micro-futures)' },
+    { command: 'timemachine', description: '🔮 Chances de réussir le challenge en cours (1 000 années simulées)' },
     { command: 'financer', description: '🏦 Passer les comptes simulés en compte financé (admin)' },
     { command: 'interface', description: '🖥 Interface en direct (graphiques, comptes FTMO / Lucid)' },
     { command: 'video', description: '🎬 Vidéo PnL d’un trade (fond au choix)' },

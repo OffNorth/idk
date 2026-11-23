@@ -58,7 +58,7 @@ const rMultiple = (t) => t.pnlPct / Math.max(1e-9, stopPct(t));
  * Retourne l'issue (target / daily / maxloss / open), le solde et le nombre de jours de trading.
  */
 function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity, riskMul = 1, sizer = null, trailingMax = false, bestDayPct = 0, levCap = null,
-  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true } = {}) {
+  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true, start = null } = {}) {
   const maxLoss = maxLossUsd ?? (capital * maxPct) / 100;
   const events = [];
   for (const t of trades) {
@@ -66,15 +66,16 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
     events.push({ t: t.entryT, kind: 'open', tr: t }, { t: t.exitT, kind: 'close', tr: t });
   }
   events.sort((a, b) => a.t - b.t || (a.kind === 'close' ? -1 : 1));
-  let balance = capital;
-  let peak = capital; // plus haut solde (perte max suiveuse, challenge 1 étape)
-  let eodPeak = capital; // plus haut solde de clôture de journée (perte max suiveuse fin de journée, Lucid)
+  // start (Time Machine) : état actuel du compte { balance, peak, eodPeak, dayPnl: { jour: gain }, days (nombre) }
+  let balance = start?.balance ?? capital;
+  let peak = start?.peak ?? balance; // plus haut solde (perte max suiveuse, challenge 1 étape)
+  let eodPeak = start?.eodPeak ?? balance; // plus haut solde de clôture de journée (perte max suiveuse fin de journée, Lucid)
   let lots = 0; // contrats ouverts (futures)
   const paid = []; // versements (phase financée)
-  const dayPnl = new Map(); // gain soldé par jour (règle du meilleur jour)
-  let dayStart = capital;
+  const dayPnl = new Map(Object.entries(start?.dayPnl || {})); // gain soldé par jour (règle du meilleur jour)
+  let dayStart = balance;
   let day = null;
-  const days = new Set();
+  const days = new Set(Array.from({ length: start?.days || 0 }, (_, k) => `avant-${k}`)); // jours déjà tradés
   const open = new Map();
   for (const e of events) {
     const d = dayOf(e.t);
