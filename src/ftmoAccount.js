@@ -478,7 +478,53 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     };
   }
 
-  return { onCycle, status, load, refusedReport, follows, archived: () => store.loadJson(ARCHIVE, []), account: A, reset: () => save(fresh()) };
+  /**
+   * Passage forcé en compte financé (commande /financer) : l'évaluation en cours est notée « réussite forcée » (même si
+   * une règle, ex. le meilleur jour, la bloquait), ses trades sont archivés, le compte repart du capital en phase
+   * financée : plus d'objectif, donc plus de réduction du risque à l'approche de l'objectif. Positions ouvertes gardées.
+   */
+  function forceFunded(t = Math.floor(Date.now() / 1000)) {
+    const s = load();
+    if (s.phase === 'funded') return { already: true, s };
+    const gain = s.balance - s.capital;
+    const best = bestDayOf(s);
+    const blocked = [];
+    if (targetPct(s) !== null && s.balance < s.capital * (1 + targetPct(s) / 100)) blocked.push(`objectif +${targetPct(s)} % pas atteint`);
+    if (P.bestDay > 0 && gain > 0 && best > (gain * P.bestDay) / 100) blocked.push(`meilleur jour ${Math.round((best / gain) * 100)} % du gain > ${P.bestDay} %`);
+    if (s.days.length < (P.minDays ?? 4)) blocked.push(`${s.days.length} jour(s) de trading sur ${P.minDays ?? 4}`);
+    const was = { attempt: s.attempt, phase: s.phase, balance: s.balance, gainPct: (gain / s.capital) * 100, blocked };
+    s.history = [...(s.history || []), { attempt: s.attempt, phase: s.phase, outcome: 'réussite forcée (/financer)', ...(blocked.length ? { why: blocked.join(', ') } : {}), at: t, balance: s.balance, days: s.days.length }].slice(-20);
+    archive(s);
+    Object.assign(s, { phase: 'funded', balance: s.capital, dayStart: s.capital, days: [], closed: [], startedAt: t, funded: { since: t, forced: true }, peak: s.capital, eodPeak: s.capital, dayPnl: {}, waitDay: null });
+    save(s);
+    return { already: false, was, s };
+  }
+
+  return { onCycle, status, load, refusedReport, follows, forceFunded, archived: () => store.loadJson(ARCHIVE, []), account: A, reset: () => save(fresh()) };
 }
 
-module.exports = { createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram, FTMO_PAYOUT };
+/** /financer : passe les comptes simulés (tous, « ftmo » ou « lucid ») en compte financé ; texte de réponse (HTML). */
+function financerReport(cfg, store, arg = '') {
+  const a0 = String(arg || '').trim().toLowerCase();
+  const accts = ftmoAccounts(cfg).filter((a) => (a0 === 'lucid' ? a.id === 'lucid' : a0 === 'ftmo' ? a.id !== 'lucid' : true));
+  if (!accts.length) return 'Aucun compte simulé actif. Usage : /financer · /financer ftmo · /financer lucid';
+  const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
+  const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const lines = ['🏦 <b>Passage en compte financé (simulation)</b>'];
+  for (const a of accts) {
+    const r = createFtmo({ cfg, store, account: a.id }).forceFunded();
+    const name = `${a.firm || 'FTMO'} ${a.emoji} ${esc(a.label)}`;
+    if (r.already) {
+      lines.push(`• ${name} : déjà en compte financé`);
+      continue;
+    }
+    const w = r.was;
+    lines.push(`• ${name} : évaluation n° ${w.attempt} arrêtée à ${money(w.balance)} (${w.gainPct >= 0 ? '+' : ''}${w.gainPct.toFixed(2)} %)${w.blocked.length ? ` — en vrai elle ne serait pas validée : ${esc(w.blocked.join(', '))}` : ''}`);
+    const nOpen = Object.keys(r.s.open).length;
+    lines.push(`  → compte financé de ${money(r.s.capital)}, risque normal (plus d’objectif), retraits simulés${nOpen ? `, ${nOpen} position(s) ouverte(s) gardée(s)` : ''}`);
+  }
+  lines.push('', '<i>Simulation : les trades de l’évaluation restent dans l’archive.</i>');
+  return lines.join('\n');
+}
+
+module.exports = { createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram, FTMO_PAYOUT, financerReport };

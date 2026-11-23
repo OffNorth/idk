@@ -645,6 +645,13 @@ pour le trader ; FTMO : tout le gain tous les 14 jours, 80 %, le compte repart d
 dans le groupe, total dans `/ftmo` et `/lucid`. Le risque reste le même qu'en évaluation : le réduire de moitié en
 financé diminue le gain net par évaluation achetée sur toutes les périodes.
 
+### 🏦 `/financer` : passer en compte financé (admin)
+
+`/financer` (les deux comptes), `/financer ftmo` ou `/financer lucid` : l'évaluation en cours est notée « réussite
+forcée » (la réponse dit si, en vrai, elle aurait été refusée et pourquoi), ses trades vont dans l'archive, et le compte
+repart de son capital en **compte financé** : plus d'objectif, donc **risque normal** (plus de réduction à l'approche
+de l'objectif), mêmes limites de perte, retraits simulés. Les positions ouvertes sont gardées.
+
 ### 📏 Règle du meilleur jour et taille des trades
 
 Après un très gros jour, la règle du meilleur jour (FTMO 1 étape ≤ 50 %, Lucid ≤ 40 % du gain) oblige à gagner plus

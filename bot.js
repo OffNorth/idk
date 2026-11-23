@@ -62,7 +62,7 @@ function tick() {
 /* Accès                                                               */
 /* ------------------------------------------------------------------ */
 
-const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'export', 'video', 'fonds', 'signature']);
+const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'export', 'video', 'fonds', 'signature', 'financer']);
 const isAdmin = (ctx) => !cfg.allowedUserIds.size || (ctx.from && cfg.allowedUserIds.has(String(ctx.from.id)));
 
 // Les boutons et les commandes de consultation sont ouverts à tout le groupe ; les réglages sont réservés.
@@ -194,6 +194,9 @@ bot.command('version', (ctx) => {
 });
 
 bot.command('verif', (ctx) => ctx.reply(require('./src/verify').verifyReport(cfg, store), HTML));
+
+// Passage forcé en compte financé (admin) : /financer (FTMO et Lucid), /financer ftmo, /financer lucid
+bot.command('financer', (ctx) => ctx.reply(require('./src/ftmoAccount').financerReport(cfg, store, ctx.match), HTML));
 
 // Adaptation automatique (admin) : /adapt (état), /adapt now (revue tout de suite), /adapt reset (retour à l'origine)
 bot.command('adapt', async (ctx) => {
@@ -368,6 +371,7 @@ console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) �
     { command: 'graphique', description: '🕯 Cours en bougies : /graphique (Nasdaq) · /graphique or' },
     { command: 'ftmo', description: '🏦 Comptes FTMO simulés : /ftmo (Nasdaq) · /ftmo or' },
     { command: 'lucid', description: '🟣 Compte Lucid simulé (LucidFlex, micro-futures)' },
+    { command: 'financer', description: '🏦 Passer les comptes simulés en compte financé (admin)' },
     { command: 'interface', description: '🖥 Interface en direct (graphiques, comptes FTMO / Lucid)' },
     { command: 'video', description: '🎬 Vidéo PnL d’un trade (fond au choix)' },
     { command: 'version', description: '🔖 Version du bot en service' },

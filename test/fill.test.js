@@ -137,3 +137,26 @@ test('règle du meilleur jour : objectif effectif pour la taille des trades (pas
   const v = await require('../src/interactive').render(cfg, store, 'f', 'gold');
   assert.match(v.caption, /Règle du meilleur jour/);
 });
+
+test('/financer : évaluation bloquée → compte financé, risque normal (plus de réduction), positions gardées', () => {
+  const { cfg, store } = setup({ ftmoSizing: 'objectif : dégressif doux', ftmoRisk: 1 });
+  const { createFtmo, financerReport } = require('../src/ftmoAccount');
+  const f = createFtmo({ cfg, store });
+  store.saveJson('ftmo.json', { ...f.load(), balance: 110270, peak: 110270, dayStart: 110270, day: '2026-11-16', days: ['a', 'b', 'c'], dayPnl: { a: 2768, b: 7569, c: -67 }, closed: [{ market: 'gold', sid: 'x_rsi2', entryT: 1, exitT: 2, pnl: 7569 }] });
+  const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
+  f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0);
+  const txt = financerReport(cfg, store, 'ftmo');
+  assert.match(txt, /ne serait pas validée : meilleur jour 74 % du gain &gt; 50 %/);
+  const s = f.load();
+  assert.strictEqual(s.phase, 'funded');
+  assert.strictEqual(s.balance, 100000);
+  assert.strictEqual(Object.keys(s.open).length, 1, 'position ouverte gardée');
+  assert.match(s.history.at(-1).outcome, /réussite forcée/);
+  assert.ok(f.archived().some((t) => t.pnl === 7569), 'trades de l’évaluation archivés');
+  // Nouveau trade : risque plein (× 1) en compte financé
+  const pos2 = { ...pos, side: 'long', entryT: T0 + 60 };
+  const o = f.onCycle([{ type: 'open', market, strategy: { ...strategy, id: 'x_rsi2' }, pos: pos2 }], { gold: 4000 }, T0 + 60).find((m) => m.type === 'open');
+  assert.ok(o);
+  assert.strictEqual(o.p.mul, 1);
+  assert.match(financerReport(cfg, store, 'ftmo'), /déjà en compte financé/);
+});
