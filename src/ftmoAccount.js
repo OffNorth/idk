@@ -529,4 +529,24 @@ function financerReport(cfg, store, arg = '') {
   return lines.join('\n');
 }
 
-module.exports = { createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram, FTMO_PAYOUT, financerReport };
+const ACCOUNT_FILES = ['ftmo.json', 'ftmo-nas.json', 'lucid.json'];
+/** Positions ouvertes sur ce marché dans un des comptes FTMO / Lucid ? */
+function openOn(store, marketId) {
+  return ACCOUNT_FILES.some((f) => Object.values(store.loadJson(f, null)?.open || {}).some((p) => p.market === marketId));
+}
+/** Décale entrée / stop / prix du signal des positions ouvertes d'un marché (changement de source des cours). */
+function shiftOpen(store, marketId, shift) {
+  for (const f of ACCOUNT_FILES) {
+    const s = store.loadJson(f, null);
+    if (!s?.open) continue;
+    let n = 0;
+    for (const p of Object.values(s.open)) {
+      if (p.market !== marketId) continue;
+      for (const k of ['entry', 'sl', 'signal']) if (Number.isFinite(p[k])) p[k] += shift;
+      n++;
+    }
+    if (n) store.saveJson(f, s);
+  }
+}
+
+module.exports = { shiftOpen, openOn, createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram, FTMO_PAYOUT, financerReport };

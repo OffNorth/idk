@@ -667,6 +667,24 @@ Les stratégies **journalières** suivies sont des achats de repli **seulement a
 quand le Nasdaq, l'or et le S&P passent dessous (novembre 2026), elles ne tradent plus — voulu, c'est ce qui les
 protège d'un marché qui baisse. Le compte Lucid, qui ne prend que les journalières, attend alors.
 
+### 📡 Bougies en temps réel : OANDA (`OANDA_TOKEN`)
+
+Par défaut, les bougies viennent de Yahoo Finance, où l'or (future GC=F) est retardé d'environ 10 min. Avec un
+**compte démo OANDA** (gratuit, « fxTrade Practice » → « Manage API Access » → jeton) et `OANDA_TOKEN=…` dans le
+`.env`, les bougies **intraday** (1 / 5 / 15 min ; 1 h du S&P et de l'EUR/USD, construites sur le 5 min) viennent
+d'OANDA en temps réel : `XAU_USD`, `NAS100_USD`, `SPX500_USD`, `EUR_USD` (prix CFD, comme un compte FTMO). Nasdaq et
+S&P : seulement la séance de New York (9 h 30 → 16 h), comme l'indice chez Yahoo. Restent sur Yahoo : les bougies
+**journalières** (mêmes données que les recherches) et le 1 h de l'or et du Nasdaq (stratégies paper seulement).
+Le cours « 30 s après le signal » vient aussi d'OANDA.
+
+- **Changement de source sans faux stop** : le CFD ne cote pas exactement comme GC=F / ^NDX ; au premier passage, le
+  bot mesure l'écart (médiane sur les dernières bougies 5 min communes) et décale d'autant les positions ouvertes du
+  marché (paper, FTMO, Lucid).
+- **Panne OANDA** : passage ignoré (dernières bougies gardées) ; au-delà de 30 min, retour sur Yahoo (avec décalage).
+- `/verif` affiche la source de chaque marché et l'âge de la dernière bougie 5 min. `INTRADAY_FEED=yahoo` pour forcer
+  Yahoo, `OANDA_ENV=live` pour un compte réel. Volume OANDA = nombre de cotations (pas de contrats) : le VWAP de
+  `n_noise` est un peu différent de celui des recherches.
+
 ### ⏱ Exécution « comme en vrai » (`FILL_DELAY_SEC`, 30 s par défaut)
 
 Les comptes FTMO et Lucid ne sont plus remplis au prix exact du signal : le bot attend **30 secondes** (le temps qu'un

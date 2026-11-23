@@ -81,6 +81,11 @@ module.exports = {
   },
   // Source des cours de l'or : future (GC=F Yahoo, comme l'or au comptant d'un compte FTMO, défaut) ou paxg (ancien)
   goldFeed: process.env.GOLD_FEED || 'future',
+  // Bougies intraday (1 / 5 / 15 min) en temps réel via OANDA (compte démo gratuit) : OANDA_TOKEN dans le .env ;
+  // sans jeton, Yahoo (or GC=F retardé d'environ 10 min). INTRADAY_FEED=yahoo pour forcer Yahoo.
+  oandaToken: (process.env.OANDA_TOKEN || '').trim(),
+  oandaEnv: process.env.OANDA_ENV === 'live' ? 'live' : 'practice',
+  intradayFeed: (process.env.INTRADAY_FEED || '').trim() === 'yahoo' ? 'yahoo' : 'auto',
   goldFeePct: num('GOLD_FEE_PCT', 0.05),
   goldScalpFeePct: num('GOLD_SCALP_FEE_PCT', 0.005), // stratégies 1 / 5 / 15 min (CFD)
   // Par défaut : les combinaisons retenues par le banc d'essai (npm run research) + la référence

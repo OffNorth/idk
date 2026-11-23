@@ -299,6 +299,32 @@ class MarketTrader {
     });
   }
 
+  /**
+   * Passage d'une source de bougies à l'autre : écart de cotation mesuré (M.basis : OANDA − Yahoo sur les mêmes
+   * bougies 5 min), positions ouvertes du marché décalées d'autant (paper, comptes FTMO / Lucid) pour qu'un stop ne
+   * soit pas touché juste à cause du changement de source.
+   */
+  async switchFeed(from, to) {
+    const M = this.market;
+    const paperOpen = Object.values(this.state.accounts).filter((a) => a.position);
+    const { shiftOpen, openOn } = require('./ftmoAccount');
+    let shift = 0;
+    if ((paperOpen.length || openOn(this.store, M.id)) && M.basis) {
+      const basis = await M.basis();
+      if (basis === null) console.warn(`[${M.id}] écart ${from} → ${to} non mesurable : positions gardées telles quelles`);
+      else shift = to === 'oanda' ? basis : -basis;
+    }
+    if (shift) {
+      for (const a of paperOpen) {
+        for (const k of ['entry', 'sl', 'initSl', 'tp', 'best']) if (Number.isFinite(a.position[k])) a.position[k] += shift;
+      }
+      shiftOpen(this.store, M.id, shift);
+    }
+    this.state.feed = to;
+    this.state.feedSwitch = { at: Math.floor(Date.now() / 1000), from, to, shift };
+    console.log(`[${M.id}] bougies : ${from} → ${to}${shift ? ` (positions décalées de ${shift.toFixed(Math.abs(shift) < 1 ? 5 : 2)})` : ''}`);
+  }
+
   /** Un passage pour toutes les stratégies. Retourne les événements à publier. */
   async run() {
     const M = this.market;
@@ -319,6 +345,16 @@ class MarketTrader {
       console.warn(`[${M.id}] prix indisponible, passage ignoré`);
       return [];
     }
+    // Changement de source des bougies (Yahoo ↔ OANDA) : les positions ouvertes sont décalées de l'écart de cotation
+    const feed = data.feed || 'yahoo';
+    if (feed !== (this.state.feed || 'yahoo')) {
+      try {
+        await this.switchFeed(this.state.feed || 'yahoo', feed);
+      } catch (err) {
+        console.warn(`[${M.id}] changement de source reporté (${err.message})`);
+        return [];
+      }
+    }
     const now = Math.floor(Date.now() / 1000);
     // Indicateurs calculés une fois par unité de temps et par famille de stratégies, sur les bougies clôturées
     const kindOf = (s) => (s.compute ? 'scalp2' : s.intraday ? 'intraday' : 'all');
@@ -337,6 +373,7 @@ class MarketTrader {
     const events = [];
     this.state.lastPrice = price;
     this.state.lastUpdate = Date.now();
+    this.state.lastBarT = stops?.[stops.length - 1]?.t ?? null; // début de la dernière bougie 5 min (retard de la source)
     // Contexte de marché pour l'IA validatrice du compte FTMO (60 dernières bougies journalières, VIX)
     if (daily?.length) this.state.ctx = { daily: daily.slice(-60).map((k) => ({ t: k.t, c: k.c })), vix: vix?.length ? vix.slice(-5).map((k) => ({ t: k.t, c: k.c })) : null };
 

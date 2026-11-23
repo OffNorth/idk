@@ -1,7 +1,7 @@
 /**
  * Exécution « comme en vrai » des comptes FTMO / Lucid simulés : un ordre n'est jamais rempli au prix exact du
  * signal. On attend FILL_DELAY_SEC secondes (temps de réaction d'un vrai bot : réception du signal, envoi de l'ordre)
- * puis on prend le cours de ce moment-là (dernière bougie 1 min de Yahoo, même source que les signaux).
+ * puis on prend le cours de ce moment-là (OANDA en temps réel si OANDA_TOKEN, sinon dernière bougie 1 min de Yahoo).
  * Les stops et objectifs (ordres posés à l'avance chez le courtier) ne sont pas concernés.
  */
 const { fetchYahoo } = require('./yahoo');
@@ -21,6 +21,12 @@ function marketsToFill(events, accounts) {
 
 /** Cours actuel d'un marché (null si indisponible ou marché fermé : bougie de plus de 15 min). */
 async function quoteNow(cfg, id, fetcher = fetchYahoo) {
+  // Bougies OANDA (OANDA_TOKEN) : cours OANDA en temps réel (même source que les signaux) ; Nasdaq / S&P hors séance :
+  // pas de cours (l'indice ne cote pas, le signal garde son prix, comme avec Yahoo)
+  if (require('./markets').useOanda(cfg) && fetcher === fetchYahoo) {
+    if (['nas100', 'spx'].includes(id) && !require('./oanda').nySession([{ t: Math.floor(Date.now() / 1000) }]).length) return null;
+    return require('./oanda').oandaQuote(cfg, id);
+  }
   if (!SYMBOL[id] || (id === 'gold' && cfg.goldFeed === 'paxg')) return null;
   try {
     const c = await fetcher(SYMBOL[id], '1m', { range: '1d', attempts: 2, timeoutMs: 10_000 });
