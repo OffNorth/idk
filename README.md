@@ -585,8 +585,11 @@ Réussite en moins d'un an (2009–2019 / 2020–2026 / nov. 2024 → nov. 2026)
 | **LucidFlex 50K** | **sans intraday · journalières 2,5 %** | **62 % / 67 % / 73 %** | 100 à 187 j |
 
 Les stratégies intraday ajoutent surtout de la variance : sur FTMO elles restent (≈ 6 trades par jour demandés) mais en
-tout petit ; sur Lucid (perte max serrée) elles sont retirées (`LUCID_INTRADAY_RISK_PCT=0`), le compte ne trade
-que les journalières (quelques trades par mois). Contrepartie : des challenges plus longs.
+tout petit ; sur Lucid (perte max serrée), l'intraday **or** est retiré (les cassures de Londres font chuter la
+réussite : 63 → 43 % sur 2009–2019 à 0,15 %), mais l'intraday **Nasdaq** (`n_noise`, `n_orb5s`, `n_mom10`,
+`LUCID_INTRADAY_STRATEGIES`) est pris à **0,2 %** (`LUCID_INTRADAY_RISK_PCT`) : 88 % de réussite en moins d'un an sur
+nov. 2024 → nov. 2026 contre 71 % sans (seule période avec l'intraday Nasdaq, 2 ans : à confirmer en direct). Le compte
+Lucid ne reste donc plus à l'arrêt quand les journalières sont en pause (marchés sous leur moyenne 200 jours).
 
 Stratégies d'événements (`src/events.js`) : **veille de la Fed** (Lucca & Moench 2015) et **veille de jour férié**
 (Ariel 1990) sur S&P 500, Nasdaq, or. Fortes sur 2009–2012 et 2020–2026 mais perdantes sur 2017–2019 (effet

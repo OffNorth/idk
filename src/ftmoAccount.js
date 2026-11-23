@@ -48,8 +48,10 @@ function accountOf(cfg, id = 'gold') {
     return {
       ...base, id: 'lucid', firm: 'Lucid', label: `LucidFlex ${Math.round(capital / 1000)}K`, emoji: '🟣', file: 'lucid.json',
       enabled: !!(cfg.ftmoEnabled && cfg.lucidEnabled), capital, program: lucidProgram(capital, cfg),
-      // Intraday : LUCID_INTRADAY_RISK_PCT (0 par défaut = pas pris) ; journalières : risque FTMO × LUCID_RISK_MUL
-      riskOf: (m, st) => (st && st.tf && st.tf !== '1d' ? cfg.lucidIntradayRisk ?? 0 : base.riskOf(m, st) * mul),
+      // Intraday : seulement LUCID_INTRADAY_STRATEGIES, à LUCID_INTRADAY_RISK_PCT ; journalières : risque FTMO × LUCID_RISK_MUL
+      riskOf: (m, st) => (st && st.tf && st.tf !== '1d'
+        ? ((cfg.lucidIntradayStrategies || []).includes(`${m}:${st.id}`) ? cfg.lucidIntradayRisk ?? 0 : 0)
+        : base.riskOf(m, st) * mul),
     };
   }
   if (id === 'nas100') {

@@ -160,3 +160,17 @@ test('/financer : évaluation bloquée → compte financé, risque normal (plus 
   assert.strictEqual(o.p.mul, 1);
   assert.match(financerReport(cfg, store, 'ftmo'), /déjà en compte financé/);
 });
+
+test('Lucid : intraday Nasdaq choisi pris à 0,2 % (1 MNQ), intraday or ignoré', () => {
+  const { cfg, store } = setup({ lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1.25, lucidIntradayRisk: 0.2, lucidIntradayStrategies: ['nas100:n_noise'], ftmoStrategies: ['gold:g_orb30'], ftmoNasStrategies: ['nas100:n_noise'] });
+  const lu = require('../src/ftmoAccount').createFtmo({ cfg, store, account: 'lucid' });
+  const nas = { id: 'nas100', name: 'Nasdaq 100' };
+  // Risque 0,2 % de 50 000 $ = 100 $ ; stop 0,25 % sur 26 000 → 65 $ par MNQ (52 000 $) → 1 contrat
+  const out = lu.onCycle([{ type: 'open', market: nas, strategy: { id: 'n_noise', name: 'noise', tf: '5m' }, pos: { side: 'short', entry: 26000, sl: 26065, initSl: 26065, entryT: T0 } }], { nas100: 26000 }, T0);
+  const o = out.find((x) => x.type === 'open');
+  assert.ok(o, 'n_noise pris');
+  assert.strictEqual(o.p.n, 1);
+  assert.strictEqual(o.p.contract, 'MNQ');
+  const out2 = lu.onCycle([{ type: 'open', market, strategy: { id: 'g_orb30', name: 'orb', tf: '5m' }, pos: { side: 'long', entry: 4000, sl: 3990, initSl: 3990, entryT: T0 + 60 } }], { gold: 4000, nas100: 26000 }, T0 + 60);
+  assert.ok(!out2.some((x) => x.type === 'open'), 'intraday or non pris');
+});

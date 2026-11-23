@@ -159,7 +159,11 @@ module.exports = {
   lucidCapital: num('LUCID_CAPITAL', 50000), // 50000 ou 100000
   // npm run lucid-tune : Lucid sans intraday, journalières à 2,5 % → 62 % / 67 % / 73 % (contre 13 % / 11 % / 21 %)
   lucidRiskMul: upgraded('LUCID_RISK_MUL', ['1'], 1.25), // × le risque des journalières du compte FTMO (2 % → 2,5 %)
-  lucidIntradayRisk: num('LUCID_INTRADAY_RISK_PCT', 0), // 0 = le compte Lucid ne prend pas les stratégies intraday
+  // Intraday sur Lucid : seulement l'intraday Nasdaq (LUCID_INTRADAY_STRATEGIES) à LUCID_INTRADAY_RISK_PCT (0 = aucun).
+  // Recherche (nov. 2026, 40 % de régularité) : Nasdaq noise + orb5s + mom10 à 0,2 % → 88 % de réussite < 1 an sur
+  // nov. 24–26 (71 % sans) ; l'intraday or (cassures de Londres) fait chuter la réussite (perte max 2 000 $ trop serrée)
+  lucidIntradayRisk: num('LUCID_INTRADAY_RISK_PCT', 0.2),
+  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_noise,nas100:n_orb5s,nas100:n_mom10'),
   // Règle de régularité de l'évaluation LucidFlex : meilleur jour ≤ 40 % du gain (40 % depuis le 19/10/2026, 50 % en option payante)
   lucidConsistency: num('LUCID_CONSISTENCY_PCT', 40),
   // Retraits LucidFlex (compte financé) : après 5 jours gagnants ≥ LUCID_PAYOUT_MIN_DAY $, ≤ 50 % du gain, 2 000 $ (50K) /
