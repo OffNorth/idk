@@ -278,8 +278,37 @@ async function run({ live = false, log = console.log } = {}) {
     marketDown = false;
     step('panne : données de marché indisponibles → passage sans plantage', errors.length === e0);
 
+    // ---------------------------------------------------------------- copies en privé, diagnostic, Lucid
+    const dmCount = () => calls.filter((c) => /^send(Message|Photo)$/.test(c.method) && String(c.payload.chat_id) === String(ADMIN_ID)).length;
+    const tradeAt = (sid, price) => {
+      simNow += 3600;
+      at('nas100', simNow, { type: 'open', sid, tf: '5m', side: 'short', price, stop: price * 0.0045 });
+      return cycle();
+    };
+    cfg.ftmoAi = 'observe';
+    const lucidOpen = () => createFtmo({ cfg, store, account: 'lucid' }).load();
+    // Pas de groupe configuré → achat copié en privé
+    cfg.channelId = '';
+    let d0 = dmCount();
+    await tradeAt('n_orb5s', 26200);
+    const noGroupDm = dmCount() - d0;
+    // Groupe en erreur → copie en privé aussi
+    cfg.channelId = GROUP_ID;
+    failGroup = { code: 400, description: 'Bad Request: chat not found' };
+    d0 = dmCount();
+    await tradeAt('n_mom10', 26100);
+    const errGroupDm = dmCount() - d0;
+    failGroup = null;
+    step('notifications : sans groupe ou si le groupe refuse, chaque trade est copié en privé à l’admin', noGroupDm > 0 && errGroupDm > 0, `${noGroupDm} copie(s) sans groupe, ${errGroupDm} copie(s) avec groupe en erreur`);
+    // Lucid à 0,45 % : signal n_orb5s dont 1 MNQ risque ≈ 237 $ → pris
+    const lu = lucidOpen();
+    const lucidTook = Object.values(lu.open || {}).some((p) => p.sid === 'n_orb5s' || p.sid === 'n_mom10') || [...(lu.closed || [])].some((p) => p.sid === 'n_orb5s');
+    step(`Lucid à ${cfg.lucidIntradayRisk} % prend les signaux Nasdaq intraday (1 MNQ ≈ 237 $ de risque)`, lucidTook, `positions Lucid : ${Object.values(lu.open || {}).map((p) => `${p.sid} ${p.n} ${p.contract}`).join(', ') || 'aucune'} · sautés trop gros : ${lu.tooBig || 0}`);
+    const live = require('./src/livePush').buildLive(cfg, store);
+    step('diagnostic envoyé au site (version, groupe, erreurs, compteurs Lucid)', !!live.diag?.group && live.diag.group.set && 'lastError' in live.diag.group && !!live.version && !!live.diag.lucid, JSON.stringify({ version: live.version, group: live.diag?.group?.id, lucid: live.diag?.lucid && { tooBig: live.diag.lucid.tooBig } }));
+
     // ---------------------------------------------------------------- erreurs restantes
-    const loggedErr = logged.filter((l) => !/réseau coupé|données indisponibles \(simulé\)|échec du passage : données/.test(l));
+    const loggedErr = logged.filter((l) => !/réseau coupé|données indisponibles \(simulé\)|échec du passage : données|chat not found/.test(l)); // pannes provoquées par la boucle
     step('aucune erreur interne pendant la boucle', !errors.length && !loggedErr.length, [...errors, ...loggedErr].slice(0, 6).map((x) => x.split('\n')[0]).join(' | ').slice(0, 900));
   } finally {
     MarketTrader.prototype.run = origRun;

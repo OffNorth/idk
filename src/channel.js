@@ -20,7 +20,7 @@ function explainTelegramError(err) {
  * @param {object} cfg
  * @param {import('./store').Store} store
  */
-function createChannel(api, cfg, store, { onError = null } = {}) {
+function createChannel(api, cfg, store, { onError = null, dm = null } = {}) {
   // Groupe devenu supergroupe (nouvel ID) : l'ID mémorisé remplace celui du .env tant que celui-ci n'a pas changé
   const moved = store.getMeta('channelMoved');
   if (moved && String(cfg.channelId) === String(moved.from)) cfg.channelId = String(moved.to);
@@ -32,6 +32,7 @@ function createChannel(api, cfg, store, { onError = null } = {}) {
   async function deliver(send) {
     try {
       const out = await send(cfg.channelId);
+      store.setMeta('channelLastError', null);
       store.setMeta('channelLastOk', Date.now());
       return out;
     } catch (err) {
@@ -50,10 +51,38 @@ function createChannel(api, cfg, store, { onError = null } = {}) {
     }
   }
 
-  /** Message HTML sur le canal (ignoré si aucun canal n'est configuré). */
-  async function sendText(text, extra = {}) {
-    if (!cfg.channelId) return null;
-    return deliver((id) => api.sendMessage(id, text, { ...HTML, ...extra }));
+  /**
+   * Message HTML sur le canal. opts.dm (messages de trade) : copie en privé aux admins (fonction `dm`) si le groupe
+   * ne le reçoit pas (pas de canal, erreur) — ou toujours avec TRADE_DM=always.
+   */
+  async function sendText(text, extra = {}, opts = {}) {
+    return withCopy(opts, () => api.sendMessage(cfg.channelId, text, { ...HTML, ...extra }), () => dm({ text, extra }));
+  }
+
+  async function withCopy(opts, toGroup, toDm) {
+    const copy = opts.dm && dm && cfg.tradeDm !== 'off';
+    if (!cfg.channelId) {
+      store.setMeta('channelSkipped', (store.getMeta('channelSkipped') || 0) + 1);
+      if (copy) await toDm().catch(() => {});
+      return null;
+    }
+    try {
+      const out = await deliver(() => toGroup());
+      if (copy && cfg.tradeDm === 'always') await toDm().catch(() => {});
+      return out;
+    } catch (err) {
+      if (copy) await toDm().catch(() => {});
+      throw err;
+    }
+  }
+
+  /** État des envois au groupe (objet, pour le diagnostic envoyé au site). */
+  function diag() {
+    const id = String(cfg.channelId || '');
+    return {
+      set: !!id, id: id ? `${id.slice(0, 4)}…${id.slice(-3)}` : null, lastOk: store.getMeta('channelLastOk') || null,
+      lastError: store.getMeta('channelLastError') || null, skipped: store.getMeta('channelSkipped') || 0, moved: !!store.getMeta('channelMoved'),
+    };
   }
 
   /** État des envois au groupe (une ligne, pour /version et /testcanal). */
@@ -77,10 +106,9 @@ function createChannel(api, cfg, store, { onError = null } = {}) {
   }
 
   /** Image PNG (Buffer) avec légende HTML (extra : boutons…). */
-  async function sendPhoto(png, caption, extra = {}) {
-    if (!cfg.channelId) return null;
+  async function sendPhoto(png, caption, extra = {}, opts = {}) {
     const { InputFile } = require('grammy');
-    return deliver((id) => api.sendPhoto(id, new InputFile(png, 'image.png'), { caption, parse_mode: 'HTML', ...extra }));
+    return withCopy(opts, () => api.sendPhoto(cfg.channelId, new InputFile(png, 'image.png'), { caption, parse_mode: 'HTML', ...extra }), () => dm({ png, caption, extra }));
   }
 
   /** Le graphique du portefeuille est-il dû (selon CHART_HOURS) ? */
@@ -125,7 +153,7 @@ function createChannel(api, cfg, store, { onError = null } = {}) {
     }
   }
 
-  return { sendText, sendPhoto, summaryDue, markSummary, chartDue, markChart, check, status };
+  return { sendText, sendPhoto, summaryDue, markSummary, chartDue, markChart, check, status, diag };
 }
 
 module.exports = { createChannel, explainTelegramError, HTML };

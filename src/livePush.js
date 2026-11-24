@@ -75,6 +75,34 @@ function accountView(cfg, store, id, prices) {
   };
 }
 
+/**
+ * Diagnostic (sans secret) : groupe configuré ou non (ID masqué), dernier envoi réussi, dernière erreur, pause,
+ * réglages des messages, copies en privé, signaux sautés par les comptes. Permet de trouver d'où vient un souci
+ * de notifications sans accès au serveur.
+ */
+function diagOf(cfg, store) {
+  const id = String(cfg.channelId || '');
+  const counters = (file) => {
+    const s = store.loadJson(file, null);
+    return s ? { tooBig: s.tooBig || 0, tooBigBy: s.tooBigBy || {}, tooSmall: s.tooSmall || 0, missed: s.missed || 0, aiRefused: s.aiRefused || 0, skippedHedge: s.skipped || 0 } : null;
+  };
+  return {
+    group: {
+      set: !!id, id: id ? `${id.slice(0, 4)}…${id.slice(-3)}` : null, lastOk: store.getMeta('channelLastOk') || null,
+      lastError: store.getMeta('channelLastError') || null, skippedNoId: store.getMeta('channelSkipped') || 0, moved: !!store.getMeta('channelMoved'),
+    },
+    paused: !!store.getMeta('paused'),
+    tradeMessages: cfg.ftmoTradeMessages !== false,
+    publishFtmoOnly: !!cfg.publishFtmoOnly,
+    tradeDm: cfg.tradeDm || 'fallback',
+    dmTargets: cfg.allowedUserIds?.size || (store.getMeta('firstPrivateUser') ? 1 : 0),
+    dmLastOk: store.getMeta('dmLastOk') || null,
+    lucidIntradayRisk: cfg.lucidIntradayRisk,
+    ftmo: counters('ftmo.json'),
+    lucid: counters('lucid.json'),
+  };
+}
+
 /** État complet envoyé au site. */
 function buildLive(cfg, store, version = '') {
   const markets = activeMarkets(cfg);
@@ -95,7 +123,8 @@ function buildLive(cfg, store, version = '') {
   return {
     v: 1,
     at: Date.now(),
-    version,
+    version: version || require('./version').version(),
+    diag: diagOf(cfg, store),
     markets: markets.map((m) => ({ id: m.id, name: m.id === 'nas100' ? 'Nasdaq 100' : m.name, symbol: SYMBOL[m.id] || null, price: r6(prices[m.id]) })),
     accounts,
     ai: cfg.ftmoAi,

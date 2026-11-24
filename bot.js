@@ -31,11 +31,20 @@ const bot = new Bot(cfg.telegramToken);
 const store = new Store(cfg.dataDir);
 // Échec d'envoi au groupe : message privé aux administrateurs (ALLOWED_USER_IDS), au plus une fois par heure
 let lastAlert = 0;
+/** Admins qui reçoivent les copies en privé : ALLOWED_TELEGRAM_USER_IDS, sinon la 1re personne qui a écrit /start en privé. */
+const dmTargets = () => (cfg.allowedUserIds.size ? [...cfg.allowedUserIds] : store.getMeta('firstPrivateUser') ? [String(store.getMeta('firstPrivateUser'))] : []);
 const channel = createChannel(bot.api, cfg, store, {
+  dm: async ({ text, png, caption, extra = {} }) => {
+    for (const id of dmTargets()) {
+      if (png) await bot.api.sendPhoto(id, new InputFile(png, 'image.png'), { caption, parse_mode: 'HTML', ...extra });
+      else await bot.api.sendMessage(id, text, { parse_mode: 'HTML', ...extra });
+    }
+    store.setMeta('dmLastOk', Date.now());
+  },
   onError: async (err) => {
     if (Date.now() - lastAlert < 3_600_000) return;
     lastAlert = Date.now();
-    for (const id of cfg.allowedUserIds) {
+    for (const id of dmTargets()) {
       await bot.api.sendMessage(id, `⚠️ <b>Le bot n’arrive pas à envoyer dans le groupe</b>\n${esc(explainTelegramError(err))}\nTeste avec /testcanal.`, { parse_mode: 'HTML' }).catch(() => {});
     }
   },
@@ -77,6 +86,8 @@ const isAdmin = (ctx) => !cfg.allowedUserIds.size || (ctx.from && cfg.allowedUse
 
 // Les boutons et les commandes de consultation sont ouverts à tout le groupe ; les réglages sont réservés.
 bot.use(async (ctx, next) => {
+  // 1re personne qui écrit au bot en privé : reçoit les copies des trades si ALLOWED_TELEGRAM_USER_IDS est vide
+  if (ctx.chat?.type === 'private' && ctx.from && !store.getMeta('firstPrivateUser')) store.setMeta('firstPrivateUser', ctx.from.id);
   const cmd = ctx.message?.text?.match(/^\/([a-z_]+)/i)?.[1]?.toLowerCase();
   if (cmd && ADMIN.has(cmd) && !isAdmin(ctx)) return ctx.reply('Commande réservée à l’administrateur du bot.');
   return next();
@@ -349,11 +360,13 @@ bot.command('settings', (ctx) =>
 
 bot.command('pause', (ctx) => {
   paused = true;
+  store.setMeta("paused", true);
   return ctx.reply('⏸ Publications sur le canal en pause (le paper trading continue).');
 });
 
 bot.command('resume', (ctx) => {
   paused = false;
+  store.setMeta("paused", false);
   return ctx.reply('▶️ Publications sur le canal relancées.');
 });
 
@@ -365,15 +378,7 @@ bot.catch((err) => console.error('[bot] erreur :', err.error || err));
 
 /** Version déployée (commit git si le dossier .git est là). */
 function version() {
-  try {
-    const fs = require('fs');
-    const head = fs.readFileSync(require('path').join(__dirname, '.git', 'HEAD'), 'utf8').trim();
-    const ref = head.startsWith('ref: ') ? head.slice(5) : null;
-    const sha = ref ? fs.readFileSync(require('path').join(__dirname, '.git', ref), 'utf8').trim() : head;
-    return sha.slice(0, 7);
-  } catch {
-    return 'inconnue';
-  }
+  return require('./src/version').version();
 }
 
 /** Appel Telegram du démarrage, limité dans le temps (le bot ne reste jamais bloqué en silence). */

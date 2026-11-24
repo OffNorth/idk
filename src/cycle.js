@@ -12,9 +12,9 @@ const { explainTelegramError } = require('./channel');
 /** Prix lisible : 4 décimales sous 10 (EUR/USD), 2 sinon. */
 const px = (v) => (Math.abs(v) < 10 ? v.toFixed(4) : v.toFixed(2));
 
-async function safeSend(channel, text, extra) {
+async function safeSend(channel, text, extra, opts) {
   try {
-    await channel.sendText(text, extra);
+    await channel.sendText(text, extra, opts);
   } catch (err) {
     console.error(`[canal] envoi impossible : ${explainTelegramError(err)}`);
   }
@@ -76,14 +76,14 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
           const extra = msg.type === 'trade' && ui && msg.p.exitT
             ? { reply_markup: { inline_keyboard: [[...(button.reply_markup?.inline_keyboard?.[0] || []), { text: '🎬 Vidéo', callback_data: `v:t:${acct.id === 'lucid' ? 'lucid' : 'ftmo'}:${msg.p.exitT}:${msg.p.sid}`.slice(0, 64) }]] } }
             : button;
-          if (publish && cfg.ftmoTradeMessages !== false) await safeSend(channel, text, extra);
+          if (publish && cfg.ftmoTradeMessages !== false) await safeSend(channel, text, extra, { dm: true });
           continue;
         }
         if (msg.type === 'payout') {
           const pct = Math.round((msg.trader / msg.amount) * 100);
           const text = `${firm === 'Lucid' ? '🟣' : '🏦'}💸 <b>${name} : retrait simulé n° ${msg.n}</b>\n${dollars(msg.amount)} retirés du compte financé → <b>${dollars(msg.trader)} pour toi</b> (${pct} %) · total ${dollars(msg.total)}\n<i>Compte simulé : aucun argent réel.</i>`;
           console.log(`[${firm.toLowerCase()}] retrait simulé ${dollars(msg.amount)} (${dollars(msg.trader)} pour le trader)`);
-          if (publish) await safeSend(channel, text, button);
+          if (publish) await safeSend(channel, text, button, { dm: true });
           continue;
         }
         if (!publish) continue;
@@ -95,7 +95,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
           ? (oneStep ? `🏦🏆 <b>${name} : ${firm === 'Lucid' ? 'évaluation' : 'challenge 1 étape'} réussi${firm === 'Lucid' ? 'e' : ''} (+${st.program?.target || 10} %), compte financé !</b>\nOn suit maintenant les gains mensuels (partage ${split} %).`
             : msg.phase === 1 ? `🏦✅ <b>${name} : étape 1 réussie (+10 %)</b>\nPassage à l’étape 2 (vérification, objectif +5 %).` : `🏦🏆 <b>${name} : étape 2 réussie, compte financé !</b>\nOn suit maintenant les gains mensuels (partage 80 %).`)
           : `🏦❌ <b>${name} : ${firm === 'Lucid' ? 'évaluation' : 'challenge'} n° ${msg.s.attempt} échoué${firm === 'Lucid' ? 'e' : ''}</b>\n${msg.why}. Un nouveau challenge démarre au prochain jour de trading.`;
-        await channel.sendPhoto(ftmoImage(st), text, button).catch((err) => console.error(`[ftmo] ${explainTelegramError(err)}`));
+        await channel.sendPhoto(ftmoImage(st), text, button, { dm: true }).catch((err) => console.error(`[ftmo] ${explainTelegramError(err)}`));
       }
     } catch (err) {
       console.error('[ftmo]', err.message);

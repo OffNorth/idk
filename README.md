@@ -655,6 +655,19 @@ forcée » (la réponse dit si, en vrai, elle aurait été refusée et pourquoi)
 repart de son capital en **compte financé** : plus d'objectif, donc **risque normal** (plus de réduction à l'approche
 de l'objectif), mêmes limites de perte, retraits simulés. Les positions ouvertes sont gardées.
 
+### 📣 Notifications des trades : groupe + copie en privé (`TRADE_DM`)
+
+Chaque achat / vente des comptes FTMO et Lucid (et réussite, échec, retrait) part dans le groupe
+(`TELEGRAM_CHANNEL_ID`). Si le groupe ne le reçoit pas — ID absent (le message était alors ignoré sans bruit),
+mauvais ID, bot retiré, droits manquants — une **copie part en privé** aux admins (`ALLOWED_TELEGRAM_USER_IDS`, sinon
+la 1re personne qui a écrit au bot en privé). `TRADE_DM=always` : copie en privé à chaque trade ; `off` : jamais.
+L'état envoyé au site contient un **diagnostic** sans secret (version, groupe configuré ou non avec ID masqué,
+dernier envoi réussi, dernière erreur, pause, signaux sautés par compte) pour trouver la cause à distance.
+
+**Lucid intraday Nasdaq à 0,45 %** (24/11/2026) : à 0,2 %, 1 micro MNQ dépassait presque toujours le risque prévu
+(n_orb5s 237 $, n_mom10 507 $ pour 107 $ prévus) et Lucid ne tradait plus. Backtest nov. 24–26 : 67 % de réussite
+en moins d'un an (79 j médians) contre 88 % à 0,2 %.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

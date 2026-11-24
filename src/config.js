@@ -69,6 +69,9 @@ module.exports = {
   telegramToken: process.env.TELEGRAM_BOT_TOKEN || '',
   channelId: process.env.TELEGRAM_CHANNEL_ID || '',
   allowedUserIds: new Set(list('ALLOWED_TELEGRAM_USER_IDS', '')),
+  // Copie en privé des messages de trade (achat, vente, réussite, échec, retrait) : « fallback » (défaut) = seulement
+  // quand le groupe ne les reçoit pas (pas de TELEGRAM_CHANNEL_ID, erreur Telegram) ; « always » = toujours ; « off »
+  tradeDm: ['always', 'off'].includes((process.env.TRADE_DM || '').trim()) ? process.env.TRADE_DM.trim() : 'fallback',
 
   // Paper trading de l'or (PAXG/USD) — simulation, aucun argent réel
   goldEnabled: num('GOLD_TRADING', 1) === 1,
@@ -167,7 +170,10 @@ module.exports = {
   // Intraday sur Lucid : seulement l'intraday Nasdaq (LUCID_INTRADAY_STRATEGIES) à LUCID_INTRADAY_RISK_PCT (0 = aucun).
   // Recherche (nov. 2026, 40 % de régularité) : Nasdaq noise + orb5s + mom10 à 0,2 % → 88 % de réussite < 1 an sur
   // nov. 24–26 (71 % sans) ; l'intraday or (cassures de Londres) fait chuter la réussite (perte max 2 000 $ trop serrée)
-  lucidIntradayRisk: num('LUCID_INTRADAY_RISK_PCT', 0.2),
+  // 0,45 % (24/11/2026, choix de l'utilisateur) : à 0,2 %, 1 micro MNQ dépassait presque toujours le risque prévu
+  // (n_orb5s 237 $, n_mom10 507 $ pour 107 $ prévus) → Lucid ne tradait plus. Nov. 24–26 : 67 % de réussite < 1 an
+  // (79 j médians) contre 88 % à 0,2 %.
+  lucidIntradayRisk: upgraded('LUCID_INTRADAY_RISK_PCT', ['0.2'], 0.45),
   lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_noise,nas100:n_orb5s,nas100:n_mom10'),
   // Règle de régularité de l'évaluation LucidFlex : meilleur jour ≤ 40 % du gain (40 % depuis le 19/10/2026, 50 % en option payante)
   lucidConsistency: num('LUCID_CONSISTENCY_PCT', 40),
