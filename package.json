@@ -50,7 +50,8 @@
     "mc-build": "node mc-build.js",
     "selftest": "node selftest.js",
     "sessions": "node --max-old-space-size=6144 session-research.js",
-    "sessions2": "node --max-old-space-size=6144 session-research2.js"
+    "sessions2": "node --max-old-space-size=6144 session-research2.js",
+    "lucid-research": "node --max-old-space-size=7000 lucid-research.js"
   },
   "engines": {
     "node": ">=20"

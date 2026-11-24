@@ -1161,6 +1161,22 @@ STRATEGIES.push(...require('./goldmom').GOLDMOM);
 STRATEGIES.push(...require('./sessions').SESSIONS);
 STRATEGIES.push(...require('./events').EVENTS);
 
+/*
+ * Variantes « objectif 0,5 R » de l'intraday Nasdaq pour le compte Lucid (npm run lucid-research, nov. 2026) : même
+ * entrée et même stop, gain pris à 0,5 × le risque. 66 % de trades gagnants, au plus 6 pertes de suite, baisse max
+ * 17 R (contre 40 %, 16 et 72 R) → évaluation Lucid réussie dans 49 départs sur 49 (nov. 2024 → nov. 2026) contre 49 %.
+ * Le compte FTMO garde les originales.
+ */
+for (const id of ['n_noise', 'n_orb5s', 'n_mom10', 'n_orb15']) {
+  const s = STRATEGIES.find((x) => x.id === id);
+  if (!s) continue;
+  STRATEGIES.push({
+    ...s, id: `${id}_t05`, name: `${s.name} (objectif 0,5 R, Lucid)`,
+    desc: `${s.desc || ''} Variante du compte Lucid : gain pris à 0,5 × le risque (plus de trades gagnants, séries de pertes plus courtes, adaptée à la perte max serrée de Lucid).`.trim(),
+    evaluate: (x, i) => { const r = s.evaluate(x, i); return r.entry && r.sl > 0 ? { ...r, tp: 0.5 * r.sl } : r; },
+  });
+}
+
 /* Intraday NAS100 (formation TradingView, module 5) : voir src/intraday.js */
 STRATEGIES.push(...require('./intraday').INTRADAY);
 

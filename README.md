@@ -688,6 +688,18 @@ veille** sur l'or pendant New York (`g_nypdl` : +17 / +23 / +2,8 %, +0,13 R par 
 +1,2 / +0,4 / +4,9 %). Aucune n'améliore les challenges → **à l'essai en paper trading** ; rien de stable pour le
 Nasdaq la nuit (Asie).
 
+### 🟣 Stratégies pour Lucid : moins de pertes de suite (`npm run lucid-research`)
+
+La perte max Lucid (2 000 $ suiveuse en fin de journée) ne laisse qu'≈ 10 trades perdants d'affilée à 0,45 % de
+risque ; les cassures (20–40 % de gagnants, séries de 16 à 49 pertes) la font échouer même quand elles gagnent en
+moyenne. Solution retenue : Lucid prend des **variantes « objectif 0,5 R »** de l'intraday Nasdaq (`n_noise_t05`,
+`n_orb5s_t05`, `n_mom10_t05`, `n_orb15_t05` : même entrée et même stop, gain pris à 0,5 × le risque) ; le compte
+FTMO garde les originales. Sur nov. 2024 → nov. 2026 (Nasdaq sur la séance seule, comme en direct) : 66 % de trades
+gagnants, au plus 6 pertes de suite, baisse max 17 R ; évaluation Lucid réussie dans **49 départs sur 49** (contre 49 %
+avec les originales + `n_pdlbrk`). Tous les objectifs de 0,3 à 1 R font mieux qu'avant (67 à 100 %), 0,5 R est le
+meilleur sur les deux moitiés de la période — mais 2 ans de données seulement : à confirmer en direct. L'intraday or
+(cassures de Londres / New York, objectif ou pas) et le retour au VWAP restent mauvais pour Lucid.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

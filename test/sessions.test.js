@@ -48,12 +48,32 @@ test('g_nypdl / n_pdlbrk : cassure du plus haut de la veille, une entrée par jo
   assert.strictEqual(hhmm(n[0].exitT), '20:55', 'sortie 15 h 55 NY');
 });
 
-test('séances : g_asiabrk, g_nypdl, n_pdlbrk sur le compte FTMO ; seule n_pdlbrk sur Lucid', () => {
+test('séances : g_asiabrk, g_nypdl, n_pdlbrk sur le compte FTMO ; pas sur Lucid (variantes « objectif 0,5 R » à la place)', () => {
   const cfg = require('../src/config');
   assert.ok(cfg.ftmoStrategies.includes('gold:g_asiabrk') && cfg.ftmoStrategies.includes('gold:g_nypdl'));
   assert.ok(cfg.ftmoNasStrategies.includes('nas100:n_pdlbrk'));
   const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
-  assert.ok(L.riskOf('nas100', { id: 'n_pdlbrk', tf: '5m' }) > 0);
+  assert.strictEqual(L.riskOf('nas100', { id: 'n_pdlbrk', tf: '5m' }), 0);
+  assert.ok(L.riskOf('nas100', { id: 'n_noise_t05', tf: '5m' }) > 0);
+  assert.strictEqual(L.riskOf('nas100', { id: 'n_noise', tf: '5m' }), 0, 'Lucid ne prend plus l’originale');
   assert.strictEqual(L.riskOf('gold', { id: 'g_nypdl', tf: '5m' }), 0);
   assert.strictEqual(L.riskOf('gold', { id: 'g_asiabrk', tf: '5m' }), 0);
+});
+
+test('variantes Lucid « objectif 0,5 R » : même entrée et même stop que l’originale, gain pris à 0,5 × le risque', () => {
+  const base = selectStrategies(['n_orb5s'])[0];
+  const v = selectStrategies(['n_orb5s_t05'])[0];
+  assert.ok(v && v.tf === base.tf);
+  const iso = '2026-01-12T00:00:00Z';
+  const day = Date.parse(iso) / 1000 + 2 * 86400;
+  // Ouverture 26 000, cassure du plus bas des 5 premières min puis baisse régulière
+  const c = candles(iso, 4, (t) => (t < day + 14.5 * 3600 ? 26000 + Math.sin(t / 900) * 5 : 26000 - ((t - day - 14.5 * 3600) / 300) * 4));
+  const opt = { size: 1000, feePct: 0.003, barSec: 300, market: 'nas100' };
+  const a = backtest(base, c, opt).list.filter((x) => x.entryT >= day);
+  const b = backtest(v, c, opt).list.filter((x) => x.entryT >= day);
+  assert.ok(a.length && b.length);
+  assert.strictEqual(b[0].entryT, a[0].entryT);
+  assert.strictEqual(b[0].initSl, a[0].initSl);
+  assert.strictEqual(b[0].reason, 'take profit');
+  assert.ok(Math.abs((b[0].entry - b[0].exit) - 0.5 * (b[0].initSl - b[0].entry)) < 1e-6, 'objectif à 0,5 R');
 });

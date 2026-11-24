@@ -17,7 +17,7 @@ const CACHE = path.join(__dirname, 'data', 'research');
 const r = (v, k = 5) => (Number.isFinite(v) ? +v.toPrecision(k) : undefined);
 
 (async () => {
-  const { all, q5 } = await buildTrades(cfg, CACHE);
+  const { all, q5 } = await buildTrades(cfg, CACHE, { withLucid: true });
   if (!q5) throw new Error('Nasdaq intraday (QQQ Polygon) absent du cache : impossible de couvrir toutes les stratégies');
   const from = q5[0].t + 30 * 86400;
   const to = Math.max(...all.map((t) => t.entryT));

@@ -174,9 +174,10 @@ module.exports = {
   // (n_orb5s 237 $, n_mom10 507 $ pour 107 $ prévus) → Lucid ne tradait plus. Nov. 24–26 : 67 % de réussite < 1 an
   // (79 j médians) contre 88 % à 0,2 %.
   lucidIntradayRisk: upgraded('LUCID_INTRADAY_RISK_PCT', ['0.2'], 0.45),
-  // + n_pdlbrk (24/11/2026) ; PAS l'intraday or (g_asiabrk, g_nypdl : réussite Lucid 56 / 69 / 65 % → 20 / 15 / 18 %,
-  // 1 micro MGC trop gros pour la perte max de 2 000 $)
-  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_noise,nas100:n_orb5s,nas100:n_mom10,nas100:n_pdlbrk'),
+  // Variantes « objectif 0,5 R » (npm run lucid-research, 24/11/2026) : 66 % de gagnants, ≤ 6 pertes de suite →
+  // évaluation réussie 49 / 49 départs sur nov. 24–26 (contre 49 % avec les originales + n_pdlbrk). Pas d'intraday or
+  // (1 micro MGC trop gros pour la perte max de 2 000 $), pas de n_pdlbrk (négative sur la séance seule).
+  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_noise_t05,nas100:n_orb5s_t05,nas100:n_mom10_t05,nas100:n_orb15_t05'),
   // Règle de régularité de l'évaluation LucidFlex : meilleur jour ≤ 40 % du gain (40 % depuis le 19/10/2026, 50 % en option payante)
   lucidConsistency: num('LUCID_CONSISTENCY_PCT', 40),
   // Retraits LucidFlex (compte financé) : après 5 jours gagnants ≥ LUCID_PAYOUT_MIN_DAY $, ≤ 50 % du gain, 2 000 $ (50K) /
@@ -234,7 +235,8 @@ module.exports = {
   // (g_asiabrk, g_nypdl, n_pdlbrk, d'abord à l'essai, sont passées sur le compte FTMO le 24/11/2026 ; n_pdlbrk aussi sur Lucid)
   cfg.trialStrategies = list('TRIAL_STRATEGIES', '');
   if (cfg.ftmoOnly) {
-    const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : [])];
+    const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : []),
+      ...(cfg.ftmoEnabled && cfg.lucidEnabled ? cfg.lucidIntradayStrategies : [])]; // variantes propres au compte Lucid
     // + candidates de l'adaptation automatique (suivies en paper sans être publiées, promues si elles font mieux)
     const cand = cfg.autoAdapt && cfg.adaptStrategies ? cfg.adaptCandidates : [];
     const of = (m) => [...new Set([...all, ...cfg.trialStrategies, ...cand].filter((x) => x.startsWith(`${m}:`)).map((x) => x.slice(m.length + 1))), 'hold'];

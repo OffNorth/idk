@@ -25,7 +25,7 @@ const MICRO = {
 };
 
 /** Retourne { all (trades annotés), q5 (bougies Nasdaq 5 min ou null), A (compte FTMO) }. */
-async function buildTrades(cfg, CACHE) {
+async function buildTrades(cfg, CACHE, { withLucid = false } = {}) {
   const y = (s) => cachedYahoo(CACHE, s, '1d').catch(() => null);
   const vix = await y('^VIX');
   const gc = (await y('GC=F')).filter((k) => k.c > 0);
@@ -45,7 +45,9 @@ async function buildTrades(cfg, CACHE) {
   const A = accountOf(cfg, 'gold');
 
   const all = [];
-  for (const k of A.strategies) {
+  // withLucid (Time Machine) : + stratégies propres au compte Lucid (variantes « objectif 0,5 R »)
+  const ids = withLucid ? [...new Set([...A.strategies, ...accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid').strategies])] : A.strategies;
+  for (const k of ids) {
     const [m, id] = k.split(':');
     const s = selectStrategies([id])[0];
     if (!s) continue;
