@@ -90,7 +90,7 @@ test('Telegram : « 📤 Ma vidéo » puis envoi d’une vidéo → la carte est
   V.ensureFfmpeg = () => Promise.resolve('ffmpeg');
   global.fetch = async () => ({ ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer });
   try {
-    require('../src/videoBot').attachVideo(bot, { cfg, store, isAdmin: () => true });
+    const vb = require('../src/videoBot').attachVideo(bot, { cfg, store, isAdmin: () => true });
     const sent = [];
     const edits = [];
     const ctx = (extra) => ({ chat: { id: 42, type: 'group' }, from: { id: 1 }, reply: async (t, o) => { sent.push({ t, o }); return { chat: { id: 42 }, message_id: 1 }; }, replyWithChatAction: async () => {}, replyWithVideo: async () => sent.push({ video: true }), answerCallbackQuery: async () => {}, api: { deleteMessage: async () => {}, editMessageText: async (c, m, t, o) => { edits.push({ t, o }); return true; } }, ...extra });
@@ -105,6 +105,7 @@ test('Telegram : « 📤 Ma vidéo » puis envoi d’une vidéo → la carte est
     let passed = false;
     const before = sent.length;
     await H.on[0](ctx({ message: { video: { file_id: 'f', file_size: 3 * 1024 * 1024, duration: 12, width: 1080, height: 1920 } } }), async () => { passed = true; });
+    await vb.idle(); // la vidéo se prépare en arrière-plan
     assert.strictEqual(passed, false);
     // accusé de réception immédiat avec durée, taille, format ; puis modifié en « en préparation »
     assert.match(sent[before].t, /Vidéo reçue<\/b> \(12 s · 3,0 Mo · 1080×1920\)/);
@@ -150,4 +151,23 @@ test('vidéo PnL : l’animation des bougies dure jusqu’à la fin de la vidéo
   const end = long.frame(long.animFrames);
   assert.ok(!mid.equals(end));
   assert.ok(long.frame(long.animFrames).equals(long.frame(long.frames - 1)), 'pause : image figée après l’animation');
+});
+
+test('vidéo PnL : bot coupé pendant la préparation → message au redémarrage, prochaine vidéo en qualité allégée', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vinf-'));
+  const { Store } = require('../src/store');
+  const store = new Store(dir);
+  store.saveJson('video.json', { bg: 'uni', inflight: { chat: 42, at: Date.now() - 60_000, label: 'FTMO n_noise' } });
+  const sent = [];
+  const bot = { api: { sendMessage: async (c, t) => sent.push({ c, t }) }, command() {}, on() {}, callbackQuery() {} };
+  require('../src/videoBot').attachVideo(bot, { cfg: { dataDir: dir }, store, isAdmin: () => true });
+  await new Promise((r) => setTimeout(r, 5200));
+  assert.strictEqual(sent.length, 1);
+  assert.strictEqual(sent[0].c, 42);
+  assert.match(sent[0].t, /n’a pas été envoyée.*coupé pendant sa préparation/s);
+  const st = store.loadJson('video.json');
+  assert.strictEqual(st.light, true);
+  assert.strictEqual(st.inflight, null);
+  // makeVideo en qualité allégée : 540 px directement
+  assert.strictEqual(V.LEVELS.slice(1)[0].short, 540);
 });

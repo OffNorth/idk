@@ -464,7 +464,7 @@ let busy = 0;
  * Vidéo MP4 d'un trade (Buffer). bgId : fond intégré ou « u:nom » ; sourceFile : vidéo envoyée au bot sur laquelle
  * poser la carte transparente (sa durée, 30 s au plus, et son son sont gardés). Une seule vidéo à la fois.
  */
-function makeVideo(cfg, trade, bgId, { fetcher, sourceFile, handle = '' } = {}) {
+function makeVideo(cfg, trade, bgId, { fetcher, sourceFile, handle = '', light = false } = {}) {
   if (busy >= 3) return Promise.reject(new Error('trop de vidéos en attente, réessaie dans une minute'));
   busy++;
   const job = chain.then(async () => {
@@ -476,7 +476,8 @@ function makeVideo(cfg, trade, bgId, { fetcher, sourceFile, handle = '' } = {}) 
     const seconds = Math.min(30, Math.max(ANIM_S + HOLD_S, src?.duration || 0));
     const card = prepareCard(trade, data, { seconds, handle });
     let lastErr = null;
-    for (const level of LEVELS) {
+    // light : la vidéo précédente n'a pas abouti (bot coupé pendant la préparation) → directement en qualité allégée
+    for (const level of light ? LEVELS.slice(1) : LEVELS) {
       try {
         return await encode(bin, cfg, bgId, card, src, level);
       } catch (err) {
