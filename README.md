@@ -679,6 +679,15 @@ sont positives sur les 3 tranches, avec un avantage faible (+0,03 R par trade). 
 seulement**, pas sur les comptes FTMO / Lucid. `g_asia` (retour à la moyenne asiatique, retenue sur PAXG) est
 perdante sur l'or réel (−8 / −15 / −16 %) ; les stratégies de New York sur l'or sont toutes perdantes ou instables.
 
+**2e recherche (`npm run sessions2`, 41 nouvelles variantes)** — or : plus haut / plus bas de la veille pendant
+New York, passage Londres → New York, séance de New York → nuit asiatique, écart d'ouverture du lundi ; Nasdaq New
+York (QQQ avec pré-ouverture) : range de pré-ouverture, écart d'ouverture comblé, range du midi, dernière heure, plus
+haut / plus bas de la veille, range de la 1re heure ; Nasdaq en Asie (future NQ=F 1 h) : sens de la nuit → New York,
+dérive de nuit, cassure du début de nuit. Positives sur les 3 tranches : **cassure du plus haut / plus bas de la
+veille** sur l'or pendant New York (`g_nypdl` : +17 / +23 / +2,8 %, +0,13 R par trade) et sur le Nasdaq (`n_pdlbrk` :
++1,2 / +0,4 / +4,9 %). Aucune n'améliore les challenges → **à l'essai en paper trading** ; rien de stable pour le
+Nasdaq la nuit (Asie).
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

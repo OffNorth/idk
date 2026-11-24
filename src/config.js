@@ -229,8 +229,8 @@ module.exports = {
   cfg.ftmoOnly = num('FTMO_ONLY', 1) === 1;
   // Stratégies à l'essai : suivies en paper trading (et publiées) mais PAS par le compte FTMO
   // (n_noise et g_orb30, d'abord à l'essai, sont passées sur le compte FTMO avec les autres stratégies intraday)
-  // g_asiabrk (npm run sessions, séance d'Asie) : à l'essai, pas sur FTMO / Lucid
-  cfg.trialStrategies = list('TRIAL_STRATEGIES', 'gold:g_asiabrk');
+  // g_asiabrk, g_nypdl, n_pdlbrk (npm run sessions / sessions2, séances d'Asie et de New York) : à l'essai, pas sur FTMO / Lucid
+  cfg.trialStrategies = list('TRIAL_STRATEGIES', 'gold:g_asiabrk,gold:g_nypdl,nas100:n_pdlbrk');
   if (cfg.ftmoOnly) {
     const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : [])];
     // + candidates de l'adaptation automatique (suivies en paper sans être publiées, promues si elles font mieux)

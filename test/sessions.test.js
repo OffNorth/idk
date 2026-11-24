@@ -32,9 +32,26 @@ test('g_asiabrk : range 0 h → 7 h UTC, une seule cassure par jour avant 11 h, 
   assert.ok(Math.abs(tr[0].initSl - 3997.5) < 1e-9, 'stop sous le plus bas du range asiatique');
 });
 
+test('g_nypdl / n_pdlbrk : cassure du plus haut de la veille, une entrée par jour, sortie à l’heure (New York)', () => {
+  // Hiver : New York = UTC − 5. Veille plate à 4 000 (± 1), jour J : 4 010 à partir de 15 h UTC (10 h NY)
+  const iso = '2026-01-12T00:00:00Z';
+  const day = Date.parse(iso) / 1000 + 2 * 86400;
+  const c = candles(iso, 4, (t) => (t < day + 15 * 3600 ? 4000 + Math.sin(t / 900) : 4010));
+  const tr = run('g_nypdl', c).filter((x) => x.entryT >= day && x.entryT < day + 86400);
+  assert.strictEqual(tr.length, 1);
+  assert.strictEqual(tr[0].side, 'long');
+  assert.strictEqual(hhmm(tr[0].entryT), '15:00');
+  assert.strictEqual(hhmm(tr[0].exitT), '21:55', 'sortie 16 h 55 NY');
+  const n = backtest(selectStrategies(['n_pdlbrk'])[0], candles(iso, 4, (t) => (t < day + 15 * 3600 ? 26000 + Math.sin(t / 900) * 5 : 26100)), { size: 1000, feePct: 0.003, barSec: 300, market: 'nas100' }).list.filter((x) => x.entryT >= day && x.entryT < day + 86400);
+  assert.strictEqual(n.length, 1);
+  assert.strictEqual(hhmm(n[0].entryT), '15:00');
+  assert.strictEqual(hhmm(n[0].exitT), '20:55', 'sortie 15 h 55 NY');
+});
+
 test('séances : stratégies en paper trading à l’essai, pas sur les comptes FTMO / Lucid', () => {
   const cfg = require('../src/config');
   const ids = selectStrategies(cfg.goldStrategies).map((s) => s.id);
-  assert.ok(ids.includes('g_asiabrk'));
-  assert.ok(![...cfg.ftmoStrategies, ...cfg.ftmoNasStrategies].some((s) => /asiabrk|fixfade/.test(s)));
+  assert.ok(ids.includes('g_asiabrk') && ids.includes('g_nypdl'));
+  assert.ok(selectStrategies(cfg.nasStrategies).some((s) => s.id === 'n_pdlbrk'));
+  assert.ok(![...cfg.ftmoStrategies, ...cfg.ftmoNasStrategies].some((s) => /asiabrk|nypdl|pdlbrk/.test(s)));
 });
