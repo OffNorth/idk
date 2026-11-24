@@ -48,10 +48,12 @@ test('g_nypdl / n_pdlbrk : cassure du plus haut de la veille, une entrée par jo
   assert.strictEqual(hhmm(n[0].exitT), '20:55', 'sortie 15 h 55 NY');
 });
 
-test('séances : stratégies en paper trading à l’essai, pas sur les comptes FTMO / Lucid', () => {
+test('séances : g_asiabrk, g_nypdl, n_pdlbrk sur le compte FTMO ; seule n_pdlbrk sur Lucid', () => {
   const cfg = require('../src/config');
-  const ids = selectStrategies(cfg.goldStrategies).map((s) => s.id);
-  assert.ok(ids.includes('g_asiabrk') && ids.includes('g_nypdl'));
-  assert.ok(selectStrategies(cfg.nasStrategies).some((s) => s.id === 'n_pdlbrk'));
-  assert.ok(![...cfg.ftmoStrategies, ...cfg.ftmoNasStrategies].some((s) => /asiabrk|nypdl|pdlbrk/.test(s)));
+  assert.ok(cfg.ftmoStrategies.includes('gold:g_asiabrk') && cfg.ftmoStrategies.includes('gold:g_nypdl'));
+  assert.ok(cfg.ftmoNasStrategies.includes('nas100:n_pdlbrk'));
+  const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  assert.ok(L.riskOf('nas100', { id: 'n_pdlbrk', tf: '5m' }) > 0);
+  assert.strictEqual(L.riskOf('gold', { id: 'g_nypdl', tf: '5m' }), 0);
+  assert.strictEqual(L.riskOf('gold', { id: 'g_asiabrk', tf: '5m' }), 0);
 });

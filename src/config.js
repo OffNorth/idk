@@ -143,7 +143,7 @@ module.exports = {
   // Or réel (npm run ftmo-real, XAU/USD 2009–2026) : les scalps choisis sur PAXG perdent sur l'or au comptant ; restent des
   // stratégies JOURNALIÈRES sur l'or (GC=F), le Nasdaq et l'EUR/USD (les « gold:… » de cette liste peuvent viser un autre marché)
   // + stratégies INTRADAY (≈ 5 trades par jour demandés) : momentum or sur l'or réel et Nasdaq, à FTMO_INTRADAY_RISK_PCT
-  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:down3,gold:pctb,gold:ema_long,gold:g_yieldfall,eurusd:ibs,spx:down3,spx:n_goldfall,gold:g_orb30,gold:g_orb60,gold:g_mom8,gold:g_gap'),
+  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:down3,gold:pctb,gold:ema_long,gold:g_yieldfall,eurusd:ibs,spx:down3,spx:n_goldfall,gold:g_orb30,gold:g_orb60,gold:g_mom8,gold:g_gap,gold:g_asiabrk,gold:g_nypdl'),
   // npm run lucid-tune : intraday 0,15 % + journalières 2 % → réussite < 1 an 64 % / 67 % / 83 % (2009–19 / 2020–26 / nov. 24–26)
   // contre 37 % / 46 % / 44 % avec 0,5 % + 1,5 % (l'intraday ajoute surtout de la variance : on le garde, en petit)
   ftmoIntradayRisk: upgraded('FTMO_INTRADAY_RISK_PCT', ['0.5'], 0.15),
@@ -159,7 +159,7 @@ module.exports = {
   ftmoEurRisk: upgraded('FTMO_EUR_RISK_PCT', ['1.5'], 2),
   ftmoSpxRisk: upgraded('FTMO_SPX_RISK_PCT', ['1.5'], 2),
   ftmoNasEnabled: num('FTMO_NAS', 1) === 1,
-  ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:rsi2,nas100:ibs,nas100:down3,nas100:dip5,nas100:n_low10,nas100:n_drop,nas100:n_2down,nas100:n_dollarfall,nas100:rates,nas100:g_yieldfall,nas100:n_noise,nas100:n_orb5s,nas100:n_mom10,nas100:n_orb15'),
+  ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:rsi2,nas100:ibs,nas100:down3,nas100:dip5,nas100:n_low10,nas100:n_drop,nas100:n_2down,nas100:n_dollarfall,nas100:rates,nas100:g_yieldfall,nas100:n_noise,nas100:n_orb5s,nas100:n_mom10,nas100:n_orb15,nas100:n_pdlbrk'),
   ftmoNasRisk: process.env.FTMO_NAS_RISK_PCT === '0.5' ? 3 : num('FTMO_NAS_RISK_PCT', 3), // 0,5 = ancienne valeur par défaut, mise à jour ; // npm run ftmo-nas-port : 3 % → 42 % · 43 % · 39 % de challenges réussis
   ftmoCapital: num('FTMO_CAPITAL', 100000),
   // Compte Lucid simulé (LucidFlex, micro-futures) à côté du compte FTMO : mêmes signaux, règles Lucid (/lucid)
@@ -174,7 +174,9 @@ module.exports = {
   // (n_orb5s 237 $, n_mom10 507 $ pour 107 $ prévus) → Lucid ne tradait plus. Nov. 24–26 : 67 % de réussite < 1 an
   // (79 j médians) contre 88 % à 0,2 %.
   lucidIntradayRisk: upgraded('LUCID_INTRADAY_RISK_PCT', ['0.2'], 0.45),
-  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_noise,nas100:n_orb5s,nas100:n_mom10'),
+  // + n_pdlbrk (24/11/2026) ; PAS l'intraday or (g_asiabrk, g_nypdl : réussite Lucid 56 / 69 / 65 % → 20 / 15 / 18 %,
+  // 1 micro MGC trop gros pour la perte max de 2 000 $)
+  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_noise,nas100:n_orb5s,nas100:n_mom10,nas100:n_pdlbrk'),
   // Règle de régularité de l'évaluation LucidFlex : meilleur jour ≤ 40 % du gain (40 % depuis le 19/10/2026, 50 % en option payante)
   lucidConsistency: num('LUCID_CONSISTENCY_PCT', 40),
   // Retraits LucidFlex (compte financé) : après 5 jours gagnants ≥ LUCID_PAYOUT_MIN_DAY $, ≤ 50 % du gain, 2 000 $ (50K) /
@@ -229,8 +231,8 @@ module.exports = {
   cfg.ftmoOnly = num('FTMO_ONLY', 1) === 1;
   // Stratégies à l'essai : suivies en paper trading (et publiées) mais PAS par le compte FTMO
   // (n_noise et g_orb30, d'abord à l'essai, sont passées sur le compte FTMO avec les autres stratégies intraday)
-  // g_asiabrk, g_nypdl, n_pdlbrk (npm run sessions / sessions2, séances d'Asie et de New York) : à l'essai, pas sur FTMO / Lucid
-  cfg.trialStrategies = list('TRIAL_STRATEGIES', 'gold:g_asiabrk,gold:g_nypdl,nas100:n_pdlbrk');
+  // (g_asiabrk, g_nypdl, n_pdlbrk, d'abord à l'essai, sont passées sur le compte FTMO le 24/11/2026 ; n_pdlbrk aussi sur Lucid)
+  cfg.trialStrategies = list('TRIAL_STRATEGIES', '');
   if (cfg.ftmoOnly) {
     const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : [])];
     // + candidates de l'adaptation automatique (suivies en paper sans être publiées, promues si elles font mieux)
