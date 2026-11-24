@@ -655,6 +655,16 @@ forcée » (la réponse dit si, en vrai, elle aurait été refusée et pourquoi)
 repart de son capital en **compte financé** : plus d'objectif, donc **risque normal** (plus de réduction à l'approche
 de l'objectif), mêmes limites de perte, retraits simulés. Les positions ouvertes sont gardées.
 
+### 🧪 Boucle de test de tout le bot (`npm run selftest`)
+
+Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,
+horloge simulée, réseau coupé, dossier temporaire — rien n'est envoyé nulle part. Étapes : scénario de 40 jours
+(achats / ventes sur l'or, le Nasdaq, le S&P, l'EUR/USD → **un message dans le groupe pour chaque achat et chaque
+vente** FTMO et Lucid, signaux refusés par l'IA, réussite, compte financé, retraits, pertes, nouveaux challenges),
+36 commandes (admin et membre), tous les boutons atteignables, pannes (groupe refusé, supergroupe, données
+indisponibles). `npm run selftest -- --live` ajoute un vrai passage sur les données Yahoo actuelles, sans
+publication. La boucle hors ligne fait aussi partie de `npm test`.
+
 ### 🔮 Time Machine (`/timemachine`, `npm run mc-build`)
 
 Chances du compte **en cours** (FTMO et Lucid) : 1 000 années simulées, chacune enchaîne des journées de trading

@@ -47,7 +47,8 @@
     "adapt-sim": "node --max-old-space-size=12288 adapt-sim.js",
     "ftmo-events": "node --max-old-space-size=12288 ftmo-events.js",
     "lucid-tune": "node --max-old-space-size=12288 lucid-tune.js",
-    "mc-build": "node mc-build.js"
+    "mc-build": "node mc-build.js",
+    "selftest": "node selftest.js"
   },
   "engines": {
     "node": ">=20"

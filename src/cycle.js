@@ -66,7 +66,10 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
       for (const msg of ftmo.onCycle(all, prices, undefined, { fills })) {
         // Chaque trade du compte FTMO (ouverture et clôture) : console + message dans le groupe (FTMO_TRADE_MESSAGES)
         if (msg.type === 'open' || msg.type === 'trade' || msg.type === 'refused') {
-          const text = ftmoTradeMessage(msg, ftmo.status(prices), marketById(cfg, msg.p.market));
+          // Clôture forcée par la limite de perte : le compte repart ensuite à zéro, on montre le solde du challenge clôturé
+          const st0 = ftmo.status(prices);
+          const st = msg.type === 'trade' && /^règle /.test(msg.p.reason || '') ? { ...st0, s: msg.s, equity: msg.s.balance, target: null } : st0;
+          const text = ftmoTradeMessage(msg, st, marketById(cfg, msg.p.market));
           if (msg.type === 'refused' && acct.id === 'lucid') continue; // même signal déjà annoncé par le compte FTMO
           console.log(`[${firm.toLowerCase()}] ${{ open: 'ouverture', trade: 'clôture', refused: 'refusé par l\'IA' }[msg.type]} ${msg.p.market}:${msg.p.sid} ${msg.p.side}${msg.type === 'trade' ? ` ${usd(msg.p.pnl)}` : ''}${msg.p.ai ? ` (IA ${Math.round(msg.p.ai.p * 100)} %)` : ''}`);
           // Clôture : bouton « 🎬 Vidéo » (PnL card animée, réservé à l'administrateur)

@@ -202,13 +202,18 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     return eq;
   }
 
-  function closeAll(s, prices, t, reason) {
+  /** Clôture de toutes les positions (limite de perte atteinte) : chaque clôture est annoncée comme une autre. */
+  function closeAll(s, prices, t, reason, out = null) {
     for (const [k, p] of Object.entries(s.open)) {
       const px = prices[p.market] || p.entry;
       const pnl = pnlAt(p, px, 2);
       s.balance += pnl;
-      s.closed.push({ ...p, exit: px, exitT: t, pnl, reason });
+      s.dayPnl = s.dayPnl || {};
+      s.dayPnl[s.day] = (s.dayPnl[s.day] || 0) + pnl;
+      const done = { ...p, exit: px, exitT: t, pnl, reason };
+      s.closed.push(done);
       delete s.open[k];
+      if (out) out.push({ type: 'trade', s, p: done });
     }
   }
 
@@ -404,7 +409,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       const dFloor = dailyFloor(s);
       const mFloor = maxFloor(s);
       if (eq <= dFloor || eq <= mFloor) {
-        closeAll(s, prices, t, `règle ${A.firm || 'FTMO'}`);
+        closeAll(s, prices, t, `règle ${A.firm || 'FTMO'}`, out);
         const why = eq <= mFloor
           ? (P.maxUsd ? `perte maximale (${P.maxUsd.toLocaleString('fr-FR')} $ sous le plus haut solde de clôture) atteinte` : `perte maximale (−${P.max} %${P.trailing ? ' depuis le plus haut' : ''}) atteinte`)
           : `perte du jour (−${P.daily} %) atteinte`;
@@ -435,7 +440,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       // Compte financé : mêmes limites de perte ; on suit le gain (partage 80 %)
       const eq = equity(s, prices);
       if (eq <= dailyFloor(s) || eq <= maxFloor(s)) {
-        closeAll(s, prices, t, `règle ${A.firm || 'FTMO'}`);
+        closeAll(s, prices, t, `règle ${A.firm || 'FTMO'}`, out);
         const paidTxt = s.funded?.traderPaid ? ` après ${s.funded.payouts.length} retrait${s.funded.payouts.length > 1 ? 's' : ''} (${Math.round(s.funded.traderPaid).toLocaleString('fr-FR')} $ pour toi)` : ' sans retrait';
         out.push({ type: 'fail', s: { ...s }, why: `compte financé perdu (limite de perte)${paidTxt}` });
         archive(s);

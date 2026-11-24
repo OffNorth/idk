@@ -379,6 +379,12 @@ function version() {
 /** Appel Telegram du démarrage, limité dans le temps (le bot ne reste jamais bloqué en silence). */
 const step = (label, p, ms = 20_000) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`${label} : pas de réponse de Telegram après ${ms / 1000} s`)), ms))]);
 
+// Chargé par la boucle de test (selftest.js) : rien ne démarre, le bot est seulement exporté
+module.exports = { bot, store, channel, tick, cfg, game, setPaused: (v) => { paused = !!v; } };
+
+if (require.main === module) start();
+
+function start() {
 console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) · IA validatrice : ${cfg.ftmoAi} · risque : ${cfg.ftmoSizing}`);
 
 (async () => {
@@ -427,3 +433,4 @@ console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) �
 });
 
 for (const sig of ['SIGINT', 'SIGTERM']) process.once(sig, () => bot.stop().then(() => process.exit(0)));
+}
