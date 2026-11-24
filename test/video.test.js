@@ -136,3 +136,18 @@ test('vidéo PnL : signature en bas de la carte (à la place de la ligne « comp
   assert.ok(band(a) > 300);
   assert.strictEqual(band(b), 0);
 });
+
+test('vidéo PnL : l’animation des bougies dure jusqu’à la fin de la vidéo (pause courte sur le résultat)', () => {
+  const short = V.prepareCard(trade, { interval: '5m', sec: 300, candles });
+  assert.strictEqual(short.animFrames, 150, 'vidéo courte : 5 s');
+  const long = V.prepareCard(trade, { interval: '5m', sec: 300, candles }, { seconds: 20 });
+  assert.strictEqual(long.frames, 600);
+  assert.strictEqual(long.animFrames, 540, '20 s : 18 s d’animation + 2 s de pause');
+  const max = V.prepareCard(trade, { interval: '5m', sec: 300, candles }, { seconds: 30 });
+  assert.strictEqual(max.animFrames, 810, '30 s : 27 s + 3 s');
+  // À mi-vidéo, les bougies n'ont pas toutes été dessinées : l'image change encore entre 50 % et la fin de l'animation
+  const mid = long.frame(300);
+  const end = long.frame(long.animFrames);
+  assert.ok(!mid.equals(end));
+  assert.ok(long.frame(long.animFrames).equals(long.frame(long.frames - 1)), 'pause : image figée après l’animation');
+});

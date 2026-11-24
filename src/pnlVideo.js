@@ -283,9 +283,14 @@ function prepareCard(trade, data, { seconds = 0, handle = '' } = {}) {
   const every = Math.max(1, Math.round(C.length / 5));
   for (let i = every; i < C.length; i += every) base.text(data.sec >= 86400 ? new Date(C[i].t * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : hm(C[i].t), X(i), bottom + 8, { size: 13, color: COL.mute, align: 'center' });
 
-  const total = Math.round(FPS * Math.max(ANIM_S + HOLD_S, seconds || 0));
-  const animN = FPS * ANIM_S;
-  const ease = (x) => 1 - Math.pow(1 - x, 3);
+  // Durée de l'animation calée sur la vidéo : les bougies défilent jusqu'à la fin, avec une courte pause sur le
+  // résultat (10 % de la vidéo, entre 1,5 et 3 s). Vidéo courte (≤ 7,2 s) : 5 s d'animation + 2,2 s de pause.
+  const totalS = Math.max(ANIM_S + HOLD_S, seconds || 0);
+  const total = Math.round(FPS * totalS);
+  const holdS = totalS > ANIM_S + HOLD_S ? Math.min(3, Math.max(1.5, totalS * 0.1)) : HOLD_S;
+  const animN = Math.round(FPS * Math.max(ANIM_S, totalS - holdS));
+  // Animation longue : rythme plus régulier (sinon presque toutes les bougies arrivent dans les premières secondes)
+  const ease = animN > FPS * 8 ? (x) => 1 - Math.pow(1 - x, 1.6) : (x) => 1 - Math.pow(1 - x, 3);
   const bodyW = Math.max(1, step * 0.62);
 
   function frame(f) {
@@ -348,7 +353,7 @@ function prepareCard(trade, data, { seconds = 0, handle = '' } = {}) {
     cv.text(usd(shownPnl), 28, 100, { style: 'b', size: 56, color: shownPnl >= 0 ? COL.gain : COL.loss });
     return cv;
   }
-  return { frame: (f) => frame(f).rgba(), frames: total, png: () => frame(total - 1).png() };
+  return { frame: (f) => frame(f).rgba(), frames: total, animFrames: animN, png: () => frame(total - 1).png() };
 }
 
 /* ------------------------------------------------------------------ */
