@@ -668,6 +668,17 @@ dernier envoi réussi, dernière erreur, pause, signaux sautés par compte) pour
 (n_orb5s 237 $, n_mom10 507 $ pour 107 $ prévus) et Lucid ne tradait plus. Backtest nov. 24–26 : 67 % de réussite
 en moins d'un an (79 j médians) contre 88 % à 0,2 %.
 
+### 🌏 Séances d'Asie et de New York (`npm run sessions`)
+
+Recherche nov. 2026 sur l'or au comptant réel 5 min 2009–2026 (frais compris, heures de Londres et de New York avec
+changements d'heure) : 51 variantes — cassure du range asiatique, ouverture de Tokyo / Shanghai, mouvement de la nuit,
+effet de nuit, `g_asia` re-testée, cassure de l'ouverture COMEX / New York, fixing de Londres, clôture de Londres,
+dernière heure de New York. Seules les 2 cassures du **range asiatique (0 h → 7 h UTC) à l'ouverture de Londres**
+sont positives sur les 3 tranches, avec un avantage faible (+0,03 R par trade). Aucune n'améliore les challenges
+(FTMO 57 / 52 / 69 % contre 58 / 54 / 71 % ; Lucid nettement moins bien) → **`g_asiabrk` à l'essai en paper trading
+seulement**, pas sur les comptes FTMO / Lucid. `g_asia` (retour à la moyenne asiatique, retenue sur PAXG) est
+perdante sur l'or réel (−8 / −15 / −16 %) ; les stratégies de New York sur l'or sont toutes perdantes ou instables.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

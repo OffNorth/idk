@@ -1157,6 +1157,8 @@ STRATEGIES.push(...require('./gold2').GOLD2);
 STRATEGIES.push(...require('./nasintra').NASINTRA);
 STRATEGIES.push(...require('./research2').RESEARCH2);
 STRATEGIES.push(...require('./goldmom').GOLDMOM);
+// Séances d'Asie et de New York (npm run sessions) : à l'essai en paper trading
+STRATEGIES.push(...require('./sessions').SESSIONS);
 STRATEGIES.push(...require('./events').EVENTS);
 
 /* Intraday NAS100 (formation TradingView, module 5) : voir src/intraday.js */

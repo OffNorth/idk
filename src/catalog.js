@@ -16,6 +16,7 @@ const FAMILIES = [
   ['Spécifiques au Nasdaq', ['sma200', 'macro', 'lowvol', 'vixcalm', 'halloween', 'rates', 'macd_long', 'sox', 'dollarweak', 'ibs', 'cumrsi', 'ema_long', 'tom', 'double7', 'down3', 'dip5', 'vixspike', 'tuesday', 'pctb']],
   ['Effets de calendrier Nasdaq', ['n_rsi4', 'n_rsspx', 'n_low10', 'n_weekrev', 'n_drop', 'n_2down', 'n_dollarfall', 'n_goldfall', 'n_yieldfall', 'n_rsi30', 'n_oilfall', 'n_opex', 'n_ath', 'n_soxlead', 'n_bigup', 'n_mompb', 'n_reversal', 'n_vixfade', 'n_overnight', 'n_preholiday', 'n_santa', 'n_gapfill', 'n_firsthour', 'n_halfhalf', 'n_trendday']],
   ['Or intraday : momentum (or au comptant réel)', ['g_orb30', 'g_mom8', 'g_gap']],
+  ['Or : séances d’Asie et de New York (npm run sessions)', ['g_asiabrk']],
   ['Tirées de la littérature (recherche web)', ['g_night', 'n_noise', 'n_orbdir']],
   ['Intraday Nasdaq (5 min)', ['n_mom10', 'n_orb15', 'n_orb5s', 'sweep', 'orb15', 'vwappb']],
   ['Scalp (1–5 min)', ['s_emavwap', 's_vwaprev', 's_bbrsi', 's_orb', 's_stoch', 's_burst']],
@@ -156,7 +157,9 @@ const VERDICT = {
   g_silverlead: ['dispo', 'Retirée par l’audit des 3 périodes (Or : −8 % 2000–2008). Avant : GC=F : +17 % puis +10 % (plus faible), 37 % gagnants'],
   g_oilfall: ['retenue', 'GC=F : meilleure « autres marchés » du test en masse or ; audit +53 % · +12 % · +82 % (2000–08 · 09–16 · 17–26)'],
   g_ibsh: ['retenue', 'PAXG 5 min : meilleur total des 112 scalps testés ; audit +157 % · +85 % · +18 % (3 tranches de 2 ans, frais CFD 0,005 %)'],
-  g_asia: ['retenue', 'PAXG 5 min : +36 % 2020–2024, +2,7 % depuis (s’essouffle) ; FTMO seule 73 %, pas ajoutée au compte FTMO'],
+  g_asia: ['retenue', 'PAXG 5 min : +36 % 2020–2024, +2,7 % depuis (s’essouffle) ; sur l’or au comptant réel 2009–2026 (npm run sessions) : −8 % · −15 % · −16 % → perdante, pas ajoutée au compte FTMO'],
+  g_asiabrk: ['essai', 'Or au comptant réel 2009–2026 : +20 % · +13 % · +16 % sur 3 tranches (≈ 0,9 trade / jour, +0,03 R par trade) ; challenge FTMO 57 / 52 / 69 % contre 58 / 54 / 71 % sans, Lucid nettement moins bien → à l’essai en paper trading seulement'],
+  g_fixfade: ['rejet', 'Contre-pied au fixing de Londres (15 h) : or au comptant réel 2009–2026 +0,7 % · −8,6 % · +5 % → pas stable, rejetée'],
   g_dollarfall: ['rejet', 'GC=F : −10 % 2000–2015'],
   hold: ['ref', 'Or +10,8 %/an (pire baisse −44 %) · Nasdaq +17,0 %/an (−36 %)'],
 };

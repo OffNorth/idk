@@ -48,7 +48,8 @@
     "ftmo-events": "node --max-old-space-size=12288 ftmo-events.js",
     "lucid-tune": "node --max-old-space-size=12288 lucid-tune.js",
     "mc-build": "node mc-build.js",
-    "selftest": "node selftest.js"
+    "selftest": "node selftest.js",
+    "sessions": "node --max-old-space-size=6144 session-research.js"
   },
   "engines": {
     "node": ">=20"

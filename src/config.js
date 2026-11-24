@@ -93,7 +93,7 @@ module.exports = {
   goldScalpFeePct: num('GOLD_SCALP_FEE_PCT', 0.005), // stratégies 1 / 5 / 15 min (CFD)
   // Par défaut : les combinaisons retenues par le banc d'essai (npm run research) + la référence
   // Retenues par le banc d'essai sur 25 ans d'or (npm run research -- goldlong) + référence
-  goldStrategies: list('GOLD_STRATEGIES', 'season,golden,trendmix,sma200,mom12_1,mom12,tsmom,high52,macd@1d,x_rsi2,m_bb@5m,m_ibs,m_rsi2x,m_wr@5m,m_keltner@5m,g_ibsh@5m,g_weekrev,g_low10,g_yieldfall,g_asia,g_oilfall,rsi2,ibs,double7,down3,vixspike,vixcalm,dualmom,season200,seasonplus,silver,macd_long,ema_long,x_orb5,x_lasthalf,m_down3,m_vwap,g_silverlead,hold'),
+  goldStrategies: list('GOLD_STRATEGIES', 'season,golden,trendmix,sma200,mom12_1,mom12,tsmom,high52,macd@1d,x_rsi2,m_bb@5m,m_ibs,m_rsi2x,m_wr@5m,m_keltner@5m,g_ibsh@5m,g_weekrev,g_low10,g_yieldfall,g_asia,g_asiabrk,g_oilfall,rsi2,ibs,double7,down3,vixspike,vixcalm,dualmom,season200,seasonplus,silver,macd_long,ema_long,x_orb5,x_lasthalf,m_down3,m_vwap,g_silverlead,hold'),
 
   // Financement de nuit annuel (%) — 0 pour le PAXG (pas de levier)
   goldFinancingPct: num('GOLD_FINANCING_PCT', 0),
@@ -229,7 +229,8 @@ module.exports = {
   cfg.ftmoOnly = num('FTMO_ONLY', 1) === 1;
   // Stratégies à l'essai : suivies en paper trading (et publiées) mais PAS par le compte FTMO
   // (n_noise et g_orb30, d'abord à l'essai, sont passées sur le compte FTMO avec les autres stratégies intraday)
-  cfg.trialStrategies = list('TRIAL_STRATEGIES', '');
+  // g_asiabrk (npm run sessions, séance d'Asie) : à l'essai, pas sur FTMO / Lucid
+  cfg.trialStrategies = list('TRIAL_STRATEGIES', 'gold:g_asiabrk');
   if (cfg.ftmoOnly) {
     const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : [])];
     // + candidates de l'adaptation automatique (suivies en paper sans être publiées, promues si elles font mieux)
