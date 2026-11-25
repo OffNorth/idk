@@ -57,7 +57,8 @@
     "lucid-research3": "node --max-old-space-size=7000 lucid-research3.js",
     "traders": "node --max-old-space-size=7000 trader-research.js",
     "spx-research": "node --max-old-space-size=7000 spx-research.js",
-    "markets-research": "node --max-old-space-size=7000 markets-research.js"
+    "markets-research": "node --max-old-space-size=7000 markets-research.js",
+    "world-research": "node --max-old-space-size=7000 world-research.js"
   },
   "engines": {
     "node": ">=20"

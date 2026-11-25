@@ -3,7 +3,11 @@
 Historique long de l'or au comptant (XAU/USD) en bougies 1 min, données publiques gratuites de Dukascopy (2004 → aujourd'hui),
 regroupé en bougies 5 min pour le banc d'essai (bien plus long que l'archive PAXG de Binance, qui commence en 2020).
 
-    python3 scripts/dukascopy.py [AAAA-MM-JJ début] [AAAA-MM-JJ fin]
+    python3 scripts/dukascopy.py [AAAA-MM-JJ début] [AAAA-MM-JJ fin] [INSTRUMENT] [DIVISEUR]
+
+INSTRUMENT (XAUUSD par défaut) : tout instrument Dukascopy, ex. DEUIDXEUR (DAX), JPNIDXJPY (Nikkei), GBPUSD, USDJPY,
+USTBONDTRUSD (obligation US) ; prix stockés en entiers ÷ DIVISEUR (1000 pour l'or, les indices et le yen, 100000 pour
+les autres paires de devises). Sortie : data/research/<instrument>-5m.json.
 
 - un fichier par jour (BID_candles_min_1.bi5, compressé LZMA), mis en cache dans data/research/duka/XAUUSD/ ;
 - requêtes lentes (une à la fois, 1 s de pause, jusqu'à 12 essais avec attente croissante : le service limite le débit) pour ne pas surcharger le service ;
@@ -12,9 +16,11 @@ regroupé en bougies 5 min pour le banc d'essai (bien plus long que l'archive PA
 import datetime, json, lzma, os, struct, sys, time, urllib.request
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-CACHE = os.path.join(ROOT, 'data', 'research', 'duka', 'XAUUSD')
-OUT = os.path.join(ROOT, 'data', 'research', 'xauusd-5m.json')
-URL = 'https://datafeed.dukascopy.com/datafeed/XAUUSD/{y}/{m:02d}/{d:02d}/BID_candles_min_1.bi5'
+SYM = sys.argv[3] if len(sys.argv) > 3 else 'XAUUSD'
+DIV = float(sys.argv[4]) if len(sys.argv) > 4 else 1000
+CACHE = os.path.join(ROOT, 'data', 'research', 'duka', SYM)
+OUT = os.path.join(ROOT, 'data', 'research', SYM.lower() + '-5m.json')
+URL = 'https://datafeed.dukascopy.com/datafeed/' + SYM + '/{y}/{m:02d}/{d:02d}/BID_candles_min_1.bi5'
 os.makedirs(CACHE, exist_ok=True)
 
 start = datetime.date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else datetime.date(2004, 1, 1)
@@ -56,7 +62,7 @@ def candles(day, raw):
         t, o, c, l, h, v = struct.unpack('>5if', d[k * 24:(k + 1) * 24])
         if v <= 0:
             continue
-        out.append((base + t, o / 1000, h / 1000, l / 1000, c / 1000, v))
+        out.append((base + t, o / DIV, h / DIV, l / DIV, c / DIV, v))
     return out
 
 
@@ -82,5 +88,5 @@ while day <= end:
     day += datetime.timedelta(days=1)
 
 rows = [bars5[k] for k in sorted(bars5)]
-json.dump([[r[0], round(r[1], 3), round(r[2], 3), round(r[3], 3), round(r[4], 3), round(r[5], 2)] for r in rows], open(OUT, 'w'), separators=(',', ':'))
+json.dump([[r[0], round(r[1], 6), round(r[2], 6), round(r[3], 6), round(r[4], 6), round(r[5], 2)] for r in rows], open(OUT, 'w'), separators=(',', ':'))
 print(f'Écrit {OUT} : {len(rows)} bougies 5 min, {start} → {end}, {missing} jours manquants')
