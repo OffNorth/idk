@@ -718,6 +718,13 @@ positives les deux années et ≤ 6 pertes de suite — cassure à la hausse des
 les trois : Lucid passe de 0,9 à **3 trades intraday par jour**, évaluation ≈ **55 j** au lieu de 70 j, réussite 96 %
 (49 départs, pire série 9 pertes) ; avec seulement les deux cassures 10 / 30 min : 100 % en 55 j.
 
+**Lucid, 3e recherche (`npm run lucid-research3`, 26 variantes, idées de Fabio Valentini adaptées aux bougies)** :
+profil de volume de la séance précédente (POC, zone de valeur 70 %) — retour dans la zone de valeur (« règle des 80 % »),
+cassure ratée du bord de la zone, repli sur le bord en déséquilibre — et balayages de liquidité (plus haut / plus bas
+de la veille, range des 15 premières minutes). **Aucune n'est positive sur les deux années** (meilleures : retour dans
+la zone de valeur +0,20 R la 1re année, −0,13 R la 2e) → rien d'ajouté. Sa méthode repose sur le flux d'ordres
+(delta, absorption, footprint) en 15 secondes, que des bougies 5 min ne remplacent pas.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,
