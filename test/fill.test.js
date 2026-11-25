@@ -68,6 +68,13 @@ test('délai : attente puis cours relevé seulement pour les marchés avec un or
   // Marché fermé (dernière bougie trop ancienne) : pas de cours, le prix du signal reste
   const closed = await delayedFills({ fillDelaySec: 30 }, evs, [acc], { sleep: async () => {}, fetcher: async () => [{ t: now - 3600, c: 1 }] });
   assert.deepStrictEqual(closed, {});
+  // Bougie 1 min plus ancienne que les données du signal (Yahoo : 1 min en retard sur le 5 min) : pas un cours « après »
+  // le signal → ignorée, le compte garde le prix du signal ; à jour → prise
+  const quote = async (sym) => (sym === 'GC=F' ? [{ t: now - 600, c: 3545.1 }] : []);
+  const stale = await delayedFills({ fillDelaySec: 30 }, evs, [acc], { sleep: async () => {}, fetcher: quote, since: { gold: now - 300 } });
+  assert.deepStrictEqual(stale, {});
+  const fresh = await delayedFills({ fillDelaySec: 30 }, evs, [acc], { sleep: async () => {}, fetcher: quote, since: { gold: now - 900 } });
+  assert.strictEqual(fresh.gold.price, 3545.1);
 });
 
 test('Lucid : règle de régularité 40 % pendant l’évaluation', () => {

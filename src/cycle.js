@@ -25,11 +25,15 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
   const all = []; // événements de tous les marchés (compte FTMO simulé)
   const out = { events: 0, byMarket: {} };
   const markets = activeMarkets(cfg);
+  const lastBarT = {}; // début de la dernière bougie 5 min de chaque marché (données du signal)
 
   for (const market of markets) {
     let n = 0;
     try {
-      for (const ev of await new MarketTrader(market, store, cfg).run()) {
+      const trader = new MarketTrader(market, store, cfg);
+      const evs = await trader.run();
+      lastBarT[market.id] = trader.state.lastBarT;
+      for (const ev of evs) {
         n++;
         console.log(
           `[${market.id}] ${ev.strategy.id} : ${ev.type === 'open' ? `ouverture ${ev.pos.side} à ${ev.pos.entry.toFixed(2)}` : `clôture ${ev.trade.pnlPct.toFixed(2)}% (${ev.trade.reason})`}`,
@@ -51,7 +55,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
   // Délai signal → exécution (FILL_DELAY_SEC, 30 s) : entrées et sorties sur signal au cours de ce moment-là
   let fills = null;
   try {
-    fills = await require('./fill').delayedFills(cfg, all, Object.values(books));
+    fills = await require('./fill').delayedFills(cfg, all, Object.values(books), { since: lastBarT });
     if (fills && Object.keys(fills).length) console.log(`[exécution] cours ${cfg.fillDelaySec} s après le signal : ${Object.entries(fills).map(([k, f]) => `${k} ${px(f.price)}`).join(', ')}`);
   } catch (err) {
     console.warn('[exécution] cours après délai indisponible :', err.message);
