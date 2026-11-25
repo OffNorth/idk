@@ -42,22 +42,26 @@ const FTMO_PAYOUT = { rule: 'ftmo', every: 14 };
 function accountOf(cfg, id = 'gold') {
   if (id === 'lucid') {
     // Mêmes stratégies et mêmes risques que le compte FTMO combiné (× LUCID_RISK_MUL), règles et contrats Lucid
-    const base = accountOf({ ...cfg, ftmoCombined: true }, 'gold');
+    // (FTMO_RISK_MUL ne s'applique pas à Lucid : il a son propre multiplicateur LUCID_RISK_MUL)
+    const base = accountOf({ ...cfg, ftmoCombined: true, ftmoRiskMul: 1 }, 'gold');
+    const excluded = new Set(cfg.lucidExclude || []);
     const capital = cfg.lucidCapital || 50_000;
     const mul = cfg.lucidRiskMul ?? 1;
     return {
       ...base, id: 'lucid', firm: 'Lucid', label: `LucidFlex ${Math.round(capital / 1000)}K`, emoji: '🟣', file: 'lucid.json',
       // + ses stratégies intraday propres (variantes « objectif 0,5 R »), que le compte FTMO ne suit pas
-      strategies: [...new Set([...base.strategies, ...(cfg.lucidIntradayStrategies || [])])],
+      // − LUCID_EXCLUDE (stratégies du compte FTMO que Lucid ne prend pas)
+      strategies: [...new Set([...base.strategies, ...(cfg.lucidIntradayStrategies || [])])].filter((k) => !excluded.has(k)),
       enabled: !!(cfg.ftmoEnabled && cfg.lucidEnabled), capital, program: lucidProgram(capital, cfg),
       // Intraday : seulement LUCID_INTRADAY_STRATEGIES, à LUCID_INTRADAY_RISK_PCT ; journalières : risque FTMO × LUCID_RISK_MUL
-      riskOf: (m, st) => (st && st.tf && st.tf !== '1d'
-        ? ((cfg.lucidIntradayStrategies || []).includes(`${m}:${st.id}`) ? cfg.lucidIntradayRisk ?? 0 : 0)
-        : base.riskOf(m, st) * mul),
+      riskOf: (m, st) => (st && excluded.has(`${m}:${st.id}`) ? 0
+        : st && st.tf && st.tf !== '1d'
+          ? ((cfg.lucidIntradayStrategies || []).includes(`${m}:${st.id}`) ? cfg.lucidIntradayRisk ?? 0 : 0)
+          : base.riskOf(m, st) * mul),
     };
   }
   if (id === 'nas100') {
-    const risk = cfg.ftmoNasRisk;
+    const risk = cfg.ftmoNasRisk * (cfg.ftmoRiskMul ?? 1);
     return { id, label: 'Nasdaq', emoji: '🇺🇸', file: 'ftmo-nas.json', enabled: cfg.ftmoEnabled && cfg.ftmoNasEnabled && !cfg.ftmoCombined, strategies: cfg.ftmoNasStrategies, risk, riskOf: () => risk };
   }
   if (cfg.ftmoCombined) {
@@ -66,11 +70,12 @@ function accountOf(cfg, id = 'gold') {
       id: 'gold', firm: 'FTMO', label: 'Or + Nasdaq + EUR/USD', emoji: '🌍', file: 'ftmo.json', enabled: cfg.ftmoEnabled,
       strategies: [...cfg.ftmoStrategies, ...cfg.ftmoNasStrategies], risk: cfg.ftmoRisk,
       // Stratégies intraday (tf ≠ 1d) : risque propre (FTMO_INTRADAY_RISK_PCT), plus petit que celui des journalières
-      riskOf: (marketId, strat) => (strat && strat.tf && strat.tf !== '1d' && cfg.ftmoIntradayRisk ? cfg.ftmoIntradayRisk
+      // × FTMO_RISK_MUL (1,25 : challenge ≈ 2–3 semaines plus rapide, npm run speed)
+      riskOf: (marketId, strat) => (cfg.ftmoRiskMul ?? 1) * (strat && strat.tf && strat.tf !== '1d' && cfg.ftmoIntradayRisk ? cfg.ftmoIntradayRisk
         : marketId === 'nas100' ? cfg.ftmoComboNasRisk : marketId === 'eurusd' ? cfg.ftmoEurRisk ?? cfg.ftmoRisk : marketId === 'spx' ? cfg.ftmoSpxRisk ?? cfg.ftmoRisk : cfg.ftmoRisk),
     };
   }
-  return { id: 'gold', label: 'Or', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk, riskOf: () => cfg.ftmoRisk };
+  return { id: 'gold', label: 'Or', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk, riskOf: () => cfg.ftmoRisk * (cfg.ftmoRiskMul ?? 1) };
 }
 /** Comptes FTMO actifs. */
 const ftmoAccounts = (cfg) => ['nas100', 'gold', 'lucid'].map((id) => accountOf(cfg, id)).filter((a) => a.enabled);

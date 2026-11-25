@@ -177,7 +177,14 @@ module.exports = {
   // Variantes « objectif 0,5 R » (npm run lucid-research, 24/11/2026) : 66 % de gagnants, ≤ 6 pertes de suite →
   // évaluation réussie 49 / 49 départs sur nov. 24–26 (contre 49 % avec les originales + n_pdlbrk). Pas d'intraday or
   // (1 micro MGC trop gros pour la perte max de 2 000 $), pas de n_pdlbrk (négative sur la séance seule).
-  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_noise_t05,nas100:n_orb5s_t05,nas100:n_mom10_t05,nas100:n_orb15_t05'),
+  // 25/11/2026 (npm run speed, choix de l'utilisateur) : sans les variantes à faible avantage (n_noise_t05, n_orb5s_t05 :
+  // < +0,03 R par trade) → évaluation ≈ 3 semaines plus rapide sur nov. 24–26 (71 j contre 90 j médians), réussite égale
+  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_mom10_t05,nas100:n_orb15_t05'),
+  // Stratégies du compte FTMO que Lucid ne prend pas (avantage < +0,03 R)
+  lucidExclude: list('LUCID_EXCLUDE', 'nas100:ibs'),
+  // Multiplicateur du risque du compte FTMO (pas de Lucid) : 1,25 = challenge ≈ 2–3 semaines plus rapide (npm run speed),
+  // réussite < 1 an 50 / 51 / 65 % contre 56 / 47 / 69 % (2009–19 / 2020–26 / nov. 24–26)
+  ftmoRiskMul: num('FTMO_RISK_MUL', 1.25),
   // Règle de régularité de l'évaluation LucidFlex : meilleur jour ≤ 40 % du gain (40 % depuis le 19/10/2026, 50 % en option payante)
   lucidConsistency: num('LUCID_CONSISTENCY_PCT', 40),
   // Retraits LucidFlex (compte financé) : après 5 jours gagnants ≥ LUCID_PAYOUT_MIN_DAY $, ≤ 50 % du gain, 2 000 $ (50K) /

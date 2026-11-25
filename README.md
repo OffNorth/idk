@@ -700,6 +700,18 @@ avec les originales + `n_pdlbrk`). Tous les objectifs de 0,3 à 1 R font mieux q
 meilleur sur les deux moitiés de la période — mais 2 ans de données seulement : à confirmer en direct. L'intraday or
 (cassures de Londres / New York, objectif ou pas) et le retour au VWAP restent mauvais pour Lucid.
 
+### ⚡ Réussir plus vite (`npm run speed`)
+
+Leviers testés (choix sur 2009–2019, vérification ensuite) : risque par stratégie selon son avantage, retrait des
+stratégies faibles, « accélérer puis protéger », plus de risque partout. Aucun réglage n'est à la fois plus rapide et
+aussi sûr sur toutes les périodes ; appliqués à la demande (25/11/2026) :
+- **FTMO : risque × 1,25** (`FTMO_RISK_MUL`, pas appliqué à Lucid) → réussite < 1 an 50 / 51 / 65 % en 67 / 76 / 55 j
+  médians (contre 56 / 47 / 69 % en 86 / 85 / 77 j) : ≈ 2–3 semaines plus rapide, un peu moins sûr.
+- **Lucid sans les stratégies faibles** (< +0,03 R par trade : `n_noise_t05`, `n_orb5s_t05`, Nasdaq `ibs` via
+  `LUCID_EXCLUDE`) → 55 / 72 / 100 % en 85 / 110 / **71 j** (contre 56 / 69 / 100 % en 85 / 110 / 90 j). Fragile : avantage
+  du Nasdaq intraday appris sur 1 an seulement.
+Risque × 1,5, plus de risque au début, ou risque pondéré par l'avantage : plus rapide mais nettement moins de réussite.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

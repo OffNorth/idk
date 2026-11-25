@@ -51,7 +51,8 @@
     "selftest": "node selftest.js",
     "sessions": "node --max-old-space-size=6144 session-research.js",
     "sessions2": "node --max-old-space-size=6144 session-research2.js",
-    "lucid-research": "node --max-old-space-size=7000 lucid-research.js"
+    "lucid-research": "node --max-old-space-size=7000 lucid-research.js",
+    "speed": "node --max-old-space-size=7000 speed-research.js"
   },
   "engines": {
     "node": ">=20"

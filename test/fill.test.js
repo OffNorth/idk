@@ -6,7 +6,7 @@ const path = require('path');
 
 function setup(extra = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fill-'));
-  const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoCapital: 100000, ftmoRisk: 1, ftmoLeverage: 30, ftmoDayStop: 0, ftmoFeeGold: 0, ftmoFeeNas: 0, ftmoProgram: '1step', ftmoSizing: 'fixe', ftmoAi: 'off', lucidEnabled: false, ftmoCombined: true, ftmoIntradayRisk: 0, ...extra };
+  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, dataDir: dir, ftmoEnabled: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoCapital: 100000, ftmoRisk: 1, ftmoLeverage: 30, ftmoDayStop: 0, ftmoFeeGold: 0, ftmoFeeNas: 0, ftmoProgram: '1step', ftmoSizing: 'fixe', ftmoAi: 'off', lucidEnabled: false, ftmoCombined: true, ftmoIntradayRisk: 0, ...extra };
   const { Store } = require('../src/store');
   return { cfg, store: new Store(dir) };
 }

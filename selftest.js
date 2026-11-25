@@ -290,7 +290,7 @@ async function run({ live = false, log = console.log } = {}) {
     // Pas de groupe configuré → achat copié en privé
     cfg.channelId = '';
     let d0 = dmCount();
-    await tradeAt('n_orb5s_t05', 26200);
+    await tradeAt('n_orb5s', 26200); // suivie par le compte FTMO
     const noGroupDm = dmCount() - d0;
     // Groupe en erreur → copie en privé aussi
     cfg.channelId = GROUP_ID;
