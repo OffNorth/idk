@@ -159,7 +159,7 @@ module.exports = {
   ftmoEurRisk: upgraded('FTMO_EUR_RISK_PCT', ['1.5'], 2),
   ftmoSpxRisk: upgraded('FTMO_SPX_RISK_PCT', ['1.5'], 2),
   ftmoNasEnabled: num('FTMO_NAS', 1) === 1,
-  ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:rsi2,nas100:ibs,nas100:down3,nas100:dip5,nas100:n_low10,nas100:n_drop,nas100:n_2down,nas100:n_dollarfall,nas100:rates,nas100:g_yieldfall,nas100:n_noise,nas100:n_orb5s,nas100:n_mom10,nas100:n_orb15,nas100:n_pdlbrk'),
+  ftmoNasStrategies: list('FTMO_NAS_STRATEGIES', 'nas100:rsi2,nas100:ibs,nas100:down3,nas100:dip5,nas100:n_low10,nas100:n_drop,nas100:n_2down,nas100:n_dollarfall,nas100:rates,nas100:g_yieldfall,nas100:n_noise,nas100:n_orb5s,nas100:n_mom10,nas100:n_orb15'),
   ftmoNasRisk: process.env.FTMO_NAS_RISK_PCT === '0.5' ? 3 : num('FTMO_NAS_RISK_PCT', 3), // 0,5 = ancienne valeur par défaut, mise à jour ; // npm run ftmo-nas-port : 3 % → 42 % · 43 % · 39 % de challenges réussis
   ftmoCapital: num('FTMO_CAPITAL', 100000),
   // Compte Lucid simulé (LucidFlex, micro-futures) à côté du compte FTMO : mêmes signaux, règles Lucid (/lucid)
@@ -232,7 +232,8 @@ module.exports = {
   cfg.ftmoOnly = num('FTMO_ONLY', 1) === 1;
   // Stratégies à l'essai : suivies en paper trading (et publiées) mais PAS par le compte FTMO
   // (n_noise et g_orb30, d'abord à l'essai, sont passées sur le compte FTMO avec les autres stratégies intraday)
-  // (g_asiabrk, g_nypdl, n_pdlbrk, d'abord à l'essai, sont passées sur le compte FTMO le 24/11/2026 ; n_pdlbrk aussi sur Lucid)
+  // (g_asiabrk et g_nypdl, d'abord à l'essai, sont passées sur le compte FTMO le 24/11/2026 ; n_pdlbrk retirée le 25/11 :
+  // négative sur la séance seule de New York, comme en direct)
   cfg.trialStrategies = list('TRIAL_STRATEGIES', '');
   if (cfg.ftmoOnly) {
     const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : []),

@@ -48,10 +48,10 @@ test('g_nypdl / n_pdlbrk : cassure du plus haut de la veille, une entrée par jo
   assert.strictEqual(hhmm(n[0].exitT), '20:55', 'sortie 15 h 55 NY');
 });
 
-test('séances : g_asiabrk, g_nypdl, n_pdlbrk sur le compte FTMO ; pas sur Lucid (variantes « objectif 0,5 R » à la place)', () => {
+test('séances : g_asiabrk, g_nypdl sur le compte FTMO, n_pdlbrk retirée ; pas sur Lucid (variantes « objectif 0,5 R » à la place)', () => {
   const cfg = require('../src/config');
   assert.ok(cfg.ftmoStrategies.includes('gold:g_asiabrk') && cfg.ftmoStrategies.includes('gold:g_nypdl'));
-  assert.ok(cfg.ftmoNasStrategies.includes('nas100:n_pdlbrk'));
+  assert.ok(!cfg.ftmoNasStrategies.includes('nas100:n_pdlbrk'), 'n_pdlbrk retirée du compte FTMO');
   const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
   assert.strictEqual(L.riskOf('nas100', { id: 'n_pdlbrk', tf: '5m' }), 0);
   assert.ok(L.riskOf('nas100', { id: 'n_noise_t05', tf: '5m' }) > 0);
