@@ -161,13 +161,15 @@ const FILTERS = {
   // 3. Journalières sur micro-futures
   console.log('\n=== 3. Journalières de plus (micro-futures CME) ===');
   const vix = (await cachedYahoo(CACHE, '^VIX', '1d', {}, 72)).filter((k) => k.c > 0);
-  const MK = { silver: ['SI=F', 1000, 3.5], dow: ['^DJI', 0.5, 2.5], russell: ['^RUT', 5, 2.5], spx: ['^GSPC', 5, 4], nas100: ['^NDX', 2, 2.5], gold: ['GC=F', 10, 3.5] };
+  // (+ petits contrats de la liste Lucid : pétrole MCL, maïs ZC 5 000 boisseaux — prix Yahoo en cents —, porcs HE 40 000 livres)
+  const MK = { silver: ['SI=F', 1000, 3.5], dow: ['^DJI', 0.5, 2.5], russell: ['^RUT', 5, 2.5], spx: ['^GSPC', 5, 4], nas100: ['^NDX', 2, 2.5], gold: ['GC=F', 10, 3.5],
+    oil: ['CL=F', 100, 3], corn: ['ZC=F', 50, 31], hogs: ['HE=F', 400, 26] };
   const have = new Set(dailyBase.map((t) => t.sid));
   const dailyOk = [];
   for (const [m, [sym, mult, fee]] of Object.entries(MK)) {
     const d = (await cachedYahoo(CACHE, sym, '1d', {}, 72)).filter((k) => k.c > 0);
     const ind = computeAll(d, d, 86400, null, vix, {});
-    for (const id of ['rsi2', 'ibs', 'down3', 'double7', 'cumrsi']) {
+    for (const id of ['rsi2', 'ibs', 'down3', 'double7', 'cumrsi', 'n_low10', 'dip5']) {
       if (have.has(`${m}:${id}`)) continue;
       const s = selectStrategies([id])[0]; if (!s) continue;
       const l = backtest(s, d, { size: 1000, feePct: 0.01, financingPct: 5, barSec: 86400, ind, daily: d, vix }).list
