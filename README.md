@@ -761,6 +761,15 @@ Deux marchés de plus dans le bot : 🥈 **Argent** (future `SI=F`, micro **SIL*
 ETF SLV / DIA de la recherche), stratégies à l'heure de New York. OANDA : `XAG_USD`, `US30_USD`. `SILVER_TRADING=0` /
 `DOW_TRADING=0` pour les couper. La Time Machine ne les compte pas encore (journées de `src/mcDays.json`).
 
+### 🌍 Autres marchés et actions (`npm run world-research`)
+
+DAX et Nikkei (bougies 1 h Yahoo, 2 ans), GBP/USD, USD/JPY, obligations US (TLT) et 18 actions (Polygon 5 min nov. 2024 →
+nov. 2026, journalier Yahoo depuis 2000). **DAX, Nikkei : rien de stable.** Livre et yen : cassures de l'ouverture de
+Londres stables (USD/JPY 30 / 60 min : +0,19 / +0,11 et +0,24 / +0,13 R), mais elles font baisser FTMO (67 → 57–65 %) et
+Lucid (94 → 90 %). Actions en journalier (AAPL, MSFT, GOOGL, NFLX, UNH… stables depuis 2000) : toutes font baisser FTMO
+(40–55 % sur 2009–19 / 2020–26). Actions en intraday sans effet négatif : TLT, GOOGL, PLTR, LLY, BA (ensemble : FTMO
+67 → 69 % sur nov. 24–26, 55 → 50 j) — gain faible, mesuré sur 2 ans seulement ; rien d'ajouté pour l'instant.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

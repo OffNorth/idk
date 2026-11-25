@@ -211,6 +211,12 @@ const sgn = (x) => (x >= 0 ? '+' : '') + x.toFixed(2);
       }
     }
     if (keep.length) console.log(`${'→ tous les ✅ ensemble'.padEnd(30)} ${fmt(evalAcc(acct, keep))}`);
+    // COMBO=bond,stk_PLTR,… : ces marchés-là ensemble (intraday stables)
+    if (process.env.COMBO && acct === 'gold') {
+      const ids = process.env.COMBO.split(',');
+      const ex = report.filter((r) => ids.includes(r.id)).flatMap((r) => r.intra.filter((q) => q.ok && q.acct === 'FTMO').flatMap((q) => q.l));
+      console.log(`${('→ ' + process.env.COMBO).padEnd(30)} ${fmt(evalAcc(acct, ex))}`);
+    }
   }
 })().catch((e) => {
   console.error(e);
