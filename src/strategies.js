@@ -1178,6 +1178,28 @@ for (const id of ['n_noise', 'n_orb5s', 'n_mom10', 'n_orb15']) {
     evaluate: (x, i) => { const r = s.evaluate(x, i); return r.entry && r.sl > 0 ? { ...r, tp: 0.5 * r.sl } : r; },
   });
 }
+/**
+ * Break-even (npm run lucid-research4, 25/11/2026) : stop remonté au prix d'entrée dès que la clôture a fait +k × le
+ * risque, objectif à tp × le risque. Sur le Dow (compte Lucid), n_mom10 avec break-even à 0,5 R et objectif 1 R :
+ * +0,10 / +0,05 R par trade (contre +0,07 / +0,05 R avec l'objectif 0,5 R), évaluation 30 j au lieu de 34 j.
+ */
+function withBE(s, k, tp, id, name, desc) {
+  return {
+    ...s, id, name, desc,
+    evaluate: (x, i) => { const r = s.evaluate(x, i); return r.entry && r.sl > 0 ? { ...r, tp: tp * r.sl } : r; },
+    trail(pos, ind, i) {
+      const prev = s.trail ? s.trail(pos, ind, i) : NaN;
+      const fav = pos.side === 'long' ? pos.best - pos.entry : pos.entry - pos.best;
+      if (!(fav >= k * Math.abs(pos.entry - pos.initSl))) return prev;
+      return Number.isFinite(prev) ? (pos.side === 'long' ? Math.max(prev, pos.entry) : Math.min(prev, pos.entry)) : pos.entry;
+    },
+  };
+}
+{
+  const s = STRATEGIES.find((x) => x.id === 'n_mom10');
+  if (s) STRATEGIES.push(withBE(s, 0.5, 1, 'n_mom10_t1be', `${s.name} (objectif 1 R, stop au prix d’entrée après +0,5 R, Lucid)`,
+    `${s.desc || ''} Variante du compte Lucid (Dow Jones) : gain pris à 1 × le risque ; dès que le cours a fait +0,5 × le risque, le stop remonte au prix d’entrée (le trade ne peut plus perdre).`.trim()));
+}
 
 /* Intraday NAS100 (formation TradingView, module 5) : voir src/intraday.js */
 STRATEGIES.push(...require('./intraday').INTRADAY);

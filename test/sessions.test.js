@@ -173,7 +173,7 @@ test('Argent et Dow Jones : marchés du compte Lucid (micro SIL / MYM), heure de
   const { marketById } = require('../src/markets');
   const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
   const F = accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
-  for (const [id, sid, contract] of [['silver', 'n_wvb05_t075', 'SIL'], ['dow', 'n_mom10_t05', 'MYM']]) {
+  for (const [id, sid, contract] of [['silver', 'n_wvb05_t075', 'SIL'], ['dow', 'n_mom10_t1be', 'MYM']]) {
     const s = selectStrategies([sid])[0];
     assert.strictEqual(L.riskOf(id, s), cfg.lucidIntradayRisk, `${id} : risque intraday Lucid`);
     assert.ok(!F.strategies.includes(`${id}:${sid}`), `${id} : pas sur FTMO`);
@@ -189,4 +189,27 @@ test('Argent et Dow Jones : marchés du compte Lucid (micro SIL / MYM), heure de
     assert.deepStrictEqual(computeScalp2(all, 300, id).min.slice(0, 3), computeScalp2(all, 300, 'nas100').min.slice(0, 3));
     assert.strictEqual(require('../src/oanda').nySession(all).length, 78);
   }
+});
+
+test('Lucid : Double 7 et RSI 2 sur le S&P 500 (journalières propres à Lucid), Dow en break-even (n_mom10_t1be)', () => {
+  const cfg = require('../src/config');
+  const { accountOf } = require('../src/ftmoAccount');
+  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  const F = accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
+  for (const id of ['double7', 'rsi2']) {
+    const s = selectStrategies([id])[0];
+    assert.ok(L.strategies.includes(`spx:${id}`));
+    assert.strictEqual(L.riskOf('spx', s), cfg.ftmoSpxRisk * cfg.lucidRiskMul, `spx:${id} au risque des journalières Lucid`);
+    assert.ok(!F.strategies.includes(`spx:${id}`), 'pas sur FTMO');
+    assert.ok(selectStrategies(cfg.spxStrategies).some((x) => x.id === id), 'paper S&P');
+  }
+  // Break-even : objectif 1 R ; après +0,5 R le stop remonte au prix d'entrée (jamais redescendu)
+  const be = selectStrategies(['n_mom10_t1be'])[0];
+  assert.ok(cfg.lucidIntradayStrategies.includes('dow:n_mom10_t1be') && !cfg.lucidIntradayStrategies.includes('dow:n_mom10_t05'));
+  const pos = { side: 'long', entry: 100, initSl: 98, sl: 98, best: 100.9 };
+  assert.ok(!Number.isFinite(be.trail(pos, {}, 0)), 'pas encore +0,5 R');
+  pos.best = 101;
+  assert.strictEqual(be.trail(pos, {}, 0), 100);
+  const sh = { side: 'short', entry: 100, initSl: 102, sl: 102, best: 98.9 };
+  assert.strictEqual(be.trail(sh, {}, 0), 100);
 });

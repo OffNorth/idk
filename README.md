@@ -770,6 +770,18 @@ Lucid (94 → 90 %). Actions en journalier (AAPL, MSFT, GOOGL, NFLX, UNH… stab
 (40–55 % sur 2009–19 / 2020–26). Actions en intraday sans effet négatif : TLT, GOOGL, PLTR, LLY, BA (ensemble : FTMO
 67 → 69 % sur nov. 24–26, 55 → 50 j) — gain faible, mesuré sur 2 ans seulement ; rien d'ajouté pour l'instant.
 
+### 🟣 Lucid : break-even et journalières S&P (`npm run lucid-research4`)
+
+Améliorer ce que Lucid trade déjà : (1) stop remonté au prix d'entrée après +0,3 / +0,5 R sur chaque stratégie intraday ;
+(2) filtres de jour (lundi, vendredi, veille large / étroite, écart d'ouverture) ; (3) journalières de plus sur des
+micro-futures CME (argent, Dow, Russell, S&P, Nasdaq, or). Retenus, ajoutés un à un sans baisse nulle part :
+- **Dow : `dow:n_mom10_t1be`** (objectif 1 R, stop au prix d'entrée après +0,5 R) à la place de `n_mom10_t05` ;
+- **S&P 500 : Double 7 et RSI 2** en journalier, Lucid seulement (`LUCID_DAILY_STRATEGIES`, micro MES).
+
+Lucid : **56 / 76 / 100 %** de réussite < 1 an (74 / 85 / 37 j) contre 55 / 72 / 94 % (85 / 110 / 34 j) sur 2009–19 /
+2020–26 / nov. 24–26. Les filtres font monter la réussite récente mais divisent les trades par 2 (évaluation 50–64 j) :
+non retenus.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

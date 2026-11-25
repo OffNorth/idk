@@ -53,7 +53,7 @@ function accountOf(cfg, id = 'gold') {
       ...base, id: 'lucid', firm: 'Lucid', label: `LucidFlex ${Math.round(capital / 1000)}K`, emoji: '🟣', file: 'lucid.json',
       // + ses stratégies intraday propres (variantes « objectif 0,5 R »), que le compte FTMO ne suit pas
       // − LUCID_EXCLUDE (stratégies du compte FTMO que Lucid ne prend pas)
-      strategies: [...new Set([...base.strategies, ...(cfg.lucidIntradayStrategies || [])])].filter((k) => !excluded.has(k)),
+      strategies: [...new Set([...base.strategies, ...(cfg.lucidIntradayStrategies || []), ...(cfg.lucidDailyStrategies || [])])].filter((k) => !excluded.has(k)),
       enabled: !!(cfg.ftmoEnabled && cfg.lucidEnabled), capital, program: lucidProgram(capital, cfg),
       // Intraday : seulement LUCID_INTRADAY_STRATEGIES, à LUCID_INTRADAY_RISK_PCT ; journalières : risque FTMO × LUCID_RISK_MUL
       riskOf: (m, st) => (st && excluded.has(`${m}:${st.id}`) ? 0

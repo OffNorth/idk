@@ -114,7 +114,7 @@ module.exports = {
   silverStartCapital: num('SILVER_START_CAPITAL', 1000),
   silverFeePct: num('SILVER_FEE_PCT', 0.003),
   dowEnabled: num('DOW_TRADING', 1) === 1,
-  dowStrategies: list('DOW_STRATEGIES', 'n_mom10_t05,hold'),
+  dowStrategies: list('DOW_STRATEGIES', 'n_mom10_t1be,hold'),
   dowStartCapital: num('DOW_START_CAPITAL', 1000),
   dowFeePct: num('DOW_FEE_PCT', 0.003),
   eurusdEnabled: num('EURUSD_TRADING', 1) === 1,
@@ -198,7 +198,11 @@ module.exports = {
   // + argent (silver:n_wvb05_t075, micro SIL) et Dow Jones (dow:n_mom10_t05, micro MYM) (npm run markets-research,
   // 25/11/2026) : réussite inchangée (55 / 72 / 94 % sur 2009–19 / 2020–26 / nov. 24–26), 34 j au lieu de 37 j ; pétrole,
   // Bitcoin, Russell et EUR/USD intraday font baisser Lucid, et chaque nouveau marché fait baisser FTMO
-  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_mom10_t05,nas100:n_orb15_t05,nas100:n_orb10l_t075,nas100:n_orb30l_t075,nas100:n_or60_t05,nas100:n_crabel4_t05,nas100:n_crabel7_15_t075,nas100:n_wvb05_t075,nas100:n_wvb07_t05,silver:n_wvb05_t075,dow:n_mom10_t05'),
+  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_mom10_t05,nas100:n_orb15_t05,nas100:n_orb10l_t075,nas100:n_orb30l_t075,nas100:n_or60_t05,nas100:n_crabel4_t05,nas100:n_crabel7_15_t075,nas100:n_wvb05_t075,nas100:n_wvb07_t05,silver:n_wvb05_t075,dow:n_mom10_t1be'),
+  // Journalières propres au compte Lucid (npm run lucid-research4, 25/11/2026) : Double 7 et RSI 2 sur le S&P 500
+  // (micro MES), au risque des journalières Lucid ; avec le Dow en break-even (dow:n_mom10_t1be, objectif 1 R) : réussite
+  // 56 / 76 / 100 % (74 / 85 / 37 j) contre 55 / 72 / 94 % (85 / 110 / 34 j) sur 2009–19 / 2020–26 / nov. 24–26
+  lucidDailyStrategies: list('LUCID_DAILY_STRATEGIES', 'spx:double7,spx:rsi2'),
   // Stratégies du compte FTMO que Lucid ne prend pas (avantage < +0,03 R)
   lucidExclude: list('LUCID_EXCLUDE', 'nas100:ibs'),
   // Multiplicateur du risque du compte FTMO (pas de Lucid) : 1,25 = challenge ≈ 2–3 semaines plus rapide (npm run speed),
@@ -263,7 +267,7 @@ module.exports = {
   cfg.trialStrategies = list('TRIAL_STRATEGIES', '');
   if (cfg.ftmoOnly) {
     const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : []),
-      ...(cfg.ftmoEnabled && cfg.lucidEnabled ? cfg.lucidIntradayStrategies : [])]; // variantes propres au compte Lucid
+      ...(cfg.ftmoEnabled && cfg.lucidEnabled ? [...cfg.lucidIntradayStrategies, ...cfg.lucidDailyStrategies] : [])]; // stratégies propres au compte Lucid
     // + candidates de l'adaptation automatique (suivies en paper sans être publiées, promues si elles font mieux)
     const cand = cfg.autoAdapt && cfg.adaptStrategies ? cfg.adaptCandidates : [];
     const of = (m) => [...new Set([...all, ...cfg.trialStrategies, ...cand].filter((x) => x.startsWith(`${m}:`)).map((x) => x.slice(m.length + 1))), 'hold'];
