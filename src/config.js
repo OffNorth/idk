@@ -122,6 +122,8 @@ module.exports = {
   russellStrategies: list('RUSSELL_STRATEGIES', 'n_low10,hold'),
   russellStartCapital: num('RUSSELL_START_CAPITAL', 1000),
   russellFeePct: num('RUSSELL_FEE_PCT', 0.003),
+  // Actions / ETF du compte FTMO (src/stocks.js) : STOCKS_TRADING=0 pour les couper
+  stocksEnabled: num('STOCKS_TRADING', 1) === 1,
   eurusdEnabled: num('EURUSD_TRADING', 1) === 1,
   eurusdStrategies: list('EURUSD_STRATEGIES', 'ibs,hold'),
   eurusdStartCapital: num('EURUSD_START_CAPITAL', 1000),
@@ -158,7 +160,7 @@ module.exports = {
   // Or réel (npm run ftmo-real, XAU/USD 2009–2026) : les scalps choisis sur PAXG perdent sur l'or au comptant ; restent des
   // stratégies JOURNALIÈRES sur l'or (GC=F), le Nasdaq et l'EUR/USD (les « gold:… » de cette liste peuvent viser un autre marché)
   // + stratégies INTRADAY (≈ 5 trades par jour demandés) : momentum or sur l'or réel et Nasdaq, à FTMO_INTRADAY_RISK_PCT
-  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:down3,gold:pctb,gold:ema_long,gold:g_yieldfall,eurusd:ibs,spx:down3,spx:n_goldfall,gold:g_orb30,gold:g_orb60,gold:g_mom8,gold:g_gap,gold:g_asiabrk,gold:g_nypdl,spx:s_crabel7_30'),
+  ftmoStrategies: list('FTMO_STRATEGIES', 'gold:down3,gold:pctb,gold:ema_long,gold:g_yieldfall,eurusd:ibs,spx:down3,spx:n_goldfall,gold:g_orb30,gold:g_orb60,gold:g_mom8,gold:g_gap,gold:g_asiabrk,gold:g_nypdl,spx:s_crabel7_30,tlt:n_crabel7_15,googl:n_crabel7_30,pltr:n_orb15,pltr:n_crabel7_15,pltr:n_wvb05,lly:n_orb5s,ba:n_crabel7_15'),
   // npm run lucid-tune : intraday 0,15 % + journalières 2 % → réussite < 1 an 64 % / 67 % / 83 % (2009–19 / 2020–26 / nov. 24–26)
   // contre 37 % / 46 % / 44 % avec 0,5 % + 1,5 % (l'intraday ajoute surtout de la variance : on le garde, en petit)
   ftmoIntradayRisk: upgraded('FTMO_INTRADAY_RISK_PCT', ['0.5'], 0.15),
@@ -298,5 +300,9 @@ module.exports = {
     cfg.silverStrategies = of('silver');
     cfg.dowStrategies = of('dow');
     cfg.russellStrategies = of('russell');
+    // Actions / ETF (FTMO) : un marché par titre, ses stratégies prises dans FTMO_STRATEGIES
+    for (const id of require('./stocks').STOCK_IDS) {
+      cfg[`${id}Enabled`] = cfg.stocksEnabled; cfg[`${id}Strategies`] = of(id); cfg[`${id}StartCapital`] = 1000; cfg[`${id}FeePct`] = 0.005;
+    }
   }
 }

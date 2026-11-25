@@ -306,7 +306,8 @@ function sessionMarket(cfg, { id, key, name, emoji, symbol }) {
     session: true,
     basis: () => basisOf(cfg, id, symbol, true),
     async fetch(tfs, { needsVix, aux: auxList = [] } = {}) {
-      const oa = useOanda(cfg) ? await oandaIntraday(cfg, id, tfs, { session: true }) : null;
+      // (actions / ETF : pas d'instrument OANDA → toujours Yahoo)
+      const oa = useOanda(cfg) && oanda.INSTRUMENT[id] ? await oandaIntraday(cfg, id, tfs, { session: true }) : null;
       const [m5y, long, d1, vix, aux] = await Promise.all([
         oa ? null : cached(`${id}5m`, 120, () => fetchYahoo(symbol, '5m', { range: '5d', ...LIVE })).catch(() => null),
         oa ? null : cached(`${id}5m60`, 1800, () => fetchYahoo(symbol, '5m', { range: '60d', ...LIVE })).catch(() => null),
@@ -333,7 +334,8 @@ const russellMarket = (cfg) => sessionMarket(cfg, { id: 'russell', key: 'russell
 /** Tous les marchés (actifs ou non). */
 function allMarkets(cfg) {
   // Nasdaq en premier : marché par défaut du panneau, du résumé, des bilans et du jeu ; l'or suit
-  return [nasMarket(cfg), goldMarket(cfg), spxMarket(cfg), eurusdMarket(cfg), silverMarket(cfg), dowMarket(cfg), russellMarket(cfg)];
+  return [nasMarket(cfg), goldMarket(cfg), spxMarket(cfg), eurusdMarket(cfg), silverMarket(cfg), dowMarket(cfg), russellMarket(cfg),
+    ...require('./stocks').STOCK_IDS.map((id) => { const S = require('./stocks').STOCKS[id]; return sessionMarket(cfg, { id, key: id, name: S.name, emoji: '📈', symbol: S.symbol }); })];
 }
 
 /** Marchés actifs. */

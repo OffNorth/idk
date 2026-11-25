@@ -249,3 +249,24 @@ test('Lucid : euro en 6E standard (pas de micro M6E chez Lucid) ; journalières 
   }
   assert.ok(marketById(cfg, 'russell').enabled);
 });
+
+test('FTMO : actions / ETF (TLT, Google, Palantir, Eli Lilly, Boeing) en intraday, heure de New York, levier 1:5 ; pas sur Lucid', () => {
+  const cfg = require('../src/config');
+  const { accountOf } = require('../src/ftmoAccount');
+  const { marketById } = require('../src/markets');
+  const { STOCK_IDS } = require('../src/stocks');
+  const F = accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
+  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  for (const sid of ['tlt:n_crabel7_15', 'googl:n_crabel7_30', 'pltr:n_orb15', 'pltr:n_crabel7_15', 'pltr:n_wvb05', 'lly:n_orb5s', 'ba:n_crabel7_15']) {
+    const [m, id] = sid.split(':');
+    const s = selectStrategies([id])[0];
+    assert.ok(s, `${id} existe`);
+    assert.ok(F.strategies.includes(sid) && F.riskOf(m, s) > 0, `${sid} sur FTMO`);
+    assert.strictEqual(L.riskOf(m, s), 0, `${sid} pas sur Lucid`);
+    assert.ok(selectStrategies(cfg[`${m}Strategies`]).some((x) => x.id === id), `${sid} en paper`);
+  }
+  for (const id of STOCK_IDS) assert.ok(marketById(cfg, id)?.enabled && marketById(cfg, id).session, id);
+  const { computeScalp2 } = require('../src/scalp2');
+  const c = Array.from({ length: 3 }, (_, k) => ({ t: Date.parse('2026-11-23T15:00:00Z') / 1000 + k * 300, o: 1, h: 1, l: 1, c: 1, v: 1 }));
+  assert.deepStrictEqual(computeScalp2(c, 300, 'pltr').min, computeScalp2(c, 300, 'nas100').min, 'heure de New York');
+});

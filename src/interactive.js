@@ -107,7 +107,7 @@ function protectText(cfg, s, targetPct = null) {
 /** Risque par trade du compte FTMO : journalières / intraday (stratégies factices pour interroger riskOf). */
 function riskText(cfg, acct, phase) {
   if (!acct.riskOf) return `${acct.risk} %`;
-  const daily = [...new Set(['gold', 'nas100', 'spx', 'eurusd', 'silver', 'dow', 'russell'].filter((m) => acct.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => acct.riskOf(m, { tf: '1d' })))];
+  const daily = [...new Set(['gold', 'nas100', 'spx', 'eurusd', 'silver', 'dow', 'russell', ...require('./stocks').STOCK_IDS].filter((m) => acct.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => acct.riskOf(m, { tf: '1d' })))];
   // Risque intraday : celui d'une stratégie intraday que le compte prend vraiment
   const intraSid = acct.strategies.find((x) => { const s = selectStrategies([x.split(':')[1]])[0]; return s && s.tf && s.tf !== '1d' && acct.riskOf(x.split(':')[0], s, phase) > 0; });
   const r = (x) => Math.round(x * 1000) / 1000;

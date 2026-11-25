@@ -195,6 +195,7 @@ function catalog(cfg) {
     silver: selectStrategies(cfg.silverEnabled ? cfg.silverStrategies || [] : []),
     dow: selectStrategies(cfg.dowEnabled ? cfg.dowStrategies || [] : []),
     russell: selectStrategies(cfg.russellEnabled ? cfg.russellStrategies || [] : []),
+    ...Object.fromEntries(require('./stocks').STOCK_IDS.map((id) => [id, selectStrategies(cfg[`${id}Enabled`] ? cfg[`${id}Strategies`] || [] : [])])),
   };
   const famOf = new Map(FAMILIES.flatMap(([f, ids]) => ids.map((id) => [id, f])));
   return STRATEGIES.map((s) => {

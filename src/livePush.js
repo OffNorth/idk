@@ -8,7 +8,8 @@ const crypto = require('crypto');
 const { activeMarkets } = require('./markets');
 
 const URL_DEFAULT = 'https://glvxxxoxcxsxdnbofgqf.supabase.co/functions/v1/bot';
-const SYMBOL = { gold: 'GC=F', nas100: '^NDX', spx: '^GSPC', eurusd: 'EURUSD=X', silver: 'SI=F', dow: '^DJI', russell: '^RUT' };
+const SYMBOL = { gold: 'GC=F', nas100: '^NDX', spx: '^GSPC', eurusd: 'EURUSD=X', silver: 'SI=F', dow: '^DJI', russell: '^RUT',
+  ...Object.fromEntries(Object.entries(require('./stocks').STOCKS).map(([k, v]) => [k, v.symbol])) };
 const r6 = (v) => (Number.isFinite(v) ? Number(v.toPrecision(8)) : null);
 
 /** Compte FTMO / Lucid simulé → objet compact pour le site. */

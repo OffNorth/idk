@@ -825,6 +825,15 @@ en ≤ 14 j 20 → 25 %, en ≤ 30 j 34 → 42 %, échecs en ≤ 14 j 51 → 47 
 Testés sans gain : limite de perte du jour, arrêt après 2–3 pertes, positions simultanées limitées, filtre de tendance
 20 j, sortie partielle, « gap and go » (perdant partout), fin / début de mois.
 
+### 📈 Actions / ETF sur le compte FTMO (`src/stocks.js`)
+
+Choix de l'utilisateur (26/11/2026), d'après `npm run world-research` : intraday sur 5 CFD de la séance de New York, au
+risque intraday FTMO — **TLT** (obligations US : Crabel NR7 15 min), **Google** (Crabel NR7 30 min), **Palantir** (cassure
+15 min, Crabel NR7 15 min, Williams 0,5), **Eli Lilly** (cassure 5 min à la baisse), **Boeing** (Crabel NR7 15 min).
+Ensemble : réussite FTMO récente 67 → 69 % (55 → 50 j), mesurée sur 2 ans seulement ; ≈ 1,5 position de plus par jour.
+Bougies Yahoo 5 min (60 jours, séance seule), levier plafonné à 1:5, pas sur Lucid (pas d'actions chez Lucid).
+`STOCKS_TRADING=0` pour les couper. À vérifier : que ces CFD (surtout TLT) existent bien sur ta plateforme FTMO.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

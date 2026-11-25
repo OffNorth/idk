@@ -53,7 +53,7 @@ function htf(candles, sec, fn) {
  * @param {'gold'|'nas100'|'spx'|'dow'|'silver'} market — heure de New York pour les marchés de la séance de New York
  * (Nasdaq, S&P, Dow, argent du compte Lucid, gardé entre 9 h 30 et 16 h NY), UTC pour l'or
  */
-const NY_MARKETS = new Set(['nas100', 'spx', 'dow', 'silver', 'russell']);
+const NY_MARKETS = new Set(['nas100', 'spx', 'dow', 'silver', 'russell', ...require('./stocks').STOCK_IDS]);
 function computeScalp2(candles, barSec = 300, market = 'gold') {
   const n = candles.length;
   const closes = candles.map((c) => c.c);

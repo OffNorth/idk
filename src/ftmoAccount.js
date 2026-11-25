@@ -365,7 +365,8 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         const rule = RULES[cfg.ftmoSizing] || RULES.fixe;
         const mul = rule({ ...p, sid: `${ev.market.id}:${ev.strategy.id}` }, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: effTarget(s) ?? Infinity, open: Object.keys(s.open).length });
         if (!(mul > 0)) continue;
-        const cap = (P.levCap && P.levCap[ev.market.id]) || cfg.ftmoLeverage; // levier max (par marché sur le compte Swing)
+        // levier max (par marché sur le compte Swing ; actions / ETF : 1:5 chez FTMO)
+        const cap = Math.min((P.levCap && P.levCap[ev.market.id]) || cfg.ftmoLeverage, require('./stocks').STOCKS[ev.market.id] ? require('./stocks').STOCK_LEVERAGE : Infinity);
         const riskPct = A.riskOf(ev.market.id, ev.strategy, s.phase);
         if (!(riskPct > 0)) continue; // stratégie non prise par ce compte (ex. intraday sur Lucid)
         let notional = Math.min((s.balance * riskPct * mul * wAdapt) / stopPct, s.balance * cap);
