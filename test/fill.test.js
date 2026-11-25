@@ -181,3 +181,28 @@ test('Lucid : intraday Nasdaq choisi pris à 0,2 % (1 MNQ), intraday or ignoré'
   const out2 = lu.onCycle([{ type: 'open', market, strategy: { id: 'g_orb30', name: 'orb', tf: '5m' }, pos: { side: 'long', entry: 4000, sl: 3990, initSl: 3990, entryT: T0 + 60 } }], { gold: 4000, nas100: 26000 }, T0 + 60);
   assert.ok(!out2.some((x) => x.type === 'open'), 'intraday or non pris');
 });
+
+test('/reset : nouveau challenge au capital de départ, positions fermées au dernier cours, historique et archive gardés', () => {
+  const { cfg, store } = setup();
+  const acc = require('../src/ftmoAccount');
+  const f = acc.createFtmo({ cfg, store });
+  const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
+  f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0);
+  f.onCycle([{ type: 'close', market, strategy, trade: { ...pos, exit: 4040, exitT: T0 + 3600, reason: 'take profit' } }], { gold: 4040 }, T0 + 3600);
+  f.onCycle([{ type: 'open', market, strategy, pos: { ...pos, entryT: T0 + 7200 } }], { gold: 4040 }, T0 + 7200);
+  const before = f.load();
+  assert.strictEqual(Object.keys(before.open).length, 1);
+  store.saveJson('gold.json', { lastPrice: 4010 });
+  assert.match(acc.resetReport(cfg, store, ''), /Pour confirmer/);
+  assert.strictEqual(f.load().attempt, before.attempt, 'sans « ok » : rien ne change');
+  const txt = acc.resetReport(cfg, store, 'ftmo ok');
+  assert.match(txt, /remis à zéro/);
+  const after = f.load();
+  assert.strictEqual(after.attempt, before.attempt + 1);
+  assert.strictEqual(after.balance, after.capital);
+  assert.deepStrictEqual(after.open, {});
+  assert.strictEqual(after.history.at(-1).outcome, 'réinitialisé (/reset)');
+  const arch = f.archived();
+  assert.strictEqual(arch.length, 2, 'trade clôturé + position fermée au reset gardés dans l’archive');
+  assert.strictEqual(arch.at(-1).exit, 4010);
+});

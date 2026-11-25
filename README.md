@@ -648,6 +648,13 @@ pour le trader ; FTMO : tout le gain tous les 14 jours, 80 %, le compte repart d
 dans le groupe, total dans `/ftmo` et `/lucid`. Le risque reste le même qu'en évaluation : le réduire de moitié en
 financé diminue le gain net par évaluation achetée sur toutes les périodes.
 
+### ♻️ `/reset` : remettre les comptes à zéro, stats gardées (admin)
+
+`/reset` (les deux comptes), `/reset ftmo` ou `/reset lucid` affiche ce qui va se passer ; ajouter `ok` pour confirmer
+(`/reset ok`). Positions ouvertes fermées au dernier cours connu, challenge en cours noté « réinitialisé » dans
+l'historique, nouveau challenge (n° + 1) au capital de départ. **Gardé** : historique des challenges, trades archivés
+(site, /export), paper trading des stratégies, IA.
+
 ### 🏦 `/financer` : passer en compte financé (admin)
 
 `/financer` (les deux comptes), `/financer ftmo` ou `/financer lucid` : l'évaluation en cours est notée « réussite
@@ -1022,6 +1029,7 @@ image.
 | `/graphique [or\|nasdaq]` | 🕯 Cours en bougies |
 | `/jeu` · `/classement` | 🎯 Pronostic du jour · 🏆 points des joueurs |
 | `/pronostic` | (admin) lance un tour du jeu tout de suite |
+| `/reset [ftmo\|lucid] ok` | (admin) ♻️ comptes simulés remis à zéro, stats gardées |
 | `/nasdaq` | Bilan du Nasdaq 100 |
 | `/gold` | Bilan de chaque stratégie (valeur du compte, trades, % gagnants, position en cours) |
 | `/portfolio` | Graphique de l'évolution du portefeuille depuis le lancement |

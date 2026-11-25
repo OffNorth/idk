@@ -81,7 +81,7 @@ function tick() {
 /* Accès                                                               */
 /* ------------------------------------------------------------------ */
 
-const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'export', 'video', 'fonds', 'signature', 'financer']);
+const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'export', 'video', 'fonds', 'signature', 'financer', 'reset']);
 const isAdmin = (ctx) => !cfg.allowedUserIds.size || (ctx.from && cfg.allowedUserIds.has(String(ctx.from.id)));
 
 // Les boutons et les commandes de consultation sont ouverts à tout le groupe ; les réglages sont réservés.
@@ -225,6 +225,8 @@ bot.command('timemachine', async (ctx) => {
 });
 
 bot.command('financer', (ctx) => ctx.reply(require('./src/ftmoAccount').financerReport(cfg, store, ctx.match), HTML));
+// Remise à zéro des comptes simulés en gardant les stats (admin) : /reset, /reset ftmo, /reset lucid (+ « ok » pour confirmer)
+bot.command('reset', (ctx) => ctx.reply(require('./src/ftmoAccount').resetReport(cfg, store, ctx.match), HTML));
 
 // Adaptation automatique (admin) : /adapt (état), /adapt now (revue tout de suite), /adapt reset (retour à l'origine)
 bot.command('adapt', async (ctx) => {
@@ -401,6 +403,7 @@ console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) �
     { command: 'lucid', description: '🟣 Compte Lucid simulé (LucidFlex, micro-futures)' },
     { command: 'timemachine', description: '🔮 Chances de réussir le challenge en cours (1 000 années simulées)' },
     { command: 'financer', description: '🏦 Passer les comptes simulés en compte financé (admin)' },
+    { command: 'reset', description: '♻️ Remettre les comptes simulés à zéro, stats gardées (admin)' },
     { command: 'interface', description: '🖥 Interface en direct (graphiques, comptes FTMO / Lucid)' },
     { command: 'video', description: '🎬 Vidéo PnL d’un trade (fond au choix)' },
     { command: 'version', description: '🔖 Version du bot en service' },

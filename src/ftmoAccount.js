@@ -517,7 +517,24 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     return { already: false, was, s };
   }
 
-  return { onCycle, status, load, refusedReport, follows, forceFunded, archived: () => store.loadJson(ARCHIVE, []), account: A, reset: () => save(fresh()) };
+  /**
+   * Remise à zéro (commande /reset) : positions ouvertes fermées au dernier cours connu, challenge en cours archivé
+   * (trades gardés dans <compte>-archive.json, ligne « réinitialisé » dans l'historique), nouveau challenge n° + 1 au
+   * capital de départ. Les stats (historique des challenges, trades archivés, paper trading, IA) ne sont pas touchées.
+   */
+  function restart(prices = {}, t = Math.floor(Date.now() / 1000)) {
+    const s = load();
+    const nOpen = Object.keys(s.open || {}).length;
+    closeAll(s, prices, t, 'remise à zéro (/reset)');
+    const was = { attempt: s.attempt, phase: s.phase, balance: s.balance, gainPct: ((s.balance - s.capital) / s.capital) * 100, nOpen };
+    archive(s);
+    const next = fresh((s.attempt || 0) + 1);
+    next.history = [...(s.history || []), { attempt: s.attempt, phase: s.phase, outcome: 'réinitialisé (/reset)', at: t, balance: s.balance, days: (s.days || []).length }].slice(-20);
+    save(next);
+    return { was, s: next };
+  }
+
+  return { onCycle, status, load, refusedReport, follows, forceFunded, restart, archived: () => store.loadJson(ARCHIVE, []), account: A, reset: () => save(fresh()) };
 }
 
 /** /financer : passe les comptes simulés (tous, « ftmo » ou « lucid ») en compte financé ; texte de réponse (HTML). */
@@ -544,6 +561,32 @@ function financerReport(cfg, store, arg = '') {
   return lines.join('\n');
 }
 
+/** /reset : remet les comptes simulés (tous, « ftmo » ou « lucid ») à zéro en gardant les stats ; « ok » pour confirmer. */
+function resetReport(cfg, store, arg = '') {
+  const words = String(arg || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const which = words.includes('lucid') ? 'lucid' : words.includes('ftmo') ? 'ftmo' : 'tous';
+  const accts = ftmoAccounts(cfg).filter((a) => (which === 'lucid' ? a.id === 'lucid' : which === 'ftmo' ? a.id !== 'lucid' : true));
+  if (!accts.length) return 'Aucun compte simulé actif.';
+  const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
+  const names = accts.map((a) => `${a.firm || 'FTMO'} ${a.emoji} ${esc(a.label)}`).join(', ');
+  if (!words.includes('ok')) {
+    return [`♻️ <b>Remise à zéro</b> : ${names}`,
+      'Nouveau challenge au capital de départ ; positions ouvertes fermées au dernier cours. <b>Gardé</b> : historique des challenges, trades archivés (site, /export), paper trading, IA.',
+      `Pour confirmer : <code>/reset ${which === 'tous' ? '' : `${which} `}ok</code>`].join('\n');
+  }
+  // Dernier cours connu de chaque marché (fichiers du paper trading)
+  const prices = {};
+  for (const m of require('./markets').allMarkets(cfg)) { const p = store.loadJson(m.file, {})?.lastPrice; if (p) prices[m.id] = p; }
+  const lines = ['♻️ <b>Comptes simulés remis à zéro</b> (stats gardées)'];
+  for (const a of accts) {
+    const r = createFtmo({ cfg, store, account: a.id }).restart(prices);
+    const w = r.was;
+    lines.push(`• ${a.firm || 'FTMO'} ${a.emoji} ${esc(a.label)} : ${w.phase === 'funded' ? 'compte financé' : `challenge n° ${w.attempt}`} arrêté à ${money(w.balance)} (${w.gainPct >= 0 ? '+' : ''}${w.gainPct.toFixed(2)} %)${w.nOpen ? `, ${w.nOpen} position(s) fermée(s)` : ''} → challenge n° ${r.s.attempt} à ${money(r.s.capital)}`);
+  }
+  return lines.join('\n');
+}
+
 const ACCOUNT_FILES = ['ftmo.json', 'ftmo-nas.json', 'lucid.json'];
 /** Positions ouvertes sur ce marché dans un des comptes FTMO / Lucid ? */
 function openOn(store, marketId) {
@@ -564,4 +607,4 @@ function shiftOpen(store, marketId, shift) {
   }
 }
 
-module.exports = { shiftOpen, openOn, createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram, FTMO_PAYOUT, financerReport };
+module.exports = { shiftOpen, openOn, createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram, FTMO_PAYOUT, financerReport, resetReport };
