@@ -277,7 +277,8 @@ story.append(KeepTogether([Paragraph('Réglage du risque (FTMO et Lucid)', h2), 
     ('FTMO (avant)', 'intraday 0,5 % · journalières 1,5 %', '37 %', '46 %', '44 %'),
     ('FTMO (réglage du 20/11)', 'intraday 0,15 % · journalières 2 %, risque qui baisse', '64 %', '67 %', '83 %'),
     ('FTMO (24/11, + séances Asie / NY)', f'intraday {fc["ir"]:g} % · journalières {fc["gr"]:g} %, taille normale', '56 %', '47 %', '69 %'),
-    ('<b>FTMO (actuel)</b>', f'idem, risque × 1,25, + Crabel NR7 S&amp;P 500', '<b>50 %</b>', '<b>51 %</b>', '<b>67 %</b> (55 j)'),
+    ('FTMO (25/11)', 'idem, risque × 1,25, + Crabel NR7 S&amp;P 500', '50 %', '51 %', '67 % (55 j)'),
+    ('<b>FTMO (actuel)</b>', '+ stop suiveur (dès +2 R, à 1 R du meilleur cours), + actions intraday', '<b>55 %</b> (80 j)', '<b>57 %</b> (76 j)', '<b>73 %</b> (76 j)'),
     ('Lucid (avant)', 'idem FTMO', '13 %', '11 %', '21 %'),
     ('Lucid (24/11)', f'journalières {fc["gr"] * fc["lm"]:g} % · Nasdaq intraday {fc["lir"]:g} %, objectif 0,5 R', '56 %', '69 %', '100 % (≈ 70 j)'),
     ('Lucid (25/11 matin)', '+ cassures, Crabel, Williams, argent, Dow (≈ 4,7 trades intraday / jour)', '55 %', '72 %', '94 % (34 j)'),
@@ -321,7 +322,7 @@ story.append(KeepTogether([Paragraph('Nouveaux marchés : argent et Dow Jones (L
     ('+ pétrole', '—', '—', '76 % ✘'),
     ], [62 * mm, 38 * mm, 38 * mm, 42 * mm])]))
 
-story.append(KeepTogether([Paragraph('Autres marchés et actions (non retenus)', h2), Paragraph(
+story.append(KeepTogether([Paragraph('Autres marchés et actions', h2), Paragraph(
     'DAX et Nikkei (bougies 1 h, 2 ans), livre (GBP/USD), yen (USD/JPY), obligations US (ETF TLT) et 18 grandes actions (Nvidia, Tesla, Apple, '
     'Microsoft, Amazon, Meta, Google, AMD, Netflix, Broadcom, Palantir, Coinbase, JPMorgan, Exxon, Eli Lilly, UnitedHealth, MicroStrategy, Boeing), '
     'intraday 5 min nov. 2024 → nov. 2026 et journalier depuis 2000. <b>DAX et Nikkei</b> : aucune stratégie stable. <b>Livre et yen</b> : cassures de '
@@ -333,9 +334,12 @@ story.append(KeepTogether([Paragraph('Autres marchés et actions (non retenus)',
     ('+ GBP/USD intraday', '—', '—', '65 % ✘'),
     ('+ USD/JPY intraday (Lucid : 94 → 90 %)', '—', '—', '57 % (41 j) ✘'),
     ('+ actions en journalier (selon l’action)', '40–55 % ✘', '40–54 % ✘', '49–67 %'),
-    ('+ TLT, Google, Palantir, Eli Lilly, Boeing intraday', '—', '—', '69 % (50 j)'),
+    ('<b>+ TLT, Google, Palantir, Eli Lilly, Boeing intraday (ajouté)</b>', '—', '—', '<b>69 % (50 j)</b>'),
     ], [72 * mm, 32 * mm, 32 * mm, 44 * mm]), Spacer(1, 2), Paragraph(
-    'Seule la dernière ligne ne fait rien baisser, pour un gain minuscule (≈ 1 challenge sur 50, mesuré sur 2 ans seulement) : non ajoutée. '
+    'Seule la dernière ligne ne fait rien baisser, pour un petit gain (≈ 1 challenge sur 50, mesuré sur 2 ans seulement) : <b>ajoutée au compte '
+    'FTMO le 26/11/2026</b> (choix de l’utilisateur) — TLT : Crabel NR7 15 min · Google : Crabel NR7 30 min · Palantir : cassure 15 min, Crabel '
+    'NR7 15 min, Williams 0,5 · Eli Lilly : cassure 5 min à la baisse · Boeing : Crabel NR7 15 min ; CFD, levier 1:5, ≈ 1,5 position de plus '
+    'par jour (à vérifier : que ces CFD existent sur la plateforme FTMO). '
     'Conclusion des deux recherches de marchés : les comptes sont déjà bien réglés, ajouter des positions ajoute surtout de la variance.', body)]))
 
 story.append(KeepTogether([Paragraph('Séances d’Asie et de New York', h2), Paragraph(
@@ -401,6 +405,21 @@ story.append(KeepTogether([Paragraph('Objectif : réussir en 2 semaines', h2), P
     ('Sans gestion de la journée', '20 %', '34 %', '51 %', '2,6'),
     ('<b>Stop à +750 $ ou après 1 perte (actuel)</b>', '<b>25 %</b>', '<b>42 %</b>', '<b>47 %</b>', '<b>2,2</b>'),
     ], [56 * mm, 28 * mm, 28 * mm, 30 * mm, 38 * mm])]))
+
+story.append(KeepTogether([Paragraph('Stop suiveur du compte FTMO', h2), Paragraph(
+    'Testé sur toutes les stratégies du compte FTMO (npm run ftmo-tsl) : point mort à +1 R, suiveur 1 R après +1 / +1,5 / +2 R, suiveur '
+    '0,5 R, Chandelier 3 / 4 ATR, sur l’intraday, les journalières ou tout. Retenu : <b>dès que le trade a fait +2 R, le stop suit à 1 R du '
+    'meilleur cours</b> (clôtures de bougie), sur toutes les stratégies ; il ne recule jamais. Les réglages plus serrés coupent les gros gains '
+    'qui font réussir le challenge. Lucid n’est pas concerné.', body), Spacer(1, 3), small_table([
+    ('FTMO, réussite < 1 an', '2009–2019', '2020–2026', 'nov. 24–26'),
+    ('Sans stop suiveur', '50 % (67 j)', '51 % (76 j)', '67 % (55 j)'),
+    ('Point mort à +1 R', '55 %', '64 %', '59 % ✘'),
+    ('Chandelier 3 ATR', '54 %', '64 %', '39 % ✘'),
+    ('<b>Dès +2 R, stop à 1 R (actuel)</b>', '<b>55 % (80 j)</b>', '<b>57 % (76 j)</b>', '<b>73 % (76 j)</b>'),
+    ], [72 * mm, 34 * mm, 34 * mm, 40 * mm]), Spacer(1, 3), Paragraph(
+    '<b>Lucid, 6e recherche</b> (npm run lucid-research6, avec le réglage actuel) : l’intraday or (MGC) n’est stable sur 2009–2026 dans aucune '
+    'version ; pétrole, Dow, argent neutres ou négatifs ; Russell rien. Ajouté : momentum de fin de journée sur le S&amp;P en break-even (MES) : '
+    'nov. 24–26 51 → 53 %.', body)]))
 
 story.append(KeepTogether([Paragraph('Exécution, notifications et outils', h2), Paragraph(
     f'<b>Exécution « comme en vrai »</b> : les comptes FTMO et Lucid entrent et sortent (sur signal) au cours {fc["fd"]:g} s après le signal ; stops et '

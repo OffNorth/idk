@@ -146,7 +146,8 @@ def build(S, ex, fc):
         'séance ouvre alors à 14 h 30. L’or « de Londres » se lit en heure UTC : 7 h UTC = 8 h à Paris en hiver, 9 h en été.', body), Spacer(1, 3), Paragraph(
         '<b>Les règles du compte</b> : Lucid 50K = +3 000 $ (6 %) pour réussir, perte max 2 000 $ sous le plus haut solde de fin de journée, et '
         'ton meilleur jour ne doit pas dépasser 40 % du gain total (il faut donc au moins 3 jours gagnants). FTMO 100K = +10 %, perte du jour 3 %, '
-        'perte max 10 % depuis le plus haut, meilleur jour ≤ 50 % du gain.', body)]
+        'perte max 10 % depuis le plus haut, meilleur jour ≤ 50 % du gain. <b>Stop suiveur sur FTMO</b> : dès qu’un trade a fait +2 R, remonte '
+        'le stop à 1 R sous le meilleur cours de clôture (au-dessus pour une vente), et continue de le suivre ; ne le recule jamais.', body)]
 
     # ---------------------------------------------------------------------------------------------------------------
     out += [PageBreak(), Paragraph('2. Cassure de l’ouverture (Nasdaq)', h2), Paragraph(
