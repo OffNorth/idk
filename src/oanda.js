@@ -3,7 +3,7 @@
  * FTMO, sans le retard d'environ 10 min des futures CME sur Yahoo (GC=F).
  * Jeton : OANDA_TOKEN dans le .env (jamais dans le code ni dans le chat) ; OANDA_ENV=live pour un compte réel.
  */
-const INSTRUMENT = { gold: 'XAU_USD', nas100: 'NAS100_USD', spx: 'SPX500_USD', eurusd: 'EUR_USD', silver: 'XAG_USD', dow: 'US30_USD' };
+const INSTRUMENT = { gold: 'XAU_USD', nas100: 'NAS100_USD', spx: 'SPX500_USD', eurusd: 'EUR_USD', silver: 'XAG_USD', dow: 'US30_USD', russell: 'US2000_USD' };
 const GRAN = { 5: 'S5', 60: 'M1', 300: 'M5', 900: 'M15', 3600: 'H1', 86400: 'D' };
 
 const hostOf = (cfg) => (cfg.oandaEnv === 'live' ? 'https://api-fxtrade.oanda.com' : 'https://api-fxpractice.oanda.com');

@@ -6,7 +6,7 @@
  */
 const { fetchYahoo } = require('./yahoo');
 
-const SYMBOL = { gold: 'GC=F', nas100: '^NDX', spx: '^GSPC', eurusd: 'EURUSD=X', silver: 'SI=F', dow: '^DJI' };
+const SYMBOL = { gold: 'GC=F', nas100: '^NDX', spx: '^GSPC', eurusd: 'EURUSD=X', silver: 'SI=F', dow: '^DJI', russell: '^RUT' };
 const RESTING = /^(stop loss|take profit)$/;
 
 /** Événements qui donnent un ordre au marché sur un des comptes (ouverture, sortie autre que stop / objectif). */
@@ -27,7 +27,7 @@ async function quoteNow(cfg, id, fetcher = fetchYahoo, { withTime = false } = {}
   // Bougies OANDA (OANDA_TOKEN) : cours OANDA en temps réel (même source que les signaux) ; Nasdaq / S&P hors séance :
   // pas de cours (l'indice ne cote pas, le signal garde son prix, comme avec Yahoo)
   if (require('./markets').useOanda(cfg) && fetcher === fetchYahoo) {
-    if (['nas100', 'spx', 'silver', 'dow'].includes(id) && !require('./oanda').nySession([{ t: Math.floor(Date.now() / 1000) }]).length) return null;
+    if (['nas100', 'spx', 'silver', 'dow', 'russell'].includes(id) && !require('./oanda').nySession([{ t: Math.floor(Date.now() / 1000) }]).length) return null;
     const price = await require('./oanda').oandaQuote(cfg, id);
     return withTime ? (price ? { price, t: Math.floor(Date.now() / 1000) } : null) : price;
   }

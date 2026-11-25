@@ -102,7 +102,7 @@ attachInteractive(bot, { cfg, store, gameHandler: (ctx, parts) => game.onVote(ct
 /* ------------------------------------------------------------------ */
 
 // Nasdaq par défaut ; « or » / « gold » pour l'or
-const marketArg = (text) => (/\b(argent|silver|xag)\b/i.test(text || '') ? 'silver' : /\b(dow|dji|us30)\b/i.test(text || '') ? 'dow' : /\b(or|gold|xau)\b/i.test(text || '') ? 'gold' : /\b(eur|eurusd|euro)\b/i.test(text || '') ? 'eurusd' : /\b(sp500|spx|s&p|us500)\b/i.test(text || '') ? 'spx' : 'nas100');
+const marketArg = (text) => (/\b(argent|silver|xag)\b/i.test(text || '') ? 'silver' : /\b(dow|dji|us30)\b/i.test(text || '') ? 'dow' : /\b(russell|rut|us2000|m2k)\b/i.test(text || '') ? 'russell' : /\b(or|gold|xau)\b/i.test(text || '') ? 'gold' : /\b(eur|eurusd|euro)\b/i.test(text || '') ? 'eurusd' : /\b(sp500|spx|s&p|us500)\b/i.test(text || '') ? 'spx' : 'nas100');
 
 bot.command(['start', 'aide', 'help'], (ctx) =>
   ctx.reply(

@@ -230,3 +230,22 @@ test('Lucid : risque intraday × LUCID_EVAL_INTRADAY_MUL pendant l’évaluation
   const { riskText } = require('../src/interactive');
   if (riskText) assert.match(riskText(cfg, L, 1), /1\.35 % \(intraday pendant l'évaluation, 0\.45 % une fois financé\)/);
 });
+
+test('Lucid : euro en 6E standard (pas de micro M6E chez Lucid) ; journalières Russell / Nasdaq / argent sur micros M2K / MNQ / SIL', () => {
+  const cfg = require('../src/config');
+  const { accountOf, MICRO } = require('../src/ftmoAccount');
+  const { marketById } = require('../src/markets');
+  assert.strictEqual(MICRO.eurusd.name, '6E');
+  assert.strictEqual(MICRO.eurusd.mult, 125_000);
+  assert.strictEqual(MICRO.russell.name, 'M2K');
+  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  const F = accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
+  for (const sid of ['russell:n_low10', 'nas100:double7', 'silver:double7']) {
+    const [m, id] = sid.split(':');
+    const s = selectStrategies([id])[0];
+    assert.ok(L.strategies.includes(sid) && L.riskOf(m, s) > 0, `${sid} sur Lucid`);
+    assert.ok(!F.strategies.includes(sid), `${sid} pas sur FTMO`);
+    assert.ok(selectStrategies(cfg[`${m === 'nas100' ? 'nas' : m}Strategies`]).some((x) => x.id === id), `${sid} en paper`);
+  }
+  assert.ok(marketById(cfg, 'russell').enabled);
+});

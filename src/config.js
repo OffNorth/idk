@@ -117,6 +117,11 @@ module.exports = {
   dowStrategies: list('DOW_STRATEGIES', 'n_mom10_t1be,hold'),
   dowStartCapital: num('DOW_START_CAPITAL', 1000),
   dowFeePct: num('DOW_FEE_PCT', 0.003),
+  // Russell 2000 (^RUT, micro M2K) : journalières du compte Lucid seulement
+  russellEnabled: num('RUSSELL_TRADING', 1) === 1,
+  russellStrategies: list('RUSSELL_STRATEGIES', 'n_low10,hold'),
+  russellStartCapital: num('RUSSELL_START_CAPITAL', 1000),
+  russellFeePct: num('RUSSELL_FEE_PCT', 0.003),
   eurusdEnabled: num('EURUSD_TRADING', 1) === 1,
   eurusdStrategies: list('EURUSD_STRATEGIES', 'ibs,hold'),
   eurusdStartCapital: num('EURUSD_START_CAPITAL', 1000),
@@ -208,7 +213,10 @@ module.exports = {
   // Journalières propres au compte Lucid (npm run lucid-research4, 25/11/2026) : Double 7 et RSI 2 sur le S&P 500
   // (micro MES), au risque des journalières Lucid ; avec le Dow en break-even (dow:n_mom10_t1be, objectif 1 R) : réussite
   // 56 / 76 / 100 % (74 / 85 / 37 j) contre 55 / 72 / 94 % (85 / 110 / 34 j) sur 2009–19 / 2020–26 / nov. 24–26
-  lucidDailyStrategies: list('LUCID_DAILY_STRATEGIES', 'spx:double7,spx:rsi2'),
+  // 26/11/2026 : Lucid n'a pas de micro-devises (M6E) → l'IBS EUR/USD (gros contributeur) ne passe plus en 6E standard
+  // (137 000 $ le contrat) : réussite réelle 45 / 46 / 76 %. Remplacée par 3 journalières sur des micros Lucid (npm run
+  // lucid-research4) : plus bas de 10 j sur le Russell (M2K), Double 7 Nasdaq (MNQ) et argent (SIL) → 50 / 62 / 78 %
+  lucidDailyStrategies: list('LUCID_DAILY_STRATEGIES', 'spx:double7,spx:rsi2,russell:n_low10,nas100:double7,silver:double7'),
   // Stratégies du compte FTMO que Lucid ne prend pas (avantage < +0,03 R)
   lucidExclude: list('LUCID_EXCLUDE', 'nas100:ibs'),
   // Multiplicateur du risque du compte FTMO (pas de Lucid) : 1,25 = challenge ≈ 2–3 semaines plus rapide (npm run speed),
@@ -283,5 +291,6 @@ module.exports = {
     cfg.spxStrategies = of('spx');
     cfg.silverStrategies = of('silver');
     cfg.dowStrategies = of('dow');
+    cfg.russellStrategies = of('russell');
   }
 }

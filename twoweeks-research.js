@@ -40,11 +40,12 @@ const DAY = 86400;
   try { intraBars.spx = [nySession(aggregate(await polygonBars(CACHE, 'SPY', 1, '2024-11-18', { maxAgeH: Infinity }), 300, 60)), 50, 4]; } catch { /* pas de données */ }
   const listOf = (id) => {
     const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, id);
-    const sids = A.strategies.filter((k) => A.riskOf(...strat(k)) > 0);
+    const sids = A.strategies.filter((k) => A.riskOf(...strat(k), 'funded') > 0);
     const base = all.filter((t) => sids.includes(t.sid) && !(t.intraday && t.market !== 'gold'));
     const intra = sids.filter((k) => { const [m, s] = strat(k); return s.tf && s.tf !== '1d' && m !== 'gold' && intraBars[m]; })
       .flatMap((k) => { const [b, mult, fee] = intraBars[k.split(':')[0]]; return run(b, k, mult, fee); });
-    return [...base, ...intra].map((t) => ({ ...t, riskPct: A.riskOf(...strat(t.sid)) }));
+    // Risque de base (compte financé : sans la majoration de l'évaluation) → les multiplicateurs ci-dessous sont absolus
+    return [...base, ...intra].map((t) => ({ ...t, riskPct: A.riskOf(...strat(t.sid), 'funded') }));
   };
   const sizer = RULES[cfg.ftmoSizing];
   const ACC = {

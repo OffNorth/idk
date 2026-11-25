@@ -24,6 +24,9 @@ const MICRO = {
   // Lucid n'a pas les micro-devises (liste officielle des produits, nov. 2026) : euro en contrat standard 6E (125 000 €,
   // tick 0,00005 = 6,25 $ ; commission 2 × 2,40 $ + 1 tick de glissement par côté ≈ 17 $ aller-retour)
   eurusd: { mult: 125_000, fee: 17 },
+  silver: { mult: 1000, fee: 3.5 }, // SIL : 1 000 onces
+  dow: { mult: 0.5, fee: 2.5 }, // MYM : 0,5 $ par point
+  russell: { mult: 5, fee: 2.5 }, // M2K : 5 $ par point
 };
 
 /** Retourne { all (trades annotés), q5 (bougies Nasdaq 5 min ou null), A (compte FTMO) }. */
@@ -37,13 +40,16 @@ async function buildTrades(cfg, CACHE, { withLucid = false } = {}) {
   const daily = {
     nas100: { c: nd, aux }, gold: { c: gc, aux: goldAux },
     eurusd: { c: (await y('EURUSD=X')).filter((k) => k.c > 0), aux }, spx: { c: (await y('^GSPC')).filter((k) => k.c > 0), aux },
+    // Journalières du compte Lucid sur l'argent, le Dow et le Russell (micros SIL, MYM, M2K)
+    silver: { c: (await y('SI=F')).filter((k) => k.c > 0), aux }, dow: { c: (await y('^DJI')).filter((k) => k.c > 0), aux },
+    russell: { c: (await y('^RUT')).filter((k) => k.c > 0), aux },
   };
   for (const d of Object.values(daily)) d.ind = computeAll(d.c, d.c, 86400, null, vix, d.aux);
   const g5 = JSON.parse(fs.readFileSync(path.join(CACHE, 'xauusd-5m.json'), 'utf8')).map(([t, o, h, l, c, v]) => ({ t, o, h, l, c, v }));
   let q5 = null;
   try { q5 = aggregate(await require('./polygon').polygonBars(CACHE, 'QQQ', 1, '2024-11-18', { maxAgeH: Infinity }), 300, 60); } catch { /* sans clé Polygon */ }
   const intra = { gold: { '5m': g5, '15m': aggregate(g5, 900, 300) }, nas100: q5 ? { '5m': q5, '15m': aggregate(q5, 900, 300) } : null };
-  const FEE = { gold: [0.005, 4], nas100: [0.003, 6], eurusd: [0.002, 3], spx: [0.003, 6] };
+  const FEE = { gold: [0.005, 4], nas100: [0.003, 6], eurusd: [0.002, 3], spx: [0.003, 6], silver: [0.005, 4], dow: [0.003, 6], russell: [0.003, 6] };
   const A = accountOf(cfg, 'gold');
 
   const all = [];
@@ -53,7 +59,7 @@ async function buildTrades(cfg, CACHE, { withLucid = false } = {}) {
     const [m, id] = k.split(':');
     const s = selectStrategies([id])[0];
     if (!s) continue;
-    if (!FEE[m]) continue; // argent, Dow (compte Lucid) : pas d'historique ici (npm run markets-research)
+    if (!FEE[m]) continue; // marché sans historique ici
     const tf = tfOf(s);
     const [fee, fin] = FEE[m];
     let r = null;

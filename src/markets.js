@@ -327,11 +327,13 @@ function sessionMarket(cfg, { id, key, name, emoji, symbol }) {
 }
 const silverMarket = (cfg) => sessionMarket(cfg, { id: 'silver', key: 'silver', name: 'Argent', emoji: '🥈', symbol: 'SI=F' });
 const dowMarket = (cfg) => sessionMarket(cfg, { id: 'dow', key: 'dow', name: 'Dow Jones', emoji: '🏭', symbol: '^DJI' });
+// Russell 2000 (^RUT, micro M2K) : journalières du compte Lucid (npm run lucid-research4)
+const russellMarket = (cfg) => sessionMarket(cfg, { id: 'russell', key: 'russell', name: 'Russell 2000', emoji: '🐎', symbol: '^RUT' });
 
 /** Tous les marchés (actifs ou non). */
 function allMarkets(cfg) {
   // Nasdaq en premier : marché par défaut du panneau, du résumé, des bilans et du jeu ; l'or suit
-  return [nasMarket(cfg), goldMarket(cfg), spxMarket(cfg), eurusdMarket(cfg), silverMarket(cfg), dowMarket(cfg)];
+  return [nasMarket(cfg), goldMarket(cfg), spxMarket(cfg), eurusdMarket(cfg), silverMarket(cfg), dowMarket(cfg), russellMarket(cfg)];
 }
 
 /** Marchés actifs. */
@@ -350,4 +352,4 @@ class GoldTrader extends MarketTrader {
   }
 }
 
-module.exports = { useOanda, oandaIntraday, basisOf, goldMarket, nasMarket, eurusdMarket, spxMarket, silverMarket, dowMarket, allMarkets, activeMarkets, marketById, GoldTrader, MarketTrader };
+module.exports = { useOanda, oandaIntraday, basisOf, goldMarket, nasMarket, eurusdMarket, spxMarket, silverMarket, dowMarket, russellMarket, allMarkets, activeMarkets, marketById, GoldTrader, MarketTrader };

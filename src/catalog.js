@@ -194,6 +194,7 @@ function catalog(cfg) {
     spx: selectStrategies(cfg.spxEnabled ? cfg.spxStrategies || [] : []),
     silver: selectStrategies(cfg.silverEnabled ? cfg.silverStrategies || [] : []),
     dow: selectStrategies(cfg.dowEnabled ? cfg.dowStrategies || [] : []),
+    russell: selectStrategies(cfg.russellEnabled ? cfg.russellStrategies || [] : []),
   };
   const famOf = new Map(FAMILIES.flatMap(([f, ids]) => ids.map((id) => [id, f])));
   return STRATEGIES.map((s) => {

@@ -16,8 +16,8 @@ const H = 675;
 const FPS = 30;
 const ANIM_S = 5;
 const HOLD_S = 2.2;
-const SYMBOL = { gold: 'GC=F', nas100: '^NDX', spx: '^GSPC', eurusd: 'EURUSD=X', silver: 'SI=F', dow: '^DJI' };
-const NAME = { gold: 'Or', nas100: 'Nasdaq 100', spx: 'S&P 500', eurusd: 'EUR/USD', silver: 'Argent', dow: 'Dow Jones' };
+const SYMBOL = { gold: 'GC=F', nas100: '^NDX', spx: '^GSPC', eurusd: 'EURUSD=X', silver: 'SI=F', dow: '^DJI', russell: '^RUT' };
+const NAME = { gold: 'Or', nas100: 'Nasdaq 100', spx: 'S&P 500', eurusd: 'EUR/USD', silver: 'Argent', dow: 'Dow Jones', russell: 'Russell 2000' };
 const COL = {
   card: [16, 22, 29], ink: [238, 242, 238], mute: [138, 151, 163], line: [29, 39, 49],
   gain: [61, 220, 151], loss: [255, 107, 107], level: [156, 200, 255], dark: [11, 15, 20],

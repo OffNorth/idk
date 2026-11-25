@@ -28,7 +28,7 @@ const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
 const quote = (v) => (Math.abs(v) < 10 ? `$${v.toFixed(4)}` : Math.abs(v) >= 1000 ? money(v) : `$${v.toFixed(2)}`);
 const pct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} %`;
 const signedMoney = (v) => `${v >= 0 ? '+' : '−'}${money(Math.abs(v || 0))}`;
-const MARKET_EMOJI = { gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽', silver: '🥈', dow: '🏭' };
+const MARKET_EMOJI = { gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽', silver: '🥈', dow: '🏭', russell: '🐎' };
 /** Stratégies suivies : noms si la ligne reste courte, sinon nombre par marché. */
 function strategiesLine(list) {
   const full = `Stratégies suivies : ${list.map((x) => `${MARKET_EMOJI[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')}`;
@@ -107,7 +107,7 @@ function protectText(cfg, s, targetPct = null) {
 /** Risque par trade du compte FTMO : journalières / intraday (stratégies factices pour interroger riskOf). */
 function riskText(cfg, acct, phase) {
   if (!acct.riskOf) return `${acct.risk} %`;
-  const daily = [...new Set(['gold', 'nas100', 'spx', 'eurusd', 'silver', 'dow'].filter((m) => acct.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => acct.riskOf(m, { tf: '1d' })))];
+  const daily = [...new Set(['gold', 'nas100', 'spx', 'eurusd', 'silver', 'dow', 'russell'].filter((m) => acct.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => acct.riskOf(m, { tf: '1d' })))];
   // Risque intraday : celui d'une stratégie intraday que le compte prend vraiment
   const intraSid = acct.strategies.find((x) => { const s = selectStrategies([x.split(':')[1]])[0]; return s && s.tf && s.tf !== '1d' && acct.riskOf(x.split(':')[0], s, phase) > 0; });
   const r = (x) => Math.round(x * 1000) / 1000;

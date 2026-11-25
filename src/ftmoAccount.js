@@ -21,6 +21,7 @@ const MICRO = {
   eurusd: { mult: 125_000, fee: 17, name: '6E' }, // 125 000 € : Lucid n'a pas le micro M6E (produits autorisés, nov. 2026)
   silver: { mult: 1000, fee: 3.5, name: 'SIL' }, // 1 000 onces (cours SI=F en $ / once)
   dow: { mult: 0.5, fee: 2.5, name: 'MYM' }, // 0,5 $ par point
+  russell: { mult: 5, fee: 2.5, name: 'M2K' }, // 5 $ par point
 };
 
 /**
