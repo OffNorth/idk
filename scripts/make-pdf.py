@@ -154,9 +154,10 @@ for i, fam in enumerate(families, start=1):
 
 # Comptes FTMO simulés (réglages lus dans src/config.js)
 import subprocess
-fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({aa:c.autoAdapt,as:c.adaptStrategies,g:c.ftmoStrategies,gr:c.ftmoRisk,ir:c.ftmoIntradayRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop,cb:c.ftmoCombined,cnr:c.ftmoComboNasRisk,prog:c.ftmoProgram,sz:c.ftmoSizing,ai:c.ftmoAi,lu:c.lucidEnabled,lc:c.lucidCapital,lir:c.lucidIntradayRisk,lis:c.lucidIntradayStrategies,lm:c.lucidRiskMul,lcons:c.lucidConsistency,fd:c.fillDelaySec}))"],
+fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({aa:c.autoAdapt,as:c.adaptStrategies,g:c.ftmoStrategies,gr:c.ftmoRisk,ir:c.ftmoIntradayRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop,cb:c.ftmoCombined,cnr:c.ftmoComboNasRisk,prog:c.ftmoProgram,sz:c.ftmoSizing,ai:c.ftmoAi,lu:c.lucidEnabled,lc:c.lucidCapital,lir:c.lucidIntradayRisk,lis:c.lucidIntradayStrategies,lm:c.lucidRiskMul,lcons:c.lucidConsistency,fd:c.fillDelaySec,lem:c.lucidEvalIntradayMul,lds:c.lucidDailyStrategies}))"],
                                cwd=ROOT, capture_output=True, text=True, check=True).stdout)
 ids = lambda l: ', '.join(x.split(':', 1)[-1] for x in l)
+fr = lambda v: f'{round(v, 3):g}'.replace('.', ',')
 story.append(PageBreak())
 story.append(Paragraph('Comptes FTMO et Lucid simulés', h2))
 story.append(Paragraph(
@@ -279,7 +280,8 @@ story.append(KeepTogether([Paragraph('Réglage du risque (FTMO et Lucid)', h2), 
     ('<b>FTMO (actuel)</b>', f'idem, risque × 1,25, + Crabel NR7 S&amp;P 500', '<b>50 %</b>', '<b>51 %</b>', '<b>67 %</b> (55 j)'),
     ('Lucid (avant)', 'idem FTMO', '13 %', '11 %', '21 %'),
     ('Lucid (24/11)', f'journalières {fc["gr"] * fc["lm"]:g} % · Nasdaq intraday {fc["lir"]:g} %, objectif 0,5 R', '56 %', '69 %', '100 % (≈ 70 j)'),
-    ('<b>Lucid (actuel)</b>', '+ cassures, Crabel, Williams, argent, Dow (≈ 4,7 trades intraday / jour)', '<b>55 %</b>', '<b>72 %</b>', '<b>94 %</b> (34 j)'),
+    ('Lucid (25/11 matin)', '+ cassures, Crabel, Williams, argent, Dow (≈ 4,7 trades intraday / jour)', '55 %', '72 %', '94 % (34 j)'),
+    ('<b>Lucid (actuel)</b>', '+ Double 7 et RSI 2 S&amp;P 500 (journalier), Dow en break-even', '<b>56 %</b> (74 j)', '<b>76 %</b> (85 j)', '<b>100 %</b> (37 j)'),
 ], [32 * mm, 58 * mm, 30 * mm, 30 * mm, 30 * mm]), Spacer(1, 2), Paragraph(
     'Réussite en moins d’un an, sans l’IA validatrice (active en plus en direct). Stratégies d’événements testées et non retenues : veille de la Fed '
     '(Lucca & Moench 2015) et veille de jour férié (Ariel 1990) — fortes sur 2009–2012 et 2020–2026 mais perdantes sur 2017–2019.', body)]))
@@ -343,12 +345,38 @@ story.append(KeepTogether([Paragraph('Séances d’Asie et de New York', h2), Pa
     '+0,13 R par trade). Rejetées : g_asia (perdante sur l’or réel), n_pdlbrk (négative sur la séance seule de New York), toutes les stratégies '
     'Nasdaq de nuit.', body)]))
 
+story.append(KeepTogether([Paragraph('Lucid : break-even et journalières S&amp;P 500', h2), Paragraph(
+    'Plutôt que d’empiler de nouvelles familles, on a amélioré ce que Lucid trade déjà (npm run lucid-research4) : stop remonté au prix d’entrée '
+    '(« break-even ») après +0,3 / +0,5 R, filtres de jour (lundi, vendredi, veille large ou étroite, écart d’ouverture) et journalières sur d’autres '
+    'micro-futures CME, ajoutés un à un. Retenus : <b>Dow en break-even</b> (n_mom10_t1be : objectif 1 R, stop au prix d’entrée après +0,5 R) et '
+    f'<b>{esc(", ".join(x.split(":")[1] for x in fc["lds"]))} sur le S&amp;P 500</b> (journalier, micro MES, Lucid seulement). Les filtres font monter la réussite '
+    'récente mais divisent les trades par deux (évaluation en 50 à 64 jours au lieu de 34) : non retenus.', body), Spacer(1, 3), small_table([
+    ('Lucid, réussite < 1 an', '2009–2019', '2020–2026', 'nov. 24–26'),
+    ('Avant', '55 % (85 j)', '72 % (110 j)', '94 % (34 j)'),
+    ('<b>+ break-even Dow + Double 7 / RSI 2 S&amp;P</b>', '<b>56 % (74 j)</b>', '<b>76 % (85 j)</b>', '<b>100 % (37 j)</b>'),
+    ], [72 * mm, 34 * mm, 34 * mm, 40 * mm])]))
+
+story.append(KeepTogether([Paragraph('Objectif : réussir en 2 semaines', h2), Paragraph(
+    'Départ chaque jour ouvré (nov. 2024 → nov. 2026), selon le risque (npm run twoweeks). À risque normal, ≈ 1 % des évaluations réussissent en 2 '
+    'semaines, FTMO comme Lucid : l’avantage par trade est petit, il faut du temps. FTMO plafonne à 3–5 % en ≤ 14 jours même à risque × 4 (et 56 % '
+    f'd’échecs) : inchangé. <b>Lucid</b> : risque intraday × {fr(fc["lem"])} <b>pendant l’évaluation</b> ({fr(fc["lir"] * fc["lem"])} % au lieu de {fr(fc["lir"])} %), '
+    f'retour à {fr(fc["lir"])} % une fois le compte financé.', body), Spacer(1, 3), small_table([
+    ('Lucid, risque intraday', 'Réussie ≤ 14 j', 'Réussie ≤ 30 j', 'Échouée ≤ 14 j', 'Évaluations / compte financé'),
+    ('0,45 % (avant)', '1 %', '24 %', '1 %', '1,1'),
+    ('0,9 % (× 2)', '19 %', '52 %', '23 %', '1,6'),
+    ('<b>1,35 % (× 3, actuel)</b>', '<b>22 %</b>', '<b>38 %</b>', '<b>48 %</b>', '<b>≈ 2,3</b>'),
+    ('2,25 % (× 5)', '18 %', '27 %', '65 %', '3,1'),
+    ], [46 * mm, 30 * mm, 30 * mm, 32 * mm, 42 * mm]), Spacer(1, 2), Paragraph(
+    'Environ une évaluation sur cinq réussit en 2 semaines, mais une sur deux échoue dans le même temps : compter 2 à 3 évaluations achetées par '
+    'compte financé. Chiffres sur 2 ans de données intraday seulement.', body)]))
+
 story.append(KeepTogether([Paragraph('Exécution, notifications et outils', h2), Paragraph(
     f'<b>Exécution « comme en vrai »</b> : les comptes FTMO et Lucid entrent et sortent (sur signal) au cours {fc["fd"]:g} s après le signal ; stops et '
     'objectifs restent au niveau. Un cours relevé plus ancien que les données du signal (Yahoo : bougies 1 min et 5 min pas au même retard) '
     'est ignoré : le compte garde alors le prix du signal. <b>Notifications</b> : chaque achat / vente des comptes est annoncé dans le groupe Telegram, avec une copie en privé '
     'si le groupe ne le reçoit pas. <b>Time Machine</b> (/timemachine) : chances de réussir le challenge en cours d’après 1 000 années simulées. '
-    '<b>Comptes financés</b> : retraits simulés (FTMO tous les 14 jours, Lucid après 5 jours gagnants). <b>Boucle de test</b> (npm run selftest) : '
+    '<b>Comptes financés</b> : retraits simulés (FTMO tous les 14 jours, Lucid après 5 jours gagnants). <b>/reset</b> (admin) : comptes remis à zéro '
+    '(nouveau challenge au capital de départ), historique, trades archivés et stats gardés. <b>Boucle de test</b> (npm run selftest) : '
     'tout le bot rejoué hors ligne (commandes, boutons, messages, cycle complet des comptes).', body)]))
 
 story.append(KeepTogether([Paragraph('Suivi en direct', h2), Paragraph(
