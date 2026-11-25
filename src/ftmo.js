@@ -58,7 +58,7 @@ const rMultiple = (t) => t.pnlPct / Math.max(1e-9, stopPct(t));
  * Retourne l'issue (target / daily / maxloss / open), le solde et le nombre de jours de trading.
  */
 function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity, riskMul = 1, sizer = null, trailingMax = false, bestDayPct = 0, levCap = null,
-  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true, start = null } = {}) {
+  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true, start = null, dayProfitCapUsd = Infinity, maxLossesPerDay = Infinity } = {}) {
   const maxLoss = maxLossUsd ?? (capital * maxPct) / 100;
   const events = [];
   for (const t of trades) {
@@ -75,6 +75,7 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
   const dayPnl = new Map(Object.entries(start?.dayPnl || {})); // gain soldé par jour (règle du meilleur jour)
   let dayStart = balance;
   let day = null;
+  let dayLosses = 0; // trades perdants du jour (maxLossesPerDay)
   const days = new Set(Array.from({ length: start?.days || 0 }, (_, k) => `avant-${k}`)); // jours déjà tradés
   const open = new Map();
   for (const e of events) {
@@ -92,10 +93,14 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       }
       day = d;
       dayStart = balance;
+      dayLosses = 0;
     }
     if (e.kind === 'open') {
       if (dayStopPct > 0 && balance <= dayStart - (capital * dayStopPct) / 100) continue;
       if (open.size >= maxOpen) continue; // pas plus de maxOpen positions en même temps (limite le risque d'un trou de cotation)
+      // Gestion de la journée : plus de nouveau trade après un gain du jour ≥ dayProfitCapUsd (règle du meilleur jour)
+      // ou après maxLossesPerDay trades perdants dans la journée
+      if (balance - dayStart >= dayProfitCapUsd || dayLosses >= maxLossesPerDay) continue;
       const sp = stopPct(e.tr);
       if (!(sp > 0)) continue;
       // risque propre au trade si fourni (comptes multi-marchés) ; `sizer` : multiplicateur de risque selon le trade et l'état du compte
@@ -139,6 +144,7 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
     }
     const gain = (notional * e.tr.pnlPct) / 100 - fees;
     balance += gain;
+    if (gain < 0) dayLosses++;
     dayPnl.set(d, (dayPnl.get(d) || 0) + gain);
     peak = Math.max(peak, balance);
     if (balance <= dayStart - (capital * dailyPct) / 100) return { outcome: 'daily', at: e.t, balance, days: days.size, paid };
