@@ -59,7 +59,8 @@
     "spx-research": "node --max-old-space-size=7000 spx-research.js",
     "markets-research": "node --max-old-space-size=7000 markets-research.js",
     "world-research": "node --max-old-space-size=7000 world-research.js",
-    "lucid-research4": "node --max-old-space-size=7000 lucid-research4.js"
+    "lucid-research4": "node --max-old-space-size=7000 lucid-research4.js",
+    "twoweeks": "node --max-old-space-size=7000 twoweeks-research.js"
   },
   "engines": {
     "node": ">=20"
