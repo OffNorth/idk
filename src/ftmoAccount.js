@@ -300,6 +300,36 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       papers[p.market] ??= store.loadJson(`${p.market}.json`, null);
       const acc = papers[p.market]?.accounts?.[p.sid];
       const paperPos = acc?.position && Math.abs(acc.position.entryT - p.entryT) < 2 ? acc.position : null;
+      // Compte financé FTMO : sorties partielles (FTMO_FUNDED_PARTIALS, en R) — à chaque niveau atteint, une part égale de
+      // la position d'origine est fermée au niveau (ordre limite) ; le reste suit le stop suiveur (npm run ftmo-partial)
+      if (A.id !== 'lucid' && s.phase === 'funded' && (cfg.ftmoFundedPartials || []).length && p.sl) {
+        p.sl0 ??= p.sl;
+        p.notional0 ??= p.notional;
+        const r0 = Math.abs(p.entry - p.sl0);
+        const long = p.side === 'long';
+        const levels = cfg.ftmoFundedPartials.map(Number).filter((x) => x > 0);
+        const share = 1 / (levels.length + 1);
+        p.partsDone = p.partsDone || [];
+        const reach = long ? Math.max(px || -Infinity, paperPos?.best ?? -Infinity) : Math.min(px || Infinity, paperPos?.best ?? Infinity);
+        for (const lv of levels) {
+          if (p.partsDone.includes(lv) || !(r0 > 0)) continue;
+          const target = long ? p.entry + lv * r0 : p.entry - lv * r0;
+          if (long ? reach < target : reach > target) continue;
+          const part = Math.min(p.notional, p.notional0 * share);
+          const piece = { ...p, notional: part, risk: (p.risk || 0) * (part / p.notional) };
+          const pnl = pnlAt(piece, target, 2);
+          s.balance += pnl;
+          s.peak = Math.max(s.peak ?? s.capital, s.balance);
+          s.dayPnl = s.dayPnl || {};
+          s.dayPnl[s.day] = (s.dayPnl[s.day] || 0) + pnl;
+          const done = { ...piece, exit: target, exitT: t, pnl, reason: `objectif partiel +${lv} R` };
+          s.closed.push(done);
+          out.push({ type: 'trade', s, p: done });
+          p.risk = (p.risk || 0) * (1 - part / p.notional);
+          p.notional -= part;
+          p.partsDone.push(lv);
+        }
+      }
       if (trailAct > 0 && p.sl && paperPos && Number.isFinite(paperPos.best)) {
         p.sl0 ??= p.sl;
         const r0 = Math.abs(p.entry - p.sl0);

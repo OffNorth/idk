@@ -245,3 +245,23 @@ test('FTMO : stop suiveur — dès +2 R (meilleure clôture du paper), stop à 1
   assert.strictEqual(tr.exit, 4050);
   assert.match(tr.reason, /stop suiveur/);
 });
+
+test('FTMO financé : ⅓ fermé à +1 R, ⅓ à +2 R, le reste continue ; rien en évaluation', () => {
+  const { cfg, store } = setup({ ftmoTrailActR: 0, ftmoFundedPartials: ['1', '2'] });
+  const f = require('../src/ftmoAccount').createFtmo({ cfg, store });
+  const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
+  // Évaluation : pas de sortie partielle
+  f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0);
+  store.saveJson('gold.json', { accounts: { x_rsi2: { position: { ...pos, best: 4090 }, closed: [] } } });
+  assert.ok(!f.onCycle([], { gold: 4090 }, T0 + 600).some((m) => m.type === 'trade'), 'évaluation : pas de partiel');
+  // Compte financé
+  const s = f.load(); s.phase = 'funded'; store.saveJson('ftmo.json', s);
+  const n0 = Object.values(f.load().open)[0].notional;
+  const out = f.onCycle([], { gold: 4045 }, T0 + 1200); // +1,125 R (le paper a déjà vu 4 090 = +2,25 R)
+  const parts = out.filter((m) => m.type === 'trade').map((m) => m.p);
+  assert.deepStrictEqual(parts.map((p) => p.exit), [4040, 4080]);
+  assert.match(parts[0].reason, /objectif partiel \+1 R/);
+  const left = Object.values(f.load().open)[0];
+  assert.ok(Math.abs(left.notional - n0 / 3) < 1e-6, 'reste ⅓ de la position');
+  assert.ok(!f.onCycle([], { gold: 4085 }, T0 + 1800).some((m) => m.type === 'trade'), 'pas de partiel en double');
+});

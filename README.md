@@ -847,6 +847,13 @@ concerné. `FTMO_TRAIL_ACT_R=0` pour le couper (`FTMO_TRAIL_DIST_R` : distance e
 (telle quelle, objectif 0,5 / 0,75 R, break-even) ; pétrole, Dow, argent neutres ou négatifs ; Russell rien. Ajouté :
 momentum de fin de journée sur le S&P en break-even (`spx:n_mom10_t1be`, MES) : nov. 24–26 51 → 53 %.
 
+### 🎯 Plusieurs objectifs sur un trade (`npm run ftmo-partial`)
+
+Sorties partielles testées sur le compte FTMO (avec le stop suiveur sur le reste) : ½ à +1 / +1,5 / +2 R, ⅓ à +1 R + ⅓
+à +2 R. **En évaluation, aucun gain** (réussite ± 1 point, un peu plus lent) → rien ne change. **En compte financé**
+(12 mois, 2009–2024) : ⅓ / ⅓ / ⅓ → comptes perdus en 12 mois 95 → 87 %, retraits moyens 14 662 → 14 877 $ → activé
+**seulement en compte financé** (`FTMO_FUNDED_PARTIALS=1,2` ; vide = coupé). Messages « objectif partiel +1 R ».
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

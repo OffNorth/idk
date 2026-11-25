@@ -171,6 +171,10 @@ module.exports = {
   // un peu plus long (55 → 76 j récent). FTMO_TRAIL_ACT_R=0 pour le couper.
   ftmoTrailActR: num('FTMO_TRAIL_ACT_R', 2),
   ftmoTrailDistR: num('FTMO_TRAIL_DIST_R', 1),
+  // Compte FTMO FINANCÉ : sorties partielles (npm run ftmo-partial, 26/11/2026) — ⅓ fermé à +1 R, ⅓ à +2 R, le reste au
+  // stop suiveur : comptes perdus en 12 mois 95 → 87 %, retraits un peu plus élevés ; rien en évaluation (aucun gain).
+  // Vide = désactivé.
+  ftmoFundedPartials: list('FTMO_FUNDED_PARTIALS', '1,2'),
   // Le compte FTMO n'est jamais acheteur et vendeur du même marché en même temps (le 2e signal, opposé, est ignoré)
   ftmoNoHedge: num('FTMO_NO_HEDGE', 1) === 1,
   // 2e compte FTMO simulé, 100 % Nasdaq (npm run ftmo-nas-port)
