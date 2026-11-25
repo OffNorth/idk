@@ -798,6 +798,24 @@ Départ chaque jour ouvré (nov. 24–26, puis vérification 2020–26), par niv
 évaluation) ; **× 3 (choisi : `LUCID_EVAL_INTRADAY_MUL=3`, 1,35 % par trade)** → 22 % en ≤ 14 j, 38 % en ≤ 30 j,
 48 % d'échecs dans les 14 jours (≈ 2,3 évaluations par compte financé). Une fois financé, retour à 0,45 %.
 
+### 🟣 Lucid : marchés CME, correction de l'euro (`npm run lucid-markets`)
+
+Lucid ne propose que 34 contrats CME / CBOT / NYMEX / COMEX (liste officielle) : **pas de CAC 40, DAX ni indice européen**, pas
+de micro-devises (M6E, M6B), pas de taux, pas de crypto. **Correction** : l'euro ne se trade qu'en 6E standard (≈ 137 000 $),
+trop gros pour la perte max de 2 000 $ → l'IBS EUR/USD ne passe jamais sur Lucid ; réussite réelle 45 / 46 / 76 % (au lieu
+de 56 / 76 / 100 %). Remplacée par 3 journalières sur des micros (`npm run lucid-research4`) : plus bas 10 j sur le Russell
+2000 (M2K, nouveau marché `russell`, ^RUT), Double 7 Nasdaq (MNQ) et argent (SIL) → **50 / 62 / 78 %**. Testés sans gain
+utile : cuivre, platine, gaz naturel, maïs, soja, blé, huile / tourteau de soja, bovins, porcs, devises standard (6A, 6B,
+6C, 6E, 6J, 6S, 6N) — contrats trop gros pour 50K. Objectif 2 semaines (risque intraday × 3, corrigé) : 20 % des
+évaluations en ≤ 14 j, 34 % en ≤ 30 j, 51 % d'échecs en 14 j (≈ 2,6 évaluations par compte financé).
+
+### 📘 Guide « trader à la main » (PDF)
+
+`npm run pdf` régénère aussi `docs/guide-examples.json` (`scripts/guide-examples.js` : dernier trade gagnant de chaque
+stratégie type sur les données Yahoo récentes) et ajoute au PDF un guide : R, taille de position, heures de Paris, 9 fiches
+(cassure d'ouverture, Crabel, Williams, momentum, or Londres / Asie, replis journaliers, filtres macro, routine) avec
+graphiques en bougies (`scripts/guide_pdf.py`).
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

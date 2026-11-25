@@ -236,7 +236,8 @@ def build(S, ex, fc):
         ('Autres', '<b>−5 % sous le plus haut de 20 jours</b> → achat, revente au retour sur ce plus haut · <b>plus bas de 10 jours</b> → achat, revente au '
                    'plus haut de 5 jours · <b>−2,5 % en une séance</b> ou <b>2 séances à −1 %</b> → achat, revente à la clôture au-dessus du plus haut de la veille.'),
         ('Stop', '3 ATR journaliers sous l’entrée (rarement touché, c’est une sécurité).'),
-        ('Où', 'Lucid : S&amp;P 500 (MES : RSI 2, Double 7, 3 baisses), Nasdaq (MNQ). FTMO : or, S&amp;P, Nasdaq, EUR/USD (IBS).'),
+        ('Où', 'Lucid : S&amp;P 500 (MES : RSI 2, Double 7, 3 baisses), Nasdaq (MNQ : RSI 2, Double 7, plus bas 10 j…), Russell 2000 (M2K : plus bas '
+               '10 j), argent (SIL : Double 7). FTMO : or, S&amp;P, Nasdaq, EUR/USD (IBS — pas sur Lucid : pas de micro-euro).'),
     ])] + example('repli', 'points', 5, 'MES') + [Spacer(1, 6)] + example('double7', 'points', 5, 'MES')
 
     out += [PageBreak(), Paragraph('9. Filtres « macro » (journalier)', h2), Paragraph(

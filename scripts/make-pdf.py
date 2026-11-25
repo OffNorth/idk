@@ -281,7 +281,8 @@ story.append(KeepTogether([Paragraph('Réglage du risque (FTMO et Lucid)', h2), 
     ('Lucid (avant)', 'idem FTMO', '13 %', '11 %', '21 %'),
     ('Lucid (24/11)', f'journalières {fc["gr"] * fc["lm"]:g} % · Nasdaq intraday {fc["lir"]:g} %, objectif 0,5 R', '56 %', '69 %', '100 % (≈ 70 j)'),
     ('Lucid (25/11 matin)', '+ cassures, Crabel, Williams, argent, Dow (≈ 4,7 trades intraday / jour)', '55 %', '72 %', '94 % (34 j)'),
-    ('<b>Lucid (actuel)</b>', '+ Double 7 et RSI 2 S&amp;P 500 (journalier), Dow en break-even', '<b>56 %</b> (74 j)', '<b>76 %</b> (85 j)', '<b>100 %</b> (37 j)'),
+    ('Lucid (25/11 soir)', '+ Double 7 et RSI 2 S&amp;P 500, Dow en break-even — <i>avec un micro-euro M6E qui n’existe pas chez Lucid</i>', '56 % ✘', '76 % ✘', '100 % ✘'),
+    ('<b>Lucid (actuel)</b>', 'euro en 6E réel (IBS EUR/USD trop gros) + plus bas 10 j Russell, Double 7 Nasdaq et argent ; intraday 0,45 %', '<b>50 %</b> (79 j)', '<b>62 %</b> (142 j)', '<b>78 %</b> (41 j)'),
 ], [32 * mm, 58 * mm, 30 * mm, 30 * mm, 30 * mm]), Spacer(1, 2), Paragraph(
     'Réussite en moins d’un an, sans l’IA validatrice (active en plus en direct). Stratégies d’événements testées et non retenues : veille de la Fed '
     '(Lucca & Moench 2015) et veille de jour férié (Ariel 1990) — fortes sur 2009–2012 et 2020–2026 mais perdantes sur 2017–2019.', body)]))
@@ -349,12 +350,34 @@ story.append(KeepTogether([Paragraph('Lucid : break-even et journalières S&amp;
     'Plutôt que d’empiler de nouvelles familles, on a amélioré ce que Lucid trade déjà (npm run lucid-research4) : stop remonté au prix d’entrée '
     '(« break-even ») après +0,3 / +0,5 R, filtres de jour (lundi, vendredi, veille large ou étroite, écart d’ouverture) et journalières sur d’autres '
     'micro-futures CME, ajoutés un à un. Retenus : <b>Dow en break-even</b> (n_mom10_t1be : objectif 1 R, stop au prix d’entrée après +0,5 R) et '
-    f'<b>{esc(", ".join(x.split(":")[1] for x in fc["lds"]))} sur le S&amp;P 500</b> (journalier, micro MES, Lucid seulement). Les filtres font monter la réussite '
+    '<b>journalières propres à Lucid</b> : ' + esc(', '.join(f'{x.split(":")[1]} ({ {"spx": "S&P 500", "nas100": "Nasdaq", "russell": "Russell 2000", "silver": "argent", "dow": "Dow"}.get(x.split(":")[0], x.split(":")[0]) })' for x in fc['lds'])) + '. Les filtres font monter la réussite '
     'récente mais divisent les trades par deux (évaluation en 50 à 64 jours au lieu de 34) : non retenus.', body), Spacer(1, 3), small_table([
     ('Lucid, réussite < 1 an', '2009–2019', '2020–2026', 'nov. 24–26'),
     ('Avant', '55 % (85 j)', '72 % (110 j)', '94 % (34 j)'),
-    ('<b>+ break-even Dow + Double 7 / RSI 2 S&amp;P</b>', '<b>56 % (74 j)</b>', '<b>76 % (85 j)</b>', '<b>100 % (37 j)</b>'),
-    ], [72 * mm, 34 * mm, 34 * mm, 40 * mm])]))
+    ('+ break-even Dow + Double 7 / RSI 2 S&amp;P (avec micro-euro)', '56 % (74 j)', '76 % (85 j)', '100 % (37 j)'),
+    ('Sans micro-euro (contrat 6E réel)', '45 % (87 j)', '46 % (131 j)', '76 % (44 j)'),
+    ('<b>+ plus bas 10 j Russell, Double 7 Nasdaq / argent</b>', '<b>50 % (79 j)</b>', '<b>62 % (142 j)</b>', '<b>78 % (41 j)</b>'),
+    ], [72 * mm, 34 * mm, 34 * mm, 40 * mm]), Spacer(1, 2), Paragraph(
+    '<b>Correction (26/11/2026)</b> : la liste officielle des produits Lucid n’a <b>pas de micro-devises</b> (ni M6E, ni M6B) ; l’euro ne se trade '
+    'qu’en 6E standard (125 000 €, ≈ 137 000 $ le contrat), trop gros pour la perte max de 2 000 $. L’IBS EUR/USD, gros contributeur de Lucid dans '
+    'les calculs précédents, ne passe donc jamais : la réussite réelle était plus basse. Elle est remplacée par trois journalières sur des micros '
+    'que Lucid propose (Russell M2K, Nasdaq MNQ, argent SIL).', body)]))
+
+story.append(KeepTogether([Paragraph('Autres marchés pour Lucid (contrats CME)', h2), Paragraph(
+    'Lucid ne propose que 34 contrats des bourses de Chicago et New York (CME, CBOT, NYMEX, COMEX) : <b>pas de CAC 40, de DAX ni d’indice '
+    'européen</b>, pas de micro-devises, pas de taux, pas de crypto. Testés (npm run lucid-markets, intraday 2 ans + journalier depuis 2000, '
+    'taille réelle des contrats et frais Lucid) : cuivre, platine, gaz naturel, maïs, soja, blé, huile et tourteau de soja, bovins, porcs, et les '
+    'devises en contrat standard (dollar australien, livre, dollar canadien, euro, yen, franc suisse, dollar néo-zélandais). Nikkei : 280 000 $ '
+    'le contrat, trop gros.', body), Spacer(1, 3), small_table([
+    ('Lucid, risque de l’évaluation', '2009–2019', '2020–2026', 'nov. 24–26 (≤ 14 j)'),
+    ('Actuel (avant correction de l’euro)', '45 %', '46 %', '39 % (20 %)'),
+    ('+ soja ou platine intraday', '45 %', '46 %', '43 % (20 %)'),
+    ('+ devises standard intraday (6A, 6B, 6E, 6J)', '45 %', '46 %', '29–37 % ✘'),
+    ('+ maïs, gaz naturel intraday', '45 %', '46 %', '41–43 % (16–19 %) ✘'),
+    ('+ journalières cuivre, gaz, soja', '—', '—', 'contrats trop gros : jamais pris'),
+    ], [72 * mm, 30 * mm, 30 * mm, 48 * mm]), Spacer(1, 2), Paragraph(
+    'Les contrats standard (25 000 à 150 000 $) sont trop gros pour une perte max de 2 000 $ : le gain reste marginal (soja, platine : +4 points '
+    'sur 2 ans seulement, rien sur les 2 semaines) ; non ajoutés. Ce qui marche sur Lucid reste les micros (Nasdaq, S&amp;P, Dow, Russell, argent).', body)]))
 
 story.append(KeepTogether([Paragraph('Objectif : réussir en 2 semaines', h2), Paragraph(
     'Départ chaque jour ouvré (nov. 2024 → nov. 2026), selon le risque (npm run twoweeks). À risque normal, ≈ 1 % des évaluations réussissent en 2 '
@@ -362,10 +385,10 @@ story.append(KeepTogether([Paragraph('Objectif : réussir en 2 semaines', h2), P
     f'd’échecs) : inchangé. <b>Lucid</b> : risque intraday × {fr(fc["lem"])} <b>pendant l’évaluation</b> ({fr(fc["lir"] * fc["lem"])} % au lieu de {fr(fc["lir"])} %), '
     f'retour à {fr(fc["lir"])} % une fois le compte financé.', body), Spacer(1, 3), small_table([
     ('Lucid, risque intraday', 'Réussie ≤ 14 j', 'Réussie ≤ 30 j', 'Échouée ≤ 14 j', 'Évaluations / compte financé'),
-    ('0,45 % (avant)', '1 %', '24 %', '1 %', '1,1'),
-    ('0,9 % (× 2)', '19 %', '52 %', '23 %', '1,6'),
-    ('<b>1,35 % (× 3, actuel)</b>', '<b>22 %</b>', '<b>38 %</b>', '<b>48 %</b>', '<b>≈ 2,3</b>'),
-    ('2,25 % (× 5)', '18 %', '27 %', '65 %', '3,1'),
+    ('0,45 % (× 1)', '1 %', '17 %', '1 %', '1,3'),
+    ('0,9 % (× 2)', '17 %', '44 %', '26 %', '1,9'),
+    ('<b>1,35 % (× 3, actuel)</b>', '<b>20 %</b>', '<b>34 %</b>', '<b>51 %</b>', '<b>≈ 2,6</b>'),
+    ('2,25 % (× 5)', '17 %', '25 %', '68 %', '3,4'),
     ], [46 * mm, 30 * mm, 30 * mm, 32 * mm, 42 * mm]), Spacer(1, 2), Paragraph(
     'Environ une évaluation sur cinq réussit en 2 semaines, mais une sur deux échoue dans le même temps : compter 2 à 3 évaluations achetées par '
     'compte financé. Chiffres sur 2 ans de données intraday seulement.', body)]))
