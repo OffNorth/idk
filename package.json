@@ -65,7 +65,8 @@
     "lucid-research5": "node --max-old-space-size=7000 lucid-research5.js",
     "ftmo-tsl": "node --max-old-space-size=7000 ftmo-tsl-research.js",
     "lucid-research6": "node --max-old-space-size=7000 lucid-research6.js",
-    "ftmo-partial": "node --max-old-space-size=7000 ftmo-partial-research.js"
+    "ftmo-partial": "node --max-old-space-size=7000 ftmo-partial-research.js",
+    "ftmo-lucidlike": "node --max-old-space-size=7000 ftmo-lucidlike-research.js"
   },
   "engines": {
     "node": ">=20"
