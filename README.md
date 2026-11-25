@@ -868,6 +868,22 @@ qui doit durer (scaling jusqu'à 2 M$).
   → 100 / 100 / 100 %, 4 hausses de capital de 25 % atteintes 5 → 99 % (2009–2023, capital constant dans le calcul).
   × 0,35 : 85 / 71 / 57 %, × 0,5 : 62 / 40 / 30 % (plus de retraits à court terme, moins de durée).
 
+### 💼 Portefeuille perso, sans prop firm (`npm run portfolio`)
+
+ETF réels, dividendes inclus (Yahoo, cours ajustés), déc. 2004 → nov. 2026, sans levier, frais 0,1 %, rééquilibrage
+mensuel, en euros :
+
+| Portefeuille | €/an | Pire baisse | Pire année | 300 €/mois → |
+|---|---|---|---|---|
+| Monde (60 % S&P + 40 % hors USA) | 9,8 % | −53 % | −36 % | 320 000 € |
+| S&P 500 | 11,5 % | −51 % | −34 % | 438 000 € |
+| Nasdaq 100 | 15,3 % | −47 % | −39 % | 791 000 € |
+| Tendance 10 mois sur le monde | 10,6 % | −21 % | −17 % | 288 000 € |
+| **Cœur + bot (50 % monde, 10 % or, 40 % bot)** | **10,2 %** | **−26 %** | **−14 %** | 299 000 € |
+| Bot seul (RSI 2 et Double 7 S&P, croix dorée Nasdaq, tendance et saison or) | 9,3 % | −16 % | −2 % | 252 000 € |
+
+(versé : 79 200 €). Le Nasdaq a eu 20 ans exceptionnels (biais du rétroviseur).
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

@@ -10,7 +10,8 @@ const BASE = 'https://query2.finance.yahoo.com/v8/finance/chart/';
 /**
  * @param {string} symbol    ex. '^NDX', 'NQ=F'
  * @param {string} interval  '1d', '1h', '5m'…
- * @param {object} opts      { range: '730d' } ou { period1, period2 } (secondes)
+ * @param {object} opts      { range: '730d' } ou { period1, period2 } (secondes) ; adjusted : cours ajustés des dividendes
+ *                           (journalier : rendement total d'un ETF, pour comparer des portefeuilles sur 20 ans)
  */
 async function fetchYahoo(symbol, interval, opts = {}) {
   const params = new URLSearchParams({ interval, includePrePost: 'false' });
@@ -33,13 +34,15 @@ async function fetchYahoo(symbol, interval, opts = {}) {
       const r = json?.chart?.result?.[0];
       if (!r?.timestamp) throw new Error(`Yahoo ${symbol} : réponse vide`);
       const q = r.indicators.quote[0];
+      const adj = opts.adjusted ? r.indicators.adjclose?.[0]?.adjclose : null;
       const out = [];
       r.timestamp.forEach((t, i) => {
-        const c = q.close[i];
+        const k = adj && adj[i] != null && q.close[i] ? adj[i] / q.close[i] : 1;
+        const c = q.close[i] == null ? null : q.close[i] * k;
         if (c == null || q.open[i] == null || q.high[i] == null || q.low[i] == null) return;
         // journalier : bougie alignée sur minuit UTC (Yahoo donne l'heure d'ouverture du marché)
         const tt = interval === '1d' ? Math.floor(t / 86400) * 86400 : t;
-        out.push({ t: tt, o: q.open[i], h: q.high[i], l: q.low[i], c, v: q.volume?.[i] || 0 });
+        out.push({ t: tt, o: q.open[i] * k, h: q.high[i] * k, l: q.low[i] * k, c, v: q.volume?.[i] || 0 });
       });
       const byT = new Map(out.map((c) => [c.t, c]));
       return [...byT.values()].sort((a, b) => a.t - b.t);
@@ -54,7 +57,7 @@ async function fetchYahoo(symbol, interval, opts = {}) {
 /** Version mise en cache sur disque (rafraîchie si plus vieille que maxAgeH heures). */
 async function cachedYahoo(cacheDir, symbol, interval, opts = {}, maxAgeH = 24) {
   fs.mkdirSync(cacheDir, { recursive: true });
-  const file = path.join(cacheDir, `yahoo-${symbol.replace(/[^A-Za-z0-9]/g, '_')}-${interval}-${opts.range || 'all'}.json`);
+  const file = path.join(cacheDir, `yahoo-${symbol.replace(/[^A-Za-z0-9]/g, '_')}-${interval}-${opts.range || 'all'}${opts.adjusted ? '-adj' : ''}.json`);
   if (fs.existsSync(file) && Date.now() - fs.statSync(file).mtimeMs < maxAgeH * 3_600_000) {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
   }
