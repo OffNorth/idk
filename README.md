@@ -733,7 +733,10 @@ Raschke** (« 80-20 », « Turtle Soup », « Holy Grail » journalier). Or : ri
 Crabel NR4 / NR7 et Williams 0,5 / 0,7 positives les deux années, mais toutes font baisser la réussite récente du
 challenge FTMO (65 → 59–63 %). Une seule améliore Lucid sans rien coûter : **`n_crabel4_t05`** (Crabel NR4, cassure des
 30 premières minutes, objectif 0,5 R : 67 % de gagnants, ≤ 4 pertes de suite) → réussite 100 % en 50 j (contre 98 % en
-54 j) ; ajoutée à Lucid. Williams 0,5 avec objectif 0,75 R irait plus vite (42 j) mais 96 % de réussite : non ajoutée.
+54 j) ; ajoutée à Lucid. **Puis (même jour, demande « ajoute ce qui est stable »)** : variantes Lucid `n_crabel7_15_t075`, `n_wvb05_t075`,
+`n_wvb07_t05` ajoutées → Lucid **94 % en 37 j** (contre 100 % en 50 j). Les versions FTMO (`n_crabel7_15`,
+`n_crabel7_30`, `n_crabel4_30`, `n_wvb05`) font baisser la réussite récente FTMO de 67 à 57 % sans aller plus vite :
+enregistrées mais pas sur le compte.
 
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 

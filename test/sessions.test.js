@@ -127,3 +127,31 @@ test('Crabel NR4 (n_crabel4_t05, Lucid) : pas de trade sans journée étroite la
   assert.ok(last.entryT >= start + (days - 1) * 86400, 'seulement le dernier jour');
   assert.strictEqual(last.reason, 'take profit');
 });
+
+test('Williams (cassure de volatilité) : achat au-dessus de l’ouverture + k × amplitude de la veille, stop à l’ouverture ; sur Lucid seulement', () => {
+  const cfg = require('../src/config');
+  const F = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
+  const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  for (const id of ['n_crabel7_15_t075', 'n_wvb05_t075', 'n_wvb07_t05']) assert.ok(L.riskOf('nas100', { id, tf: '5m' }) > 0, id);
+  assert.ok(!F.strategies.some((k) => /crabel|wvb/.test(k)), 'pas sur le compte FTMO');
+  const s = selectStrategies(['n_wvb05'])[0];
+  const start = Date.parse('2026-01-05T00:00:00Z') / 1000;
+  const c = [];
+  let lastDay = 0;
+  for (let d = 0; d < 32; d++) {
+    const t0 = start + d * 86400;
+    if ([0, 6].includes(new Date(t0 * 1000).getUTCDay())) continue;
+    lastDay = t0;
+    for (let t = t0 + 14.5 * 3600; t < t0 + 21 * 3600; t += 300) {
+      const k = (t - t0 - 14.5 * 3600) / 300;
+      // séances de ± 20 autour de 26 000 (amplitude 40) ; dernier jour : +30 à 11 h NY (> ouverture + 0,5 × 40)
+      const px = d === 31 && k >= 18 ? 26030 : 26000 + (k % 2 ? 20 : -20) * (d === 31 ? 0.25 : 1);
+      c.push({ t, o: px, h: px + 0.5, l: px - 0.5, c: px, v: 1 });
+    }
+  }
+  const tr = backtest(s, c, { size: 1000, feePct: 0.003, barSec: 300, market: 'nas100' }).list.filter((x) => x.entryT >= lastDay);
+  assert.strictEqual(tr.length, 1);
+  assert.strictEqual(tr[0].side, 'long');
+  assert.strictEqual(new Date(tr[0].entryT * 1000).toISOString().slice(11, 16), '16:00', 'clôture de la bougie de 11 h NY');
+  assert.ok(Math.abs(tr[0].initSl - 25995) < 1e-6, 'stop à l’ouverture du jour');
+});

@@ -1160,6 +1160,7 @@ STRATEGIES.push(...require('./goldmom').GOLDMOM);
 // Séances d'Asie et de New York (npm run sessions) : à l'essai en paper trading
 STRATEGIES.push(...require('./sessions').SESSIONS);
 STRATEGIES.push(...require('./sessions').LUCID_NAS); // Nasdaq intraday du compte Lucid (npm run lucid-research2)
+STRATEGIES.push(...require('./sessions').TRADERS); // Crabel, Williams (npm run traders)
 STRATEGIES.push(...require('./events').EVENTS);
 
 /*
