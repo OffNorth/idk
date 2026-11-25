@@ -18,13 +18,16 @@
  *  - exhaustion   : 3 bougies de delta fort dans le même sens puis bougie de sens contraire → contre-tendance
  *  Témoins « prix seul » (mêmes règles sans le delta) pour voir si le delta apporte quelque chose : body_mom, vol_rev.
  * Frais aller-retour : BTC / ETH 0,04 % (CFD FTMO, optimiste) et 0,10 % (prudent) ; QQQ / SPY 0,01 % (≈ MNQ / MES).
- * Mesures : trades, gagnants, R moyen net, facteur de profit, par période (stabilité), en 1 min et en 5 min.
+ * `npm run orderflow -- --gross` : mêmes tests sans frais. Mesures : trades, gagnants, R moyen net, facteur de profit, par période (stabilité), en 1 min et en 5 min.
  */
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
 const CACHE = path.join(__dirname, 'data', 'research');
+// --gross : sans frais (le delta prédit-il quelque chose, avant tout coût ?)
+const GROSS = process.argv.includes('--gross');
+const C = (list) => (GROSS ? [0] : list);
 const BIN = path.join(CACHE, 'binance-klines');
 fs.mkdirSync(BIN, { recursive: true });
 
@@ -182,17 +185,17 @@ function report(label, bars, delta, costs, periods) {
     let sxy = 0, sxx = 0, syy = 0, same = 0, cnt = 0;
     for (let i = 101; i < b1.length; i++) { const x = approx[i] / b1[i].v, y = b1[i].d / b1[i].v; if (!Number.isFinite(x) || !Number.isFinite(y)) continue; sxy += x * y; sxx += x * x; syy += y * y; if (Math.sign(x) === Math.sign(y)) same++; cnt++; }
     console.log(`\n${sym} : delta approximé vs vrai delta (1 min) : corrélation ${f(sxy / Math.sqrt(sxx * syy))}, même signe ${Math.round((same / cnt) * 100)} %`);
-    report(`${sym} · vrai delta · 1 min`, b1, b1.map((x) => x.d), [0.04, 0.1], periods);
+    report(`${sym} · vrai delta · 1 min`, b1, b1.map((x) => x.d), C([0.04, 0.1]), periods);
     const b5 = agg(b1, 5);
-    report(`${sym} · vrai delta · 5 min`, b5, b5.map((x) => x.d), [0.04, 0.1], periods);
-    report(`${sym} · delta APPROXIMÉ · 5 min (contrôle)`, b5, bvc(b5), [0.04], periods);
+    report(`${sym} · vrai delta · 5 min`, b5, b5.map((x) => x.d), C([0.04, 0.1]), periods);
+    if (!GROSS) report(`${sym} · delta APPROXIMÉ · 5 min (contrôle)`, b5, bvc(b5), [0.04], periods);
   }
   // 2. Delta approximé sur les équivalents des contrats Lucid
   for (const tk of ['QQQ', 'SPY']) {
     const b1 = polygon1m(tk);
     const periods = [['nov. 24–juil. 25', T(2024, 11), T(2025, 7)], ['juil. 25–mars 26', T(2025, 7), T(2026, 3)], ['mars–nov. 26', T(2026, 3), T(2027)]];
-    report(`${tk} (≈ ${tk === 'QQQ' ? 'MNQ' : 'MES'}) · delta approximé · 1 min`, b1, bvc(b1), [0.01], periods);
+    report(`${tk} (≈ ${tk === 'QQQ' ? 'MNQ' : 'MES'}) · delta approximé · 1 min`, b1, bvc(b1), C([0.01]), periods);
     const b5 = agg(b1, 5);
-    report(`${tk} (≈ ${tk === 'QQQ' ? 'MNQ' : 'MES'}) · delta approximé · 5 min`, b5, bvc(b5), [0.01], periods);
+    report(`${tk} (≈ ${tk === 'QQQ' ? 'MNQ' : 'MES'}) · delta approximé · 5 min`, b5, bvc(b5), C([0.01]), periods);
   }
 })().catch((e) => { console.error(e); process.exit(1); });

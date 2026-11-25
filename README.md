@@ -648,6 +648,20 @@ pour le trader ; FTMO : tout le gain tous les 14 jours, 80 %, le compte repart d
 dans le groupe, total dans `/ftmo` et `/lucid`. Le risque reste le même qu'en évaluation : le réduire de moitié en
 financé diminue le gain net par évaluation achetée sur toutes les périodes.
 
+### 🌊 Order flow (`npm run orderflow`, `-- --gross` sans frais)
+
+Données gratuites : vrai delta minute par minute de Binance (volume des acheteurs agresseurs, BTC et ETH, 2020 → oct. 2026,
+3,6 millions de bougies chacun) et delta approximé (« bulk volume ») sur QQQ / SPY (≈ MNQ / MES, 2 ans en 1 min).
+Stratégies : delta fort, absorption, divergence du delta cumulé, épuisement ; témoins « prix seul ».
+- **Avant frais**, le vrai delta contient un peu d'information à 1 min (absorption +0,09 R, divergence +0,04 R,
+  épuisement +0,05 R, stables sur les 3 périodes ; le témoin prix seul fait 0) ; à 5 min, presque plus rien.
+- **Après frais**, tout est perdant partout : 0,04 % aller-retour vaut ≈ 0,4 R sur une bougie de 1 min de BTC,
+  dix fois l'avantage. Sur QQQ / SPY, seul « épuisement » est positif sur QQQ, mais sur peu de trades, pas sur une
+  des 3 périodes et négatif sur SPY : pas fiable.
+- Le delta approximé suit le vrai delta à 68 % (corrélation), même signe 78 % du temps.
+Conclusion : rien n'est ajouté au bot. L'order flow automatique n'a de sens qu'avec des frais quasi nuls et une
+exécution à la seconde.
+
 ### 📅 `/pnl` : PnL du jour des comptes simulés
 
 `/pnl` (ou `/jour`, `/daily`) : pour chaque compte (FTMO, Lucid), gain ou perte de la journée depuis le solde
