@@ -884,6 +884,13 @@ mensuel, en euros :
 
 (versé : 79 200 €). Le Nasdaq a eu 20 ans exceptionnels (biais du rétroviseur).
 
+**Compte « Portefeuille perso » dans le bot (`/portefeuille`, `PORTFOLIO=1`, `src/personalPortfolio.js`)** : la
+répartition « cœur + bot » tourne comme un compte simulé de `PORTFOLIO_CAPITAL` € (10 000 par défaut), ouvert au premier
+passage du bot puis recalculé une fois par jour après la clôture de New York (mêmes règles que la recherche, état dans
+`data/portfolio.json`). Messages dans le groupe quand une poche du bot achète ou vend son ETF (8 % du portefeuille
+chacune) et au rééquilibrage du mois. Le site l'affiche sous les comptes FTMO et Lucid (valeur, baisse, répartition,
+poches, courbe). Argent fictif, pas un conseil financier.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,
