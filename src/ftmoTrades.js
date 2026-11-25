@@ -51,6 +51,7 @@ async function buildTrades(cfg, CACHE, { withLucid = false } = {}) {
     const [m, id] = k.split(':');
     const s = selectStrategies([id])[0];
     if (!s) continue;
+    if (!FEE[m]) continue; // argent, Dow (compte Lucid) : pas d'historique ici (npm run markets-research)
     const tf = tfOf(s);
     const [fee, fin] = FEE[m];
     let r = null;
