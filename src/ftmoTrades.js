@@ -21,7 +21,9 @@ const MICRO = {
   nas100: { mult: 2, fee: 2.5 }, // MNQ : 2 $ par point, tick 0,25 pt = 0,50 $
   nas100q: { mult: 82, fee: 2.5 },
   spx: { mult: 5, fee: 4 }, // MES : 5 $ par point, tick 0,25 pt = 1,25 $
-  eurusd: { mult: 12_500, fee: 4 }, // M6E : 12 500 €, tick 0,0001 = 1,25 $
+  // Lucid n'a pas les micro-devises (liste officielle des produits, nov. 2026) : euro en contrat standard 6E (125 000 €,
+  // tick 0,00005 = 6,25 $ ; commission 2 × 2,40 $ + 1 tick de glissement par côté ≈ 17 $ aller-retour)
+  eurusd: { mult: 125_000, fee: 17 },
 };
 
 /** Retourne { all (trades annotés), q5 (bougies Nasdaq 5 min ou null), A (compte FTMO) }. */

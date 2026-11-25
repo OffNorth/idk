@@ -627,7 +627,7 @@ challenge en moins d'un an :
 À côté du compte FTMO, un compte **LucidFlex 50K** (`LUCID_CAPITAL`) suit les mêmes signaux (même IA validatrice,
 même risque × `LUCID_RISK_MUL`) avec les règles Lucid : objectif +6 %, pas de perte du jour, perte max 2 000 $
 (3 000 $ en 100K) sous le plus haut solde de **clôture** de séance CME (17 h New York), bloquée à capital + 100 $,
-meilleur jour ≤ **40 %** du gain pendant l'évaluation (`LUCID_CONSISTENCY_PCT`, 40 % depuis le 19/10/2026), 2 jours minimum, **micro-futures en contrats entiers** (MGC, MNQ, MES, M6E ; 40 au plus, frais
+meilleur jour ≤ **40 %** du gain pendant l'évaluation (`LUCID_CONSISTENCY_PCT`, 40 % depuis le 19/10/2026), 2 jours minimum, **futures en contrats entiers** (micros MGC, MNQ, MES, SIL, MYM ; euro en contrat standard 6E, Lucid n'ayant pas de micro-devises ; 40 au plus, frais
 par contrat). Messages « 🟣 Lucid » dans le groupe, panneau `/lucid` (bouton « 🟣 Compte Lucid » dans `/ftmo`).
 Si le risque prévu est trop petit pour 1 contrat, le compte prend **1 micro** quand son risque reste ≤ 1,5 × le risque
 prévu et ≤ 40 % de la perte max ; sinon le signal est sauté (affiché dans `/lucid`). En pratique, l'or et le Nasdaq

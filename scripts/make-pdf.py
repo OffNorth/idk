@@ -245,7 +245,7 @@ lucid_block += [Spacer(1, 3), small_table([
     ('LucidFlex 100K', '11 % / 9 % / 17 %', '−171 $'),
 ], [60 * mm, 70 * mm, 50 * mm]), Spacer(1, 2), Paragraph(
     'FTMO l’emporte : l’absence de perte du jour chez Lucid ne compense pas une perte max 3 à 5 fois plus serrée. '
-    + (f'<b>En direct</b>, un compte <b>LucidFlex {fc["lc"] // 1000}K</b> simulé (/lucid), en micro-contrats entiers (MGC, MNQ, MES, M6E, SIL, MYM), '
+    + (f'<b>En direct</b>, un compte <b>LucidFlex {fc["lc"] // 1000}K</b> simulé (/lucid), en contrats entiers (micros MGC, MNQ, MES, SIL, MYM ; euro en 6E standard), '
        f'règle de régularité {fc["lcons"]:g} % (meilleur jour) pendant l’évaluation. Ce tableau est l’ancienne comparaison (mêmes stratégies que FTMO) ; '
        'depuis, Lucid a ses propres réglages, voir « Stratégies pour Lucid ». ' if fc['lu'] else '')
     + 'Plusieurs challenges identiques en même temps multiplient les gains comme les pertes : les comptes prennent les mêmes trades et réussissent '
@@ -385,6 +385,14 @@ story.append(KeepTogether([Paragraph('Suivi en direct', h2), Paragraph(
     'historique complet (challenge en cours, anciens challenges, trades de chaque stratégie). Mise à jour toutes les 15 s environ. Telegram : '
     'messages de chaque trade du compte FTMO, /ftmo, /lucid, /interface, /export. Le stop est vérifié au cours actuel avant toute sortie programmée '
     '(sortie au niveau du stop, comme un vrai ordre).', body)]))
+
+# Guide « trader sans le bot » (exemples réels : node scripts/guide-examples.js > docs/guide-examples.json)
+_gx = os.path.join(ROOT, 'docs', 'guide-examples.json')
+if os.path.exists(_gx):
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import guide_pdf
+    story += guide_pdf.build({'title': title, 'h2': h2, 'body': body, 'cell': cell, 'cellb': cellb, 'head': head, 'INK': INK, 'LINE': LINE},
+                             json.load(open(_gx, encoding='utf-8')), fc)
 
 story.append(PageBreak())
 story.append(Paragraph('Historiques simulés des stratégies actives', h2))
