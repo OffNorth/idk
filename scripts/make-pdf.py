@@ -148,7 +148,7 @@ for i, fam in enumerate(families, start=1):
 
 # Comptes FTMO simulés (réglages lus dans src/config.js)
 import subprocess
-fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({aa:c.autoAdapt,as:c.adaptStrategies,g:c.ftmoStrategies,gr:c.ftmoRisk,ir:c.ftmoIntradayRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop,cb:c.ftmoCombined,cnr:c.ftmoComboNasRisk,prog:c.ftmoProgram,sz:c.ftmoSizing,ai:c.ftmoAi,lu:c.lucidEnabled,lc:c.lucidCapital}))"],
+fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');console.log(JSON.stringify({aa:c.autoAdapt,as:c.adaptStrategies,g:c.ftmoStrategies,gr:c.ftmoRisk,ir:c.ftmoIntradayRisk,n:c.ftmoNasStrategies,nr:c.ftmoNasRisk,ds:c.ftmoDayStop,cb:c.ftmoCombined,cnr:c.ftmoComboNasRisk,prog:c.ftmoProgram,sz:c.ftmoSizing,ai:c.ftmoAi,lu:c.lucidEnabled,lc:c.lucidCapital,lir:c.lucidIntradayRisk,lis:c.lucidIntradayStrategies,lm:c.lucidRiskMul,lcons:c.lucidConsistency,fd:c.fillDelaySec}))"],
                                cwd=ROOT, capture_output=True, text=True, check=True).stdout)
 ids = lambda l: ', '.join(x.split(':', 1)[-1] for x in l)
 story.append(PageBreak())
@@ -172,9 +172,11 @@ if fc['cb']:
     # Compte unique or + Nasdaq (npm run ftmo-combo)
     ft = [ft[0], [Paragraph('<b>Compte unique Or + Nasdaq</b> (celui du bot)', cell), Paragraph(esc(ids(fc['g'])) + ' · ' + esc(ids(fc['n'])), cell),
                   Paragraph(f'{fc["gr"]:g} % (journalières) · {fc["ir"]:g} % (intraday)', cell),
-                  Paragraph(('Or réel (HistData 2009–2026), Nasdaq, S&P 500, EUR/USD ; ≈ 6 trades par jour avec les stratégies intraday. '
-                             'Réussite en moins d’un an avec le réglage actuel (risque qui baisse à l’approche de l’objectif, intraday en petit) : '
-                             '<b>64 %</b> (2009–2019), <b>67 %</b> (2020–2026), <b>83 %</b> (nov. 2024 → nov. 2026, Nasdaq intraday compris).')
+                  Paragraph(('Or réel (HistData 2009–2026), Nasdaq, S&P 500, EUR/USD ; ≈ 8 trades par jour avec les stratégies intraday '
+                             '(dont les séances d’Asie et de New York sur l’or). Réussite en moins d’un an avec le réglage actuel (taille normale, '
+                             'divisée par 2 avec 2 positions ouvertes) : <b>56 %</b> (2009–2019), <b>47 %</b> (2020–2026), <b>69 %</b> (nov. 2024 → '
+                             'nov. 2026, Nasdaq intraday compris), en ≈ 2,5 à 3 mois médians ; Time Machine (1 000 années tirées au hasard) : '
+                             '<b>67 %</b> en ≈ 4 mois.')
                             if fc['prog'] == '1step' else
                             ('sept. 2020 → oct. 2024 : <b>97 % en moins de 6 mois</b> (46 j en médiane) ; 2 dernières années (vérification) : <b>46 %</b> (34 j). '
                              'Les scalps or rapportent moins depuis 2024.'), cell)]]
@@ -202,7 +204,11 @@ story += [Spacer(1, 3), small_table([
     ('Risque fixe (avant)', '26 % (53 j)', '30 % (48 j)', '40 % (34 j)'),
     ('<b>Risque qui baisse à l’approche de l’objectif</b>', '<b>37 %</b> (94 j)', '<b>46 %</b> (113 j)', '<b>44 %</b> (47 j)'),
     ('Risque × 2 pour aller plus vite', '4 %', '11 %', '19 %'),
+    ('<b>Taille normale, ÷ 2 avec 2 positions (actuel, 23/11/2026)</b>', '58 %', '54 %', '71 %'),
 ], [72 * mm, 34 * mm, 34 * mm, 40 * mm]), Spacer(1, 2), Paragraph(
+    'Chiffres de chaque ligne mesurés à des dates différentes (stratégies et risques de l’époque) ; la dernière ligne avec les stratégies actuelles, '
+    'avant l’ajout des séances d’Asie et de New York. La réduction à l’approche de l’objectif a été retirée à la demande : challenges ≈ 1 mois plus '
+    'rapides. Elle reste disponible (FTMO_SIZING=objectif : dégressif doux). ', body), Spacer(1, 2), Paragraph(
     'Viser « 2 % par jour » n’est pas réaliste : le compte gagne en moyenne +0,1 à +0,25 % par séance ; une journée à +2,7 % arrive environ 1 séance sur 6, '
     'mais les journées à −2 % sont presque aussi fréquentes. Doubler le risque fait échouer presque tous les challenges sur la perte du jour.', body)]
 
@@ -233,11 +239,9 @@ lucid_block += [Spacer(1, 3), small_table([
     ('LucidFlex 100K', '11 % / 9 % / 17 %', '−171 $'),
 ], [60 * mm, 70 * mm, 50 * mm]), Spacer(1, 2), Paragraph(
     'FTMO l’emporte : l’absence de perte du jour chez Lucid ne compense pas une perte max 3 à 5 fois plus serrée. '
-    + (f'<b>En direct</b>, un compte <b>LucidFlex {fc["lc"] // 1000}K</b> simulé (/lucid) suit quand même les mêmes signaux, en micro-contrats entiers '
-       '(MGC, MNQ, MES, M6E), pour comparer les deux sociétés au jour le jour. Quand le risque prévu est trop petit pour 1 contrat, '
-       'il prend 1 micro si son risque reste raisonnable (≤ 1,5 × le risque prévu et ≤ 40 % de la perte max) ; l’or et le Nasdaq journaliers '
-       'n’y sont pas tradables en 50K (1 seul micro risquerait 2 300 à 3 100 $, plus que la perte max) : il vit surtout de l’intraday, '
-       'de l’EUR/USD et du S&P 500. ' if fc['lu'] else '')
+    + (f'<b>En direct</b>, un compte <b>LucidFlex {fc["lc"] // 1000}K</b> simulé (/lucid), en micro-contrats entiers (MGC, MNQ, MES, M6E), '
+       f'règle de régularité {fc["lcons"]:g} % (meilleur jour) pendant l’évaluation. Ce tableau est l’ancienne comparaison (mêmes stratégies que FTMO) ; '
+       'depuis, Lucid a ses propres réglages, voir « Stratégies pour Lucid ». ' if fc['lu'] else '')
     + 'Plusieurs challenges identiques en même temps multiplient les gains comme les pertes : les comptes prennent les mêmes trades et réussissent '
       'ou échouent ensemble.', body)]
 story.append(KeepTogether(lucid_block))
@@ -261,17 +265,45 @@ if fc['aa']:
 
 story.append(KeepTogether([Paragraph('Réglage du risque (FTMO et Lucid)', h2), Paragraph(
     'Des centaines de combinaisons testées (stratégies gardées × risque intraday × risque journalier), choix sur 2009–2019 puis vérification. '
-    'Les stratégies intraday ajoutent surtout de la variance : sur FTMO elles restent (≈ 6 trades par jour) mais en tout petit ; sur Lucid, dont la '
-    'perte max est très serrée, elles sont retirées et le compte ne trade que les journalières (quelques trades par mois). Contrepartie : des '
-    'challenges plus longs (4 à 7 mois en médiane).', body), Spacer(1, 3), small_table([
+    'Les stratégies intraday ajoutent surtout de la variance : sur FTMO elles restent mais en tout petit. Lucid a ses propres réglages (voir la '
+    'section suivante).', body), Spacer(1, 3), small_table([
     ('Compte', 'Réglage', '2009–2019', '2020–2026', 'nov. 24–26'),
     ('FTMO (avant)', 'intraday 0,5 % · journalières 1,5 %', '37 %', '46 %', '44 %'),
-    ('<b>FTMO (actuel)</b>', f'intraday {fc["ir"]:g} % · journalières {fc["gr"]:g} %', '<b>64 %</b>', '<b>67 %</b>', '<b>83 %</b>'),
+    ('FTMO (réglage du 20/11)', 'intraday 0,15 % · journalières 2 %, risque qui baisse', '64 %', '67 %', '83 %'),
+    ('<b>FTMO (actuel)</b>', f'intraday {fc["ir"]:g} % · journalières {fc["gr"]:g} %, taille normale, + séances Asie / NY', '<b>56 %</b>', '<b>47 %</b>', '<b>69 %</b>'),
     ('Lucid (avant)', 'idem FTMO', '13 %', '11 %', '21 %'),
-    ('<b>Lucid (actuel)</b>', 'sans intraday · journalières 2,5 %', '<b>62 %</b>', '<b>67 %</b>', '<b>73 %</b>'),
+    ('<b>Lucid (actuel)</b>', f'journalières {fc["gr"] * fc["lm"]:g} % · Nasdaq intraday {fc["lir"]:g} %, objectif 0,5 R', '<b>56 %</b>', '<b>69 %</b>', '<b>100 %</b>'),
 ], [32 * mm, 58 * mm, 30 * mm, 30 * mm, 30 * mm]), Spacer(1, 2), Paragraph(
     'Réussite en moins d’un an, sans l’IA validatrice (active en plus en direct). Stratégies d’événements testées et non retenues : veille de la Fed '
     '(Lucca & Moench 2015) et veille de jour férié (Ariel 1990) — fortes sur 2009–2012 et 2020–2026 mais perdantes sur 2017–2019.', body)]))
+
+story.append(KeepTogether([Paragraph('Stratégies pour Lucid : moins de pertes de suite', h2), Paragraph(
+    'La perte max Lucid (2 000 $ suiveuse en fin de journée) ne laisse qu’≈ 10 trades perdants d’affilée ; les stratégies de cassure (20 à 40 % de '
+    'gagnants, jusqu’à 49 pertes de suite) la font échouer même quand elles gagnent en moyenne. Lucid prend donc des <b>variantes « objectif 0,5 R »</b> '
+    'de l’intraday Nasdaq (même entrée, même stop, gain pris à 0,5 × le risque) : ' + esc(', '.join(x.split(':', 1)[-1] for x in fc['lis'])) + '. '
+    'Le compte FTMO garde les originales. Pas d’intraday or sur Lucid (1 micro-contrat or trop gros pour la perte max).', body), Spacer(1, 3), small_table([
+    ('Lucid, nov. 2024 → nov. 2026 (49 départs)', 'Gagnants', 'Pire série', 'Baisse max', 'Réussite'),
+    ('Originales + n_pdlbrk (avant)', '40 %', '16 pertes', '72 R', '49 %'),
+    ('<b>Objectif 0,5 R (actuel)</b>', '<b>66 %</b>', '<b>6 pertes</b>', '<b>17 R</b>', '<b>100 %</b>'),
+    ('Objectif 0,3 / 0,75 / 1 R', '75 / 57 / 52 %', '6 / 9 / 15', '23 / 21 / 24 R', '92 / 82 / 67 %'),
+], [62 * mm, 26 * mm, 28 * mm, 30 * mm, 34 * mm]), Spacer(1, 2), Paragraph(
+    'Seulement 2 ans de données intraday Nasdaq : le 100 % est flatteur. La Time Machine (journées tirées au hasard) donne ≈ 61 % de réussite en '
+    '≈ 3 mois : compter plutôt sur 60 à 70 %.', body)]))
+
+story.append(KeepTogether([Paragraph('Séances d’Asie et de New York', h2), Paragraph(
+    '92 variantes testées sur l’or au comptant réel 2009–2026 et le Nasdaq (2 ans) : cassures d’ouverture (Tokyo, Shanghai, COMEX, New York), '
+    'fixing de Londres, clôture de Londres, dernière heure, nuit asiatique, écarts d’ouverture, plus haut / plus bas de la veille, pré-ouverture, '
+    'Nasdaq la nuit (future NQ=F). Retenues sur le compte FTMO : <b>g_asiabrk</b> (cassure du range de la nuit asiatique à l’ouverture de Londres : '
+    '+20 / +13 / +16 % sur 3 tranches) et <b>g_nypdl</b> (cassure du plus haut / plus bas de la veille sur l’or pendant New York : +17 / +23 / +2,8 %, '
+    '+0,13 R par trade). Rejetées : g_asia (perdante sur l’or réel), n_pdlbrk (négative sur la séance seule de New York), toutes les stratégies '
+    'Nasdaq de nuit.', body)]))
+
+story.append(KeepTogether([Paragraph('Exécution, notifications et outils', h2), Paragraph(
+    f'<b>Exécution « comme en vrai »</b> : les comptes FTMO et Lucid entrent et sortent (sur signal) au cours {fc["fd"]:g} s après le signal ; stops et '
+    'objectifs restent au niveau. <b>Notifications</b> : chaque achat / vente des comptes est annoncé dans le groupe Telegram, avec une copie en privé '
+    'si le groupe ne le reçoit pas. <b>Time Machine</b> (/timemachine) : chances de réussir le challenge en cours d’après 1 000 années simulées. '
+    '<b>Comptes financés</b> : retraits simulés (FTMO tous les 14 jours, Lucid après 5 jours gagnants). <b>Boucle de test</b> (npm run selftest) : '
+    'tout le bot rejoué hors ligne (commandes, boutons, messages, cycle complet des comptes).', body)]))
 
 story.append(KeepTogether([Paragraph('Suivi en direct', h2), Paragraph(
     'Catégorie <b>« Bot »</b> du site marches-eight.vercel.app : comptes FTMO et Lucid simulés (valeur, objectif, perte du jour et perte max avec leur '
