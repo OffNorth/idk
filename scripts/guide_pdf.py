@@ -259,7 +259,8 @@ def build(S, ex, fc):
         ('22 h (clôture)', 'Journalier : RSI 2, Double 7, 3 baisses, IBS… à la clôture ; revoir les sorties des positions en cours.'),
     ], [42 * mm, 138 * mm]), Spacer(1, 4), Paragraph(
         '<b>Discipline</b> : noter chaque trade (date, règle, entrée, stop, objectif, résultat en R) ; ne prendre que les trades qui respectent '
-        'EXACTEMENT la règle ; s’arrêter pour la journée après une grosse perte ; sur Lucid, ne pas faire plus de 40 % de l’objectif en un jour. '
+        'EXACTEMENT la règle ; sur Lucid pendant l’évaluation, <b>arrêter la journée dès +750 $ (25 % de l’objectif) ou après le premier trade '
+        'perdant</b> (c’est ce que fait le bot : plus de réussites en 2 semaines, moins d’échecs) ; sur FTMO, arrêter après −1 % dans la journée. '
         'Une stratégie qui gagne en moyenne +0,1 à +0,2 R par trade perd souvent plusieurs fois de suite : c’est normal, c’est la répétition qui paie. '
         'Les résultats passés ne garantissent rien — commence en simulation ou en compte démo.', body)]
     return out

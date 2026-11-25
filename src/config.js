@@ -195,6 +195,12 @@ module.exports = {
   // 48 % des évaluations échouent dans les 14 jours (≈ 2,3 évaluations achetées par compte financé, contre 1,1).
   // 1 = désactivé ; × 2 : 19 % en ≤ 14 j, 52 % en ≤ 30 j, 23 % d'échecs en 14 j (1,6 évaluation)
   lucidEvalIntradayMul: num('LUCID_EVAL_INTRADAY_MUL', 3),
+  // Gestion de la journée Lucid PENDANT L'ÉVALUATION (npm run lucid-research5, 26/11/2026) : plus de nouveau trade quand le
+  // gain du jour atteint 25 % de l'objectif (750 $ sur 3 000 $ : règle du meilleur jour ≤ 40 %) ou après 1 trade perdant
+  // dans la journée. Nov. 24–26 : réussie en ≤ 14 j 20 → 25 %, en ≤ 30 j 34 → 42 %, échecs en ≤ 14 j 51 → 47 %,
+  // 2,6 → 2,2 évaluations achetées par compte financé (0 = désactivé)
+  lucidDayProfitCapPct: num('LUCID_DAY_PROFIT_CAP_PCT', 25),
+  lucidMaxLossesDay: num('LUCID_MAX_LOSSES_DAY', 1),
   // Variantes « objectif 0,5 R » (npm run lucid-research, 24/11/2026) : 66 % de gagnants, ≤ 6 pertes de suite →
   // évaluation réussie 49 / 49 départs sur nov. 24–26 (contre 49 % avec les originales + n_pdlbrk). Pas d'intraday or
   // (1 micro MGC trop gros pour la perte max de 2 000 $), pas de n_pdlbrk (négative sur la séance seule).

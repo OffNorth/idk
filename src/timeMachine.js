@@ -44,7 +44,13 @@ function phaseOptions(cfg, A, s) {
   const funded = s.phase === 'funded';
   const target = funded ? Infinity : P.target ?? TARGET[s.phase] ?? 10;
   if (P.contracts) {
-    return { ...common, target, dailyPct: Infinity, maxLossUsd: P.maxUsd, eodTrailing: true, lockAt: P.lockAt, bestDayPct: funded ? 0 : P.bestDay,
+    // Lucid pendant l'évaluation : journée finie après un gain du jour de LUCID_DAY_PROFIT_CAP_PCT % de l'objectif ou
+    // LUCID_MAX_LOSSES_DAY trade(s) perdant(s)
+    const day = funded ? {} : {
+      ...(cfg.lucidDayProfitCapPct > 0 ? { dayProfitCapUsd: (cfg.lucidDayProfitCapPct / 100) * s.capital * (target / 100) } : {}),
+      ...(cfg.lucidMaxLossesDay > 0 ? { maxLossesPerDay: cfg.lucidMaxLossesDay } : {}),
+    };
+    return { ...common, ...day, target, dailyPct: Infinity, maxLossUsd: P.maxUsd, eodTrailing: true, lockAt: P.lockAt, bestDayPct: funded ? 0 : P.bestDay,
       contracts: true, maxContracts: P.maxContracts, minOneRisk: 0.4, leverage: 1000, dayOf: cmeDay };
   }
   return { ...common, target, dailyPct: P.daily, maxPct: P.max, trailingMax: !!P.trailing, bestDayPct: funded ? 0 : P.bestDay || 0, leverage: cfg.ftmoLeverage, levCap: P.levCap };

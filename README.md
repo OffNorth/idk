@@ -816,6 +816,15 @@ stratégie type sur les données Yahoo récentes) et ajoute au PDF un guide : R,
 (cassure d'ouverture, Crabel, Williams, momentum, or Londres / Asie, replis journaliers, filtres macro, routine) avec
 graphiques en bougies (`scripts/guide_pdf.py`).
 
+### 🗓️ Lucid : gestion de la journée (`npm run lucid-research5`)
+
+Pendant l'évaluation Lucid, plus de nouveau trade dès que le gain du jour atteint **25 % de l'objectif (750 $)** — la règle
+du meilleur jour ne bloque plus — ou **après le premier trade perdant** (`LUCID_DAY_PROFIT_CAP_PCT=25`,
+`LUCID_MAX_LOSSES_DAY=1`, 0 = désactivé ; rien en compte financé). Nov. 24–26, départ chaque jour, risque × 3 : réussie
+en ≤ 14 j 20 → 25 %, en ≤ 30 j 34 → 42 %, échecs en ≤ 14 j 51 → 47 %, 2,6 → 2,2 évaluations par compte financé.
+Testés sans gain : limite de perte du jour, arrêt après 2–3 pertes, positions simultanées limitées, filtre de tendance
+20 j, sortie partielle, « gap and go » (perdant partout), fin / début de mois.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

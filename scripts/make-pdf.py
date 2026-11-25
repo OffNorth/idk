@@ -387,11 +387,20 @@ story.append(KeepTogether([Paragraph('Objectif : réussir en 2 semaines', h2), P
     ('Lucid, risque intraday', 'Réussie ≤ 14 j', 'Réussie ≤ 30 j', 'Échouée ≤ 14 j', 'Évaluations / compte financé'),
     ('0,45 % (× 1)', '1 %', '17 %', '1 %', '1,3'),
     ('0,9 % (× 2)', '17 %', '44 %', '26 %', '1,9'),
-    ('<b>1,35 % (× 3, actuel)</b>', '<b>20 %</b>', '<b>34 %</b>', '<b>51 %</b>', '<b>≈ 2,6</b>'),
+    ('1,35 % (× 3)', '20 %', '34 %', '51 %', '≈ 2,6'),
     ('2,25 % (× 5)', '17 %', '25 %', '68 %', '3,4'),
     ], [46 * mm, 30 * mm, 30 * mm, 32 * mm, 42 * mm]), Spacer(1, 2), Paragraph(
     'Environ une évaluation sur cinq réussit en 2 semaines, mais une sur deux échoue dans le même temps : compter 2 à 3 évaluations achetées par '
-    'compte financé. Chiffres sur 2 ans de données intraday seulement.', body)]))
+    'compte financé. Chiffres sur 2 ans de données intraday seulement.', body), Spacer(1, 4), Paragraph(
+    '<b>Gestion de la journée</b> (npm run lucid-research5, Lucid pendant l’évaluation) : on arrête de trader pour la journée dès que le gain du jour '
+    'atteint <b>25 % de l’objectif (750 $)</b> — la règle du meilleur jour (≤ 40 %) ne bloque plus la réussite — ou <b>après le 1er trade perdant</b>. '
+    'Testés sans gain : limite de perte du jour −0,5 / −1,5 / −2 %, arrêt après 2 ou 3 pertes, 1 à 3 positions au plus (plus lent). Nouveaux '
+    'signaux testés et rejetés : filtre de tendance 20 jours, sortie partielle, « gap and go » (perdant partout), fin / début de mois.', body),
+    Spacer(1, 3), small_table([
+    ('Lucid, risque intraday × 3', 'Réussie ≤ 14 j', 'Réussie ≤ 30 j', 'Échouée ≤ 14 j', 'Évaluations / compte financé'),
+    ('Sans gestion de la journée', '20 %', '34 %', '51 %', '2,6'),
+    ('<b>Stop à +750 $ ou après 1 perte (actuel)</b>', '<b>25 %</b>', '<b>42 %</b>', '<b>47 %</b>', '<b>2,2</b>'),
+    ], [56 * mm, 28 * mm, 28 * mm, 30 * mm, 38 * mm])]))
 
 story.append(KeepTogether([Paragraph('Exécution, notifications et outils', h2), Paragraph(
     f'<b>Exécution « comme en vrai »</b> : les comptes FTMO et Lucid entrent et sortent (sur signal) au cours {fc["fd"]:g} s après le signal ; stops et '

@@ -164,6 +164,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       if (s.day) s.eodPeak = Math.max(s.eodPeak ?? s.capital, s.balance); // solde de clôture de la journée précédente
       s.day = d;
       s.dayStart = s.balance;
+      s.dayLosses = 0;
       return prev;
     }
     return null;
@@ -275,6 +276,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     s.peak = Math.max(s.peak ?? s.capital, s.balance);
     s.dayPnl = s.dayPnl || {};
     s.dayPnl[s.day] = (s.dayPnl[s.day] || 0) + pnl;
+    if (pnl < 0) s.dayLosses = (s.dayLosses || 0) + 1;
     const done = { ...p, exit, exitT, pnl, reason, ...(signalExit && signalExit !== exit ? { signalExit } : {}) };
     s.closed.push(done);
     delete s.open[k];
@@ -334,6 +336,13 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         const stopPct = (Math.abs(entry - sl) / entry) * 100;
         if (!(stopPct > 0)) continue;
         if (cfg.ftmoDayStop > 0 && s.balance <= s.dayStart - (s.capital * cfg.ftmoDayStop) / 100) continue; // stop du jour maison
+        // Lucid, pendant l'évaluation (npm run lucid-research5) : journée finie dès que le gain du jour atteint
+        // LUCID_DAY_PROFIT_CAP_PCT % de l'objectif ou après LUCID_MAX_LOSSES_DAY trade(s) perdant(s)
+        if (A.id === 'lucid' && s.phase !== 'funded') {
+          const cap = ((cfg.lucidDayProfitCapPct ?? 0) / 100) * s.capital * ((P.target ?? 6) / 100);
+          if (cap > 0 && s.balance - s.dayStart >= cap) { s.dayCapped = (s.dayCapped || 0) + 1; continue; }
+          if ((cfg.lucidMaxLossesDay ?? 0) > 0 && (s.dayLosses || 0) >= cfg.lucidMaxLossesDay) { s.dayCapped = (s.dayCapped || 0) + 1; continue; }
+        }
         // Pas d'achat et de vente en même temps sur le même marché (FTMO_NO_HEDGE) : le signal opposé est ignoré
         if (cfg.ftmoNoHedge !== false && Object.values(s.open).some((o) => o.market === ev.market.id && o.side !== p.side)) {
           s.skipped = (s.skipped || 0) + 1;

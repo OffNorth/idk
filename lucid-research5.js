@@ -126,6 +126,12 @@ const gapGo = (th, tp, id) => ({
   console.log('Lucid · réussite < 1 an 2009–19 | 2020–26 | nov. 24–26 || nov. 24–26 départ chaque jour ouvré');
   console.log(`${'actuel'.padEnd(44)} ${fmt(ref)}`);
 
+  // COMBOS='{"dayProfitCapUsd":900}|{"dayProfitCapUsd":900,"maxLossesPerDay":1}' : seulement ces règles de journée
+  if (process.env.COMBOS) {
+    for (const j of process.env.COMBOS.split('|')) console.log(`${j.padEnd(44)} ${fmt(evalL(cur, [], JSON.parse(j)))}`);
+    return;
+  }
+
   // A. Gestion de la journée
   console.log('\n=== A. Gestion de la journée ===');
   const ruleSets = [

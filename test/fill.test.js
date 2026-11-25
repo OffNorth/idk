@@ -206,3 +206,22 @@ test('/reset : nouveau challenge au capital de départ, positions fermées au de
   assert.strictEqual(arch.length, 2, 'trade clôturé + position fermée au reset gardés dans l’archive');
   assert.strictEqual(arch.at(-1).exit, 4010);
 });
+
+test('Lucid pendant l’évaluation : journée finie après 1 trade perdant ou un gain du jour ≥ 25 % de l’objectif ; pas en compte financé', () => {
+  const { cfg, store } = setup({ lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1.25, lucidIntradayRisk: 0.45, lucidEvalIntradayMul: 1, lucidIntradayStrategies: ['nas100:n_noise'], ftmoStrategies: [], ftmoNasStrategies: ['nas100:n_noise'], lucidDayProfitCapPct: 25, lucidMaxLossesDay: 1 });
+  const acc = require('../src/ftmoAccount');
+  const lu = acc.createFtmo({ cfg, store, account: 'lucid' });
+  const nas = { id: 'nas100', name: 'Nasdaq 100' };
+  const st = { id: 'n_noise', name: 'noise', tf: '5m' };
+  const open = (t, entry, sl) => lu.onCycle([{ type: 'open', market: nas, strategy: st, pos: { side: 'long', entry, sl, initSl: sl, entryT: t } }], { nas100: entry }, t);
+  const close = (t, entryT, entry, sl, exit) => lu.onCycle([{ type: 'close', market: nas, strategy: st, trade: { side: 'long', entry, sl, initSl: sl, entryT, exit, exitT: t, reason: exit <= sl ? 'stop loss' : 'take profit' } }], { nas100: exit }, t);
+  // 1er trade perdant → plus de trade ce jour-là
+  assert.ok(open(T0, 26000, 25950).some((m) => m.type === 'open'));
+  close(T0 + 600, T0, 26000, 25950, 25950);
+  assert.ok(!open(T0 + 1200, 26000, 25950).some((m) => m.type === 'open'), 'arrêt après 1 perte');
+  // Lendemain : reprise
+  assert.ok(open(T0 + 86400, 26000, 25950).some((m) => m.type === 'open'), 'nouveau jour');
+  // Compte financé : pas de limite
+  const s = lu.load(); s.phase = 'funded'; s.dayLosses = 5; store.saveJson('lucid.json', s);
+  assert.ok(open(T0 + 86400 + 600, 26100, 26050).some((m) => m.type === 'open'), 'compte financé : pas de limite de journée');
+});
