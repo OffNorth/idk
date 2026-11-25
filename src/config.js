@@ -217,7 +217,8 @@ module.exports = {
   // + argent (silver:n_wvb05_t075, micro SIL) et Dow Jones (dow:n_mom10_t05, micro MYM) (npm run markets-research,
   // 25/11/2026) : réussite inchangée (55 / 72 / 94 % sur 2009–19 / 2020–26 / nov. 24–26), 34 j au lieu de 37 j ; pétrole,
   // Bitcoin, Russell et EUR/USD intraday font baisser Lucid, et chaque nouveau marché fait baisser FTMO
-  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_mom10_t05,nas100:n_orb15_t05,nas100:n_orb10l_t075,nas100:n_orb30l_t075,nas100:n_or60_t05,nas100:n_crabel4_t05,nas100:n_crabel7_15_t075,nas100:n_wvb05_t075,nas100:n_wvb07_t05,silver:n_wvb05_t075,dow:n_mom10_t1be'),
+  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_mom10_t05,nas100:n_orb15_t05,nas100:n_orb10l_t075,nas100:n_orb30l_t075,nas100:n_or60_t05,nas100:n_crabel4_t05,nas100:n_crabel7_15_t075,nas100:n_wvb05_t075,nas100:n_wvb07_t05,silver:n_wvb05_t075,dow:n_mom10_t1be,spx:n_mom10_t1be'),
+  // + spx:n_mom10_t1be (micro MES, npm run lucid-research6, 26/11/2026) : nov. 24–26 51 → 53 %, ≤ 30 j 42 → 43 %, rien ne baisse
   // Journalières propres au compte Lucid (npm run lucid-research4, 25/11/2026) : Double 7 et RSI 2 sur le S&P 500
   // (micro MES), au risque des journalières Lucid ; avec le Dow en break-even (dow:n_mom10_t1be, objectif 1 R) : réussite
   // 56 / 76 / 100 % (74 / 85 / 37 j) contre 55 / 72 / 94 % (85 / 110 / 34 j) sur 2009–19 / 2020–26 / nov. 24–26

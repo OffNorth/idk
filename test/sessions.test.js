@@ -207,6 +207,7 @@ test('Lucid : Double 7 et RSI 2 sur le S&P 500 (journalières propres à Lucid),
   // Break-even : objectif 1 R ; après +0,5 R le stop remonte au prix d'entrée (jamais redescendu)
   const be = selectStrategies(['n_mom10_t1be'])[0];
   assert.ok(cfg.lucidIntradayStrategies.includes('dow:n_mom10_t1be') && !cfg.lucidIntradayStrategies.includes('dow:n_mom10_t05'));
+  assert.ok(cfg.lucidIntradayStrategies.includes('spx:n_mom10_t1be') && selectStrategies(cfg.spxStrategies).some((x) => x.id === 'n_mom10_t1be'), 'S&P en break-even (Lucid)');
   const pos = { side: 'long', entry: 100, initSl: 98, sl: 98, best: 100.9 };
   assert.ok(!Number.isFinite(be.trail(pos, {}, 0)), 'pas encore +0,5 R');
   pos.best = 101;
