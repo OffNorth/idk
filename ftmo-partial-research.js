@@ -76,7 +76,7 @@ const VARIANTS = {
     const parts = await Promise.all(spec.map(async ([w, k]) => [w, await listOf(k)]));
     const key = (t) => `${t.sid}|${t.entryT}`;
     const maps = parts.map(([w, l]) => [w, new Map(l.map((t) => [key(t), t]))]);
-    const ref = parts.find(([, , k]) => k == null)?.[1] || (await listOf(null));
+    const ref = await listOf(null);
     return ref.map((t) => {
       let pnl = 0; let exitT = t.exitT;
       for (const [w, m] of maps) { const u = m.get(key(t)) || t; pnl += w * u.pnlPct; exitT = Math.max(exitT, u.exitT); }
