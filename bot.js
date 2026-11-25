@@ -115,6 +115,7 @@ bot.command(['start', 'aide', 'help'], (ctx) =>
       '/graphique [nasdaq|or] — 🕯 cours en bougies (Nasdaq par défaut)',
       '/ftmo [nasdaq|or] — 🏦 comptes FTMO simulés (challenge +10 % puis +5 %)',
       '/lucid — 🟣 compte Lucid simulé (LucidFlex : +6 %, pas de perte du jour, micro-futures)',
+      '/pnl [ftmo|lucid] [jours] — 📅 PnL du jour des comptes simulés (réalisé, latent, trades, limite du jour, jours précédents)',
       '/interface — 🖥 interface en direct sur le site (graphiques, SL / TP, comptes FTMO et Lucid)',
       '/version — version du bot en service (à vérifier après un redémarrage)',
       '/export — 📦 (admin) fichier des statistiques du bot, à envoyer à Claude pour une analyse',
@@ -227,6 +228,8 @@ bot.command('timemachine', async (ctx) => {
 bot.command('financer', (ctx) => ctx.reply(require('./src/ftmoAccount').financerReport(cfg, store, ctx.match), HTML));
 // Portefeuille perso simulé (50 % monde, 10 % or, 40 % stratégies du bot)
 bot.command('portefeuille', (ctx) => ctx.reply(require('./src/personalPortfolio').report(cfg, store), HTML));
+// PnL du jour des comptes simulés : /pnl [ftmo|lucid] [jours]
+bot.command(['pnl', 'jour', 'daily'], (ctx) => ctx.reply(require('./src/ftmoAccount').dailyReport(cfg, store, ctx.match), HTML));
 // Remise à zéro des comptes simulés en gardant les stats (admin) : /reset, /reset ftmo, /reset lucid (+ « ok » pour confirmer)
 bot.command('reset', (ctx) => ctx.reply(require('./src/ftmoAccount').resetReport(cfg, store, ctx.match), HTML));
 
@@ -403,6 +406,7 @@ console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) �
     { command: 'graphique', description: '🕯 Cours en bougies : /graphique (Nasdaq) · /graphique or' },
     { command: 'ftmo', description: '🏦 Comptes FTMO simulés : /ftmo (Nasdaq) · /ftmo or' },
     { command: 'lucid', description: '🟣 Compte Lucid simulé (LucidFlex, micro-futures)' },
+    { command: 'pnl', description: '📅 PnL du jour : /pnl · /pnl lucid · /pnl 30 (jours)' },
     { command: 'portefeuille', description: '💼 Portefeuille perso simulé (monde, or, stratégies du bot)' },
     { command: 'timemachine', description: '🔮 Chances de réussir le challenge en cours (1 000 années simulées)' },
     { command: 'financer', description: '🏦 Passer les comptes simulés en compte financé (admin)' },

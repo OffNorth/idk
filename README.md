@@ -648,6 +648,13 @@ pour le trader ; FTMO : tout le gain tous les 14 jours, 80 %, le compte repart d
 dans le groupe, total dans `/ftmo` et `/lucid`. Le risque reste le même qu'en évaluation : le réduire de moitié en
 financé diminue le gain net par évaluation achetée sur toutes les périodes.
 
+### 📅 `/pnl` : PnL du jour des comptes simulés
+
+`/pnl` (ou `/jour`, `/daily`) : pour chaque compte (FTMO, Lucid), gain ou perte de la journée depuis le solde
+d'ouverture (réalisé + latent), trades clôturés du jour, marge avant la limite de perte du jour (FTMO), état de la gestion
+de la journée (arrêt après un gain ou une perte), jours précédents du challenge et règle du meilleur jour.
+`/pnl lucid`, `/pnl ftmo`, `/pnl 30` (nombre de jours).
+
 ### ♻️ `/reset` : remettre les comptes à zéro, stats gardées (admin)
 
 `/reset` (les deux comptes), `/reset ftmo` ou `/reset lucid` affiche ce qui va se passer ; ajouter `ok` pour confirmer

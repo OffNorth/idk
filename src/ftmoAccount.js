@@ -561,6 +561,11 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       maxUsed: P.maxUsd ? Math.max(0, 1 - (eq - floor) / P.maxUsd) : Math.max(0, ((P.trailing ? s.peak ?? s.capital : s.capital) - eq) / ((s.capital * P.max) / 100)),
       wins: s.closed.filter((c) => c.pnl > 0).length,
       trades: s.closed.length,
+      // Journée en cours (pour /pnl) : solde d'ouverture, trades clôturés aujourd'hui, limite de perte du jour
+      day: s.day,
+      dayStart: s.dayStart,
+      today: s.closed.filter((c) => dayOf(c.exitT) === s.day),
+      dayFloor: dailyFloor(s),
     };
   }
 
@@ -656,6 +661,59 @@ function resetReport(cfg, store, arg = '') {
   return lines.join('\n');
 }
 
+/**
+ * /pnl [ftmo|lucid] [jours] : gain / perte du jour de chaque compte simulé (réalisé + latent, depuis le solde
+ * d'ouverture de la journée), trades du jour, marge avant la limite de perte du jour, et les derniers jours.
+ */
+function dailyReport(cfg, store, arg = '') {
+  const words = String(arg || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const nDays = Math.min(30, Math.max(1, Number(words.find((w) => /^\d+$/.test(w))) || 7));
+  const which = words.includes('lucid') ? 'lucid' : words.includes('ftmo') ? 'ftmo' : 'tous';
+  const accts = ftmoAccounts(cfg).filter((a) => (which === 'lucid' ? a.id === 'lucid' : which === 'ftmo' ? a.id !== 'lucid' : true));
+  if (!accts.length) return 'Aucun compte simulé actif.';
+  const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const usd = (v) => `${v < -0.004 ? '−' : v > 0.004 ? '+' : ''}$${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  const pct = (v, cap) => `${v < 0 ? '−' : '+'}${Math.abs((v / cap) * 100).toFixed(2)} %`;
+  const dot = (v) => (v > 0.5 ? '🟢' : v < -0.5 ? '🔴' : '⚪');
+  const prices = {};
+  for (const m of require('./markets').allMarkets(cfg)) { const px = store.loadJson(m.file, {})?.lastPrice; if (px) prices[m.id] = px; }
+  const lines = ['📅 <b>PnL du jour</b> (comptes simulés)'];
+  for (const a of accts) {
+    const st = createFtmo({ cfg, store, account: a.id }).status(prices);
+    const s = st.s;
+    const realized = s.dayPnl?.[s.day] || 0;
+    const total = st.equity - st.dayStart; // depuis l'ouverture de la journée (réalisé + latent)
+    const wins = st.today.filter((x) => x.pnl > 0).length;
+    const nOpen = Object.keys(s.open).length;
+    lines.push('', `${a.firm || 'FTMO'} ${a.emoji} <b>${esc(a.label)}</b> · ${s.phase === 'funded' ? 'compte financé' : `challenge n° ${s.attempt}`} · journée du ${esc(s.day || '—')}`);
+    lines.push(`${dot(total)} <b>${usd(total)}</b> (${pct(total, s.capital)}) · réalisé ${usd(realized)} · latent ${usd(st.unrealized)}${nOpen ? ` (${nOpen} position(s))` : ''}`);
+    lines.push(`Trades clôturés aujourd'hui : ${st.today.length}${st.today.length ? ` (${wins} gagnant(s))` : ''}`);
+    for (const x of st.today.slice(-8)) lines.push(`  ${x.pnl > 0 ? '✅' : '❌'} ${esc(x.market)} ${esc(x.sid)} ${x.side === 'long' ? 'achat' : 'vente'} ${usd(x.pnl)}`);
+    if (Number.isFinite(st.dayFloor)) {
+      const room = Math.max(0, st.equity - st.dayFloor);
+      lines.push(`Perte du jour : encore $${Math.round(room).toLocaleString('en-US')} avant la limite (${st.program.daily} %, plancher $${Math.round(st.dayFloor).toLocaleString('en-US')})`);
+    }
+    // Gestion de la journée pendant l'évaluation (arrêt après un gain ou N pertes)
+    const lucid = a.id === 'lucid';
+    const maxL = lucid ? cfg.lucidMaxLossesDay : cfg.ftmoMaxLossesDay;
+    const capPct = lucid ? cfg.lucidDayProfitCapPct : cfg.ftmoDayProfitCapPct;
+    if (s.phase !== 'funded' && (maxL > 0 || capPct > 0)) {
+      const cap = ((capPct ?? 0) / 100) * s.capital * ((st.program.target ?? TARGET[s.phase] ?? 10) / 100);
+      const done = (maxL > 0 && (s.dayLosses || 0) >= maxL) || (cap > 0 && s.balance - st.dayStart >= cap);
+      lines.push(`Gestion de la journée : ${done ? '⏸ journée finie (plus de nouveaux trades aujourd’hui)' : 'ouverte'}${cap > 0 ? ` · arrêt à +$${Math.round(cap).toLocaleString('en-US')}` : ''}${maxL > 0 ? ` ou après ${maxL} perte(s) (${s.dayLosses || 0} aujourd’hui)` : ''}`);
+    }
+    const days = Object.entries(s.dayPnl || {}).filter(([d]) => d !== s.day).sort((p, q) => (p[0] < q[0] ? 1 : -1)).slice(0, nDays);
+    if (days.length) {
+      lines.push(`Jours précédents (${days.length}, ce challenge) :`);
+      for (const [d, v] of days) lines.push(`  ${dot(v)} ${esc(d)} ${usd(v)}`);
+      const best = Math.max(...Object.values(s.dayPnl || {}), 0);
+      if (st.program.bestDay > 0 && s.balance > s.capital) lines.push(`Meilleur jour ${usd(best)} = ${Math.round((best / (s.balance - s.capital)) * 100)} % du gain (règle : ≤ ${st.program.bestDay} %)`);
+    }
+  }
+  lines.push('', '<i>Simulation, argent fictif. /pnl lucid · /pnl ftmo · /pnl 30 (jours)</i>');
+  return lines.join('\n');
+}
+
 const ACCOUNT_FILES = ['ftmo.json', 'ftmo-nas.json', 'lucid.json'];
 /** Positions ouvertes sur ce marché dans un des comptes FTMO / Lucid ? */
 function openOn(store, marketId) {
@@ -676,4 +734,4 @@ function shiftOpen(store, marketId, shift) {
   }
 }
 
-module.exports = { shiftOpen, openOn, createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram, FTMO_PAYOUT, financerReport, resetReport };
+module.exports = { shiftOpen, openOn, createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram, FTMO_PAYOUT, financerReport, resetReport, dailyReport };

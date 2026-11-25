@@ -410,3 +410,26 @@ test('archive des challenges : les trades d’un challenge échoué ou arrêté 
   g.onCycle([{ type: 'close', market, strategy, trade: { ...p2, exit: 3700, exitT: T0 + 900, reason: 'stop loss' } }], { gold: 3700 }, T0 + 900);
   assert.ok(g.archived().some((t) => t.attempt === 2));
 });
+
+test('/pnl : PnL du jour (réalisé + latent), trades du jour, limite de perte du jour, jours précédents', () => {
+  const { cfg, store } = setup({ ftmoProgram: '1step' });
+  const { createFtmo, dailyReport } = require('../src/ftmoAccount');
+  const f = createFtmo({ cfg, store });
+  const trade = (t, exit) => {
+    const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: t }; // stop à 1 % → 100 000 $ engagés
+    f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, t);
+    f.onCycle([{ type: 'close', market, strategy, trade: { ...pos, exit, exitT: t + 1800, entryT: t, reason: 'signal' } }], { gold: exit }, t + 1800);
+  };
+  trade(T0, 4040); // veille : +1 000 $
+  trade(T0 + DAY, 3980); // aujourd'hui : −500 $
+  // Position encore ouverte aujourd'hui : +1 % latent
+  f.onCycle([{ type: 'open', market, strategy, pos: { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 + DAY + 7200 } }], { gold: 4000 }, T0 + DAY + 7200);
+  store.saveJson('gold.json', { lastPrice: 4040 });
+  const txt = dailyReport(cfg, store, '');
+  assert.match(txt, /PnL du jour/);
+  assert.match(txt, /réalisé −\$5\d\d · latent \+\$1,\d{3} \(1 position/);
+  assert.match(txt, /Trades clôturés aujourd'hui : 1 \(0 gagnant/);
+  assert.match(txt, /avant la limite \(3 %/);
+  assert.match(txt, /🟢 \d{4}-\d{2}-\d{2} \+\$1,000/);
+  assert.match(dailyReport(cfg, store, 'lucid'), /Aucun compte simulé actif/);
+});
