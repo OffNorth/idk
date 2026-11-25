@@ -662,6 +662,17 @@ Stratégies : delta fort, absorption, divergence du delta cumulé, épuisement ;
 Conclusion : rien n'est ajouté au bot. L'order flow automatique n'a de sens qu'avec des frais quasi nuls et une
 exécution à la seconde.
 
+### 🤖 IA validatrice : bilan hors échantillon (`npm run ai-research`)
+
+Chaque année notée par un modèle entraîné seulement sur les années d'avant ; réussite 2009–19 | 2020–26 | nov. 24–26.
+- **FTMO** : refuser les 20 % de signaux les moins bien notés (réglage du bot) aide partout : 34 → 37 %, 43 → 48 %,
+  69 → 76 % (AUC 0,67). **Gardé.**
+- **Lucid** : l'IA ne distingue pas les bons trades (AUC 0,53) ; refuser 20 % fait passer nov. 24–26 de 53 à 33 % et
+  la réussite en ≤ 14 j de 25 à 11 %. → **Lucid en observation** (`LUCID_AI=observe`, défaut) : avis affiché, rien refusé.
+- Essayés sans gain robuste : gain attendu en R (ridge), arbres (boosting, AUC 0,68 sur FTMO mais pas meilleure
+  réussite), refuser 10 ou 30 %. **Doser le risque** selon la note (× 0,5 / × 1,5) fait nettement baisser la réussite
+  (FTMO 34 → 24 %, Lucid 2020–26 61 → 47–65 %) : écarté.
+
 ### 🧊 ICT (`npm run ict`)
 
 Règles ICT écrites précisément (FVG, Silver Bullet, balayage PDH / PDL et range asiatique, SMT QQQ / SPY, order blocks),

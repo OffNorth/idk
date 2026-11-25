@@ -370,7 +370,9 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     if (!A.enabled) return [];
     const s = load();
     const out = [];
-    const aiMode = adapt.aiModeOf(cfg, store); // l'adaptation peut repasser l'IA en observation
+    let aiMode = adapt.aiModeOf(cfg, store); // l'adaptation peut repasser l'IA en observation
+    // Lucid : l'IA ne refuse rien par défaut (LUCID_AI=observe, voir config.js) ; avis toujours affiché
+    if (A.id === 'lucid' && aiMode && aiMode !== 'off') aiMode = cfg.lucidAi === 'block' ? aiMode : cfg.lucidAi === 'off' ? 'off' : 'observe';
     const prevDay = rollDay(s, t);
     if (prevDay && s.phase === 'funded') payoutCheck(s, prevDay, t, out);
     if (s.waitDay && s.day !== s.waitDay) s.waitDay = null; // nouveau challenge : reprise le jour suivant

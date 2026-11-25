@@ -433,3 +433,22 @@ test('/pnl : PnL du jour (réalisé + latent), trades du jour, limite de perte d
   assert.match(txt, /🟢 \d{4}-\d{2}-\d{2} \+\$1,000/);
   assert.match(dailyReport(cfg, store, 'lucid'), /Aucun compte simulé actif/);
 });
+
+test('IA sur Lucid : avis sans refus par défaut (LUCID_AI=observe), refus seulement avec LUCID_AI=block', () => {
+  const { createFtmo } = require('../src/ftmoAccount');
+  const strat = { id: 'x_rsi2', name: 'Scalp RSI 2', tf: '1d' };
+  const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
+  const base = { lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1, ftmoCombined: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoIntradayRisk: 0, ftmoAi: 'block', ftmoAiMin: 0.99 };
+  const open = (extra) => {
+    const { cfg, store } = setup({ ...base, ...extra });
+    store.saveJson('gold.json', { accounts: { x_rsi2: { closed: [], position: pos } }, ctx: { daily: [], vix: null } });
+    return createFtmo({ cfg, store, account: 'lucid' }).onCycle([{ type: 'open', market, strategy: strat, pos }], { gold: 4000 }, T0);
+  };
+  // Par défaut : même avec un seuil impossible, Lucid prend le trade (l'avis de l'IA est gardé)
+  const o = open({}).find((x) => x.type === 'open');
+  assert.ok(o && o.p.ai && o.p.ai.p > 0, 'position ouverte avec avis');
+  // LUCID_AI=block : refusé comme sur FTMO
+  assert.ok(open({ lucidAi: 'block' }).some((x) => x.type === 'refused'));
+  // LUCID_AI=off : pas d'avis
+  assert.ok(!open({ lucidAi: 'off' }).find((x) => x.type === 'open').p.ai);
+});

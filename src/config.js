@@ -275,6 +275,11 @@ module.exports = {
   // (avis seulement) ou off ; FTMO_AI_MIN : seuil de probabilité (défaut : celui du modèle, ≈ 20 % des signaux refusés)
   ftmoAi: ['observe', 'block', 'off'].includes((process.env.FTMO_AI || '').trim()) ? process.env.FTMO_AI.trim() : 'block',
   ftmoAiMin: process.env.FTMO_AI_MIN ? Number(process.env.FTMO_AI_MIN) : NaN,
+  // IA sur le compte Lucid : observe par défaut (avis affiché, rien de refusé). npm run ai-research (nov. 2026) : refuser
+  // 20 % des signaux fait passer la réussite Lucid nov. 24–26 de 53 à 33 % et la réussite en ≤ 14 j de 25 à 11 % (le modèle
+  // ne distingue pas les bons trades Lucid : AUC 0,53) ; sur FTMO elle aide (34 → 37, 43 → 48, 69 → 76 %), elle y reste.
+  // LUCID_AI=block pour refuser comme sur FTMO, off pour ne rien calculer.
+  lucidAi: ['observe', 'block', 'off'].includes((process.env.LUCID_AI || '').trim()) ? process.env.LUCID_AI.trim() : 'observe',
   // Adaptation automatique (src/adapt.js) : revue chaque dimanche — IA ré-apprise sur les signaux live, poids des
   // stratégies selon leurs trades live, candidates suivies en paper et promues si elles font mieux
   // Catégorie « Bot » du site : état en direct envoyé à la fonction Supabase « bot » (désactivé pendant les tests)
