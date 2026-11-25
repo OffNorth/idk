@@ -65,7 +65,7 @@ test('vidéo PnL : derniers trades des comptes (challenge en cours + archive)', 
   const dir = tmp();
   const { Store } = require('../src/store');
   const store = new Store(dir);
-  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, dataDir: dir, ftmoEnabled: true, lucidEnabled: true };
+  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, ftmoEvalIntradayMul: 1, ftmoFundedRiskMul: 1, ftmoDayProfitCapPct: 0, ftmoMaxLossesDay: 0, dataDir: dir, ftmoEnabled: true, lucidEnabled: true };
   store.saveJson('ftmo.json', { attempt: 2, phase: 1, capital: 100000, balance: 107000, closed: [{ ...trade, market: 'nas100' }], open: {}, days: [], program: '1step' });
   store.saveJson('ftmo-archive.json', [{ ...trade, exitT: trade.exitT - 86400, sid: 'g_orb30', market: 'gold', pnl: -400, attempt: 1 }]);
   const list = require('../src/videoBot').recentTrades(cfg, store);
@@ -79,7 +79,7 @@ test('Telegram : « 📤 Ma vidéo » puis envoi d’une vidéo → la carte est
   const dir = tmp();
   const { Store } = require('../src/store');
   const store = new Store(dir);
-  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, dataDir: dir, ftmoEnabled: true, lucidEnabled: false, telegramToken: '1:X' };
+  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, ftmoEvalIntradayMul: 1, ftmoFundedRiskMul: 1, ftmoDayProfitCapPct: 0, ftmoMaxLossesDay: 0, dataDir: dir, ftmoEnabled: true, lucidEnabled: false, telegramToken: '1:X' };
   store.saveJson('ftmo.json', { attempt: 2, phase: 1, capital: 100000, balance: 107000, closed: [{ ...trade }], open: {}, days: [], program: '1step' });
   // faux bot : on garde les gestionnaires
   const H = { cmd: {}, on: [], cb: [] };

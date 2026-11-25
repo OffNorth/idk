@@ -83,7 +83,7 @@ test('en direct : signaux mémorisés, poids appliqué au compte, stratégie sus
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'adapt-'));
   const { Store } = require('../src/store');
   const store = new Store(dir);
-  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, dataDir: dir, ftmoEnabled: true, ftmoCombined: false, ftmoStrategies: ['gold:x_rsi2'], ftmoCapital: 100000, ftmoRisk: 1, ftmoLeverage: 30, ftmoDayStop: 0, ftmoFeeGold: 0, ftmoProgram: '1step', ftmoSizing: 'fixe', ftmoAi: 'observe', lucidEnabled: false, autoAdapt: true, adaptStrategies: true };
+  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, ftmoEvalIntradayMul: 1, ftmoFundedRiskMul: 1, ftmoDayProfitCapPct: 0, ftmoMaxLossesDay: 0, dataDir: dir, ftmoEnabled: true, ftmoCombined: false, ftmoStrategies: ['gold:x_rsi2'], ftmoCapital: 100000, ftmoRisk: 1, ftmoLeverage: 30, ftmoDayStop: 0, ftmoFeeGold: 0, ftmoProgram: '1step', ftmoSizing: 'fixe', ftmoAi: 'observe', lucidEnabled: false, autoAdapt: true, adaptStrategies: true };
   const { createFtmo } = require('../src/ftmoAccount');
   const market = { id: 'gold', name: 'Or' };
   const strategy = { id: 'x_rsi2', name: 'Scalp RSI 2', tf: '1d' };

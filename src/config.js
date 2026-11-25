@@ -171,6 +171,14 @@ module.exports = {
   // un peu plus long (55 → 76 j récent). FTMO_TRAIL_ACT_R=0 pour le couper.
   ftmoTrailActR: num('FTMO_TRAIL_ACT_R', 2),
   ftmoTrailDistR: num('FTMO_TRAIL_DIST_R', 1),
+  // Réglage « comme Lucid » (npm run ftmo-lucidlike, 26/11/2026, plan de l'utilisateur : Lucid finance un compte FTMO qui
+  // doit durer) — ÉVALUATION : intraday × 2 + journée finie à +25 % de l'objectif (2 500 $) ou après 1 trade perdant →
+  // réussite 55 / 57 / 73 % → 53 / 58 / 76 %, ≈ 25 j plus rapide (76 → 51 j récent) ; COMPTE FINANCÉ : tout le risque
+  // × 0,25 → comptes en vie à 36 mois 0 → 100 %, 4 hausses de capital de 25 % atteintes 5 → 99 % (scaling vers 2 M$)
+  ftmoEvalIntradayMul: num('FTMO_EVAL_INTRADAY_MUL', 2),
+  ftmoDayProfitCapPct: num('FTMO_DAY_PROFIT_CAP_PCT', 25),
+  ftmoMaxLossesDay: num('FTMO_MAX_LOSSES_DAY', 1),
+  ftmoFundedRiskMul: num('FTMO_FUNDED_RISK_MUL', 0.25),
   // Compte FTMO FINANCÉ : sorties partielles (npm run ftmo-partial, 26/11/2026) — ⅓ fermé à +1 R, ⅓ à +2 R, le reste au
   // stop suiveur : comptes perdus en 12 mois 95 → 87 %, retraits un peu plus élevés ; rien en évaluation (aucun gain).
   // Vide = désactivé.

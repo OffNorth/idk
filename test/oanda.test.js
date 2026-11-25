@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const cfg0 = () => ({ ...require('../src/config'), ftmoRiskMul: 1, oandaToken: 'jeton-de-test', oandaEnv: 'practice', intradayFeed: 'auto' });
+const cfg0 = () => ({ ...require('../src/config'), ftmoRiskMul: 1, ftmoEvalIntradayMul: 1, ftmoFundedRiskMul: 1, ftmoDayProfitCapPct: 0, ftmoMaxLossesDay: 0, oandaToken: 'jeton-de-test', oandaEnv: 'practice', intradayFeed: 'auto' });
 const candle = (t, c, complete = true) => ({ complete, volume: 10, time: `${t}.000000000`, mid: { o: String(c), h: String(c + 1), l: String(c - 1), c: String(c) } });
 const ok = (json) => ({ ok: true, status: 200, json: async () => json });
 

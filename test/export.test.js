@@ -8,7 +8,7 @@ test('export des statistiques : comptes et trades, sans secret ni caractéristiq
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'export-'));
   const { Store } = require('../src/store');
   const store = new Store(dir);
-  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, dataDir: dir, telegramToken: '123:SECRET', channelId: '-100999', ftmoStrategies: ['gold:down3'], ftmoNasStrategies: [], goldStrategies: ['down3', 'hold'] };
+  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, ftmoEvalIntradayMul: 1, ftmoFundedRiskMul: 1, ftmoDayProfitCapPct: 0, ftmoMaxLossesDay: 0, dataDir: dir, telegramToken: '123:SECRET', channelId: '-100999', ftmoStrategies: ['gold:down3'], ftmoNasStrategies: [], goldStrategies: ['down3', 'hold'] };
   store.saveJson('ftmo.json', { capital: 100000, balance: 101000, closed: [{ sid: 'down3', pnl: 1000, risk: 500 }], open: {}, dayPnl: { '2026-11-19': 1000 } });
   store.saveJson('gold.json', { lastPrice: 4000, accounts: { down3: { closed: [{ entryT: 1, exitT: 2, pnlPct: 1 }], position: null }, macd_vieux: { closed: [] } } });
   store.saveJson('ai-samples.json', [{ market: 'gold', sid: 'down3', entryT: 1, x: [1, 2, 3], p: 0.6, ok: true }]);

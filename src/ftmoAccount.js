@@ -46,7 +46,7 @@ function accountOf(cfg, id = 'gold') {
   if (id === 'lucid') {
     // Mêmes stratégies et mêmes risques que le compte FTMO combiné (× LUCID_RISK_MUL), règles et contrats Lucid
     // (FTMO_RISK_MUL ne s'applique pas à Lucid : il a son propre multiplicateur LUCID_RISK_MUL)
-    const base = accountOf({ ...cfg, ftmoCombined: true, ftmoRiskMul: 1 }, 'gold');
+    const base = accountOf({ ...cfg, ftmoCombined: true, ftmoRiskMul: 1, ftmoEvalIntradayMul: 1, ftmoFundedRiskMul: 1 }, 'gold');
     const excluded = new Set(cfg.lucidExclude || []);
     const capital = cfg.lucidCapital || 50_000;
     const mul = cfg.lucidRiskMul ?? 1;
@@ -75,8 +75,15 @@ function accountOf(cfg, id = 'gold') {
       strategies: [...cfg.ftmoStrategies, ...cfg.ftmoNasStrategies], risk: cfg.ftmoRisk,
       // Stratégies intraday (tf ≠ 1d) : risque propre (FTMO_INTRADAY_RISK_PCT), plus petit que celui des journalières
       // × FTMO_RISK_MUL (1,25 : challenge ≈ 2–3 semaines plus rapide, npm run speed)
-      riskOf: (marketId, strat) => (cfg.ftmoRiskMul ?? 1) * (strat && strat.tf && strat.tf !== '1d' && cfg.ftmoIntradayRisk ? cfg.ftmoIntradayRisk
-        : marketId === 'nas100' ? cfg.ftmoComboNasRisk : marketId === 'eurusd' ? cfg.ftmoEurRisk ?? cfg.ftmoRisk : marketId === 'spx' ? cfg.ftmoSpxRisk ?? cfg.ftmoRisk : cfg.ftmoRisk),
+      // Réglage « comme Lucid » (npm run ftmo-lucidlike) : intraday × FTMO_EVAL_INTRADAY_MUL pendant l'évaluation ;
+      // compte financé : tout × FTMO_FUNDED_RISK_MUL (le compte dure et décroche les hausses de capital)
+      riskOf: (marketId, strat, phase) => {
+        const intra = !!(strat && strat.tf && strat.tf !== '1d');
+        const r = (cfg.ftmoRiskMul ?? 1) * (intra && cfg.ftmoIntradayRisk ? cfg.ftmoIntradayRisk
+          : marketId === 'nas100' ? cfg.ftmoComboNasRisk : marketId === 'eurusd' ? cfg.ftmoEurRisk ?? cfg.ftmoRisk : marketId === 'spx' ? cfg.ftmoSpxRisk ?? cfg.ftmoRisk : cfg.ftmoRisk);
+        if (phase === 'funded') return r * (cfg.ftmoFundedRiskMul ?? 1);
+        return r * (intra && phase !== undefined ? cfg.ftmoEvalIntradayMul ?? 1 : 1);
+      },
     };
   }
   return { id: 'gold', label: 'Or', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk, riskOf: () => cfg.ftmoRisk * (cfg.ftmoRiskMul ?? 1) };
@@ -385,10 +392,14 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         if (cfg.ftmoDayStop > 0 && s.balance <= s.dayStart - (s.capital * cfg.ftmoDayStop) / 100) continue; // stop du jour maison
         // Lucid, pendant l'évaluation (npm run lucid-research5) : journée finie dès que le gain du jour atteint
         // LUCID_DAY_PROFIT_CAP_PCT % de l'objectif ou après LUCID_MAX_LOSSES_DAY trade(s) perdant(s)
-        if (A.id === 'lucid' && s.phase !== 'funded') {
-          const cap = ((cfg.lucidDayProfitCapPct ?? 0) / 100) * s.capital * ((P.target ?? 6) / 100);
+        // FTMO pendant l'évaluation, même gestion (FTMO_DAY_PROFIT_CAP_PCT, FTMO_MAX_LOSSES_DAY ; npm run ftmo-lucidlike)
+        if (s.phase !== 'funded') {
+          const lucid = A.id === 'lucid';
+          const capPct = lucid ? cfg.lucidDayProfitCapPct : cfg.ftmoDayProfitCapPct;
+          const maxL = lucid ? cfg.lucidMaxLossesDay : cfg.ftmoMaxLossesDay;
+          const cap = ((capPct ?? 0) / 100) * s.capital * ((P.target ?? TARGET[s.phase] ?? 10) / 100);
           if (cap > 0 && s.balance - s.dayStart >= cap) { s.dayCapped = (s.dayCapped || 0) + 1; continue; }
-          if ((cfg.lucidMaxLossesDay ?? 0) > 0 && (s.dayLosses || 0) >= cfg.lucidMaxLossesDay) { s.dayCapped = (s.dayCapped || 0) + 1; continue; }
+          if ((maxL ?? 0) > 0 && (s.dayLosses || 0) >= maxL) { s.dayCapped = (s.dayCapped || 0) + 1; continue; }
         }
         // Pas d'achat et de vente en même temps sur le même marché (FTMO_NO_HEDGE) : le signal opposé est ignoré
         if (cfg.ftmoNoHedge !== false && Object.values(s.open).some((o) => o.market === ev.market.id && o.side !== p.side)) {

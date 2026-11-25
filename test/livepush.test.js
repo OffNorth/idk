@@ -8,7 +8,7 @@ function setup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'live-'));
   const { Store } = require('../src/store');
   const store = new Store(dir);
-  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, dataDir: dir, telegramToken: '1:SECRET', channelId: '-100777', ftmoEnabled: true, ftmoCombined: true,
+  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, ftmoEvalIntradayMul: 1, ftmoFundedRiskMul: 1, ftmoDayProfitCapPct: 0, ftmoMaxLossesDay: 0, dataDir: dir, telegramToken: '1:SECRET', channelId: '-100777', ftmoEnabled: true, ftmoCombined: true,
     ftmoStrategies: ['gold:g_mom8'], ftmoNasStrategies: [], ftmoProgram: '1step', ftmoSizing: 'fixe', ftmoAi: 'off', ftmoDayStop: 0, ftmoFeeGold: 0,
     lucidEnabled: true, lucidIntradayRisk: 0.5, livePush: true, livePushUrl: 'https://exemple.test/bot', nasEnabled: false, spxEnabled: false, eurusdEnabled: false };
   return { cfg, store, dir };

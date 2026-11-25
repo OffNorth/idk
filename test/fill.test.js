@@ -6,7 +6,7 @@ const path = require('path');
 
 function setup(extra = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fill-'));
-  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, dataDir: dir, ftmoEnabled: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoCapital: 100000, ftmoRisk: 1, ftmoLeverage: 30, ftmoDayStop: 0, ftmoFeeGold: 0, ftmoFeeNas: 0, ftmoProgram: '1step', ftmoSizing: 'fixe', ftmoAi: 'off', lucidEnabled: false, ftmoCombined: true, ftmoIntradayRisk: 0, ...extra };
+  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, ftmoEvalIntradayMul: 1, ftmoFundedRiskMul: 1, ftmoDayProfitCapPct: 0, ftmoMaxLossesDay: 0, dataDir: dir, ftmoEnabled: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoCapital: 100000, ftmoRisk: 1, ftmoLeverage: 30, ftmoDayStop: 0, ftmoFeeGold: 0, ftmoFeeNas: 0, ftmoProgram: '1step', ftmoSizing: 'fixe', ftmoAi: 'off', lucidEnabled: false, ftmoCombined: true, ftmoIntradayRisk: 0, ...extra };
   const { Store } = require('../src/store');
   return { cfg, store: new Store(dir) };
 }
@@ -264,4 +264,15 @@ test('FTMO financé : ⅓ fermé à +1 R, ⅓ à +2 R, le reste continue ; rien 
   const left = Object.values(f.load().open)[0];
   assert.ok(Math.abs(left.notional - n0 / 3) < 1e-6, 'reste ⅓ de la position');
   assert.ok(!f.onCycle([], { gold: 4085 }, T0 + 1800).some((m) => m.type === 'trade'), 'pas de partiel en double');
+});
+
+test('FTMO pendant l’évaluation : journée finie après 1 trade perdant (comme Lucid) ; pas en compte financé', () => {
+  const { cfg, store } = setup({ ftmoMaxLossesDay: 1, ftmoDayProfitCapPct: 25, ftmoTrailActR: 0, ftmoFundedPartials: [] });
+  const f = require('../src/ftmoAccount').createFtmo({ cfg, store });
+  const pos = (t) => ({ side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: t });
+  assert.ok(f.onCycle([{ type: 'open', market, strategy, pos: pos(T0) }], { gold: 4000 }, T0).some((m) => m.type === 'open'));
+  f.onCycle([{ type: 'close', market, strategy, trade: { ...pos(T0), exit: 3960, exitT: T0 + 600, reason: 'stop loss' } }], { gold: 3960 }, T0 + 600);
+  assert.ok(!f.onCycle([{ type: 'open', market, strategy, pos: pos(T0 + 1200) }], { gold: 3990 }, T0 + 1200).some((m) => m.type === 'open'), 'arrêt après 1 perte');
+  const s = f.load(); s.phase = 'funded'; store.saveJson('ftmo.json', s);
+  assert.ok(f.onCycle([{ type: 'open', market, strategy, pos: pos(T0 + 1800) }], { gold: 3990 }, T0 + 1800).some((m) => m.type === 'open'), 'compte financé : pas de limite');
 });

@@ -8,7 +8,7 @@ const isPng = (b) => Buffer.isBuffer(b) && b.subarray(1, 4).toString() === 'PNG'
 
 function setup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ui-'));
-  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, dataDir: dir, channelId: '-100', gameEnabled: true, gameHourUtc: 13, gameVoteHours: 3 };
+  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, ftmoEvalIntradayMul: 1, ftmoFundedRiskMul: 1, ftmoDayProfitCapPct: 0, ftmoMaxLossesDay: 0, dataDir: dir, channelId: '-100', gameEnabled: true, gameHourUtc: 13, gameVoteHours: 3 };
   const { Store } = require('../src/store');
   const store = new Store(dir);
   store.saveJson('gold.json', {

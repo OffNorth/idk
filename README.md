@@ -854,6 +854,20 @@ Sorties partielles testées sur le compte FTMO (avec le stop suiveur sur le rest
 (12 mois, 2009–2024) : ⅓ / ⅓ / ⅓ → comptes perdus en 12 mois 95 → 87 %, retraits moyens 14 662 → 14 877 $ → activé
 **seulement en compte financé** (`FTMO_FUNDED_PARTIALS=1,2` ; vide = coupé). Messages « objectif partiel +1 R ».
 
+### 🔁 Plan Lucid → FTMO (`npm run lucid-funded`, `npm run ftmo-lucidlike`)
+
+Plan de l'utilisateur : réussir l'évaluation Lucid vite, toucher des retraits Lucid, s'en servir pour payer un compte FTMO
+qui doit durer (scaling jusqu'à 2 M$).
+- **Lucid financé** : le réglage actuel est le meilleur pour toucher au moins un retrait (85 % en ≤ 60 j, médiane 17 j,
+  ≈ 2 700 $ sur 12 mois) ; plus de risque rapporte plus en moyenne mais moins souvent (× 2 : 68 % ; × 3 : 49 %) ; les
+  plafonds de journée n'aident pas. Un compte Lucid financé ne dure presque jamais (perte max bloquée à capital + 100 $).
+- **FTMO, évaluation « comme Lucid »** : intraday × 2 + journée finie à +2 500 $ ou après 1 perte → 53 / 58 / 76 % de
+  réussite (contre 55 / 57 / 73 %), ≈ 25 j plus rapide (`FTMO_EVAL_INTRADAY_MUL=2`, `FTMO_DAY_PROFIT_CAP_PCT=25`,
+  `FTMO_MAX_LOSSES_DAY=1`).
+- **FTMO financé** : tout le risque × 0,25 (`FTMO_FUNDED_RISK_MUL=0.25`) → comptes en vie à 12 / 24 / 36 mois 15 / 1 / 0 %
+  → 100 / 100 / 100 %, 4 hausses de capital de 25 % atteintes 5 → 99 % (2009–2023, capital constant dans le calcul).
+  × 0,35 : 85 / 71 / 57 %, × 0,5 : 62 / 40 / 30 % (plus de retraits à court terme, moins de durée).
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

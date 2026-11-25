@@ -226,8 +226,11 @@ test('Lucid : risque intraday × LUCID_EVAL_INTRADAY_MUL pendant l’évaluation
   assert.strictEqual(L.riskOf('nas100', n, 'funded'), 0.45);
   const d = selectStrategies(['double7'])[0];
   assert.strictEqual(L.riskOf('spx', d, 1), L.riskOf('spx', d, 'funded'), 'journalières inchangées');
-  const F = accountOf(cfg, 'gold');
-  assert.strictEqual(F.riskOf('gold', { id: 'g_orb30', tf: '5m' }, 1), F.riskOf('gold', { id: 'g_orb30', tf: '5m' }, 'funded'), 'FTMO inchangé');
+  const F = accountOf({ ...cfg, ftmoEvalIntradayMul: 2, ftmoFundedRiskMul: 0.25 }, 'gold');
+  const base = F.riskOf('gold', { id: 'g_orb30', tf: '5m' });
+  assert.ok(Math.abs(F.riskOf('gold', { id: 'g_orb30', tf: '5m' }, 1) - 2 * base) < 1e-12, 'FTMO : intraday × 2 en évaluation');
+  assert.ok(Math.abs(F.riskOf('gold', { id: 'g_orb30', tf: '5m' }, 'funded') - 0.25 * base) < 1e-12, 'FTMO financé : × 0,25');
+  assert.ok(Math.abs(F.riskOf('gold', { id: 'down3', tf: '1d' }, 1) - F.riskOf('gold', { id: 'down3', tf: '1d' })) < 1e-12, 'journalières FTMO inchangées en évaluation');
   const { riskText } = require('../src/interactive');
   if (riskText) assert.match(riskText(cfg, L, 1), /1\.35 % \(intraday pendant l'évaluation, 0\.45 % une fois financé\)/);
 });

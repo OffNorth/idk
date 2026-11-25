@@ -6,7 +6,7 @@ const path = require('path');
 
 test('résumé du jour : trades regroupés par stratégie (scalp seul, puis toutes)', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dig-'));
-  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, dataDir: dir, ftmoEnabled: true, lucidEnabled: false, nasEnabled: false, digestAll: false, goldStrategies: ['season', 'x_rsi2', 'm_bb@5m'] };
+  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, ftmoEvalIntradayMul: 1, ftmoFundedRiskMul: 1, ftmoDayProfitCapPct: 0, ftmoMaxLossesDay: 0, dataDir: dir, ftmoEnabled: true, lucidEnabled: false, nasEnabled: false, digestAll: false, goldStrategies: ['season', 'x_rsi2', 'm_bb@5m'] };
   const { Store } = require('../src/store');
   const store = new Store(dir);
   const now = Math.floor(Date.now() / 1000);
@@ -42,7 +42,7 @@ test('résumé du jour : trades regroupés par stratégie (scalp seul, puis tout
 
 test('mode FTMO seul : le groupe ne reçoit que les messages du compte FTMO', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pub-'));
-  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, dataDir: dir, publishFtmoOnly: true, ftmoEnabled: true, lucidEnabled: false, ftmoCombined: false, ftmoStrategies: ['gold:g_orb30'], ftmoRisk: 0.5, ftmoDayStop: 0, nasEnabled: false, spxEnabled: false, eurusdEnabled: false, autoAdapt: false };
+  const cfg = { ...require('../src/config'), ftmoRiskMul: 1, ftmoEvalIntradayMul: 1, ftmoFundedRiskMul: 1, ftmoDayProfitCapPct: 0, ftmoMaxLossesDay: 0, dataDir: dir, publishFtmoOnly: true, ftmoEnabled: true, lucidEnabled: false, ftmoCombined: false, ftmoStrategies: ['gold:g_orb30'], ftmoRisk: 0.5, ftmoDayStop: 0, nasEnabled: false, spxEnabled: false, eurusdEnabled: false, autoAdapt: false };
   const { Store } = require('../src/store');
   const store = new Store(dir);
   const { MarketTrader } = require('../src/markets');

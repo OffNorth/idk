@@ -53,7 +53,11 @@ function phaseOptions(cfg, A, s) {
     return { ...common, ...day, target, dailyPct: Infinity, maxLossUsd: P.maxUsd, eodTrailing: true, lockAt: P.lockAt, bestDayPct: funded ? 0 : P.bestDay,
       contracts: true, maxContracts: P.maxContracts, minOneRisk: 0.4, leverage: 1000, dayOf: cmeDay };
   }
-  return { ...common, target, dailyPct: P.daily, maxPct: P.max, trailingMax: !!P.trailing, bestDayPct: funded ? 0 : P.bestDay || 0, leverage: cfg.ftmoLeverage, levCap: P.levCap };
+  const dayF = funded ? {} : {
+    ...(cfg.ftmoDayProfitCapPct > 0 ? { dayProfitCapUsd: (cfg.ftmoDayProfitCapPct / 100) * s.capital * (target / 100) } : {}),
+    ...(cfg.ftmoMaxLossesDay > 0 ? { maxLossesPerDay: cfg.ftmoMaxLossesDay } : {}),
+  };
+  return { ...common, ...dayF, target, dailyPct: P.daily, maxPct: P.max, trailingMax: !!P.trailing, bestDayPct: funded ? 0 : P.bestDay || 0, leverage: cfg.ftmoLeverage, levCap: P.levCap };
 }
 
 /**
