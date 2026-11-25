@@ -30,7 +30,7 @@ const MICRO = {
 };
 
 /** Retourne { all (trades annotés), q5 (bougies Nasdaq 5 min ou null), A (compte FTMO) }. */
-async function buildTrades(cfg, CACHE, { withLucid = false } = {}) {
+async function buildTrades(cfg, CACHE, { withLucid = false, wrap = null } = {}) {
   const y = (s) => cachedYahoo(CACHE, s, '1d').catch(() => null);
   const vix = await y('^VIX');
   const gc = (await y('GC=F')).filter((k) => k.c > 0);
@@ -57,7 +57,8 @@ async function buildTrades(cfg, CACHE, { withLucid = false } = {}) {
   const ids = withLucid ? [...new Set([...A.strategies, ...accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid').strategies])] : A.strategies;
   for (const k of ids) {
     const [m, id] = k.split(':');
-    const s = selectStrategies([id])[0];
+    const s0 = selectStrategies([id])[0];
+    const s = s0 && wrap ? wrap(s0, k) : s0; // recherches : variante de la stratégie (ex. stop suiveur)
     if (!s) continue;
     if (!FEE[m]) continue; // marché sans historique ici
     const tf = tfOf(s);
