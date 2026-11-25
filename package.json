@@ -55,7 +55,8 @@
     "speed": "node --max-old-space-size=7000 speed-research.js",
     "lucid-research2": "node --max-old-space-size=7000 lucid-research2.js",
     "lucid-research3": "node --max-old-space-size=7000 lucid-research3.js",
-    "traders": "node --max-old-space-size=7000 trader-research.js"
+    "traders": "node --max-old-space-size=7000 trader-research.js",
+    "spx-research": "node --max-old-space-size=7000 spx-research.js"
   },
   "engines": {
     "node": ">=20"
