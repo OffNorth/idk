@@ -318,6 +318,23 @@ story.append(KeepTogether([Paragraph('Nouveaux marchés : argent et Dow Jones (L
     ('+ pétrole', '—', '—', '76 % ✘'),
     ], [62 * mm, 38 * mm, 38 * mm, 42 * mm])]))
 
+story.append(KeepTogether([Paragraph('Autres marchés et actions (non retenus)', h2), Paragraph(
+    'DAX et Nikkei (bougies 1 h, 2 ans), livre (GBP/USD), yen (USD/JPY), obligations US (ETF TLT) et 18 grandes actions (Nvidia, Tesla, Apple, '
+    'Microsoft, Amazon, Meta, Google, AMD, Netflix, Broadcom, Palantir, Coinbase, JPMorgan, Exxon, Eli Lilly, UnitedHealth, MicroStrategy, Boeing), '
+    'intraday 5 min nov. 2024 → nov. 2026 et journalier depuis 2000. <b>DAX et Nikkei</b> : aucune stratégie stable. <b>Livre et yen</b> : cassures de '
+    'l’ouverture de Londres stables (USD/JPY : +0,24 / +0,13 R par trade), mais elles font baisser les comptes. <b>Actions en journalier</b> '
+    '(Apple, Microsoft, Google, Netflix, UnitedHealth… rentables sur 2000–09, 2010–17 et 2018–26) : elles perdent les mêmes jours que le Nasdaq et '
+    'font toutes baisser FTMO. Lucid ne trade pas d’actions (futures CME seulement).', body), Spacer(1, 3), small_table([
+    ('Compte FTMO, réussite < 1 an', '2009–2019', '2020–2026', 'nov. 24–26'),
+    ('Actuel', '50 %', '51 %', '67 % (55 j)'),
+    ('+ GBP/USD intraday', '—', '—', '65 % ✘'),
+    ('+ USD/JPY intraday (Lucid : 94 → 90 %)', '—', '—', '57 % (41 j) ✘'),
+    ('+ actions en journalier (selon l’action)', '40–55 % ✘', '40–54 % ✘', '49–67 %'),
+    ('+ TLT, Google, Palantir, Eli Lilly, Boeing intraday', '—', '—', '69 % (50 j)'),
+    ], [72 * mm, 32 * mm, 32 * mm, 44 * mm]), Spacer(1, 2), Paragraph(
+    'Seule la dernière ligne ne fait rien baisser, pour un gain minuscule (≈ 1 challenge sur 50, mesuré sur 2 ans seulement) : non ajoutée. '
+    'Conclusion des deux recherches de marchés : les comptes sont déjà bien réglés, ajouter des positions ajoute surtout de la variance.', body)]))
+
 story.append(KeepTogether([Paragraph('Séances d’Asie et de New York', h2), Paragraph(
     '92 variantes testées sur l’or au comptant réel 2009–2026 et le Nasdaq (2 ans) : cassures d’ouverture (Tokyo, Shanghai, COMEX, New York), '
     'fixing de Londres, clôture de Londres, dernière heure, nuit asiatique, écarts d’ouverture, plus haut / plus bas de la veille, pré-ouverture, '
@@ -328,7 +345,8 @@ story.append(KeepTogether([Paragraph('Séances d’Asie et de New York', h2), Pa
 
 story.append(KeepTogether([Paragraph('Exécution, notifications et outils', h2), Paragraph(
     f'<b>Exécution « comme en vrai »</b> : les comptes FTMO et Lucid entrent et sortent (sur signal) au cours {fc["fd"]:g} s après le signal ; stops et '
-    'objectifs restent au niveau. <b>Notifications</b> : chaque achat / vente des comptes est annoncé dans le groupe Telegram, avec une copie en privé '
+    'objectifs restent au niveau. Un cours relevé plus ancien que les données du signal (Yahoo : bougies 1 min et 5 min pas au même retard) '
+    'est ignoré : le compte garde alors le prix du signal. <b>Notifications</b> : chaque achat / vente des comptes est annoncé dans le groupe Telegram, avec une copie en privé '
     'si le groupe ne le reçoit pas. <b>Time Machine</b> (/timemachine) : chances de réussir le challenge en cours d’après 1 000 années simulées. '
     '<b>Comptes financés</b> : retraits simulés (FTMO tous les 14 jours, Lucid après 5 jours gagnants). <b>Boucle de test</b> (npm run selftest) : '
     'tout le bot rejoué hors ligne (commandes, boutons, messages, cycle complet des comptes).', body)]))
