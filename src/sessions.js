@@ -122,7 +122,7 @@ const base = (id, name, evaluate, desc = '', market = 'gold') => ({
 const none = (exit) => ({ entry: null, exitLong: exit, exitShort: exit, sl: 0, tp: null });
 
 /** Cassure d'un range : 1re clôture au-delà avant entryEnd ; stop de l'autre côté (ou k ATR au plus) ; sortie à exitAt. */
-function breakout({ id, name, desc, tz, start, len, entryEnd, exitAt, stopAtr = 0, dir = 'both' }) {
+function breakout({ id, name, desc, market = 'gold', tz, start, len, entryEnd, exitAt, stopAtr = 0, dir = 'both' }) {
   return base(id, name, (x, i) => {
     const m = x.tz[tz].min[i];
     const out = none(!wkday(x, i) || m >= exitAt || m < start);
@@ -135,11 +135,11 @@ function breakout({ id, name, desc, tz, start, len, entryEnd, exitAt, stopAtr = 
     if (up[i] && dir !== 'short') return { ...out, entry: 'long', sl: Math.max(0.2 * x.atr[i], cap(cl[i] - R.lo[i])) };
     if (dn[i] && dir !== 'long') return { ...out, entry: 'short', sl: Math.max(0.2 * x.atr[i], cap(R.hi[i] - cl[i])) };
     return out;
-  }, desc);
+  }, desc, market);
 }
 
 /** À l'heure `at`, mouvement depuis `ref` > seuil (%) → suivre (follow) ou contrer (fade) jusqu'à exitAt ; stop k ATR. */
-function momentum({ id, name, desc, tz, ref, at, exitAt, th, mode = 'follow', stopAtr = 2 }) {
+function momentum({ id, name, desc, market = 'gold', tz, ref, at, exitAt, th, mode = 'follow', stopAtr = 2 }) {
   return base(id, name, (x, i) => {
     const m = x.tz[tz].min[i];
     const out = none(!wkday(x, i) || m >= exitAt || m + x.barMin < at); // la bougie qui finit à `at` compte
@@ -151,7 +151,7 @@ function momentum({ id, name, desc, tz, ref, at, exitAt, th, mode = 'follow', st
     const upMove = r(i) > 0;
     const side = (mode === 'follow') === upMove ? 'long' : 'short';
     return { ...out, entry: side, sl: stopAtr * x.atr[i] };
-  }, desc);
+  }, desc, market);
 }
 
 /** Effet de nuit : achat à 21 h UTC (lundi → jeudi), revente à 7 h UTC ; stop k ATR. */
@@ -199,6 +199,23 @@ function levelBreak({ id, name, desc = '', market = 'gold', tz, s, e, entryStart
 }
 
 /** Stratégies retenues à l'essai (paper trading seulement). */
+/** Même stratégie avec un objectif de gain à k × la distance du stop (comptes à perte max serrée, Lucid). */
+const withTp = (s, k, id, name) => ({ ...s, id, name, evaluate: (x, i) => { const r = s.evaluate(x, i); return r.entry && r.sl > 0 ? { ...r, tp: k * r.sl } : r; } });
+
+/**
+ * Nasdaq intraday pour le compte Lucid (npm run lucid-research2, séance seule de New York, nov. 2024 → nov. 2026) :
+ * avantage positif les deux années, ≤ 6 pertes de suite. Ajoutées toutes les trois (25/11/2026, choix de l'utilisateur) :
+ * Lucid passe de 0,9 à 3 trades intraday par jour, évaluation ≈ 55 j au lieu de 70 j, réussite 96 % (49 départs).
+ */
+const LUCID_NAS = [
+  withTp(breakout({ id: 'l_orb10', name: '', market: 'nas100', tz: 'ny', start: hm(9, 30), len: 10, entryEnd: hm(12), exitAt: hm(15, 55), dir: 'long' }), 0.75,
+    'n_orb10l_t075', 'Nasdaq : cassure à la hausse des 10 premières min (objectif 0,75 R, Lucid)'),
+  withTp(breakout({ id: 'l_orb30', name: '', market: 'nas100', tz: 'ny', start: hm(9, 30), len: 30, entryEnd: hm(12), exitAt: hm(15, 55), dir: 'long' }), 0.75,
+    'n_orb30l_t075', 'Nasdaq : cassure à la hausse des 30 premières min (objectif 0,75 R, Lucid)'),
+  withTp(breakout({ id: 'l_or60', name: '', market: 'nas100', tz: 'ny', start: hm(9, 30), len: 60, entryEnd: hm(15), exitAt: hm(15, 55) }), 0.5,
+    'n_or60_t05', 'Nasdaq : cassure du range de la 1re heure (objectif 0,5 R, Lucid)'),
+].map((s) => ({ ...s, desc: `${s.name.replace(' (', ' — ').replace(', Lucid)', '')}. Entrée à la 1re clôture 5 min au-delà du range (avant midi, 15 h pour la 1re heure), stop de l’autre côté du range, gain pris à l’objectif, sortie à 15 h 55 sinon. Taillée pour la perte max serrée de Lucid (≈ 62–64 % de gagnants, ≤ 6 pertes de suite).` }));
+
 const SESSIONS = [
   breakout({
     id: 'g_asiabrk', name: 'Or : cassure du range asiatique à l’ouverture de Londres',
@@ -217,4 +234,4 @@ const SESSIONS = [
   }),
 ];
 
-module.exports = { SESSIONS, computeFor, withNyx, levelBreak, compute, withTz, rangeOf, priceAt, firstOfDay, breakout, momentum, night, hm, wkday, lonOffset };
+module.exports = { LUCID_NAS, withTp, SESSIONS, computeFor, withNyx, levelBreak, compute, withTz, rangeOf, priceAt, firstOfDay, breakout, momentum, night, hm, wkday, lonOffset };

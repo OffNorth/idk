@@ -712,6 +712,12 @@ aussi sûr sur toutes les périodes ; appliqués à la demande (25/11/2026) :
   du Nasdaq intraday appris sur 1 an seulement.
 Risque × 1,5, plus de risque au début, ou risque pondéré par l'avantage : plus rapide mais nettement moins de réussite.
 
+**Lucid, 2e recherche (`npm run lucid-research2`, 36 variantes Nasdaq avec objectif 0,5 / 0,75 R)** : retenues car
+positives les deux années et ≤ 6 pertes de suite — cassure à la hausse des 10 et 30 premières minutes (objectif 0,75 R,
+`n_orb10l_t075`, `n_orb30l_t075`) et cassure du range de la 1re heure (objectif 0,5 R, `n_or60_t05`). Ajoutées toutes
+les trois : Lucid passe de 0,9 à **3 trades intraday par jour**, évaluation ≈ **55 j** au lieu de 70 j, réussite 96 %
+(49 départs, pire série 9 pertes) ; avec seulement les deux cassures 10 / 30 min : 100 % en 55 j.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

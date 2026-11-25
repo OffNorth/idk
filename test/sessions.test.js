@@ -81,3 +81,21 @@ test('variantes Lucid « objectif 0,5 R » : même entrée et même stop que l�
   assert.strictEqual(b[0].reason, 'take profit');
   assert.ok(Math.abs((b[0].entry - b[0].exit) - 0.5 * (b[0].initSl - b[0].entry)) < 1e-6, 'objectif à 0,5 R');
 });
+
+test('Lucid : cassures du Nasdaq avec objectif (n_orb10l_t075, n_orb30l_t075, n_or60_t05)', () => {
+  const cfg = require('../src/config');
+  const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  for (const id of ['n_orb10l_t075', 'n_orb30l_t075', 'n_or60_t05']) {
+    assert.ok(selectStrategies([id])[0], id);
+    assert.ok(L.riskOf('nas100', { id, tf: '5m' }) > 0, id);
+  }
+  // Cassure à la hausse des 10 premières min (hiver : 9 h 30 NY = 14 h 30 UTC), objectif 0,75 R
+  const iso = '2026-01-12T00:00:00Z';
+  const day = Date.parse(iso) / 1000 + 2 * 86400;
+  const c = candles(iso, 4, (t) => { const h = (t - day) / 3600; return t < day ? 26000 + Math.sin(t / 900) * 5 : h < 14.5 ? 26000 : h < 14.67 ? 26000 + (h % 0.1 < 0.05 ? 10 : -10) : 26000 + (h - 14.67) * 200; });
+  const tr = backtest(selectStrategies(['n_orb10l_t075'])[0], c, { size: 1000, feePct: 0.003, barSec: 300, market: 'nas100' }).list.filter((x) => x.entryT >= day && x.entryT < day + 86400);
+  assert.strictEqual(tr.length, 1);
+  assert.strictEqual(tr[0].side, 'long');
+  assert.strictEqual(tr[0].reason, 'take profit');
+  assert.ok(Math.abs((tr[0].exit - tr[0].entry) - 0.75 * (tr[0].entry - tr[0].initSl)) < 1e-6, 'objectif 0,75 R');
+});
