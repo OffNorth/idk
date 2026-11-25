@@ -465,7 +465,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           out.push({ type: 'refused', s, p: r });
           continue;
         }
-        const pos = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry, sl, notional, entryT: p.entryT, ...(fill ? { signal: p.entry, fillT: fill.t } : {}), lev: notional / s.balance, mul, risk: (notional * stopPct) / 100, ...(wAdapt !== 1 ? { wAdapt } : {}), ...(lots ? { n: lots, cfee: MICRO[ev.market.id].fee, contract: MICRO[ev.market.id].name } : {}), ...(ai ? { ai: { p: ai.p, ok: ai.ok, min: ai.min } } : {}) };
+        const pos = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry, sl, notional, entryT: p.entryT, ...(Number.isFinite(p.tp) ? { tp0: p.tp } : {}), ...(fill ? { signal: p.entry, fillT: fill.t } : {}), lev: notional / s.balance, mul, risk: (notional * stopPct) / 100, ...(wAdapt !== 1 ? { wAdapt } : {}), ...(lots ? { n: lots, cfee: MICRO[ev.market.id].fee, contract: MICRO[ev.market.id].name } : {}), ...(ai ? { ai: { p: ai.p, ok: ai.ok, min: ai.min } } : {}) };
         s.open[key(ev.market.id, ev.strategy.id, p.entryT)] = pos;
         if (!s.days.includes(s.day)) s.days.push(s.day);
         out.push({ type: 'open', s, p: pos });

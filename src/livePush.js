@@ -57,18 +57,18 @@ function accountView(cfg, store, id, prices) {
     payouts: s.phase === 'funded' ? { n: s.funded?.payouts?.length || 0, paid: Math.round(s.funded?.paid || 0), trader: Math.round(s.funded?.traderPaid || 0), list: (s.funded?.payouts || []).slice(-20) } : null,
     fillDelaySec: cfg.fillDelaySec || 0,
     open: Object.values(s.open || {}).map((p) => ({
-      market: p.market, sid: p.sid, name: p.name, side: p.side, entry: r6(p.entry), sl: r6(p.sl), tp: r6(tpOf(p)), entryT: p.entryT, signal: p.signal ? r6(p.signal) : null,
+      market: p.market, sid: p.sid, name: p.name, side: p.side, entry: r6(p.entry), sl: r6(p.sl), sl0: r6(p.sl0 ?? p.sl), tp: r6(tpOf(p) ?? p.tp0), entryT: p.entryT, signal: p.signal ? r6(p.signal) : null,
       notional: Math.round(p.notional), n: p.n || null, contract: p.contract || null, risk: Math.round(p.risk || 0),
       pnl: r6(st.openPnl(p)), ai: p.ai ? Math.round(p.ai.p * 100) : null,
     })),
     closed: (s.closed || []).slice(-150).map((t) => ({
-      market: t.market, sid: t.sid, name: t.name, side: t.side, entry: r6(t.entry), exit: r6(t.exit), sl: r6(t.sl), entryT: t.entryT, exitT: t.exitT,
+      market: t.market, sid: t.sid, name: t.name, side: t.side, entry: r6(t.entry), exit: r6(t.exit), sl: r6(t.sl), sl0: r6(t.sl0 ?? t.sl), tp: r6(t.tp0), entryT: t.entryT, exitT: t.exitT,
       pnl: Math.round(t.pnl), risk: t.risk ? Math.round(t.risk) : null, reason: t.reason, n: t.n || null,
     })),
     history: (s.history || []).slice(-5),
     // Trades des challenges précédents (archive), les plus récents
     archive: f.archived().slice(-300).map((t) => ({
-      market: t.market, sid: t.sid, name: t.name, side: t.side, entry: r6(t.entry), exit: r6(t.exit), sl: r6(t.sl), entryT: t.entryT, exitT: t.exitT,
+      market: t.market, sid: t.sid, name: t.name, side: t.side, entry: r6(t.entry), exit: r6(t.exit), sl: r6(t.sl), sl0: r6(t.sl0 ?? t.sl), tp: r6(t.tp0), entryT: t.entryT, exitT: t.exitT,
       pnl: Math.round(t.pnl), risk: t.risk ? Math.round(t.risk) : null, reason: t.reason, n: t.n || null, attempt: t.attempt,
     })),
     refused: rep.n ? { n: rep.n, closed: rep.closed, closedPnl: Math.round(rep.closedPnl), wins: rep.wins, open: rep.open, openPnl: Math.round(rep.openPnl),
@@ -117,7 +117,7 @@ function buildLive(cfg, store, version = '') {
     const st = store.loadJson(m.file, null);
     for (const [sid, acc] of Object.entries(st?.accounts || {})) {
       if (!followed.has(`${m.id}:${sid}`)) continue;
-      for (const t of acc.closed || []) paper.push({ market: m.id, sid, side: t.side, entry: r6(t.entry), exit: r6(t.exit), sl: r6(t.initSl ?? t.sl), entryT: t.entryT, exitT: t.exitT, pnlPct: r6(t.pnlPct), reason: t.reason });
+      for (const t of acc.closed || []) paper.push({ market: m.id, sid, side: t.side, entry: r6(t.entry), exit: r6(t.exit), sl: r6(t.initSl ?? t.sl), tp: r6(t.tp), entryT: t.entryT, exitT: t.exitT, pnlPct: r6(t.pnlPct), reason: t.reason });
     }
   }
   paper.sort((a, b) => a.exitT - b.exitT);
