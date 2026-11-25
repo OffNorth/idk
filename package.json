@@ -69,7 +69,8 @@
     "ftmo-lucidlike": "node --max-old-space-size=7000 ftmo-lucidlike-research.js",
     "lucid-funded": "node --max-old-space-size=7000 lucid-funded-research.js",
     "portfolio": "node --max-old-space-size=4000 portfolio-research.js",
-    "orderflow": "node --max-old-space-size=6000 orderflow-research.js"
+    "orderflow": "node --max-old-space-size=6000 orderflow-research.js",
+    "ict": "node --max-old-space-size=6000 ict-research.js"
   },
   "engines": {
     "node": ">=20"

@@ -662,6 +662,18 @@ Stratégies : delta fort, absorption, divergence du delta cumulé, épuisement ;
 Conclusion : rien n'est ajouté au bot. L'order flow automatique n'a de sens qu'avec des frais quasi nuls et une
 exécution à la seconde.
 
+### 🧊 ICT (`npm run ict`)
+
+Règles ICT écrites précisément (FVG, Silver Bullet, balayage PDH / PDL et range asiatique, SMT QQQ / SPY, order blocks),
+frais 0,01 %, témoins au hasard. QQQ / SPY 1 et 5 min (nov. 2024 → nov. 2026, ≈ MNQ / MES), or 5 min 2009 → 2026.
+- **Perdants partout** : Silver Bullet (−0,05 à −0,19 R), balayages de liquidité (−0,1 à −0,3 R), SMT (−0,3 à −0,4 R),
+  order blocks (−0,2 à −0,4 R) ; FVG en 1 min ≈ 0 (Nasdaq) ou négatif (S&P).
+- **Une seule règle passe** : FVG en 5 min (trou ≥ 0,25 ATR) dans le sens de la veille, limite au bord ou au milieu, stop
+  sous la 1re bougie, 2 R → ≈ +0,1 R par trade, facteur de profit 1,15 – 1,19, positive sur les 3 périodes, sur QQQ ET SPY
+  (≈ 800 trades chacun) ; le biais seul perd (−0,11 R), donc c'est bien le FVG qui apporte. Mais elle échoue en 1 min et en
+  15 min, et ≈ 0 sur l'or en 17 ans ; QQQ et SPY bougent ensemble (pas deux preuves indépendantes) ; 2 ans seulement.
+Conclusion : piste à vérifier sur un historique long du Nasdaq / S&P avant d'aller sur un compte ; rien n'est ajouté au bot.
+
 ### 📅 `/pnl` : PnL du jour des comptes simulés
 
 `/pnl` (ou `/jour`, `/daily`) : pour chaque compte (FTMO, Lucid), gain ou perte de la journée depuis le solde
