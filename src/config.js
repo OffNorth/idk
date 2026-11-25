@@ -166,6 +166,11 @@ module.exports = {
   ftmoIntradayRisk: upgraded('FTMO_INTRADAY_RISK_PCT', ['0.5'], 0.15),
   // Un message dans le groupe à chaque ouverture et clôture du compte FTMO simulé (0 = seulement réussite / échec)
   ftmoTradeMessages: num('FTMO_TRADE_MESSAGES', 1) === 1,
+  // Stop suiveur du compte FTMO (npm run ftmo-tsl, 26/11/2026) : dès +2 R, stop à 1 R du meilleur cours (toutes les
+  // stratégies) → réussite < 1 an 50 / 51 / 67 % → 55 / 57 / 73 % (2009–19 / 2020–26 / nov. 24–26), délai médian
+  // un peu plus long (55 → 76 j récent). FTMO_TRAIL_ACT_R=0 pour le couper.
+  ftmoTrailActR: num('FTMO_TRAIL_ACT_R', 2),
+  ftmoTrailDistR: num('FTMO_TRAIL_DIST_R', 1),
   // Le compte FTMO n'est jamais acheteur et vendeur du même marché en même temps (le 2e signal, opposé, est ignoré)
   ftmoNoHedge: num('FTMO_NO_HEDGE', 1) === 1,
   // 2e compte FTMO simulé, 100 % Nasdaq (npm run ftmo-nas-port)

@@ -225,3 +225,23 @@ test('Lucid pendant l’évaluation : journée finie après 1 trade perdant ou u
   const s = lu.load(); s.phase = 'funded'; s.dayLosses = 5; store.saveJson('lucid.json', s);
   assert.ok(open(T0 + 86400 + 600, 26100, 26050).some((m) => m.type === 'open'), 'compte financé : pas de limite de journée');
 });
+
+test('FTMO : stop suiveur — dès +2 R (meilleure clôture du paper), stop à 1 R du meilleur cours, sortie au niveau', () => {
+  const { cfg, store } = setup({ ftmoTrailActR: 2, ftmoTrailDistR: 1 });
+  const f = require('../src/ftmoAccount').createFtmo({ cfg, store });
+  const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
+  f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0);
+  // Paper : meilleur cours de clôture 4 070 (+1,75 R) → pas encore de suivi
+  store.saveJson('gold.json', { accounts: { x_rsi2: { position: { ...pos, best: 4070 }, closed: [] } } });
+  f.onCycle([], { gold: 4065 }, T0 + 600);
+  assert.strictEqual(Object.values(f.load().open)[0].sl, 3960);
+  // Meilleur cours 4 090 (+2,25 R) → stop à 4 090 − 40 = 4 050
+  store.saveJson('gold.json', { accounts: { x_rsi2: { position: { ...pos, best: 4090 }, closed: [] } } });
+  f.onCycle([], { gold: 4085 }, T0 + 1200);
+  assert.strictEqual(Object.values(f.load().open)[0].sl, 4050);
+  // Le cours repasse sous 4 050 → sortie au niveau du stop suiveur (+50 $ par once)
+  const out = f.onCycle([], { gold: 4044 }, T0 + 1800);
+  const tr = out.find((m) => m.type === 'trade').p;
+  assert.strictEqual(tr.exit, 4050);
+  assert.match(tr.reason, /stop suiveur/);
+});

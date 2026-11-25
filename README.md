@@ -834,6 +834,19 @@ Ensemble : réussite FTMO récente 67 → 69 % (55 → 50 j), mesurée sur 2 ans
 Bougies Yahoo 5 min (60 jours, séance seule), levier plafonné à 1:5, pas sur Lucid (pas d'actions chez Lucid).
 `STOCKS_TRADING=0` pour les couper. À vérifier : que ces CFD (surtout TLT) existent bien sur ta plateforme FTMO.
 
+### 🪜 Stop suiveur du compte FTMO (`npm run ftmo-tsl`)
+
+Testé sur toutes les stratégies du compte FTMO (intraday, journalières, ou toutes) : point mort à +1 R, suiveur 1 R après
++1 / +1,5 / +2 R, suiveur 0,5 R, Chandelier 3 / 4 ATR. Retenu : **dès +2 R, stop à 1 R du meilleur cours, sur toutes les
+stratégies** — seul réglage qui monte la réussite sur les 3 périodes : 50 / 51 / 67 % → **55 / 57 / 73 %** (2009–19 /
+2020–26 / nov. 24–26), délai médian un peu plus long. Le meilleur cours est celui des clôtures de bougie suivies par le
+paper trading ; le stop ne recule jamais ; sortie au niveau du stop (« stop suiveur (compte FTMO) »). Lucid n'est pas
+concerné. `FTMO_TRAIL_ACT_R=0` pour le couper (`FTMO_TRAIL_DIST_R` : distance en R).
+
+**Lucid, 6e recherche (`npm run lucid-research6`)** : l'intraday or (MGC) n'est stable sur 2009–2026 dans aucune version
+(telle quelle, objectif 0,5 / 0,75 R, break-even) ; pétrole, Dow, argent neutres ou négatifs ; Russell rien. Ajouté :
+momentum de fin de journée sur le S&P en break-even (`spx:n_mom10_t1be`, MES) : nov. 24–26 51 → 53 %.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

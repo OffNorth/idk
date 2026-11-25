@@ -291,15 +291,32 @@ function createFtmo({ cfg, store, account = 'gold' }) {
    */
   function reconcile(s, prices, t, out) {
     const papers = {};
+    // Stop suiveur du compte FTMO (npm run ftmo-tsl) : dès que le meilleur cours de clôture des bougies de la stratégie
+    // (suivi par le paper trading) a fait +FTMO_TRAIL_ACT_R × le risque initial, le stop suit à FTMO_TRAIL_DIST_R × le
+    // risque de ce meilleur cours ; il ne recule jamais. Lucid n'est pas concerné.
+    const trailAct = A.id !== 'lucid' ? cfg.ftmoTrailActR || 0 : 0;
     for (const [k, p] of Object.entries(s.open)) {
       const px = prices[p.market];
-      if (px && p.sl && (p.side === 'long' ? px <= p.sl : px >= p.sl)) {
-        // Au cours actuel (déjà au-delà du stop) : prudent en cas de trou de cotation entre deux passages
-        closeOne(s, k, px, t, 'stop loss (compte FTMO)', out);
-        continue;
-      }
       papers[p.market] ??= store.loadJson(`${p.market}.json`, null);
       const acc = papers[p.market]?.accounts?.[p.sid];
+      const paperPos = acc?.position && Math.abs(acc.position.entryT - p.entryT) < 2 ? acc.position : null;
+      if (trailAct > 0 && p.sl && paperPos && Number.isFinite(paperPos.best)) {
+        p.sl0 ??= p.sl;
+        const r0 = Math.abs(p.entry - p.sl0);
+        const long = p.side === 'long';
+        p.best = long ? Math.max(p.best ?? p.entry, paperPos.best) : Math.min(p.best ?? p.entry, paperPos.best);
+        const fav = long ? p.best - p.entry : p.entry - p.best;
+        if (r0 > 0 && fav >= trailAct * r0) {
+          const next = long ? p.best - (cfg.ftmoTrailDistR ?? 1) * r0 : p.best + (cfg.ftmoTrailDistR ?? 1) * r0;
+          if (long ? next > p.sl : next < p.sl) { p.sl = next; p.trailing = true; }
+        }
+      }
+      if (px && p.sl && (p.side === 'long' ? px <= p.sl : px >= p.sl)) {
+        // Stop suiveur : ordre stop posé au niveau ; stop initial : au cours actuel (déjà au-delà, prudent en cas de trou)
+        if (p.trailing) closeOne(s, k, p.sl, t, 'stop suiveur (compte FTMO)', out);
+        else closeOne(s, k, px, t, 'stop loss (compte FTMO)', out);
+        continue;
+      }
       if (!acc) continue; // stratégie inconnue du paper trading : rien à comparer
       if (acc.position && Math.abs(acc.position.entryT - p.entryT) < 2) continue;
       const tr = [...(acc.closed || [])].reverse().find((c) => Math.abs(c.entryT - p.entryT) < 2);
