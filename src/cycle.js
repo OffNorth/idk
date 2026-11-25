@@ -60,6 +60,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
   } catch (err) {
     console.warn('[exécution] cours après délai indisponible :', err.message);
   }
+  const refusedSeen = new Set(); // signaux bloqués par l'IA déjà annoncés pendant ce passage
   for (const acct of accts) {
     try {
       const ftmo = books[acct.id];
@@ -69,13 +70,18 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
       const button = ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: acct.id === 'lucid' ? 'm:f:g:l' : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
       for (const msg of ftmo.onCycle(all, prices, undefined, { fills })) {
         // Chaque trade du compte FTMO (ouverture et clôture) : console + message dans le groupe (FTMO_TRADE_MESSAGES)
-        if (msg.type === 'open' || msg.type === 'trade' || msg.type === 'refused') {
+        if (msg.type === 'open' || msg.type === 'trade' || msg.type === 'refused' || msg.type === 'refusedResult') {
           // Clôture forcée par la limite de perte : le compte repart ensuite à zéro, on montre le solde du challenge clôturé
           const st0 = ftmo.status(prices);
           const st = msg.type === 'trade' && /^règle /.test(msg.p.reason || '') ? { ...st0, s: msg.s, equity: msg.s.balance, target: null } : st0;
           const text = ftmoTradeMessage(msg, st, marketById(cfg, msg.p.market));
-          if (msg.type === 'refused' && acct.id === 'lucid') continue; // même signal déjà annoncé par le compte FTMO
-          console.log(`[${firm.toLowerCase()}] ${{ open: 'ouverture', trade: 'clôture', refused: 'refusé par l\'IA' }[msg.type]} ${msg.p.market}:${msg.p.sid} ${msg.p.side}${msg.type === 'trade' ? ` ${usd(msg.p.pnl)}` : ''}${msg.p.ai ? ` (IA ${Math.round(msg.p.ai.p * 100)} %)` : ''}`);
+          // Même signal refusé par FTMO et par Lucid dans ce passage : annoncé une seule fois (par FTMO)
+          const sigKey = `${msg.type}:${msg.p.market}:${msg.p.sid}:${msg.p.entryT}`;
+          if (msg.type === 'refused' || msg.type === 'refusedResult') {
+            if (acct.id === 'lucid' && refusedSeen.has(sigKey)) continue;
+            refusedSeen.add(sigKey);
+          }
+          console.log(`[${firm.toLowerCase()}] ${{ open: 'ouverture', trade: 'clôture', refused: 'bloqué par l\'IA', refusedResult: 'bilan d\'un trade bloqué' }[msg.type]} ${msg.p.market}:${msg.p.sid} ${msg.p.side}${msg.type === 'trade' ? ` ${usd(msg.p.pnl)}` : ''}${msg.p.ai ? ` (IA ${Math.round(msg.p.ai.p * 100)} %)` : ''}`);
           // Clôture : bouton « 🎬 Vidéo » (PnL card animée, réservé à l'administrateur)
           const extra = msg.type === 'trade' && ui && msg.p.exitT
             ? { reply_markup: { inline_keyboard: [[...(button.reply_markup?.inline_keyboard?.[0] || []), { text: '🎬 Vidéo', callback_data: `v:t:${acct.id === 'lucid' ? 'lucid' : 'ftmo'}:${msg.p.exitT}:${msg.p.sid}`.slice(0, 64) }]] } }
@@ -229,9 +235,18 @@ function ftmoTradeMessage(msg, st, market) {
   }
   if (msg.type === 'refused') {
     return [
-      `${tag} · 🤖 signal <b>refusé par l'IA</b> ${mk}`,
+      `${tag} · 🤖⛔ <b>Trade bloqué par l'IA</b> ${mk}`,
       name,
-      `${p.side === 'long' ? 'Achat' : 'Vente'} à $${px(p.entry)} · stop $${px(p.sl)} · chances estimées ${Math.round(p.ai.p * 100)} % (seuil ${Math.round(p.ai.min * 100)} %) · pas de trade`,
+      `${p.side === 'long' ? 'Achat' : 'Vente'} à $${px(p.entry)} · stop $${px(p.sl)} · ${dollars(p.notional)} · risque évité ${dollars(p.risk || 0)}`,
+      `Chances estimées ${Math.round(p.ai.p * 100)} % (seuil ${Math.round(p.ai.min * 100)} %) → pas de trade, refusé par l'IA. Bilan annoncé quand le trade fictif se termine.`,
+    ].join('\n');
+  }
+  if (msg.type === 'refusedResult') {
+    return [
+      `${tag} · 🤖 <b>Bilan d'un trade bloqué par l'IA</b> ${mk}`,
+      name,
+      `${p.side === 'long' ? 'Achat' : 'Vente'} $${px(p.entry)} → $${px(p.exit)}${p.reason ? ` (${esc(p.reason)})` : ''} : il aurait fait <b>${usd(p.pnl)}</b>`,
+      `${p.pnl < 0 ? '✅ L’IA a eu raison : perte évitée' : '❌ L’IA a eu tort : gain manqué'} · <i>compte simulé</i>`,
     ].join('\n');
   }
   const goal = st.target ? ` · objectif ${dollars(st.target)} (${Math.round(Math.min(1, Math.max(0, st.progress)) * 100)} %)` : '';

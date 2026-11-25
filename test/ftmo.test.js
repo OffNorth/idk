@@ -452,3 +452,25 @@ test('IA sur Lucid : avis sans refus par défaut (LUCID_AI=observe), refus seule
   // LUCID_AI=off : pas d'avis
   assert.ok(!open({ lucidAi: 'off' }).find((x) => x.type === 'open').p.ai);
 });
+
+test('trade bloqué par l’IA : annoncé, puis bilan (raison / tort) une seule fois quand le trade fictif se termine', () => {
+  const { cfg, store } = setup({ ftmoAi: 'block', ftmoAiMin: 0.99 });
+  const { createFtmo } = require('../src/ftmoAccount');
+  const { ftmoTradeMessage } = require('../src/cycle');
+  const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
+  store.saveJson('gold.json', { accounts: { x_rsi2: { closed: [], position: pos } }, ctx: { daily: [], vix: null } });
+  const f = createFtmo({ cfg, store });
+  const ref = f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0).find((o) => o.type === 'refused');
+  assert.ok(ref);
+  const mk = { id: 'gold', name: 'Or', emoji: '🥇' };
+  assert.match(ftmoTradeMessage(ref, f.status({ gold: 4000 }), mk), /Trade bloqué par l'IA[\s\S]*risque évité \$\d/);
+  // Trade fictif encore ouvert : pas de bilan
+  assert.ok(!f.onCycle([], { gold: 3990 }, T0 + 600).some((o) => o.type === 'refusedResult'));
+  // Il touche son stop : bilan « l'IA a eu raison », une seule fois
+  store.saveJson('gold.json', { accounts: { x_rsi2: { closed: [{ ...pos, exit: 3960, exitT: T0 + 3600, pnlPct: -1, reason: 'stop loss' }], position: null } }, lastPrice: 3960 });
+  const res = f.onCycle([], { gold: 3960 }, T0 + 3700).filter((o) => o.type === 'refusedResult');
+  assert.strictEqual(res.length, 1);
+  assert.ok(res[0].p.pnl < 0);
+  assert.match(ftmoTradeMessage(res[0], f.status({ gold: 3960 }), mk), /aurait fait <b>−\$\d[\s\S]*L’IA a eu raison/);
+  assert.ok(!f.onCycle([], { gold: 3960 }, T0 + 3800).some((o) => o.type === 'refusedResult'));
+});

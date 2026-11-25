@@ -260,6 +260,27 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     return { rows, n: rows.length, closed: closed.length, closedPnl: sum(closed), wins: closed.filter((x) => x.pnl > 0).length, open: open.length, openPnl: sum(open) };
   }
 
+  /**
+   * Signaux refusés par l'IA dont le trade fictif (paper) vient de se terminer : bilan à annoncer, une seule fois
+   * (« l'IA a eu raison / tort »). Seulement les refus enregistrés avec `watch` (pas d'annonce en rafale des anciens) ;
+   * abandon après 30 jours.
+   */
+  function refusedVerdicts(t) {
+    const list = store.loadJson(refusedFile, []);
+    if (!list.some((r) => r.watch && !r.told)) return [];
+    const papers = {};
+    const res = [];
+    for (const r of list) {
+      if (!r.watch || r.told) continue;
+      papers[r.market] ??= store.loadJson(`${r.market}.json`, null);
+      const done = (papers[r.market]?.accounts?.[r.sid]?.closed || []).find((c) => Math.abs(c.entryT - r.entryT) < 2);
+      if (done) { r.told = true; res.push({ ...r, pnl: (r.notional * done.pnlPct) / 100, exit: done.exit, exitT: done.exitT, reason: done.reason }); }
+      else if (t - r.entryT > 30 * 86400) r.told = true;
+    }
+    store.saveJson(refusedFile, list);
+    return res;
+  }
+
   /** Avis de l'IA validatrice sur un signal (historique et contexte du paper trading du marché), ou null. */
   function aiOpinion(ev, p) {
     try {
@@ -370,6 +391,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     if (!A.enabled) return [];
     const s = load();
     const out = [];
+    for (const v of refusedVerdicts(t)) out.push({ type: 'refusedResult', s, p: v });
     let aiMode = adapt.aiModeOf(cfg, store); // l'adaptation peut repasser l'IA en observation
     // Lucid : l'IA ne refuse rien par défaut (LUCID_AI=observe, voir config.js) ; avis toujours affiché
     if (A.id === 'lucid' && aiMode && aiMode !== 'off') aiMode = cfg.lucidAi === 'block' ? aiMode : cfg.lucidAi === 'off' ? 'off' : 'observe';
@@ -460,7 +482,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         if (ai && !ai.ok && aiMode === 'block') {
           // Refusé : gardé (avec la taille qu'il aurait eue) pour le bilan des trades refusés
           s.aiRefused = (s.aiRefused || 0) + 1;
-          const r = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, entryT: p.entryT, notional, risk: (notional * stopPct) / 100, ai: { p: ai.p, ok: ai.ok, min: ai.min } };
+          const r = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, entryT: p.entryT, notional, risk: (notional * stopPct) / 100, ai: { p: ai.p, ok: ai.ok, min: ai.min }, watch: true };
           const list = store.loadJson(refusedFile, []);
           list.push(r);
           store.saveJson(refusedFile, list.slice(-1000));
