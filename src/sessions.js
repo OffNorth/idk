@@ -198,7 +198,41 @@ function levelBreak({ id, name, desc = '', market = 'gold', tz, s, e, entryStart
   }, desc, market);
 }
 
-/** Stratégies retenues à l'essai (paper trading seulement). */
+/**
+ * Toby Crabel : cassure du range des `len` premières minutes seulement quand la séance précédente est « NR` nr` »
+ * (son amplitude est la plus petite des `nr` dernières séances : marché comprimé, qui part souvent fort ensuite).
+ * Séances [s, e) en minutes locales ; ≥ 21 séances d'historique avant de trader ; une entrée par sens et par jour.
+ */
+function crabelNR({ id, name, desc = '', market = 'nas100', tz = 'ny', s, e, nr, len, entryEnd, exitAt }) {
+  return base(id, name, (x, i) => {
+    const key = `nr:${tz}:${s}:${e}:${nr}`;
+    if (!x.cache[key]) {
+      const { min, day } = x.tz[tz];
+      const n = x.candles.length;
+      const flag = new Array(n).fill(false);
+      const ranges = [];
+      let dd = null; let h = -Infinity; let l = Infinity; let has = false;
+      for (let j = 0; j < n; j++) {
+        if (day[j] !== dd) { if (has) ranges.push(h - l); dd = day[j]; h = -Infinity; l = Infinity; has = false; }
+        if (ranges.length >= 21) { const last = ranges.slice(-nr); const p = ranges[ranges.length - 1]; flag[j] = last.every((r) => r >= p); }
+        if (min[j] >= s && min[j] < e) { h = Math.max(h, x.candles[j].h); l = Math.min(l, x.candles[j].l); has = true; }
+      }
+      x.cache[key] = flag;
+    }
+    const flag = x.cache[key];
+    const m = x.tz[tz].min[i];
+    const out = none(!wkday(x, i) || m >= exitAt || m < s);
+    if (out.exitLong || m >= entryEnd) return out;
+    const R = rangeOf(x, tz, s, len);
+    const ok = (j) => flag[j] && R.hi[j] !== null && x.tz[tz].min[j] < entryEnd;
+    const up = firstOfDay(x, tz, `${id}u`, (j) => ok(j) && x.closes[j] > R.hi[j]);
+    const dn = firstOfDay(x, tz, `${id}d`, (j) => ok(j) && x.closes[j] < R.lo[j]);
+    if (up[i]) return { ...out, entry: 'long', sl: Math.max(0.2 * x.atr[i], x.closes[i] - R.lo[i]) };
+    if (dn[i]) return { ...out, entry: 'short', sl: Math.max(0.2 * x.atr[i], R.hi[i] - x.closes[i]) };
+    return out;
+  }, desc, market);
+}
+
 /** Même stratégie avec un objectif de gain à k × la distance du stop (comptes à perte max serrée, Lucid). */
 const withTp = (s, k, id, name) => ({ ...s, id, name, evaluate: (x, i) => { const r = s.evaluate(x, i); return r.entry && r.sl > 0 ? { ...r, tp: k * r.sl } : r; } });
 
@@ -215,6 +249,11 @@ const LUCID_NAS = [
   withTp(breakout({ id: 'l_or60', name: '', market: 'nas100', tz: 'ny', start: hm(9, 30), len: 60, entryEnd: hm(15), exitAt: hm(15, 55) }), 0.5,
     'n_or60_t05', 'Nasdaq : cassure du range de la 1re heure (objectif 0,5 R, Lucid)'),
 ].map((s) => ({ ...s, desc: `${s.name.replace(' (', ' — ').replace(', Lucid)', '')}. Entrée à la 1re clôture 5 min au-delà du range (avant midi, 15 h pour la 1re heure), stop de l’autre côté du range, gain pris à l’objectif, sortie à 15 h 55 sinon. Taillée pour la perte max serrée de Lucid (≈ 62–64 % de gagnants, ≤ 6 pertes de suite).` }));
+// Toby Crabel (npm run traders, 25/11/2026) : QQQ séance seule nov. 2024 → nov. 2026, +0,11 / +0,03 R (1re / 2e année),
+// 67 % de gagnants, ≤ 4 pertes de suite ; ajoutée à Lucid : réussite 100 % (contre 98 %) en 50 j (contre 54 j)
+LUCID_NAS.push(withTp(crabelNR({ id: 'l_crabel4', name: '', market: 'nas100', tz: 'ny', s: hm(9, 30), e: hm(16), nr: 4, len: 30, entryEnd: hm(15), exitAt: hm(15, 55) }), 0.5,
+  'n_crabel4_t05', 'Nasdaq : Crabel, cassure des 30 premières min après une journée NR4 (objectif 0,5 R, Lucid)'));
+LUCID_NAS[LUCID_NAS.length - 1].desc = 'Toby Crabel : quand la séance précédente est la plus étroite des 4 dernières (NR4), cassure du range des 30 premières minutes (avant 15 h), stop de l’autre côté du range, gain pris à 0,5 × le risque, sortie à 15 h 55 sinon. Taillée pour Lucid : 67 % de gagnants, au plus 4 pertes de suite.';
 
 const SESSIONS = [
   breakout({
@@ -234,4 +273,4 @@ const SESSIONS = [
   }),
 ];
 
-module.exports = { LUCID_NAS, withTp, SESSIONS, computeFor, withNyx, levelBreak, compute, withTz, rangeOf, priceAt, firstOfDay, breakout, momentum, night, hm, wkday, lonOffset };
+module.exports = { LUCID_NAS, withTp, crabelNR, SESSIONS, computeFor, withNyx, levelBreak, compute, withTz, rangeOf, priceAt, firstOfDay, breakout, momentum, night, hm, wkday, lonOffset };

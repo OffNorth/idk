@@ -99,3 +99,31 @@ test('Lucid : cassures du Nasdaq avec objectif (n_orb10l_t075, n_orb30l_t075, n_
   assert.strictEqual(tr[0].reason, 'take profit');
   assert.ok(Math.abs((tr[0].exit - tr[0].entry) - 0.75 * (tr[0].entry - tr[0].initSl)) < 1e-6, 'objectif 0,75 R');
 });
+
+test('Crabel NR4 (n_crabel4_t05, Lucid) : pas de trade sans journée étroite la veille, cassure du range des 30 premières min sinon', () => {
+  const cfg = require('../src/config');
+  const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  assert.ok(L.riskOf('nas100', { id: 'n_crabel4_t05', tf: '5m' }) > 0);
+  const s = selectStrategies(['n_crabel4_t05'])[0];
+  const start = Date.parse('2026-01-05T00:00:00Z') / 1000;
+  const days = 30;
+  // Séances de 14 h 30 à 21 h UTC (hiver) ; amplitude ± 40 sauf la veille du dernier jour (± 5 : NR4) ; dernier jour : cassure à la hausse
+  const amp = (d) => (d === days - 2 ? 5 : 40);
+  const c = [];
+  for (let d = 0; d < days; d++) {
+    const t0 = start + d * 86400;
+    if ([0, 6].includes(new Date(t0 * 1000).getUTCDay())) continue;
+    for (let t = t0 + 14.5 * 3600; t < t0 + 21 * 3600; t += 300) {
+      const k = (t - t0 - 14.5 * 3600) / 300;
+      const last = d === days - 1;
+      const px = last ? (k < 6 ? 26000 + (k % 2 ? 4 : -4) : 26000 + (k - 5) * 20) : 26000 + (k % 2 ? amp(d) : -amp(d));
+      c.push({ t, o: px, h: px + 1, l: px - 1, c: px, v: 1 });
+    }
+  }
+  const tr = backtest(s, c, { size: 1000, feePct: 0.003, barSec: 300, market: 'nas100' }).list;
+  assert.ok(tr.length >= 1, 'un trade le jour après la journée NR4');
+  const last = tr[tr.length - 1];
+  assert.strictEqual(last.side, 'long');
+  assert.ok(last.entryT >= start + (days - 1) * 86400, 'seulement le dernier jour');
+  assert.strictEqual(last.reason, 'take profit');
+});

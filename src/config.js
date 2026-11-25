@@ -181,7 +181,8 @@ module.exports = {
   // < +0,03 R par trade) → évaluation ≈ 3 semaines plus rapide sur nov. 24–26 (71 j contre 90 j médians), réussite égale
   // + n_orb10l_t075, n_orb30l_t075, n_or60_t05 (npm run lucid-research2, 25/11/2026) : 3 trades intraday / jour au lieu
   // de 0,9, évaluation ≈ 55 j au lieu de 70 j, réussite 96 % (pire série 9 pertes)
-  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_mom10_t05,nas100:n_orb15_t05,nas100:n_orb10l_t075,nas100:n_orb30l_t075,nas100:n_or60_t05'),
+  // + n_crabel4_t05 (Toby Crabel, npm run traders, 25/11/2026) : réussite 100 % en 50 j (contre 98 % en 54 j)
+  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_mom10_t05,nas100:n_orb15_t05,nas100:n_orb10l_t075,nas100:n_orb30l_t075,nas100:n_or60_t05,nas100:n_crabel4_t05'),
   // Stratégies du compte FTMO que Lucid ne prend pas (avantage < +0,03 R)
   lucidExclude: list('LUCID_EXCLUDE', 'nas100:ibs'),
   // Multiplicateur du risque du compte FTMO (pas de Lucid) : 1,25 = challenge ≈ 2–3 semaines plus rapide (npm run speed),

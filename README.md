@@ -725,6 +725,16 @@ de la veille, range des 15 premières minutes). **Aucune n'est positive sur les 
 la zone de valeur +0,20 R la 1re année, −0,13 R la 2e) → rien d'ajouté. Sa méthode repose sur le flux d'ordres
 (delta, absorption, footprint) en 15 secondes, que des bougies 5 min ne remplacent pas.
 
+### 🏆 Stratégies de traders connus (`npm run traders`)
+
+Règles publiées, testables avec des bougies : **Toby Crabel** (cassure du range d'ouverture après une journée étroite
+NR4 / NR7), **Larry Williams** (cassure de volatilité : ouverture ± k × range de la veille ; « Oops »), **Linda
+Raschke** (« 80-20 », « Turtle Soup », « Holy Grail » journalier). Or : rien de stable sur 2009–2026. Nasdaq (2 ans) :
+Crabel NR4 / NR7 et Williams 0,5 / 0,7 positives les deux années, mais toutes font baisser la réussite récente du
+challenge FTMO (65 → 59–63 %). Une seule améliore Lucid sans rien coûter : **`n_crabel4_t05`** (Crabel NR4, cassure des
+30 premières minutes, objectif 0,5 R : 67 % de gagnants, ≤ 4 pertes de suite) → réussite 100 % en 50 j (contre 98 % en
+54 j) ; ajoutée à Lucid. Williams 0,5 avec objectif 0,75 R irait plus vite (42 j) mais 96 % de réussite : non ajoutée.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,
