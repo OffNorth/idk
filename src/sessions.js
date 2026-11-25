@@ -298,6 +298,11 @@ const wvb = (k) => williamsVB({ ...NS, id: `n_wvb${String(k).replace('.', '')}`,
   name: `Nasdaq : Williams, cassure de volatilité (ouverture ± ${String(k).replace('.', ',')} × amplitude de la veille)`,
   desc: `Larry Williams : achat quand le cours clôture au-dessus de l’ouverture + ${String(k).replace('.', ',')} × l’amplitude de la séance précédente (vente en dessous de l’ouverture − ${String(k).replace('.', ',')} × amplitude), stop à l’ouverture, sortie à 15 h 55.` });
 const TRADERS = [crabel(7, 15), crabel(7, 30), crabel(4, 30), wvb(0.5)];
+// S&P 500 (npm run spx-research, SPY séance seule nov. 2024 → nov. 2026 : +0,10 / +0,14 R, ≤ 7 pertes de suite) :
+// sur le compte FTMO, réussite récente inchangée (67 %) avec ≈ 0,2 position intraday de plus par jour
+TRADERS.push({ ...crabelNR({ ...NS, market: 'nas100', id: 's_crabel7_30', nr: 7, len: 30,
+  name: 'S&P 500 : Crabel, cassure des 30 premières min après une journée NR7',
+  desc: 'Toby Crabel sur le S&P 500 : quand la séance précédente est la plus étroite des 7 dernières (NR7), cassure du range des 30 premières minutes (avant 15 h), stop de l’autre côté du range, sortie à 15 h 55. SPY nov. 2024 → nov. 2026 : +0,10 / +0,14 R par trade.' }), markets: ['spx'] });
 const tpOf = (s, k, id) => ({ ...withTp(s, k, id, `${s.name} (objectif ${String(k).replace('.', ',')} R, Lucid)`), desc: `${s.desc} Variante du compte Lucid : gain pris à ${String(k).replace('.', ',')} × le risque.` });
 LUCID_NAS.push(tpOf(crabel(7, 15), 0.75, 'n_crabel7_15_t075'), tpOf(wvb(0.5), 0.75, 'n_wvb05_t075'), tpOf(wvb(0.7), 0.5, 'n_wvb07_t05'));
 LUCID_NAS.find((x) => x.id === 'n_crabel4_t05').desc ='Toby Crabel : quand la séance précédente est la plus étroite des 4 dernières (NR4), cassure du range des 30 premières minutes (avant 15 h), stop de l’autre côté du range, gain pris à 0,5 × le risque, sortie à 15 h 55 sinon. Taillée pour Lucid : 67 % de gagnants, au plus 4 pertes de suite.';

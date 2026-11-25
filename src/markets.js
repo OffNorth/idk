@@ -267,7 +267,16 @@ function spxMarket(cfg) {
         needsVix ? cached('vix1d', 3600, () => fetchYahoo('^VIX', '1d', { range: '2y', ...LIVE })).catch(() => null) : null,
         fetchAux('spx', auxList),
       ]);
-      const m5 = oa ? oa.m5 : m5y;
+      let m5 = oa ? oa.m5 : m5y;
+      // Stratégies intraday S&P (Crabel NR7 : ≥ 21 séances d'historique) : 60 jours de 5 min, complétés à chaque passage
+      if (!oa && m5y && tfs.includes('5m')) {
+        const long = await cached('spx5m60', 1800, () => fetchYahoo('^GSPC', '5m', { range: '60d', ...LIVE })).catch(() => null);
+        if (long?.length) {
+          const byT = new Map(long.map((c) => [c.t, c]));
+          for (const c of m5y) byT.set(c.t, c);
+          m5 = [...byT.values()].sort((x, y) => x.t - y.t);
+        }
+      }
       const series = { '1d': d1, '5m': m5, '1h': m5 ? aggregate(m5, 3600, 300) : null, ...(oa ? { '15m': oa.series['15m'] } : {}) };
       return { price: oa ? oa.price : m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx: null, vix, aux, series, feed: oa ? 'oanda' : 'yahoo' };
     },

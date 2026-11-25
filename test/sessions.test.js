@@ -133,7 +133,7 @@ test('Williams (cassure de volatilité) : achat au-dessus de l’ouverture + k �
   const F = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
   const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
   for (const id of ['n_crabel7_15_t075', 'n_wvb05_t075', 'n_wvb07_t05']) assert.ok(L.riskOf('nas100', { id, tf: '5m' }) > 0, id);
-  assert.ok(!F.strategies.some((k) => /crabel|wvb/.test(k)), 'pas sur le compte FTMO');
+  assert.ok(!F.strategies.some((k) => /nas100:n_(crabel|wvb)/.test(k)), 'versions Nasdaq pas sur le compte FTMO');
   const s = selectStrategies(['n_wvb05'])[0];
   const start = Date.parse('2026-01-05T00:00:00Z') / 1000;
   const c = [];
@@ -154,4 +154,15 @@ test('Williams (cassure de volatilité) : achat au-dessus de l’ouverture + k �
   assert.strictEqual(tr[0].side, 'long');
   assert.strictEqual(new Date(tr[0].entryT * 1000).toISOString().slice(11, 16), '16:00', 'clôture de la bougie de 11 h NY');
   assert.ok(Math.abs(tr[0].initSl - 25995) < 1e-6, 'stop à l’ouverture du jour');
+});
+
+test('S&P 500 : Crabel NR7 30 min (s_crabel7_30) sur le compte FTMO seulement, marché S&P', () => {
+  const cfg = require('../src/config');
+  const { accountOf } = require('../src/ftmoAccount');
+  const s = selectStrategies(['s_crabel7_30'])[0];
+  assert.deepStrictEqual(s.markets, ['spx']);
+  assert.ok(cfg.ftmoStrategies.includes('spx:s_crabel7_30'));
+  assert.ok(accountOf({ ...cfg, ftmoEnabled: true }, 'gold').riskOf('spx', s) > 0);
+  assert.strictEqual(accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid').riskOf('spx', s), 0);
+  assert.ok(selectStrategies(cfg.spxStrategies).some((x) => x.id === 's_crabel7_30'), 'paper S&P');
 });

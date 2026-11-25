@@ -738,6 +738,15 @@ challenge FTMO (65 → 59–63 %). Une seule améliore Lucid sans rien coûter :
 `n_crabel7_30`, `n_crabel4_30`, `n_wvb05`) font baisser la réussite récente FTMO de 67 à 57 % sans aller plus vite :
 enregistrées mais pas sur le compte.
 
+### ➕ Plus de positions : le S&P 500 en intraday (`npm run spx-research`)
+
+Les 19 stratégies intraday du Nasdaq appliquées au S&P 500 (SPY 1 min Polygon, séance de New York, nov. 2024 → nov.
+2026). Stables : Crabel NR7 / NR4 30 min, `n_orb15_t05`, `n_orb10l_t075` ; la zone de bruit et les autres ne tiennent pas
+sur le S&P. Sur les comptes, seule **Crabel NR7 30 min (`s_crabel7_30`) sur FTMO** ne coûte rien (réussite récente
+67 % → 67 %, ≈ 0,2 position intraday de plus par jour) ; les autres font baisser FTMO (→ 61 %) ou Lucid (94 → 82–86 %) :
+le S&P bouge comme le Nasdaq, les mêmes paris s'additionnent. Le marché S&P du bot charge maintenant 60 jours de 5 min
+(Crabel a besoin de 21 séances). Prochaine piste pour plus de positions : marchés moins liés (EUR/USD, pétrole).
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,
