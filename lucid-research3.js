@@ -97,13 +97,16 @@ function va80({ target, k }) {
   const id = `a_va80_${target}_${k}`;
   return base(id, `Retour dans la zone de valeur (80 %) → ${target === 'poc' ? 'POC' : target === 'opp' ? 'autre bord' : `${target} R`}, stop ${k} ATR`, (x, i, m) => {
     if (m >= hm(12)) return null;
+    const cond = (j) => {
+      const v = profiles(x)[j]; const o = sessOpen(x)[j];
+      if (!v || !o || j - 1 <= o.i || x.tz.ny.min[j] >= hm(12)) return false;
+      if (!(o.o > v.vah || o.o < v.val)) return false;
+      const inside = (q) => x.closes[q] <= v.vah && x.closes[q] >= v.val;
+      return inside(j) && inside(j - 1);
+    };
+    if (!once(x, id, i, cond)) return null;
     const vp = profiles(x)[i]; const so = sessOpen(x)[i];
-    if (!vp || !so) return null;
-    const above = so.o > vp.vah; const below = so.o < vp.val;
-    if (!above && !below) return null;
-    const inside = (j) => x.closes[j] <= vp.vah && x.closes[j] >= vp.val;
-    if (!once(x, id, i, (j) => j > so.i && x.tz.ny.min[j] < hm(12) && inside(j) && inside(j - 1) && j - 1 > so.i)) return null;
-    const side = above ? 'short' : 'long';
+    const side = so.o > vp.vah ? 'short' : 'long';
     const sl = k * x.atr[i]; const tp = tpOf(target, side, x.closes[i], sl, vp);
     return tp ? { entry: side, sl, tp } : null;
   });
@@ -114,10 +117,10 @@ function failBreak({ target, k }) {
     if (m < hm(10) || m >= hm(14, 30)) return null;
     const vp = profiles(x)[i]; if (!vp) return null;
     const c = x.closes;
-    const outUp = (j) => c[j] > vp.vah; const outDn = (j) => c[j] < vp.val;
-    const back = (j, f) => { for (let q = j - 1; q >= j - 6 && q >= 0; q--) if (f(q) && x.tz.ny.min[q] >= hm(9, 35)) return true; return false; };
-    const sh = once(x, `${id}s`, i, (j) => x.tz.ny.min[j] >= hm(10) && x.tz.ny.min[j] < hm(14, 30) && c[j] <= vp.vah && c[j] >= vp.val && back(j, outUp));
-    const lo = once(x, `${id}l`, i, (j) => x.tz.ny.min[j] >= hm(10) && x.tz.ny.min[j] < hm(14, 30) && c[j] >= vp.val && c[j] <= vp.vah && back(j, outDn));
+    const back = (j, up) => { const v = profiles(x)[j]; for (let q = j - 1; q >= j - 6 && q >= 0; q--) if (x.tz.ny.day[q] === x.tz.ny.day[j] && x.tz.ny.min[q] >= hm(9, 35) && (up ? c[q] > v.vah : c[q] < v.val)) return true; return false; };
+    const win = (j) => x.tz.ny.min[j] >= hm(10) && x.tz.ny.min[j] < hm(14, 30) && profiles(x)[j] && c[j] <= profiles(x)[j].vah && c[j] >= profiles(x)[j].val;
+    const sh = once(x, `${id}s`, i, (j) => win(j) && back(j, true));
+    const lo = once(x, `${id}l`, i, (j) => win(j) && back(j, false));
     const side = sh ? 'short' : lo ? 'long' : null; if (!side) return null;
     const sl = k * x.atr[i]; const tp = tpOf(target, side, c[i], sl, vp);
     return tp ? { entry: side, sl, tp } : null;
@@ -127,13 +130,21 @@ function imbalance({ target, k }) {
   const id = `a_imb_${target}_${k}`;
   return base(id, `Déséquilibre : repli sur le bord de la zone de valeur → ${target} R, stop ${k} ATR sous le bord`, (x, i, m) => {
     if (m < hm(10) || m >= hm(13)) return null;
-    const vp = profiles(x)[i]; const so = sessOpen(x)[i]; if (!vp || !so) return null;
-    const up = so.o > vp.vah; const dn = so.o < vp.val; if (!up && !dn) return null;
-    // Pas de retour dans la zone pendant les 30 premières minutes
-    for (let j = so.i; j < i && x.tz.ny.min[j] < hm(10); j++) if (up ? x.candles[j].l <= vp.vah : x.candles[j].h >= vp.val) return null;
-    const lvl = up ? vp.vah : vp.val; const tol = 0.25 * x.atr[i];
-    const hit = once(x, id, i, (j) => x.tz.ny.min[j] >= hm(10) && x.tz.ny.min[j] < hm(13) && (up ? x.candles[j].l <= lvl + tol && x.closes[j] > lvl : x.candles[j].h >= lvl - tol && x.closes[j] < lvl));
-    if (!hit) return null;
+    // Jour en déséquilibre : ouverture hors de la zone de valeur, sans y revenir pendant les 30 premières minutes
+    const imbOf = (j) => {
+      const v = profiles(x)[j]; const o = sessOpen(x)[j]; if (!v || !o) return null;
+      const u = o.o > v.vah; const d = o.o < v.val; if (!u && !d) return null;
+      for (let q = o.i; q < x.candles.length && x.tz.ny.day[q] === x.tz.ny.day[o.i] && x.tz.ny.min[q] < hm(10); q++) if (u ? x.candles[q].l <= v.vah : x.candles[q].h >= v.val) return null;
+      return { up: u, lvl: u ? v.vah : v.val };
+    };
+    const cond = (j) => {
+      if (x.tz.ny.min[j] < hm(10) || x.tz.ny.min[j] >= hm(13)) return false;
+      const b = imbOf(j); if (!b) return false;
+      const tl = 0.25 * x.atr[j];
+      return b.up ? x.candles[j].l <= b.lvl + tl && x.closes[j] > b.lvl : x.candles[j].h >= b.lvl - tl && x.closes[j] < b.lvl;
+    };
+    if (!once(x, id, i, cond)) return null;
+    const { up, lvl } = imbOf(i);
     const side = up ? 'long' : 'short';
     const sl = Math.abs(x.closes[i] - lvl) + k * x.atr[i];
     return { entry: side, sl, tp: target * sl };
@@ -144,13 +155,11 @@ function sweep({ kind, target }) {
   return base(id, `Balayage ${kind === 'pd' ? 'du plus haut / plus bas de la veille' : 'du range des 15 premières min'} → ${target} R`, (x, i, m) => {
     const from = kind === 'pd' ? hm(9, 45) : hm(10);
     if (m < from || m >= hm(14)) return null;
-    let H; let L;
-    if (kind === 'pd') { const vp = profiles(x)[i]; if (!vp) return null; H = vp.ph; L = vp.pl; } else {
-      const R = S.rangeOf(x, 'ny', OPEN, 15); H = R.hi[i]; L = R.lo[i]; if (H === null) return null;
-    }
+    const lv = (j) => { if (kind === 'pd') { const v = profiles(x)[j]; return v ? [v.ph, v.pl] : null; } const R = S.rangeOf(x, 'ny', OPEN, 15); return R.hi[j] === null ? null : [R.hi[j], R.lo[j]]; };
     const k = x.candles;
-    const sh = once(x, `${id}s`, i, (j) => x.tz.ny.min[j] >= from && x.tz.ny.min[j] < hm(14) && k[j].h > H && k[j].c < H);
-    const lo = once(x, `${id}l`, i, (j) => x.tz.ny.min[j] >= from && x.tz.ny.min[j] < hm(14) && k[j].l < L && k[j].c > L);
+    const okT = (j) => x.tz.ny.min[j] >= from && x.tz.ny.min[j] < hm(14);
+    const sh = once(x, `${id}s`, i, (j) => { const l = lv(j); return okT(j) && l && k[j].h > l[0] && k[j].c < l[0]; });
+    const lo = once(x, `${id}l`, i, (j) => { const l = lv(j); return okT(j) && l && k[j].l < l[1] && k[j].c > l[1]; });
     if (sh) { const sl = k[i].h - k[i].c + 0.2 * x.atr[i]; return { entry: 'short', sl, tp: target * sl }; }
     if (lo) { const sl = k[i].c - k[i].l + 0.2 * x.atr[i]; return { entry: 'long', sl, tp: target * sl }; }
     return null;
