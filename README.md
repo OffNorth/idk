@@ -782,6 +782,15 @@ Lucid : **56 / 76 / 100 %** de réussite < 1 an (74 / 85 / 37 j) contre 55 / 72 
 2020–26 / nov. 24–26. Les filtres font monter la réussite récente mais divisent les trades par 2 (évaluation 50–64 j) :
 non retenus.
 
+### ⏱️ Objectif « réussir en 2 semaines » (`npm run twoweeks`)
+
+Départ chaque jour ouvré (nov. 24–26, puis vérification 2020–26), par niveau de risque : réussie en ≤ 14 j / ≤ 30 j,
+échouée en ≤ 14 j, nombre d'évaluations achetées par compte financé (on recommence le lendemain d'un échec).
+À risque normal, ≈ 1 % des évaluations réussissent en 2 semaines (FTMO comme Lucid). FTMO plafonne à 3–5 % même à
+× 4 (56 % d'échecs). Lucid, risque intraday pendant l'évaluation : × 2 → 19 % en ≤ 14 j, 52 % en ≤ 30 j (1,6
+évaluation) ; **× 3 (choisi : `LUCID_EVAL_INTRADAY_MUL=3`, 1,35 % par trade)** → 22 % en ≤ 14 j, 38 % en ≤ 30 j,
+48 % d'échecs dans les 14 jours (≈ 2,3 évaluations par compte financé). Une fois financé, retour à 0,45 %.
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

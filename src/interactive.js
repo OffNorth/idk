@@ -105,12 +105,15 @@ function protectText(cfg, s, targetPct = null) {
 }
 
 /** Risque par trade du compte FTMO : journalières / intraday (stratégies factices pour interroger riskOf). */
-function riskText(cfg, acct) {
+function riskText(cfg, acct, phase) {
   if (!acct.riskOf) return `${acct.risk} %`;
   const daily = [...new Set(['gold', 'nas100', 'spx', 'eurusd', 'silver', 'dow'].filter((m) => acct.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => acct.riskOf(m, { tf: '1d' })))];
-  const intra = acct.riskOf('gold', { tf: '5m' });
-  const hasIntra = acct.strategies.some((x) => { const s = selectStrategies([x.split(':')[1]])[0]; return s && s.tf && s.tf !== '1d'; });
-  return `${daily.join(' / ')} % (journalières)${hasIntra ? (intra > 0 ? ` · ${intra} % (intraday)` : ' · intraday non pris sur ce compte') : ''}`;
+  // Risque intraday : celui d'une stratégie intraday que le compte prend vraiment
+  const intraSid = acct.strategies.find((x) => { const s = selectStrategies([x.split(':')[1]])[0]; return s && s.tf && s.tf !== '1d' && acct.riskOf(x.split(':')[0], s, phase) > 0; });
+  const r = (x) => Math.round(x * 1000) / 1000;
+  const intra = intraSid ? r(acct.riskOf(intraSid.split(':')[0], selectStrategies([intraSid.split(':')[1]])[0], phase)) : 0;
+  const boost = acct.id === 'lucid' && phase !== 'funded' && (cfg.lucidEvalIntradayMul ?? 1) !== 1 ? ` pendant l'évaluation, ${r(cfg.lucidIntradayRisk)} % une fois financé` : '';
+  return `${daily.join(' / ')} % (journalières)${intra > 0 ? ` · ${intra} % (intraday${boost})` : ''}`;
 }
 const PAGE = 6;
 
@@ -250,7 +253,7 @@ async function render(cfg, store, view, marketId, args = []) {
       `Valeur <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · objectif ${money(fst.target)}` : ''}`,
       `dont ${signedMoney(fst.unrealized)} latents sur ${Object.keys(s.open).length} position(s) ouverte(s) · réalisé ${signedMoney(fst.realized)} sur ${s.closed.length} trade(s) clôturé(s)${s.skipped ? ` · ${s.skipped} signal(s) opposé(s) ignoré(s)` : ''}`,
       strategiesLine(fst.account.strategies),
-      `Risque par trade : ${riskText(cfg, fst.account)}${protectText(cfg, s, fst.needed ? ((fst.needed / s.capital) * 100) : fst.targetPct)}`,
+      `Risque par trade : ${riskText(cfg, fst.account, s.phase)}${protectText(cfg, s, fst.needed ? ((fst.needed / s.capital) * 100) : fst.targetPct)}`,
       ...(fst.target && fst.needed > fst.target - s.capital + 1 ? [`📏 Règle du meilleur jour (≤ ${P.bestDay} % du gain) : ton meilleur jour fait ${money(fst.bestDay)} → il faut <b>${money(fst.needed)}</b> de gain au total (encore ${money(Math.max(0, fst.needed - (fst.equity - s.capital)))})${String(cfg.ftmoSizing).startsWith('objectif') ? ' ; la taille des trades suit ce vrai objectif' : ''}`] : []),
       ...aiText(cfg, s),
       ...timeMachineLine(cfg, store, isLucid ? 'lucid' : fst.account.id),
@@ -528,4 +531,4 @@ async function sendPanel(api, chatId, cfg, store, { view = 'h', marketId = 'nas1
   return api.sendPhoto(chatId, new InputFile(out.png, 'image.png'), { caption: out.caption, parse_mode: 'HTML', reply_markup: out.keyboard, ...extra });
 }
 
-module.exports = { fitCaption, attachInteractive, sendPanel, render, renderTrade, panelKeyboard, tradeKeyboard, summaryKeyboard, MK, KM };
+module.exports = { fitCaption, attachInteractive, sendPanel, render, renderTrade, panelKeyboard, tradeKeyboard, summaryKeyboard, riskText, MK, KM };

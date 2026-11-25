@@ -169,7 +169,7 @@ test('/financer : évaluation bloquée → compte financé, risque normal (plus 
 });
 
 test('Lucid : intraday Nasdaq choisi pris à 0,2 % (1 MNQ), intraday or ignoré', () => {
-  const { cfg, store } = setup({ lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1.25, lucidIntradayRisk: 0.2, lucidIntradayStrategies: ['nas100:n_noise'], ftmoStrategies: ['gold:g_orb30'], ftmoNasStrategies: ['nas100:n_noise'] });
+  const { cfg, store } = setup({ lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1.25, lucidIntradayRisk: 0.2, lucidEvalIntradayMul: 1, lucidIntradayStrategies: ['nas100:n_noise'], ftmoStrategies: ['gold:g_orb30'], ftmoNasStrategies: ['nas100:n_noise'] });
   const lu = require('../src/ftmoAccount').createFtmo({ cfg, store, account: 'lucid' });
   const nas = { id: 'nas100', name: 'Nasdaq 100' };
   // Risque 0,2 % de 50 000 $ = 100 $ ; stop 0,25 % sur 26 000 → 65 $ par MNQ (52 000 $) → 1 contrat

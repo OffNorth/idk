@@ -65,7 +65,7 @@ function simulate(cfg, store, accountId = 'gold', opts = {}) {
   const days = (opts.days || data().days).map((day) => day.flatMap((x) => {
     if (opts.days == null && !follow.has(x.s)) return [];
     const [m, id] = x.s.split(':');
-    const riskPct = A.riskOf(m, { id, tf: x.i ? '5m' : '1d' });
+    const riskPct = A.riskOf(m, { id, tf: x.i ? '5m' : '1d' }, s.phase);
     if (!(riskPct > 0)) return [];
     return [{ ...x, m, riskPct }];
   }));
@@ -108,7 +108,7 @@ function simulate(cfg, store, accountId = 'gold', opts = {}) {
 function cached(cfg, store, accountId = 'gold', opts = {}) {
   const s = createFtmo({ cfg, store, account: accountId }).load();
   const key = [s.attempt, s.phase, Math.round(s.balance), (s.closed || []).length, (s.days || []).length, new Date().toISOString().slice(0, 10),
-    cfg.ftmoSizing, cfg.ftmoRisk, cfg.ftmoIntradayRisk, cfg.lucidRiskMul, cfg.lucidIntradayRisk, cfg.ftmoProgram].join('|');
+    cfg.ftmoSizing, cfg.ftmoRisk, cfg.ftmoIntradayRisk, cfg.lucidRiskMul, cfg.lucidIntradayRisk, cfg.lucidEvalIntradayMul, cfg.ftmoProgram].join('|');
   const all = store.loadJson('time-machine.json', {});
   if (all[accountId]?.key === key) return all[accountId].res;
   const res = simulate(cfg, store, accountId, { ...opts, state: s });

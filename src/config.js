@@ -184,6 +184,12 @@ module.exports = {
   // (n_orb5s 237 $, n_mom10 507 $ pour 107 $ prévus) → Lucid ne tradait plus. Nov. 24–26 : 67 % de réussite < 1 an
   // (79 j médians) contre 88 % à 0,2 %.
   lucidIntradayRisk: upgraded('LUCID_INTRADAY_RISK_PCT', ['0.2'], 0.45),
+  // Objectif « réussir en 2 semaines » (npm run twoweeks, 25/11/2026, choix de l'utilisateur : × 3) : PENDANT
+  // L'ÉVALUATION, risque intraday Lucid × LUCID_EVAL_INTRADAY_MUL (0,45 → 1,35 %) ; retour à LUCID_INTRADAY_RISK_PCT une
+  // fois le compte financé. Nov. 24–26 (départ chaque jour) : réussie en ≤ 14 j 1 % → 22 %, en ≤ 30 j 24 % → 38 %, mais
+  // 48 % des évaluations échouent dans les 14 jours (≈ 2,3 évaluations achetées par compte financé, contre 1,1).
+  // 1 = désactivé ; × 2 : 19 % en ≤ 14 j, 52 % en ≤ 30 j, 23 % d'échecs en 14 j (1,6 évaluation)
+  lucidEvalIntradayMul: num('LUCID_EVAL_INTRADAY_MUL', 3),
   // Variantes « objectif 0,5 R » (npm run lucid-research, 24/11/2026) : 66 % de gagnants, ≤ 6 pertes de suite →
   // évaluation réussie 49 / 49 départs sur nov. 24–26 (contre 49 % avec les originales + n_pdlbrk). Pas d'intraday or
   // (1 micro MGC trop gros pour la perte max de 2 000 $), pas de n_pdlbrk (négative sur la séance seule).

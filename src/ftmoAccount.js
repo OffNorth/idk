@@ -55,10 +55,11 @@ function accountOf(cfg, id = 'gold') {
       // − LUCID_EXCLUDE (stratégies du compte FTMO que Lucid ne prend pas)
       strategies: [...new Set([...base.strategies, ...(cfg.lucidIntradayStrategies || []), ...(cfg.lucidDailyStrategies || [])])].filter((k) => !excluded.has(k)),
       enabled: !!(cfg.ftmoEnabled && cfg.lucidEnabled), capital, program: lucidProgram(capital, cfg),
-      // Intraday : seulement LUCID_INTRADAY_STRATEGIES, à LUCID_INTRADAY_RISK_PCT ; journalières : risque FTMO × LUCID_RISK_MUL
-      riskOf: (m, st) => (st && excluded.has(`${m}:${st.id}`) ? 0
+      // Intraday : seulement LUCID_INTRADAY_STRATEGIES, à LUCID_INTRADAY_RISK_PCT (× LUCID_EVAL_INTRADAY_MUL pendant
+      // l'évaluation : phase ≠ 'funded') ; journalières : risque FTMO × LUCID_RISK_MUL
+      riskOf: (m, st, phase) => (st && excluded.has(`${m}:${st.id}`) ? 0
         : st && st.tf && st.tf !== '1d'
-          ? ((cfg.lucidIntradayStrategies || []).includes(`${m}:${st.id}`) ? cfg.lucidIntradayRisk ?? 0 : 0)
+          ? ((cfg.lucidIntradayStrategies || []).includes(`${m}:${st.id}`) ? (cfg.lucidIntradayRisk ?? 0) * (phase === 'funded' ? 1 : cfg.lucidEvalIntradayMul ?? 1) : 0)
           : base.riskOf(m, st) * mul),
     };
   }
@@ -355,7 +356,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         const mul = rule({ ...p, sid: `${ev.market.id}:${ev.strategy.id}` }, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: effTarget(s) ?? Infinity, open: Object.keys(s.open).length });
         if (!(mul > 0)) continue;
         const cap = (P.levCap && P.levCap[ev.market.id]) || cfg.ftmoLeverage; // levier max (par marché sur le compte Swing)
-        const riskPct = A.riskOf(ev.market.id, ev.strategy);
+        const riskPct = A.riskOf(ev.market.id, ev.strategy, s.phase);
         if (!(riskPct > 0)) continue; // stratégie non prise par ce compte (ex. intraday sur Lucid)
         let notional = Math.min((s.balance * riskPct * mul * wAdapt) / stopPct, s.balance * cap);
         let lots = null;

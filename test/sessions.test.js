@@ -175,7 +175,8 @@ test('Argent et Dow Jones : marchés du compte Lucid (micro SIL / MYM), heure de
   const F = accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
   for (const [id, sid, contract] of [['silver', 'n_wvb05_t075', 'SIL'], ['dow', 'n_mom10_t1be', 'MYM']]) {
     const s = selectStrategies([sid])[0];
-    assert.strictEqual(L.riskOf(id, s), cfg.lucidIntradayRisk, `${id} : risque intraday Lucid`);
+    assert.strictEqual(L.riskOf(id, s, 'funded'), cfg.lucidIntradayRisk, `${id} : risque intraday Lucid (financé)`);
+    assert.strictEqual(L.riskOf(id, s, 1), cfg.lucidIntradayRisk * cfg.lucidEvalIntradayMul, `${id} : risque majoré pendant l'évaluation`);
     assert.ok(!F.strategies.includes(`${id}:${sid}`), `${id} : pas sur FTMO`);
     assert.strictEqual(MICRO[id].name, contract);
     assert.ok(selectStrategies(cfg[`${id}Strategies`]).some((x) => x.id === sid), `${id} : paper`);
@@ -212,4 +213,20 @@ test('Lucid : Double 7 et RSI 2 sur le S&P 500 (journalières propres à Lucid),
   assert.strictEqual(be.trail(pos, {}, 0), 100);
   const sh = { side: 'short', entry: 100, initSl: 102, sl: 102, best: 98.9 };
   assert.strictEqual(be.trail(sh, {}, 0), 100);
+});
+
+test('Lucid : risque intraday × LUCID_EVAL_INTRADAY_MUL pendant l’évaluation, normal une fois financé ; journalières et FTMO inchangés', () => {
+  const cfg = { ...require('../src/config'), ftmoEnabled: true, lucidEnabled: true, lucidIntradayRisk: 0.45, lucidEvalIntradayMul: 3 };
+  const { accountOf } = require('../src/ftmoAccount');
+  const L = accountOf(cfg, 'lucid');
+  const n = selectStrategies(['n_mom10_t05'])[0];
+  assert.ok(Math.abs(L.riskOf('nas100', n, 1) - 1.35) < 1e-9);
+  assert.ok(Math.abs(L.riskOf('nas100', n, 2) - 1.35) < 1e-9);
+  assert.strictEqual(L.riskOf('nas100', n, 'funded'), 0.45);
+  const d = selectStrategies(['double7'])[0];
+  assert.strictEqual(L.riskOf('spx', d, 1), L.riskOf('spx', d, 'funded'), 'journalières inchangées');
+  const F = accountOf(cfg, 'gold');
+  assert.strictEqual(F.riskOf('gold', { id: 'g_orb30', tf: '5m' }, 1), F.riskOf('gold', { id: 'g_orb30', tf: '5m' }, 'funded'), 'FTMO inchangé');
+  const { riskText } = require('../src/interactive');
+  if (riskText) assert.match(riskText(cfg, L, 1), /1\.35 % \(intraday pendant l'évaluation, 0\.45 % une fois financé\)/);
 });
