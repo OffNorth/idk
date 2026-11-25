@@ -163,6 +163,7 @@ const FILTERS = {
   const vix = (await cachedYahoo(CACHE, '^VIX', '1d', {}, 72)).filter((k) => k.c > 0);
   const MK = { silver: ['SI=F', 1000, 3.5], dow: ['^DJI', 0.5, 2.5], russell: ['^RUT', 5, 2.5], spx: ['^GSPC', 5, 4], nas100: ['^NDX', 2, 2.5], gold: ['GC=F', 10, 3.5] };
   const have = new Set(dailyBase.map((t) => t.sid));
+  const dailyOk = [];
   for (const [m, [sym, mult, fee]] of Object.entries(MK)) {
     const d = (await cachedYahoo(CACHE, sym, '1d', {}, 72)).filter((k) => k.c > 0);
     const ind = computeAll(d, d, 86400, null, vix, {});
@@ -175,7 +176,20 @@ const FILTERS = {
       if (!per.every((p) => p.expR > 0.02 && p.n >= 15)) continue;
       const res = evalL(cur, l);
       console.log(`${better(res, ref) ? '✅' : '  '} ${`${m}:${id}`.padEnd(44)} ${per.map((p) => sgn(p.expR)).join(' / ')} R · ${fmt(res)}`);
+      if (better(res, ref)) dailyOk.push({ sid: `${m}:${id}`, l, score: res.reduce((a, p) => a + p.pass, 0) });
     }
+  }
+
+  // 4. Ensemble : break-even retenus + journalières ✅ ajoutées une à une (meilleure d'abord), gardées si mieux
+  console.log('\n=== 4. Ensemble (ajout une à une, gardée si la réussite ne baisse nulle part et monte ou va plus vite) ===');
+  const base4 = { ...cur }; for (const [sid, b] of Object.entries(keep)) base4[sid] = b.l;
+  let acc = []; let accRes = evalL(base4);
+  console.log(`${'break-even retenus'.padEnd(46)} ${fmt(accRes)}`);
+  for (const c of dailyOk.sort((a, b) => b.score - a.score)) {
+    const res = evalL(base4, [...acc, ...c.l]);
+    const ok = better(res, accRes);
+    console.log(`${ok ? '✅' : '  '} + ${c.sid.padEnd(42)} ${fmt(res)}`);
+    if (ok) { acc = [...acc, ...c.l]; accRes = res; }
   }
 })().catch((e) => {
   console.error(e);
