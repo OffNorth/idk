@@ -179,6 +179,9 @@ module.exports = {
   ftmoDayProfitCapPct: num('FTMO_DAY_PROFIT_CAP_PCT', 25),
   ftmoMaxLossesDay: num('FTMO_MAX_LOSSES_DAY', 1),
   ftmoFundedRiskMul: num('FTMO_FUNDED_RISK_MUL', 0.25),
+  // Compte « Portefeuille perso » simulé (src/personalPortfolio.js, npm run portfolio) : 50 % monde, 10 % or, 40 % bot
+  portfolioEnabled: num('PORTFOLIO', process.env.NODE_TEST_CONTEXT ? 0 : 1) === 1, // coupé pendant les tests (réseau)
+  portfolioCapital: num('PORTFOLIO_CAPITAL', 10000),
   // Compte FTMO FINANCÉ : sorties partielles (npm run ftmo-partial, 26/11/2026) — ⅓ fermé à +1 R, ⅓ à +2 R, le reste au
   // stop suiveur : comptes perdus en 12 mois 95 → 87 %, retraits un peu plus élevés ; rien en évaluation (aucun gain).
   // Vide = désactivé.

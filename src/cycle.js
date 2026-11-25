@@ -106,6 +106,21 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
     }
   }
 
+  // Portefeuille perso simulé : une fois par jour après la clôture de New York (achats / ventes des poches du bot)
+  if (cfg.portfolioEnabled) {
+    try {
+      const pp = require('./personalPortfolio');
+      const evs = await pp.update(cfg, store);
+      const st = store.loadJson(pp.FILE, null);
+      for (const ev of evs) {
+        console.log(`[portefeuille] ${ev.type}${ev.sleeve ? ` ${ev.sleeve.sym} (${ev.sleeve.name})` : ''}`);
+        if (publish) await safeSend(channel, pp.eventMessage(ev, st), {});
+      }
+    } catch (err) {
+      console.error('[portefeuille]', err.message);
+    }
+  }
+
   // Résumé du jour des trades de scalp (une fois par jour, après la clôture de New York)
   if (publish && !cfg.publishFtmoOnly && cfg.scalpDigest && cfg.channelId) {
     const now = new Date();

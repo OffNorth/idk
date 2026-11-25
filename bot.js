@@ -225,6 +225,8 @@ bot.command('timemachine', async (ctx) => {
 });
 
 bot.command('financer', (ctx) => ctx.reply(require('./src/ftmoAccount').financerReport(cfg, store, ctx.match), HTML));
+// Portefeuille perso simulé (50 % monde, 10 % or, 40 % stratégies du bot)
+bot.command('portefeuille', (ctx) => ctx.reply(require('./src/personalPortfolio').report(cfg, store), HTML));
 // Remise à zéro des comptes simulés en gardant les stats (admin) : /reset, /reset ftmo, /reset lucid (+ « ok » pour confirmer)
 bot.command('reset', (ctx) => ctx.reply(require('./src/ftmoAccount').resetReport(cfg, store, ctx.match), HTML));
 
@@ -401,6 +403,7 @@ console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) �
     { command: 'graphique', description: '🕯 Cours en bougies : /graphique (Nasdaq) · /graphique or' },
     { command: 'ftmo', description: '🏦 Comptes FTMO simulés : /ftmo (Nasdaq) · /ftmo or' },
     { command: 'lucid', description: '🟣 Compte Lucid simulé (LucidFlex, micro-futures)' },
+    { command: 'portefeuille', description: '💼 Portefeuille perso simulé (monde, or, stratégies du bot)' },
     { command: 'timemachine', description: '🔮 Chances de réussir le challenge en cours (1 000 années simulées)' },
     { command: 'financer', description: '🏦 Passer les comptes simulés en compte financé (admin)' },
     { command: 'reset', description: '♻️ Remettre les comptes simulés à zéro, stats gardées (admin)' },

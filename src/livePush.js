@@ -131,6 +131,7 @@ function buildLive(cfg, store, version = '') {
     ai: cfg.ftmoAi,
     adapt,
     paper: paper.slice(-500),
+    portfolio: cfg.portfolioEnabled ? require('./personalPortfolio').view(store) : null,
   };
 }
 
