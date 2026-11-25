@@ -166,3 +166,27 @@ test('S&P 500 : Crabel NR7 30 min (s_crabel7_30) sur le compte FTMO seulement, m
   assert.strictEqual(accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid').riskOf('spx', s), 0);
   assert.ok(selectStrategies(cfg.spxStrategies).some((x) => x.id === 's_crabel7_30'), 'paper S&P');
 });
+
+test('Argent et Dow Jones : marchés du compte Lucid (micro SIL / MYM), heure de New York, séance seule ; pas sur FTMO', async () => {
+  const cfg = require('../src/config');
+  const { accountOf, MICRO } = require('../src/ftmoAccount');
+  const { marketById } = require('../src/markets');
+  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  const F = accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
+  for (const [id, sid, contract] of [['silver', 'n_wvb05_t075', 'SIL'], ['dow', 'n_mom10_t05', 'MYM']]) {
+    const s = selectStrategies([sid])[0];
+    assert.strictEqual(L.riskOf(id, s), cfg.lucidIntradayRisk, `${id} : risque intraday Lucid`);
+    assert.ok(!F.strategies.includes(`${id}:${sid}`), `${id} : pas sur FTMO`);
+    assert.strictEqual(MICRO[id].name, contract);
+    assert.ok(selectStrategies(cfg[`${id}Strategies`]).some((x) => x.id === sid), `${id} : paper`);
+    // Bougies 24 h sur 24 (comme le future SI=F) → seulement 9 h 30 – 16 h New York
+    const t0 = Date.parse('2026-11-23T00:00:00Z') / 1000;
+    const all = Array.from({ length: 288 }, (_, k) => ({ t: t0 + k * 300, o: 50, h: 50, l: 50, c: 50, v: 1 }));
+    const m = marketById({ ...cfg, oandaToken: '' }, id);
+    assert.ok(m.session && m.enabled);
+    // Marché « nas100 » et marché du Dow : mêmes minutes de New York pour les stratégies 5 min
+    const { computeScalp2 } = require('../src/scalp2');
+    assert.deepStrictEqual(computeScalp2(all, 300, id).min.slice(0, 3), computeScalp2(all, 300, 'nas100').min.slice(0, 3));
+    assert.strictEqual(require('../src/oanda').nySession(all).length, 78);
+  }
+});

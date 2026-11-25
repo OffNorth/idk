@@ -165,14 +165,14 @@ const VERDICT = {
   n_pdlbrk: ['rejet', 'Cassure du plus haut / plus bas de la veille sur le Nasdaq : positive avec les bougies de pré-ouverture (+1,2 · +0,4 · +4,9 %), mais négative sur la séance seule, comme en direct (−6,3 · −2,9 · +6,5 %) → retirée des comptes FTMO et Lucid le 25/11/2026'],
   n_noise_t05: ['retenue', 'Compte Lucid seulement : n_noise avec gain pris à 0,5 R (64 % gagnants, ≤ 5 pertes de suite)'],
   n_orb5s_t05: ['retenue', 'Compte Lucid seulement : n_orb5s avec gain pris à 0,5 R'],
-  n_mom10_t05: ['retenue', 'Compte Lucid seulement : n_mom10 avec gain pris à 0,5 R'],
+  n_mom10_t05: ['retenue', 'Compte Lucid seulement : n_mom10 avec gain pris à 0,5 R ; aussi sur le Dow Jones (micro MYM, npm run markets-research : avec l’argent, Lucid 94 % en 34 j au lieu de 37 j)'],
   n_orb15_t05: ['retenue', 'Compte Lucid seulement : n_orb15 avec gain pris à 0,5 R ; les 4 ensemble : 66 % gagnants, ≤ 6 pertes de suite, baisse max 17 R → évaluation Lucid réussie 49 / 49 départs (nov. 24–26) contre 49 %'],
   n_orb10l_t075: ['retenue', 'Compte Lucid : QQQ séance seule nov. 24–26, +0,17 / +0,05 R par trade (1re / 2e année), 64 % gagnants, ≤ 4 pertes de suite, 0,6 trade / jour'],
   n_orb30l_t075: ['retenue', 'Compte Lucid : +0,09 / +0,05 R, 62 % gagnants, ≤ 4 pertes de suite, 0,5 trade / jour'],
   n_or60_t05: ['retenue', 'Compte Lucid : +0,03 / +0,02 R, 60 % gagnants, ≤ 6 pertes de suite, 1 trade / jour ; les 3 ajoutées : évaluation ≈ 55 j au lieu de 70 j, réussite 96 % (49 départs)'],
   n_crabel4_t05: ['retenue', 'Toby Crabel (npm run traders) : QQQ séance seule nov. 24–26, +0,11 / +0,03 R par trade (1re / 2e année), 67 % gagnants, ≤ 4 pertes de suite ; ajoutée à Lucid : réussite 100 % en 50 j (contre 98 % en 54 j). Sur FTMO : réussite récente 65 → 59 %, pas ajoutée'],
   n_crabel7_15_t075: ['retenue', 'Compte Lucid : Crabel NR7, 15 premières min, objectif 0,75 R (+0,06 / +0,04 R) ; avec n_wvb05_t075 et n_wvb07_t05 : Lucid 94 % en 37 j (contre 100 % en 50 j)'],
-  n_wvb05_t075: ['retenue', 'Compte Lucid : Williams, cassure de volatilité 0,5, objectif 0,75 R (+0,09 / +0,08 R, 58 % gagnants)'],
+  n_wvb05_t075: ['retenue', 'Compte Lucid : Williams, cassure de volatilité 0,5, objectif 0,75 R (+0,09 / +0,08 R, 58 % gagnants) ; aussi sur l’argent (micro SIL, npm run markets-research)'],
   n_wvb07_t05: ['retenue', 'Compte Lucid : Williams, cassure de volatilité 0,7, objectif 0,5 R (+0,06 / +0,06 R, 61 % gagnants)'],
   n_crabel7_15: ['dispo', 'QQQ séance seule nov. 24–26 : +0,12 / +0,10 R ; ajoutées ensemble au compte FTMO, les 4 (n_crabel7_15, n_crabel7_30, n_crabel4_30, n_wvb05) font baisser la réussite récente 67 → 57 % → pas ajoutées'],
   n_crabel7_30: ['dispo', 'QQQ séance seule nov. 24–26 : +0,19 / +0,04 R ; pas sur FTMO (voir n_crabel7_15)'],
@@ -191,12 +191,14 @@ function catalog(cfg) {
     nas100: selectStrategies(cfg.nasEnabled ? cfg.nasStrategies : []),
     eurusd: selectStrategies(cfg.eurusdEnabled ? cfg.eurusdStrategies || [] : []),
     spx: selectStrategies(cfg.spxEnabled ? cfg.spxStrategies || [] : []),
+    silver: selectStrategies(cfg.silverEnabled ? cfg.silverStrategies || [] : []),
+    dow: selectStrategies(cfg.dowEnabled ? cfg.dowStrategies || [] : []),
   };
   const famOf = new Map(FAMILIES.flatMap(([f, ids]) => ids.map((id) => [id, f])));
   return STRATEGIES.map((s) => {
     const [verdict, note] = VERDICT[s.id] || ['dispo', ''];
     // Version active (ex. « macd@1d ») : on affiche son unité de temps et on teste celle-là
-    const live = [...sel.gold, ...sel.nas100, ...sel.spx, ...sel.eurusd].find((x) => x.id.split('@')[0] === s.id);
+    const live = Object.values(sel).flat().find((x) => x.id.split('@')[0] === s.id);
     const tf = tfOf(live || s);
     return {
       id: s.id,
@@ -206,7 +208,7 @@ function catalog(cfg) {
       tf,
       family: famOf.get(s.id) || 'Autres',
       markets: s.markets || ['gold', 'nas100'],
-      active: ['gold', 'nas100', 'spx', 'eurusd'].filter((m) => sel[m].some((x) => x.id.split('@')[0] === s.id)),
+      active: Object.keys(sel).filter((m) => sel[m].some((x) => x.id.split('@')[0] === s.id)),
       verdict,
       note,
       testable: tf === '1d' && !s.scalp && !s.intraday,

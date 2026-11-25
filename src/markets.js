@@ -2,6 +2,7 @@
  * Marchés tradés en simulation : sources de données, stratégies, frais et financement.
  *   gold   : or via PAXG/USD (Coinbase, secours Kraken) — EUR/USD Kraken pour la stratégie dollar
  *   nas100 : Nasdaq 100 via l'indice ^NDX (Yahoo Finance)
+ *   spx / eurusd : S&P 500 (^GSPC), EUR/USD · silver / dow : argent (SI=F) et Dow Jones (^DJI), compte Lucid
  */
 const { MarketTrader, fetchCandles, cachedHistory, rollingHistory, fetchEurUsd } = require('./gold');
 const { fetchYahoo } = require('./yahoo');
@@ -283,10 +284,54 @@ function spxMarket(cfg) {
   };
 }
 
+/**
+ * Marchés ajoutés pour le compte Lucid (npm run markets-research, 25/11/2026) : seulement des stratégies intraday de
+ * la séance de New York. Bougies 5 min sur 60 jours, gardées entre 9 h 30 et 16 h NY (comme dans la recherche, faite
+ * sur les ETF SLV et DIA, qui ne cotent que pendant la séance).
+ *   silver : argent (future SI=F, micro SIL)   dow : Dow Jones (indice ^DJI, micro MYM)
+ */
+function sessionMarket(cfg, { id, key, name, emoji, symbol }) {
+  return {
+    id,
+    name,
+    emoji,
+    file: `${id}.json`,
+    enabled: cfg[`${key}Enabled`],
+    strategies: cfg[`${key}Strategies`],
+    startCapital: cfg[`${key}StartCapital`],
+    positionPct: 100,
+    feePct: cfg[`${key}FeePct`],
+    financingPct: 6,
+    yahooSymbol: symbol,
+    session: true,
+    basis: () => basisOf(cfg, id, symbol, true),
+    async fetch(tfs, { needsVix, aux: auxList = [] } = {}) {
+      const oa = useOanda(cfg) ? await oandaIntraday(cfg, id, tfs, { session: true }) : null;
+      const [m5y, long, d1, vix, aux] = await Promise.all([
+        oa ? null : cached(`${id}5m`, 120, () => fetchYahoo(symbol, '5m', { range: '5d', ...LIVE })).catch(() => null),
+        oa ? null : cached(`${id}5m60`, 1800, () => fetchYahoo(symbol, '5m', { range: '60d', ...LIVE })).catch(() => null),
+        cached(`${id}1d`, 3600, () => fetchYahoo(symbol, '1d', { range: '2y', ...LIVE })),
+        needsVix ? cached('vix1d', 3600, () => fetchYahoo('^VIX', '1d', { range: '2y', ...LIVE })).catch(() => null) : null,
+        fetchAux(id, auxList),
+      ]);
+      let m5 = oa ? oa.m5 : null;
+      if (!oa) {
+        const byT = new Map((long || []).map((c) => [c.t, c]));
+        for (const c of m5y || []) byT.set(c.t, c);
+        m5 = byT.size ? oanda.nySession([...byT.values()].sort((a, b) => a.t - b.t)) : null;
+      }
+      const series = { '1d': d1, '5m': m5, '1h': m5 ? aggregate(m5, 3600, 300) : null, '15m': m5 ? aggregate(m5, 900, 300) : null };
+      return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx: null, vix, aux, series, feed: oa ? 'oanda' : 'yahoo' };
+    },
+  };
+}
+const silverMarket = (cfg) => sessionMarket(cfg, { id: 'silver', key: 'silver', name: 'Argent', emoji: '🥈', symbol: 'SI=F' });
+const dowMarket = (cfg) => sessionMarket(cfg, { id: 'dow', key: 'dow', name: 'Dow Jones', emoji: '🏭', symbol: '^DJI' });
+
 /** Tous les marchés (actifs ou non). */
 function allMarkets(cfg) {
   // Nasdaq en premier : marché par défaut du panneau, du résumé, des bilans et du jeu ; l'or suit
-  return [nasMarket(cfg), goldMarket(cfg), spxMarket(cfg), eurusdMarket(cfg)];
+  return [nasMarket(cfg), goldMarket(cfg), spxMarket(cfg), eurusdMarket(cfg), silverMarket(cfg), dowMarket(cfg)];
 }
 
 /** Marchés actifs. */
@@ -305,4 +350,4 @@ class GoldTrader extends MarketTrader {
   }
 }
 
-module.exports = { useOanda, oandaIntraday, basisOf, goldMarket, nasMarket, eurusdMarket, spxMarket, allMarkets, activeMarkets, marketById, GoldTrader, MarketTrader };
+module.exports = { useOanda, oandaIntraday, basisOf, goldMarket, nasMarket, eurusdMarket, spxMarket, silverMarket, dowMarket, allMarkets, activeMarkets, marketById, GoldTrader, MarketTrader };

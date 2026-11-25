@@ -747,6 +747,20 @@ sur le S&P. Sur les comptes, seule **Crabel NR7 30 min (`s_crabel7_30`) sur FTMO
 le S&P bouge comme le Nasdaq, les mêmes paris s'additionnent. Le marché S&P du bot charge maintenant 60 jours de 5 min
 (Crabel a besoin de 21 séances). Prochaine piste pour plus de positions : marchés moins liés (EUR/USD, pétrole).
 
+### 🥈 Nouveaux marchés : argent et Dow Jones sur Lucid (`npm run markets-research`)
+
+Pétrole, argent, Dow, Russell, EUR/USD, Bitcoin testés (5 min Polygon nov. 2024 → nov. 2026 pour l'intraday,
+journalier depuis 2009, corrélation avec le Nasdaq / l'or, effet sur les comptes, réussite < 1 an 2009–19 / 2020–26 /
+nov. 24–26). **Chaque marché fait baisser FTMO** (pétrole 67 → 57 %, argent → 51 %, Dow → 59 %, Bitcoin → 59 % ; en
+journalier, RSI 2 Dow / Russell et Double 7 argent → 46–51 % sur 2020–26) : rien d'ajouté sur FTMO. Sur **Lucid**,
+l'argent (`silver:n_wvb05_t075`, Williams 0,5, objectif 0,75 R) et le Dow (`dow:n_mom10_t05`) ensemble : réussite
+inchangée (55 / 72 / 94 %), évaluation en **34 j au lieu de 37 j** → ajoutés. Bitcoin : 88 % (✘), pétrole 76 % (✘).
+
+Deux marchés de plus dans le bot : 🥈 **Argent** (future `SI=F`, micro **SIL** 1 000 onces) et 🏭 **Dow Jones**
+(`^DJI`, micro **MYM** 0,5 $ par point), 60 jours de bougies 5 min gardées entre 9 h 30 et 16 h New York (comme les
+ETF SLV / DIA de la recherche), stratégies à l'heure de New York. OANDA : `XAG_USD`, `US30_USD`. `SILVER_TRADING=0` /
+`DOW_TRADING=0` pour les couper. La Time Machine ne les compte pas encore (journées de `src/mcDays.json`).
+
 ### 🧪 Boucle de test de tout le bot (`npm run selftest`)
 
 Fait tourner le **vrai bot** (`bot.js` chargé sans démarrer) hors ligne : Telegram intercepté, marchés simulés,

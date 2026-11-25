@@ -28,7 +28,7 @@ const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
 const quote = (v) => (Math.abs(v) < 10 ? `$${v.toFixed(4)}` : Math.abs(v) >= 1000 ? money(v) : `$${v.toFixed(2)}`);
 const pct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} %`;
 const signedMoney = (v) => `${v >= 0 ? '+' : '−'}${money(Math.abs(v || 0))}`;
-const MARKET_EMOJI = { gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' };
+const MARKET_EMOJI = { gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽', silver: '🥈', dow: '🏭' };
 /** Stratégies suivies : noms si la ligne reste courte, sinon nombre par marché. */
 function strategiesLine(list) {
   const full = `Stratégies suivies : ${list.map((x) => `${MARKET_EMOJI[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')}`;
@@ -107,7 +107,7 @@ function protectText(cfg, s, targetPct = null) {
 /** Risque par trade du compte FTMO : journalières / intraday (stratégies factices pour interroger riskOf). */
 function riskText(cfg, acct) {
   if (!acct.riskOf) return `${acct.risk} %`;
-  const daily = [...new Set(['gold', 'nas100', 'spx', 'eurusd'].filter((m) => acct.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => acct.riskOf(m, { tf: '1d' })))];
+  const daily = [...new Set(['gold', 'nas100', 'spx', 'eurusd', 'silver', 'dow'].filter((m) => acct.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => acct.riskOf(m, { tf: '1d' })))];
   const intra = acct.riskOf('gold', { tf: '5m' });
   const hasIntra = acct.strategies.some((x) => { const s = selectStrategies([x.split(':')[1]])[0]; return s && s.tf && s.tf !== '1d'; });
   return `${daily.join(' / ')} % (journalières)${hasIntra ? (intra > 0 ? ` · ${intra} % (intraday)` : ' · intraday non pris sur ce compte') : ''}`;
@@ -333,7 +333,7 @@ async function render(cfg, store, view, marketId, args = []) {
     const sfx = isLucid ? ':l' : '';
     const acct = require('./ftmoAccount').accountOf(cfg, marketId);
     const s = createFtmo({ cfg, store, account: isLucid ? 'lucid' : acct.enabled ? marketId : 'gold' }).load();
-    const all = [...(s.closed || [])].map((t) => ({ ...t, name: `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' }[t.market] || ''} ${t.sid}`, pnlUsd: t.pnl, pnlPct: (t.pnl / s.capital) * 100 })).sort((a, b) => b.exitT - a.exitT);
+    const all = [...(s.closed || [])].map((t) => ({ ...t, name: `${MARKET_EMOJI[t.market] || ''} ${t.sid}`, pnlUsd: t.pnl, pnlPct: (t.pnl / s.capital) * 100 })).sort((a, b) => b.exitT - a.exitT);
     const { rows, page, pages, extra, caption } = tradePage(all, Number(args[0]) || 0, (p) => `m:z:${KM[marketId]}:${p}${sfx}`, 'du compte');
     const hist = (s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`);
     const firm = isLucid ? 'Lucid' : 'FTMO';
@@ -354,7 +354,7 @@ async function render(cfg, store, view, marketId, args = []) {
     const rep = f.refusedReport(prices);
     const now = Math.floor(Date.now() / 1000);
     const all = rep.rows.filter((r) => r.state !== 'unknown').map((r) => ({
-      ...r, name: `${{ gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽' }[r.market] || ''} ${r.sid}`, pnlUsd: r.pnl, pnlPct: (r.pnl / s.capital) * 100,
+      ...r, name: `${MARKET_EMOJI[r.market] || ''} ${r.sid}`, pnlUsd: r.pnl, pnlPct: (r.pnl / s.capital) * 100,
       exitT: r.exitT ?? now, exit: r.exit ?? prices[r.market] ?? r.entry, reason: `${r.state === 'open' ? 'encore ouvert · ' : ''}IA ${Math.round(r.ai.p * 100)} % (seuil ${Math.round(r.ai.min * 100)} %)`,
     })).sort((a, b) => b.entryT - a.entryT);
     const { rows, page, pages, extra } = tradePage(all, Number(args[0]) || 0, (p) => `m:i:${KM[marketId]}:${p}${sfx}`, 'du compte');

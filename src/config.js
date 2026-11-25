@@ -107,6 +107,16 @@ module.exports = {
   spxPositionPct: num('SPX_POSITION_PCT', 100),
   spxFeePct: num('SPX_FEE_PCT', 0.003),
   spxFinancingPct: num('SPX_FINANCING_PCT', 6),
+  // Argent (future SI=F) et Dow Jones (^DJI) : marchés du compte Lucid (npm run markets-research, 25/11/2026), seulement
+  // des stratégies intraday de la séance de New York (LUCID_INTRADAY_STRATEGIES) ; 0 = marché coupé
+  silverEnabled: num('SILVER_TRADING', 1) === 1,
+  silverStrategies: list('SILVER_STRATEGIES', 'n_wvb05_t075,hold'),
+  silverStartCapital: num('SILVER_START_CAPITAL', 1000),
+  silverFeePct: num('SILVER_FEE_PCT', 0.003),
+  dowEnabled: num('DOW_TRADING', 1) === 1,
+  dowStrategies: list('DOW_STRATEGIES', 'n_mom10_t05,hold'),
+  dowStartCapital: num('DOW_START_CAPITAL', 1000),
+  dowFeePct: num('DOW_FEE_PCT', 0.003),
   eurusdEnabled: num('EURUSD_TRADING', 1) === 1,
   eurusdStrategies: list('EURUSD_STRATEGIES', 'ibs,hold'),
   eurusdStartCapital: num('EURUSD_START_CAPITAL', 1000),
@@ -185,7 +195,10 @@ module.exports = {
   // + n_crabel7_15_t075, n_wvb05_t075, n_wvb07_t05 (Crabel NR7, Williams 0,5 / 0,7, npm run traders, 25/11/2026) :
   // Lucid ≈ 2 semaines plus rapide (37 j au lieu de 50 j sur nov. 24–26), réussite 94 % au lieu de 100 % ; pas sur FTMO
   // (réussite récente 67 → 57 %)
-  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_mom10_t05,nas100:n_orb15_t05,nas100:n_orb10l_t075,nas100:n_orb30l_t075,nas100:n_or60_t05,nas100:n_crabel4_t05,nas100:n_crabel7_15_t075,nas100:n_wvb05_t075,nas100:n_wvb07_t05'),
+  // + argent (silver:n_wvb05_t075, micro SIL) et Dow Jones (dow:n_mom10_t05, micro MYM) (npm run markets-research,
+  // 25/11/2026) : réussite inchangée (55 / 72 / 94 % sur 2009–19 / 2020–26 / nov. 24–26), 34 j au lieu de 37 j ; pétrole,
+  // Bitcoin, Russell et EUR/USD intraday font baisser Lucid, et chaque nouveau marché fait baisser FTMO
+  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_mom10_t05,nas100:n_orb15_t05,nas100:n_orb10l_t075,nas100:n_orb30l_t075,nas100:n_or60_t05,nas100:n_crabel4_t05,nas100:n_crabel7_15_t075,nas100:n_wvb05_t075,nas100:n_wvb07_t05,silver:n_wvb05_t075,dow:n_mom10_t05'),
   // Stratégies du compte FTMO que Lucid ne prend pas (avantage < +0,03 R)
   lucidExclude: list('LUCID_EXCLUDE', 'nas100:ibs'),
   // Multiplicateur du risque du compte FTMO (pas de Lucid) : 1,25 = challenge ≈ 2–3 semaines plus rapide (npm run speed),
@@ -258,5 +271,7 @@ module.exports = {
     cfg.nasStrategies = of('nas100');
     cfg.eurusdStrategies = of('eurusd');
     cfg.spxStrategies = of('spx');
+    cfg.silverStrategies = of('silver');
+    cfg.dowStrategies = of('dow');
   }
 }

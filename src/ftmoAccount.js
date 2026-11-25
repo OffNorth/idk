@@ -19,6 +19,8 @@ const MICRO = {
   nas100: { mult: 2, fee: 2.5, name: 'MNQ' }, // 2 $ par point
   spx: { mult: 5, fee: 4, name: 'MES' }, // 5 $ par point
   eurusd: { mult: 12_500, fee: 4, name: 'M6E' }, // 12 500 €
+  silver: { mult: 1000, fee: 3.5, name: 'SIL' }, // 1 000 onces (cours SI=F en $ / once)
+  dow: { mult: 0.5, fee: 2.5, name: 'MYM' }, // 0,5 $ par point
 };
 
 /**

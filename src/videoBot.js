@@ -13,7 +13,7 @@ const V = require('./pnlVideo');
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const money = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v)).toLocaleString('fr-FR')} $`;
-const NAME = { gold: 'Or', nas100: 'Nasdaq', spx: 'S&P 500', eurusd: 'EUR/USD' };
+const NAME = { gold: 'Or', nas100: 'Nasdaq', spx: 'S&P 500', eurusd: 'EUR/USD', silver: 'Argent', dow: 'Dow Jones' };
 
 /** Trades clôturés des comptes simulés (challenge en cours + archive), du plus récent au plus ancien. */
 function recentTrades(cfg, store, n = 10) {
