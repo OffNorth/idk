@@ -103,7 +103,9 @@ const sgn = (x) => (x >= 0 ? '+' : '') + x.toFixed(2);
           let l;
           try { l = backtest(s, bars, { size: 1000, feePct: stock ? 0.005 : 0.003, financingPct: fin, barSec: bar || 300, market: 'gold' }).list.filter((t) => t.entryT >= t0); } catch { continue; }
           const a = rStats(l.filter((t) => t.entryT < mid)); const b = rStats(l.filter((t) => t.entryT >= mid)); const st = rStats(l);
-          const ok = a.expR > 0.02 && b.expR > 0.02 && a.n >= 25 && b.n >= 25 && st.worstRun <= (acct === 'Lucid' ? 8 : 12);
+          // FTMO : intraday à tout petit risque, une longue série coûte peu → avantage net (> +0,05 R les deux années) toléré jusqu'à 18
+          const ok = a.expR > 0.02 && b.expR > 0.02 && a.n >= 25 && b.n >= 25
+            && (st.worstRun <= (acct === 'Lucid' ? 8 : 12) || (acct === 'FTMO' && a.expR > 0.05 && b.expR > 0.05 && st.worstRun <= 18));
           intra.push({ acct, sid: s.id, a, b, st, ok, perDay: l.length / days,
             l: l.map((t) => ({ ...t, sid: `${id}:${s.id}`, market: id, intraday: true, ...(micro ? { contractUsd: micro.usd(t.entry), contractFee: micro.fee } : {}) })) });
         }
