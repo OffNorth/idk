@@ -67,8 +67,6 @@ const part = (k) => (s) => { const t = withTrail(s); return k ? withTp(t, k, s.i
   const sizer = RULES[cfg.ftmoSizing];
   const RF = { steps: 1, capital: 100_000, target: 10, dailyPct: 3, maxPct: 10, trailingMax: true, bestDayPct: 50, minDays: 4, dayStopPct: cfg.ftmoDayStop, riskPct: 1, sizer };
 
-  const sizer = RULES[cfg.ftmoSizing];
-  const RF = { steps: 1, capital: 100_000, target: 10, dailyPct: 3, maxPct: 10, trailingMax: true, bestDayPct: 0, minDays: 4, dayStopPct: cfg.ftmoDayStop, riskPct: 1, sizer };
   const fl = fundList.filter((t) => !(t.intraday && t.market !== 'gold'));
   const C0 = 100_000; const PERIOD = 4 * 30.4 * DAY; const MONTH = 30.4 * DAY;
   console.log('=== FTMO 1 étape 100K financé, scaling officiel (départ chaque semaine 2009–2023, 36 mois) ===');
@@ -86,7 +84,7 @@ const part = (k) => (s) => { const t = withTrail(s); return k ? withTp(t, k, s.i
         const segEnd = Math.min(t + PERIOD, until);
         const paid = [];
         const payout = ({ t: tt, balance, capital }) => { const g = balance - capital; if (tt - lastPay < 14 * DAY || g <= 0) return 0; lastPay = tt; paid.push(tt); return g; };
-        const r = runPhase(list, { ...RF, capital: C, from: t, until: segEnd, target: Infinity, payout, start: { balance: bal, peak: bal } });
+        const r = runPhase(list, { ...RF, bestDayPct: 0, capital: C, from: t, until: segEnd, target: Infinity, payout, start: { balance: bal, peak: bal } });
         for (const p of r.paid) { const m = Math.floor((p.t - s) / (12 * MONTH)); if (m < 3) inc[m] += p.amount * 0.9; }
         if (r.outcome === 'daily' || r.outcome === 'maxloss') { alive = false; end = r.at; break; }
         const profit = r.balance - bal + r.paid.reduce((x, p) => x + p.amount, 0);
