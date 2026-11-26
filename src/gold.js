@@ -340,6 +340,9 @@ class MarketTrader {
       console.warn(`[${M.id}] données indisponibles (${err.message}), passage ignoré`);
       return [];
     }
+    // Bougies Yahoo figées mais cours à jour (jour férié américain, panne) : bougies maison (src/staleFeed.js)
+    if (this.cfg.staleFeedFallback !== false) data = await require('./staleFeed').patch(M, data).catch(() => data);
+    this.state.synthetic = !!data.synthetic;
     const { price, stops, daily, fx, vix, aux = {}, series } = data;
     if (!price) {
       console.warn(`[${M.id}] prix indisponible, passage ignoré`);

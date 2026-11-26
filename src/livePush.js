@@ -128,7 +128,7 @@ function buildLive(cfg, store, version = '') {
     at: Date.now(),
     version: version || require('./version').version(),
     diag: diagOf(cfg, store),
-    markets: markets.map((m) => ({ id: m.id, name: m.id === 'nas100' ? 'Nasdaq 100' : m.name, symbol: SYMBOL[m.id] || null, price: r6(prices[m.id]) })),
+    markets: markets.map((m) => ({ id: m.id, name: m.id === 'nas100' ? 'Nasdaq 100' : m.name, symbol: SYMBOL[m.id] || null, price: r6(prices[m.id]), ...(store.loadJson(m.file, {}).synthetic ? { synthetic: true } : {}) })),
     accounts,
     ai: cfg.ftmoAi,
     adapt,

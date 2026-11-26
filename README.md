@@ -697,6 +697,15 @@ sommeil jusqu'à la prochaine évaluation réussie. `/reset` le met en sommeil ;
 du bot, sans évaluation (annoncé dans le groupe) ; `/financer lucid` le relance directement s'il est en sommeil
 (l'évaluation Lucid, elle, continue).
 
+### 🧯 Secours quand Yahoo fige ses bougies (`STALE_FEED_FALLBACK=1`, défaut, `src/staleFeed.js`)
+
+Certains jours (Thanksgiving 2026 : plus aucune bougie intraday sur l'or, l'argent, les futures Nasdaq / S&P / Dow
+depuis 4 h 55 UTC alors que le cours continuait d'avancer), Yahoo n'envoie plus de bougies. Si la dernière bougie a plus
+de 25 min et que le cours Yahoo a moins de 15 min, le bot fabrique ses **bougies maison** de 1 min avec le cours relevé à
+chaque passage (regroupées en 5 et 15 min), placées après la dernière bougie Yahoo, jusqu'au retour des vraies bougies.
+Moins précis (un cours par minute : pas les pics à l'intérieur de la minute). Marché fermé (cours figé) : rien ; avec
+OANDA (`OANDA_TOKEN`), jamais utilisé. Le site l'indique sur le graphique du marché concerné.
+
 ### 📅 `/pnl` : PnL du jour des comptes simulés
 
 `/pnl` (ou `/jour`, `/daily`) : pour chaque compte (FTMO, Lucid), gain ou perte de la journée depuis le solde

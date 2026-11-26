@@ -66,4 +66,20 @@ async function cachedYahoo(cacheDir, symbol, interval, opts = {}, maxAgeH = 24) 
   return data;
 }
 
-module.exports = { fetchYahoo, cachedYahoo };
+/** Dernier cours Yahoo et son heure ({ price, t } en secondes), même quand les bougies intraday sont figées ; cache 20 s. */
+const quoteCache = new Map();
+async function fetchQuote(symbol, opts = {}) {
+  const hit = quoteCache.get(symbol);
+  if (hit && Date.now() - hit.at < 20_000) return hit.q;
+  const res = await fetch(`${BASE}${encodeURIComponent(symbol)}?range=1d&interval=1m`, {
+    headers: { 'user-agent': 'Mozilla/5.0', accept: 'application/json' }, signal: AbortSignal.timeout(opts.timeoutMs ?? 15_000),
+  });
+  if (!res.ok) throw new Error(`Yahoo ${symbol} : HTTP ${res.status}`);
+  const m = (await res.json())?.chart?.result?.[0]?.meta;
+  if (!(m?.regularMarketPrice > 0) || !m.regularMarketTime) throw new Error(`Yahoo ${symbol} : pas de cours`);
+  const q = { price: m.regularMarketPrice, t: m.regularMarketTime };
+  quoteCache.set(symbol, { at: Date.now(), q });
+  return q;
+}
+
+module.exports = { fetchYahoo, cachedYahoo, fetchQuote };
