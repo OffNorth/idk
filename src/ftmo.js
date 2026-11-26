@@ -58,7 +58,7 @@ const rMultiple = (t) => t.pnlPct / Math.max(1e-9, stopPct(t));
  * Retourne l'issue (target / daily / maxloss / open), le solde et le nombre de jours de trading.
  */
 function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity, riskMul = 1, sizer = null, trailingMax = false, bestDayPct = 0, levCap = null,
-  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true, start = null, dayProfitCapUsd = Infinity, maxLossesPerDay = Infinity } = {}) {
+  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true, start = null, dayProfitCapUsd = Infinity, maxLossesPerDay = Infinity, abandonBelow = null } = {}) {
   const maxLoss = maxLossUsd ?? (capital * maxPct) / 100;
   const events = [];
   for (const t of trades) {
@@ -106,7 +106,10 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       // risque propre au trade si fourni (comptes multi-marchés) ; `sizer` : multiplicateur de risque selon le trade et l'état du compte
       // Objectif vu par la règle de taille : relevé si la règle du meilleur jour demande plus de gain (effectiveTarget)
       const tgt = effTarget ? effectiveTarget(target, bestDayPct, capital, dayPnl.size ? Math.max(...dayPnl.values()) : 0) : target;
-      const mul = sizer ? sizer(e.tr, { balance, capital, dayStart, target: tgt, open: open.size, openTrades: open.keys() }) : 1;
+      // room : marge restante avant la perte max (en part de la perte max autorisée), pour les règles de taille
+      let fl = (eodTrailing ? eodPeak : trailingMax ? peak : capital) - maxLoss;
+      if (lockAt !== null) fl = Math.min(fl, capital + lockAt);
+      const mul = sizer ? sizer(e.tr, { balance, capital, dayStart, target: tgt, open: open.size, openTrades: open.keys(), room: (balance - fl) / maxLoss }) : 1;
       if (!(mul > 0)) continue;
       const cap = (levCap && e.tr.market && levCap[e.tr.market]) || leverage; // levier max par marché (compte Swing)
       let notional = Math.min((balance * (e.tr.riskPct ?? riskPct) * riskMul * mul) / sp, balance * cap);
@@ -149,6 +152,8 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
     peak = Math.max(peak, balance);
     if (balance <= dayStart - (capital * dailyPct) / 100) return { outcome: 'daily', at: e.t, balance, days: days.size, paid };
     if (balance <= floor) return { outcome: 'maxloss', at: e.t, balance, days: days.size, paid };
+    // Évaluation abandonnée (recherche) : solde tombé sous abandonBelow → on rachète une évaluation neuve
+    if (abandonBelow !== null && balance <= abandonBelow && open.size === 0) return { outcome: 'abandon', at: e.t, balance, days: days.size, paid };
     if (balance >= capital * (1 + target / 100) && days.size >= minDays && open.size === 0) {
       // Règle du meilleur jour : le meilleur jour ne doit pas dépasser bestDayPct % du gain total (sinon on continue)
       const best = Math.max(...dayPnl.values());
