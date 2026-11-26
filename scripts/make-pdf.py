@@ -384,7 +384,7 @@ story.append(KeepTogether([Paragraph('Plan: Lucid, payouts, then an FTMO account
     'Pass the Lucid evaluation fast, collect Lucid payouts, use them to pay for an FTMO account set up to last (scaling up to $2M). '
     '<b>Lucid funded</b> (Lucid’s official funded rules: contract cap by profit 20 / 30 / 40 micros, max loss locked at capital + $100 from the first payout, '
     '5 payouts max): first payout within 60 days 85%, median 17 days, ≈ $2,050 over 12 months (Nov 24–26), ≈ $1,840 (2020–24, daily only); '
-    'the account rarely lasts. Risk × 2 pays more in total ($2,611 / $2,749) but the first payout comes less often within 60 days recently (85 → 67%). '
+    'the account rarely lasts. <b>Risk × 2 (current, chosen on 27/11/2026)</b>: more payouts in total ($2,611 / $2,749) but the first payout comes less often within 60 days recently (85 → 67%). '
     'The cushion-based risk is NOT used on Lucid: with the max loss locked right after a payout it cuts payouts to ≈ $1,300. <b>FTMO during the evaluation</b>: set up “like Lucid” (intraday × 2, '
     'day over at +$2,500 or after 1 loss). <b>FTMO funded</b>: all risk × 0.75 (chosen on 26/11/2026), plus partial exits (⅓ at +1 R, ⅓ at +2 R, the rest on the trailing stop).', body),
     Spacer(1, 3), small_table([

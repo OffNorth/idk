@@ -49,6 +49,8 @@ Account management that came out of the research (all switchable in `.env`):
 - **Validator AI**: a logistic model scores every signal; it blocks the weakest ≈ 20% on FTMO and only gives its opinion on
   Lucid. It retrains carefully every Sunday on live signals.
 - **Funded FTMO**: risk × 0.75 and partial exits (⅓ at +1 R, ⅓ at +2 R).
+- **Funded Lucid**: risk × 2 (`LUCID_FUNDED_RISK_MUL`): payouts over 12 months ≈ $2,611 (Nov 24–26) and $2,749 (2020–24)
+  instead of $2,054 / $1,841, but the first payout comes within 60 days less often recently (67% vs 85%).
 
 The plan these accounts serve: pass Lucid fast, collect Lucid payouts, use them to pay for FTMO accounts set up to last.
 

@@ -52,7 +52,7 @@ test('séances : g_asiabrk, g_nypdl sur le compte FTMO, n_pdlbrk retirée ; pas 
   const cfg = require('../src/config');
   assert.ok(cfg.ftmoStrategies.includes('gold:g_asiabrk') && cfg.ftmoStrategies.includes('gold:g_nypdl'));
   assert.ok(!cfg.ftmoNasStrategies.includes('nas100:n_pdlbrk'), 'n_pdlbrk retirée du compte FTMO');
-  const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
+  const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidFundedRiskMul: 1 }, 'lucid');
   assert.strictEqual(L.riskOf('nas100', { id: 'n_pdlbrk', tf: '5m' }), 0);
   assert.ok(L.riskOf('nas100', { id: 'n_mom10_t05', tf: '5m' }) > 0);
   assert.strictEqual(L.riskOf('nas100', { id: 'n_noise_t05', tf: '5m' }), 0, 'retirée (faible avantage, npm run speed)');
@@ -84,7 +84,7 @@ test('variantes Lucid « objectif 0,5 R » : même entrée et même stop que l�
 
 test('Lucid : cassures du Nasdaq avec objectif (n_orb10l_t075, n_orb30l_t075, n_or60_t05)', () => {
   const cfg = require('../src/config');
-  const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
+  const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidFundedRiskMul: 1 }, 'lucid');
   for (const id of ['n_orb10l_t075', 'n_orb30l_t075', 'n_or60_t05']) {
     assert.ok(selectStrategies([id])[0], id);
     assert.ok(L.riskOf('nas100', { id, tf: '5m' }) > 0, id);
@@ -102,7 +102,7 @@ test('Lucid : cassures du Nasdaq avec objectif (n_orb10l_t075, n_orb30l_t075, n_
 
 test('Crabel NR4 (n_crabel4_t05, Lucid) : pas de trade sans journée étroite la veille, cassure du range des 30 premières min sinon', () => {
   const cfg = require('../src/config');
-  const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
+  const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidFundedRiskMul: 1 }, 'lucid');
   assert.ok(L.riskOf('nas100', { id: 'n_crabel4_t05', tf: '5m' }) > 0);
   const s = selectStrategies(['n_crabel4_t05'])[0];
   const start = Date.parse('2026-01-05T00:00:00Z') / 1000;
@@ -131,7 +131,7 @@ test('Crabel NR4 (n_crabel4_t05, Lucid) : pas de trade sans journée étroite la
 test('Williams (cassure de volatilité) : achat au-dessus de l’ouverture + k × amplitude de la veille, stop à l’ouverture ; sur Lucid seulement', () => {
   const cfg = require('../src/config');
   const F = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
-  const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
+  const L = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidFundedRiskMul: 1 }, 'lucid');
   for (const id of ['n_crabel7_15_t075', 'n_wvb05_t075', 'n_wvb07_t05']) assert.ok(L.riskOf('nas100', { id, tf: '5m' }) > 0, id);
   assert.ok(!F.strategies.some((k) => /nas100:n_(crabel|wvb)/.test(k)), 'versions Nasdaq pas sur le compte FTMO');
   const s = selectStrategies(['n_wvb05'])[0];
@@ -163,7 +163,7 @@ test('S&P 500 : Crabel NR7 30 min (s_crabel7_30) sur le compte FTMO seulement, m
   assert.deepStrictEqual(s.markets, ['spx']);
   assert.ok(cfg.ftmoStrategies.includes('spx:s_crabel7_30'));
   assert.ok(accountOf({ ...cfg, ftmoEnabled: true }, 'gold').riskOf('spx', s) > 0);
-  assert.strictEqual(accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid').riskOf('spx', s), 0);
+  assert.strictEqual(accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidFundedRiskMul: 1 }, 'lucid').riskOf('spx', s), 0);
   assert.ok(selectStrategies(cfg.spxStrategies).some((x) => x.id === 's_crabel7_30'), 'paper S&P');
 });
 
@@ -171,7 +171,7 @@ test('Argent et Dow Jones : marchés du compte Lucid (micro SIL / MYM), heure de
   const cfg = require('../src/config');
   const { accountOf, MICRO } = require('../src/ftmoAccount');
   const { marketById } = require('../src/markets');
-  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
+  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidFundedRiskMul: 1 }, 'lucid');
   const F = accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
   for (const [id, sid, contract] of [['silver', 'n_wvb05_t075', 'SIL'], ['dow', 'n_mom10_t1be', 'MYM']]) {
     const s = selectStrategies([sid])[0];
@@ -195,7 +195,7 @@ test('Argent et Dow Jones : marchés du compte Lucid (micro SIL / MYM), heure de
 test('Lucid : Double 7 et RSI 2 sur le S&P 500 (journalières propres à Lucid), Dow en break-even (n_mom10_t1be)', () => {
   const cfg = require('../src/config');
   const { accountOf } = require('../src/ftmoAccount');
-  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
+  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidFundedRiskMul: 1 }, 'lucid');
   const F = accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
   for (const id of ['double7', 'rsi2']) {
     const s = selectStrategies([id])[0];
@@ -217,7 +217,7 @@ test('Lucid : Double 7 et RSI 2 sur le S&P 500 (journalières propres à Lucid),
 });
 
 test('Lucid : risque intraday × LUCID_EVAL_INTRADAY_MUL pendant l’évaluation, normal une fois financé ; journalières et FTMO inchangés', () => {
-  const cfg = { ...require('../src/config'), ftmoEnabled: true, lucidEnabled: true, lucidIntradayRisk: 0.45, lucidEvalIntradayMul: 3 };
+  const cfg = { ...require('../src/config'), ftmoEnabled: true, lucidEnabled: true, lucidIntradayRisk: 0.45, lucidEvalIntradayMul: 3, lucidSplit: false, lucidFundedRiskMul: 1 };
   const { accountOf } = require('../src/ftmoAccount');
   const L = accountOf(cfg, 'lucid');
   const n = selectStrategies(['n_mom10_t05'])[0];
@@ -242,7 +242,7 @@ test('Lucid : euro en 6E standard (pas de micro M6E chez Lucid) ; journalières 
   assert.strictEqual(MICRO.eurusd.name, '6E');
   assert.strictEqual(MICRO.eurusd.mult, 125_000);
   assert.strictEqual(MICRO.russell.name, 'M2K');
-  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
+  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidFundedRiskMul: 1 }, 'lucid');
   const F = accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
   for (const sid of ['russell:n_low10', 'nas100:double7', 'silver:double7']) {
     const [m, id] = sid.split(':');
@@ -260,7 +260,7 @@ test('FTMO : actions / ETF (TLT, Google, Palantir, Eli Lilly, Boeing) en intrada
   const { marketById } = require('../src/markets');
   const { STOCK_IDS } = require('../src/stocks');
   const F = accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
-  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
+  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidFundedRiskMul: 1 }, 'lucid');
   for (const sid of ['tlt:n_crabel7_15', 'googl:n_crabel7_30', 'pltr:n_orb15', 'pltr:n_crabel7_15', 'pltr:n_wvb05', 'lly:n_orb5s', 'ba:n_crabel7_15']) {
     const [m, id] = sid.split(':');
     const s = selectStrategies([id])[0];

@@ -214,6 +214,9 @@ module.exports = {
   // Deux évaluations Lucid en même temps : intraday seulement (lucid.json) et journalières seulement (lucid2.json),
   // npm run optimize2 : au moins une réussie < 1 an 92 % contre 49 %, coût par compte financé 198 $ contre 279 $ ; 0 = une seule
   lucidSplit: num('LUCID_SPLIT', 1) === 1,
+  // Compte Lucid financé : risque × ce nombre (2, demande de l'utilisateur 27/11/2026 : retraits 12 mois 2 054 → 2 611 $,
+  // 2020–24 1 841 → 2 749 $ ; 1er retrait en ≤ 60 j 85 → 67 % sur nov. 24–26) ; 1 = risque d'évaluation sans le × intraday
+  lucidFundedRiskMul: num('LUCID_FUNDED_RISK_MUL', 2),
   // Compte Lucid financé à part démarré directement, sans attendre une évaluation réussie (s'il n'existe pas encore)
   lucidFundedDirect: num('LUCID_FUNDED_DIRECT', 1) === 1,
   // npm run lucid-tune : Lucid sans intraday, journalières à 2,5 % → 62 % / 67 % / 73 % (contre 13 % / 11 % / 21 %)

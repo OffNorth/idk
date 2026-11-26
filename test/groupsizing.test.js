@@ -74,3 +74,14 @@ test('Lucid financé : règles du financé (pas de régularité, scaling des con
   store.saveJson('lucid-funded.json', { ...f.load(), funded: { since: T0, payouts: [{ t: T0, amount: 600, trader: 540 }] } });
   assert.strictEqual(f.status({}).floor, 50100, 'bloquée à capital + 100 $ dès le 1er retrait');
 });
+
+test('Lucid financé : risque × LUCID_FUNDED_RISK_MUL (2 par défaut), évaluation inchangée', () => {
+  const cfg = { ...require('../src/config'), ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidParallel: true, lucidFundedRiskMul: 2 };
+  const { accountOf } = require('../src/ftmoAccount');
+  const { selectStrategies } = require('../src/strategies');
+  const daily = selectStrategies(['double7'])[0], intra = selectStrategies(['n_mom10_t05'])[0];
+  const f = accountOf(cfg, 'lucidf'), e = accountOf({ ...cfg, lucidFundedRiskMul: 1 }, 'lucidf');
+  assert.ok(Math.abs(f.riskOf('spx', daily, 'funded') - 2 * e.riskOf('spx', daily, 'funded')) < 1e-9);
+  assert.ok(Math.abs(f.riskOf('nas100', intra, 'funded') - 2 * e.riskOf('nas100', intra, 'funded')) < 1e-9);
+  assert.strictEqual(f.riskOf('spx', daily, 'eval'), e.riskOf('spx', daily, 'eval'), 'évaluation inchangée');
+});
