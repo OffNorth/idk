@@ -58,7 +58,7 @@ const rMultiple = (t) => t.pnlPct / Math.max(1e-9, stopPct(t));
  * Retourne l'issue (target / daily / maxloss / open), le solde et le nombre de jours de trading.
  */
 function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity, riskMul = 1, sizer = null, trailingMax = false, bestDayPct = 0, levCap = null,
-  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true, start = null, dayProfitCapUsd = Infinity, maxLossesPerDay = Infinity, abandonBelow = null } = {}) {
+  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true, start = null, dayProfitCapUsd = Infinity, maxLossesPerDay = Infinity, abandonBelow = null, scaling = null, lockOnPayout = false } = {}) {
   const maxLoss = maxLossUsd ?? (capital * maxPct) / 100;
   const events = [];
   for (const t of trades) {
@@ -109,6 +109,7 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       // room : marge restante avant la perte max (en part de la perte max autorisée), pour les règles de taille
       let fl = (eodTrailing ? eodPeak : trailingMax ? peak : capital) - maxLoss;
       if (lockAt !== null) fl = Math.min(fl, capital + lockAt);
+      if (lockOnPayout && lockAt !== null && paid.length) fl = capital + lockAt;
       const mul = sizer ? sizer(e.tr, { balance, capital, dayStart, target: tgt, open: open.size, openTrades: open.keys(), room: (balance - fl) / maxLoss }) : 1;
       if (!(mul > 0)) continue;
       const cap = (levCap && e.tr.market && levCap[e.tr.market]) || leverage; // levier max par marché (compte Swing)
@@ -116,9 +117,11 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       let n = 0;
       if (contracts) {
         // Futures : contrats entiers (arrondi vers le bas), plafond de contrats ouverts en tout
-        n = Math.min(Math.floor(notional / e.tr.contractUsd), maxContracts - lots);
+        // Lucid financé : plafond de contrats selon le gain du début de séance (plan de scaling)
+        const capC = scaling ? scaling.reduce((m, [f0, mx]) => (dayStart - capital >= f0 ? mx : m), scaling[0][1]) : maxContracts;
+        n = Math.min(Math.floor(notional / e.tr.contractUsd), capC - lots);
         // 1 contrat quand même si son risque reste ≤ 1,5 × le risque prévu et ≤ minOneRisk × la perte max (compte Lucid)
-        if (!(n >= 1) && minOneRisk > 0 && maxContracts - lots >= 1) {
+        if (!(n >= 1) && minOneRisk > 0 && capC - lots >= 1) {
           const oneRisk = (e.tr.contractUsd * sp) / 100;
           if (oneRisk <= Math.min((1.5 * notional * sp) / 100, minOneRisk * maxLoss)) n = 1;
         }
@@ -140,6 +143,7 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
     // Perte max : seuil fixe (capital − 10 %) ou suiveur (plus haut solde − 10 %, challenge 1 étape)
     let floor = (eodTrailing ? eodPeak : trailingMax ? peak : capital) - maxLoss;
     if (lockAt !== null) floor = Math.min(floor, capital + lockAt); // Lucid : le seuil ne monte plus au-delà de capital + lockAt
+    if (lockOnPayout && lockAt !== null && paid.length) floor = capital + lockAt; // Lucid financé : bloqué dès le 1er retrait
     if (e.tr.worstPct !== undefined) {
       const worst = balance + (notional * e.tr.worstPct) / 100;
       if (worst <= dayStart - (capital * dailyPct) / 100) return { outcome: 'daily', at: e.t, balance: worst, days: days.size, paid };
@@ -245,13 +249,18 @@ function fundedRun(trades, opts, from) {
   const until = from + f.days * 86400;
   let last = from;
   let good = 0;
+  let n = 0;
+  let cycleStart = -Infinity;
   const payout = ({ day, t, balance, capital, dayPnl }) => {
     const gain = balance - capital;
     if (f.rule === 'lucid') {
       if ((dayPnl.get(day) || 0) >= f.minDay) good++;
-      if (good < f.cycleDays || gain <= 0) return 0;
-      good = 0;
-      return Math.min(gain * f.share, f.cap);
+      if (f.max && n >= f.max) return 0; // 5 retraits au plus
+      if (good < f.cycleDays || gain <= 0 || balance <= cycleStart) return 0;
+      const amt = Math.min(gain * f.share, f.cap);
+      if (f.min && amt < f.min) return 0;
+      good = 0; n++; cycleStart = balance - amt;
+      return amt;
     }
     if (t - last < f.every * 86400 || gain <= 0) return 0;
     last = t;

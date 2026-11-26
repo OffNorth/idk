@@ -44,7 +44,11 @@ const Y = (y) => Date.UTC(y, 0, 1) / 1000;
   const base = [...all.filter((t) => sids.includes(t.sid) && !t.intraday), ...intra].map((t) => ({ ...t, riskPct: A.riskOf(...strat(t.sid), 'funded') }));
   const A0 = q5[0].t + 30 * DAY;
   const RL = { capital: 50_000, target: Infinity, dailyPct: Infinity, maxLossUsd: 2000, eodTrailing: true, lockAt: 100, bestDayPct: 0, minDays: 0, contracts: true, maxContracts: 40,
-    minOneRisk: 0.4, leverage: 1000, dayOf: cmeDay, dayStopPct: cfg.ftmoDayStop, riskPct: 1, sizer: RULES[cfg.ftmoSizing] };
+    minOneRisk: 0.4, leverage: 1000, dayOf: cmeDay, dayStopPct: cfg.ftmoDayStop, riskPct: 1,
+    // Règles officielles du compte financé (centre d'aide Lucid, oct. 2026) : contrats selon le gain, perte max bloquée dès le 1er retrait
+    scaling: [[0, 20], [1000, 30], [2000, 40]], lockOnPayout: true,
+    // + risque selon la marge restante (FUNDED_CUSHION), comme en direct
+    sizer: (t, st) => (RULES[cfg.ftmoSizing] || RULES.fixe)(t, st) * (cfg.fundedCushion !== false ? require('./src/sizing').cushionMul(st.room) : 1) };
 
   const study = (mul, rules, [a, b, withIntra, step]) => {
     const list = base.filter((t) => withIntra || !t.intraday).map((t) => ({ ...t, riskPct: t.riskPct * mul })).sort((x, y) => x.entryT - y.entryT);
@@ -53,14 +57,14 @@ const Y = (y) => Date.UTC(y, 0, 1) / 1000;
     for (let s = a; s < end; s += step) {
       const wd = new Date(s * 1000).getUTCDay(); if (wd === 0 || wd === 6) continue;
       n++;
-      let good = 0;
+      let good = 0; let nPay = 0; let cycleStart = -Infinity;
       const payout = ({ day, balance, capital, dayPnl }) => {
         if ((dayPnl.get(day) || 0) >= 150) good++;
         const gain = balance - capital;
-        if (good < 5 || gain <= 0) return 0;
+        if (nPay >= 5 || good < 5 || gain <= 0 || balance <= cycleStart) return 0; // 5 retraits au plus, gain net positif sur le cycle
         const amt = Math.min(gain * 0.5, 2000);
         if (amt < 500) return 0;
-        good = 0;
+        good = 0; nPay++; cycleStart = balance - amt;
         return amt;
       };
       const r = runPhase(list, { ...RL, ...rules, from: s, until: s + 365 * DAY, payout });
@@ -77,7 +81,7 @@ const Y = (y) => Date.UTC(y, 0, 1) / 1000;
   };
   const PER = { 'nov. 24–26 (tout)': [A0, Infinity, true, DAY], '2020–24 (journalier)': [Y(2020), Y(2025), false, 7 * DAY] };
   const VAR = [
-    ['risque financé actuel', 1, {}], ['× 0,5', 0.5, {}], ['× 0,75', 0.75, {}], ['× 1,5', 1.5, {}], ['× 2', 2, {}], ['× 3', 3, {}],
+    ['risque financé actuel', 1, {}], ['sans marge (FUNDED_CUSHION=0)', 1, { sizer: RULES[cfg.ftmoSizing] }], ['ancien modèle (40 micros, sans blocage)', 1, { scaling: null, lockOnPayout: false }], ['× 0,5', 0.5, {}], ['× 0,75', 0.75, {}], ['× 1,5', 1.5, {}], ['× 2', 2, {}], ['× 3', 3, {}],
     ['arrêt après 1 perte', 1, { maxLossesPerDay: 1 }], ['plafond jour 150 $', 1, { dayProfitCapUsd: 150 }], ['plafond jour 300 $', 1, { dayProfitCapUsd: 300 }],
     ['plafond jour 500 $', 1, { dayProfitCapUsd: 500 }], ['× 2 + plafond 300 $ + 1 perte', 2, { dayProfitCapUsd: 300, maxLossesPerDay: 1 }],
     ['× 1,5 + plafond 300 $', 1.5, { dayProfitCapUsd: 300 }], ['× 2 + plafond 500 $', 2, { dayProfitCapUsd: 500 }],

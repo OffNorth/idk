@@ -155,18 +155,20 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
 
   /* ---------- 3 et 4. Lucid 100K, objectifs plus longs une fois financé ---------- */
   const lucidPayout = (minDay, cap) => {
-    let good = 0;
+    let good = 0; let nPay = 0; let cycleStart = -Infinity;
     return ({ day, balance, capital, dayPnl }) => {
       if ((dayPnl.get(day) || 0) >= minDay) good++;
       const gain = balance - capital;
-      if (good < 5 || gain <= 0) return 0;
+      if (nPay >= 5 || good < 5 || gain <= 0 || balance <= cycleStart) return 0; // 5 retraits au plus, gain net positif sur le cycle
       const amt = Math.min(gain * 0.5, cap);
       if (amt < 500) return 0;
-      good = 0;
+      good = 0; nPay++; cycleStart = balance - amt;
       return amt;
     };
   };
-  const RLF = { ...RL, target: Infinity, bestDayPct: 0, minDays: 0, dayProfitCapUsd: Infinity, maxLossesPerDay: Infinity };
+  // Compte financé Lucid (règles officielles, oct. 2026) : contrats selon le gain, perte max bloquée dès le 1er retrait
+  const RLF = { ...RL, target: Infinity, bestDayPct: 0, minDays: 0, dayProfitCapUsd: Infinity, maxLossesPerDay: Infinity, scaling: [[0, 20], [1000, 30], [2000, 40]], lockOnPayout: true };
+  const cushionLucid = (t, st) => (RULES[cfg.ftmoSizing] || RULES.fixe)(t, st) * require('./src/sizing').cushionMul(st.room);
   const fundedLucid = (l, o = {}, { minDay = 150, cap = 2000 } = {}) => {
     const xs = l.filter((t) => t.entryT >= A0).sort((x, y) => x.entryT - y.entryT);
     const end = xs[xs.length - 1].entryT - 365 * DAY; let n = 0, paid = 0, lost = 0, p60 = 0;
@@ -183,12 +185,13 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
   if (want(3)) {
     console.log('=== 3. LucidFlex 100K au lieu de 50K (réglages actuels, en % du capital) ===');
     const R100 = { capital: 100_000, maxLossUsd: 3000, maxContracts: 60, bestDayPct: 50, dayProfitCapUsd: (cfg.lucidDayProfitCapPct / 100) * 100_000 * 0.06 };
+    const S100 = [[0, 30], [1000, 40], [2000, 50], [3000, 60]];
     for (const [name, o, price, pay] of [['50K (actuel)', {}, PRICE50, { minDay: 150, cap: 2000 }], ['100K', R100, PRICE100, { minDay: 200, cap: 2500 }]]) {
       const ev = evaluate('lucid', LIST('lucid'), o);
       const runs = starts(A0, LIST('lucid')[LIST('lucid').length - 1]?.entryT || A0).length;
       void runs;
       const pA = ev.per[2] / 100;
-      const f = fundedLucid(fundedRisk(LIST('lucid')), o.capital ? { capital: o.capital, maxLossUsd: o.maxLossUsd, maxContracts: o.maxContracts } : {}, pay);
+      const f = fundedLucid(fundedRisk(LIST('lucid')), { sizer: cushionLucid, ...(o.capital ? { capital: o.capital, maxLossUsd: o.maxLossUsd, maxContracts: o.maxContracts, scaling: S100 } : {}) }, pay);
       console.log(`   ${name.padEnd(14)} évaluation ${fmt(ev)}\n                  coût par compte financé (nov. 24–26) ${usd(price / pA)} · financé 12 mois : retraits ${usd(f.paid)} · 1er retrait ≤ 60 j ${pc(f.p60)} · perdus ${pc(f.lost)} · net ≈ ${usd(f.paid - price / pA)} par compte financé`);
     }
     console.log('   (prix 100K estimé à 230 $, retrait ≤ 2 500 $ et jours gagnants ≥ 200 $ : sources secondaires, à vérifier)\n');
@@ -202,7 +205,7 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
       return fundedRisk([...LIST('lucid').filter((t) => !(t.intraday && NYB[t.market])), ...intra]);
     };
     for (const [name, k] of [['objectifs actuels (0,5 / 0,75 / 1 R)', 'keep'], ['objectif 1 R', 1], ['objectif 1,5 R', 1.5], ['objectif 2 R', 2], ['sans objectif (sortie du soir)', null]]) {
-      const f = fundedLucid(listWith(k));
+      const f = fundedLucid(listWith(k), { sizer: cushionLucid });
       console.log(`   ${name.padEnd(38)} retraits 12 mois ${usd(f.paid).padStart(8)} · 1er retrait ≤ 60 j ${pc(f.p60)} · perdus en 12 mois ${pc(f.lost)}`);
     }
     console.log('   (départ chaque jour ouvré, nov. 2024 → nov. 2025, risque « financé » actuel)\n');
