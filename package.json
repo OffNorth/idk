@@ -71,7 +71,8 @@
     "portfolio": "node --max-old-space-size=4000 portfolio-research.js",
     "orderflow": "node --max-old-space-size=6000 orderflow-research.js",
     "ict": "node --max-old-space-size=6000 ict-research.js",
-    "ai-research": "node --max-old-space-size=12288 ai-research.js"
+    "ai-research": "node --max-old-space-size=12288 ai-research.js",
+    "ftmo-scaling": "node --max-old-space-size=8000 ftmo-scaling-research.js"
   },
   "engines": {
     "node": ">=20"
