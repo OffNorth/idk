@@ -1231,7 +1231,8 @@ function selectStrategies(ids) {
 
 // Noms et descriptions en anglais (messages du bot en anglais) : src/strategies.en.json, par id
 const EN = require('./strategies.en.json');
-for (const s of STRATEGIES) {
+// STRATEGY_LANG=fr (npm run pdf) : noms et descriptions d'origine, en français
+for (const s of process.env.STRATEGY_LANG === 'fr' ? [] : STRATEGIES) {
   const t = EN[s.id];
   if (t) { s.name = t[0]; s.desc = t[1]; }
 }

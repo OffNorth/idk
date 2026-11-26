@@ -603,7 +603,23 @@ story.append(KeepTogether([Paragraph('Lucid : compte financé à part, et secour
     'perdu, il se met en sommeil jusqu’à la prochaine évaluation réussie (ou /financer lucid). Démarré directement le 26/11/2026, sans attendre d’évaluation. '
     '<b>Secours des bougies</b> : quand Yahoo n’envoie plus de bougies intraday alors que le cours avance (Thanksgiving 2026 : plus rien depuis 4 h 55 UTC sur '
     'l’or et les futures), le bot fabrique ses propres bougies de 1 minute avec le cours relevé à chaque passage, jusqu’au retour des vraies. Moins précis '
-    '(un cours par minute) ; jamais utilisé avec OANDA (cours en temps réel, la vraie solution).', body)]))
+    '(un cours par minute) ; jamais utilisé quand les bougies viennent de Binance ou d’OANDA (temps réel).', body)]))
+story.append(KeepTogether([Paragraph('Or et argent en temps réel, sans compte : Binance', h2), Paragraph(
+    'Yahoo donne l’or et l’argent avec environ 10 minutes de retard, et OANDA comme Capital.com demandent une vérification d’identité. '
+    'Depuis le 26/11/2026, le bot prend les bougies intraday (1, 5 et 15 min) de l’or et de l’argent sur les <b>contrats perpétuels publics de Binance</b> '
+    '(XAUUSDT, XAGUSDT) : données publiques, <b>aucun compte, aucune clé, aucune donnée personnelle</b>, en temps réel. Les indices restent sur Yahoo '
+    '(pas de contrat équivalent).', body), Spacer(1, 3), small_table([
+    ('Point', 'Comment le bot le gère'),
+    ('Fidélité', 'XAUUSDT suit l’or au comptant à +7,0 $ près (écart-type 0,64 $), corrélation 0,997 des variations 5 min (novembre 2026)'),
+    ('Écart avec Yahoo', 'mesuré au changement de source (médiane des clôtures 5 min communes) ; positions ouvertes décalées d’autant, dernier écart gardé si Binance tombe'),
+    ('Heures', 'Binance cote 24 h/24 : bougies du week-end (vendredi 17 h → dimanche 18 h, New York) et de la pause de 17 h retirées ; argent : séance de New York'),
+    ('Exécution', 'cours « 30 s après le signal » pris chez Binance aussi, même échelle que le signal'),
+    ('Pays ou hébergeur bloqué', 'réponse 451 « restricted location » : Yahoo tout de suite, nouvel essai toutes les 30 min'),
+    ('Coupure', 'passage ignoré 10 min, puis Yahoo'),
+    ('Site', 'graphique du bot : bougies Binance lues par le navigateur (étiquette « Binance XAUUSDT · temps réel »), trades décalés de l’écart ; 1 jour et indices sur Yahoo'),
+    ], [38 * mm, 140 * mm]), Paragraph(
+    'Vérifier depuis la machine du bot : <b>npm run binance-check</b> (joignable ou non, écart avec Yahoo). /verif affiche la source de chaque marché. '
+    'BINANCE_FEED=0 pour revenir à Yahoo. Messages Telegram du bot en anglais depuis le 26/11/2026 (commandes /chart, /history, /fund, /game, /leaderboard en plus des françaises).', note)]))
 story.append(KeepTogether([Paragraph('Portefeuille perso, sans prop firm', h2), Paragraph(
     'Pour son propre argent, sur le long terme : ETF réels, dividendes inclus, sans levier, frais 0,1 %, rééquilibrage mensuel, en euros, '
     'décembre 2004 → novembre 2026. Retenu : <b>50 % monde, 10 % or, 40 % confiés à cinq stratégies journalières du bot</b> (RSI 2 et Double 7 sur '
