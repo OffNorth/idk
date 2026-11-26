@@ -97,14 +97,17 @@ test('compte FTMO unique or + Nasdaq : un risque par marché', () => {
 });
 
 test('levier dynamique : risque divisé par 2 dès 2 positions ouvertes', () => {
-  const { cfg, store } = setup({ ftmoCombined: false, ftmoSizing: 'plusieurs positions → moins' });
-  const { createFtmo } = require('../src/ftmoAccount');
-  const acct = createFtmo({ cfg, store, account: 'gold' });
-  const mk = (k) => ({ type: 'open', market, strategy: { id: 'x_rsi2', name: 'Scalp' }, pos: { side: 'long', entry: 2000, sl: 1980, initSl: 1980, entryT: T0 + k } });
-  acct.onCycle([mk(0), mk(1), mk(2)], { gold: 2000 }, T0 + 2);
-  const n = Object.values(acct.load().open).map((p) => Math.round(p.notional));
-  // risque 1 % sur un stop de 1 % → 100 000 $ ; la 3e position (2 déjà ouvertes) → 50 000 $
-  assert.deepStrictEqual(n, [100000, 100000, 50000]);
+  for (const [group, want] of [[false, [100000, 100000, 50000]], [true, [100000, 50000, 50000]]]) {
+    const { cfg, store } = setup({ ftmoCombined: false, ftmoSizing: 'plusieurs positions → moins', ftmoGroupSizing: group });
+    const { createFtmo } = require('../src/ftmoAccount');
+    const acct = createFtmo({ cfg, store, account: 'gold' });
+    const mk = (k) => ({ type: 'open', market, strategy: { id: 'x_rsi2', name: 'Scalp' }, pos: { side: 'long', entry: 2000, sl: 1980, initSl: 1980, entryT: T0 + k } });
+    acct.onCycle([mk(0), mk(1), mk(2)], { gold: 2000 }, T0 + 2);
+    const n = Object.values(acct.load().open).map((p) => Math.round(p.notional));
+    // risque 1 % sur un stop de 1 % → 100 000 $ ; ancienne règle : la 3e (2 déjà ouvertes) → 50 000 $ ;
+    // FTMO_GROUP_SIZING : dès qu'un or est ouvert, le suivant (même groupe) → 50 000 $
+    assert.deepStrictEqual(n, want, `FTMO_GROUP_SIZING=${group}`);
+  }
 });
 
 test('challenge 1 étape : perte du jour 3 %, perte max suiveuse, réussite directe vers le compte financé', () => {

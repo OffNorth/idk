@@ -1045,6 +1045,21 @@ Le cours « 30 s après le signal » vient aussi d'OANDA.
   Yahoo, `OANDA_ENV=live` pour un compte réel. Volume OANDA = nombre de cotations (pas de contrats) : le VWAP de
   `n_noise` est un peu différent de celui des recherches.
 
+### 🔧 Optimiser le rendement : 7 idées (`npm run optimize`, 26/11/2026)
+
+Même méthode que d'habitude (réussite < 1 an 2009–19 | 2020–26 | nov. 24–26, retenue seulement si rien ne baisse).
+Référence de ce banc : FTMO 34 / 43 / 67 %, Lucid 46 / 61 / 53 % (≤ 14 j 25 %).
+
+| Idée | Résultat | Décision |
+|---|---|---|
+| **Taille selon la corrélation** (× 0,5 si le même groupe — indices US, métaux, devises — est ouvert, ou dès 3 positions) | FTMO **42 / 47 / 69 %** (+2 / +18 / +6 jours médians) ; Lucid moins bien (39 / 46 / 51 %) | ✅ **ajoutée au compte FTMO** (`FTMO_GROUP_SIZING=1`) |
+| Prop firms (mêmes stratégies, règles 2026 de sources secondaires) | réussite presque identique partout (44–46 % / 63–64 % / 47–51 %) ; coût par compte financé (catalogue / promo, nov. 24–26) : Lucid 279 / 144 $, Tradeify 339 / 203 $, Topstep 247 $, Apex 359 / 75 $, Take Profit Trader 345 / 207 $ ; sur les longues périodes les abonnements mensuels coûtent 2 à 5 × plus | Lucid reste un bon choix ; Apex seulement pendant ses grosses promos |
+| Renfort des gagnants (2e part à +1 R, stop au prix d'entrée), FTMO financé | retraits 12 mois +5 % (15 002 → 15 707 $), comptes perdus inchangés, évaluation −1 point | ✘ trop faible |
+| Structure du VIX (VIX / VIX3M) | aucune variante ne fait mieux partout (stress 11 % des jours) | ✘ |
+| Risque selon l'heure d'entrée | heures gagnantes instables d'une période à l'autre ; FTMO 28 / 39 / 49 % | ✘ |
+| Pas d'action intraday le jour de ses résultats | 53 trades sur 1 039 (−0,01 R contre +0,08 R) ; réussite inchangée | ✘ (sans effet) |
+| Or : entrée sur la clôture 1 min au lieu de 5 min (Binance, déc. 2025 → oct. 2026) | total des 6 cassures +34 % → +24 % (g_mom8 +12,5 → +0,1 %) | ✘ |
+
 ### 🇬🇧 Messages du bot en anglais (26/11/2026)
 
 Tous les messages Telegram, boutons, images (cartes, comptes, vidéos PnL) et le menu des commandes sont en anglais.

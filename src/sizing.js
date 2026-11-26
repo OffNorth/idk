@@ -68,4 +68,21 @@ Object.assign(RULES, {
   'objectif : dégressif doux': (t, s) => several(s) * clamp(1 - 0.75 * progress(s), 0.4, 1),
 });
 
-module.exports = { annotate, RULES, clamp, stopPctOf, progress };
+// Groupes de marchés corrélés : indices US et actions, métaux, devises, obligations
+const GROUP = { nas100: 'idx', spx: 'idx', dow: 'idx', russell: 'idx', googl: 'idx', pltr: 'idx', lly: 'idx', ba: 'idx', gold: 'metal', silver: 'metal', eurusd: 'fx', tlt: 'bond' };
+const groupOf = (m) => GROUP[m] || m;
+/**
+ * Taille selon la corrélation (npm run optimize, 26/11/2026) : × 0,5 si une position du même groupe est déjà ouverte,
+ * et × 0,5 à partir de 3 positions ouvertes en tout. Compte FTMO : réussite 34 / 43 / 67 % → 42 / 47 / 69 % (un peu
+ * plus lent : +2 / +18 / +6 jours médians) ; Lucid : moins bien (garde « plusieurs positions → moins »).
+ */
+RULES['même groupe → moins'] = (t, s) => {
+  let same = 0;
+  for (const o of s.openTrades || []) if (groupOf(o.market) === groupOf(t.market)) same++;
+  return (same >= 1 ? 0.5 : 1) * (s.open >= 3 ? 0.5 : 1);
+};
+/** Règle de taille d'un compte : FTMO_GROUP_SIZING (défaut) remplace « plusieurs positions → moins » sur FTMO. */
+const ruleFor = (cfg, firm) => (firm !== 'Lucid' && cfg.ftmoGroupSizing !== false && cfg.ftmoSizing === 'plusieurs positions → moins'
+  ? RULES['même groupe → moins'] : RULES[cfg.ftmoSizing] || RULES.fixe);
+
+module.exports = { annotate, RULES, clamp, stopPctOf, progress, ruleFor, groupOf };

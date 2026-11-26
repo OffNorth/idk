@@ -469,8 +469,8 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           continue;
         }
         // Levier dynamique (src/sizing.js, FTMO_SIZING) : le risque du trade est ajusté selon l'état du compte
-        const rule = RULES[cfg.ftmoSizing] || RULES.fixe;
-        const mul = rule({ ...p, sid: `${ev.market.id}:${ev.strategy.id}` }, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: effTarget(s) ?? Infinity, open: Object.keys(s.open).length });
+        const rule = require('./sizing').ruleFor(cfg, A.firm);
+        const mul = rule({ ...p, market: ev.market.id, sid: `${ev.market.id}:${ev.strategy.id}` }, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: effTarget(s) ?? Infinity, open: Object.keys(s.open).length, openTrades: Object.values(s.open) });
         if (!(mul > 0)) continue;
         // levier max (par marché sur le compte Swing ; actions / ETF : 1:5 chez FTMO)
         const cap = Math.min((P.levCap && P.levCap[ev.market.id]) || cfg.ftmoLeverage, require('./stocks').STOCKS[ev.market.id] ? require('./stocks').STOCK_LEVERAGE : Infinity);

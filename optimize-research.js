@@ -75,8 +75,8 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
   const inPer = (t, k, a, b) => t.entryT >= a && t.entryT < b && (k === 'A' || !(t.intraday && t.market !== 'gold'));
   const evaluate = (id, list, extra = {}) => {
     const o = { ...(id === 'ftmo' ? RF : RL), ...extra };
-    const per = Object.entries(P).map(([k, [a, b]]) => challengeStats(list.filter((t) => inPer(t, k, a, b)), { horizonDays: 365, start: a, ...(Number.isFinite(b) ? { end: b } : {}), ...o }).passRate);
-    const res = { per, p14: 0, p30: 0, f14: 0 };
+    const cs = Object.entries(P).map(([k, [a, b]]) => challengeStats(list.filter((t) => inPer(t, k, a, b)), { horizonDays: 365, start: a, ...(Number.isFinite(b) ? { end: b } : {}), ...o }));
+    const res = { per: cs.map((c) => c.passRate), days: cs.map((c) => c.medianDays), p14: 0, p30: 0, f14: 0 };
     if (id === 'lucid') {
       const l = list.filter((t) => t.entryT >= A0).sort((x, y) => x.entryT - y.entryT);
       const end = l[l.length - 1].entryT - 60 * DAY; let n = 0;
@@ -89,14 +89,16 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     }
     return res;
   };
-  const fmt = (r) => `${r.per.map((p) => `${p.toFixed(0).padStart(3)} %`).join(' |')}${r.p14 || r.p30 ? ` || ≤14 j ${r.p14.toFixed(0).padStart(2)} % · ≤30 j ${r.p30.toFixed(0).padStart(2)} % · échec ≤14 j ${r.f14.toFixed(0).padStart(2)} %` : ''}`;
+  const fmt = (r) => `${r.per.map((p, i) => `${p.toFixed(0).padStart(3)} %${process.env.DAYS ? ` (${r.days?.[i] ? r.days[i].toFixed(0) : '—'} j)` : ''}`).join(' |')}${r.p14 || r.p30 ? ` || ≤14 j ${r.p14.toFixed(0).padStart(2)} % · ≤30 j ${r.p30.toFixed(0).padStart(2)} % · échec ≤14 j ${r.f14.toFixed(0).padStart(2)} %` : ''}`;
   const better = (r, ref, id) => r.per.every((p, i) => p >= ref.per[i] - 0.5) && (id !== 'lucid' || (r.p14 >= ref.p14 - 0.5 && r.f14 <= ref.f14 + 0.5))
     && (r.per.some((p, i) => p > ref.per[i] + 0.5) || (id === 'lucid' && (r.p14 > ref.p14 + 0.5 || r.p30 > ref.p30 + 0.5)));
   const ref = { ftmo: evaluate('ftmo', accts.ftmo.list), lucid: evaluate('lucid', accts.lucid.list) };
   const line = (id, name, r) => console.log(`${better(r, ref[id], id) ? '✅' : '  '} ${id.padEnd(5)} ${name.padEnd(46)} ${fmt(r)}`);
   console.log(`Référence · FTMO ${fmt(ref.ftmo)}\n            Lucid ${fmt(ref.lucid)}  (réussite < 1 an 2009–19 | 2020–26 | nov. 24–26)\n`);
 
+  const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null; const want = (n) => !ONLY || ONLY.includes(String(n));
   /* ---------- 1. Prop firms de futures : réussite et coût par compte financé ---------- */
+  if (want(1)) {
   console.log('=== 1. Prop firms (évaluation 50K, stratégies du compte Lucid) ===');
   // price : [catalogue, promo] ; monthly : abonnement par tranche de 30 jours ; act : activation à la réussite
   const FIRMS = [
@@ -127,8 +129,10 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     console.log(`   ${F.name.padEnd(38)} ${cells.join(' | ')}`);
   }
   console.log('   (réussite < 1 an (délai médian) · coût par compte financé au prix catalogue / promo ; 2009–19 | 2020–26 | nov. 24–26)\n');
+  }
 
   /* ---------- 2. Renfort des gagnants (FTMO, journalières) ---------- */
+  if (want(2)) {
   console.log('=== 2. Renfort des gagnants : 2e part à +1 R, stop de l’ensemble au prix d’entrée (journalières FTMO) ===');
   const ACT = cfg.ftmoTrailActR || 2; const DIST = cfg.ftmoTrailDistR ?? 1;
   const withStops = (s, be) => ({
@@ -173,8 +177,10 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     console.log(`   ${name.padEnd(32)} ${rs(d)} · éval. ${fmt(evaluate('ftmo', l))} · ${fundedOf(l)}`);
   }
   console.log('');
+  }
 
   /* ---------- 3. Taille selon la corrélation ---------- */
+  if (want(3)) {
   console.log('=== 3. Taille selon la corrélation (réduction × 0,5) ===');
   const base = RULES[cfg.ftmoSizing];
   const same = (tr, st) => { let n = 0; for (const o of st.openTrades || []) if (CLUSTER[o.market] === CLUSTER[tr.market]) n++; return n; };
@@ -186,8 +192,10 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
   };
   for (const [name, sz] of Object.entries(SZ)) for (const id of ['ftmo', 'lucid']) line(id, name, evaluate(id, accts[id].list, { sizer: sz }));
   console.log('');
+  }
 
   /* ---------- 4. Structure du VIX ---------- */
+  if (want(4)) {
   console.log('=== 4. Structure du VIX (VIX / VIX3M de la veille) ===');
   const vix = await cachedYahoo(CACHE, '^VIX', '1d'), v3 = await cachedYahoo(CACHE, '^VIX3M', '1d');
   const v3m = new Map(v3.map((k) => [Math.floor(k.t / DAY), k.c]));
@@ -208,8 +216,10 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     }
   }
   console.log('');
+  }
 
   /* ---------- 5. Risque selon l'heure ---------- */
+  if (want(5)) {
   console.log('=== 5. Risque selon l’heure d’entrée (intraday) ===');
   const grp = (t) => (t.market === 'gold' ? 'or' : 'US');
   const SEL = { or: [Y(2009), Y(2020)], US: [A0, A0 + 365 * DAY] }; const VER = { or: [Y(2020), Infinity], US: [A0 + 365 * DAY, Infinity] };
@@ -234,8 +244,10 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
   }
   for (const id of ['ftmo', 'lucid']) line(id, 'risque intraday selon l’heure', evaluate(id, accts[id].list.map((t) => (t.intraday ? { ...t, riskPct: t.riskPct * (mulOf[`${grp(t)}:${nyHour(t.entryT)}`] ?? 1) } : t))));
   console.log('   (2009–19 : choix pour l’or, donc flatteur ; regarder 2020–26 et nov. 24–26)\n');
+  }
 
   /* ---------- 6. Résultats d'entreprises (actions intraday FTMO) ---------- */
+  if (want(6)) {
   console.log('=== 6. Pas de trade intraday sur une action le jour de ses résultats ===');
   const earn = {};
   for (const [m, tk] of Object.entries(STOCKS)) {
@@ -253,8 +265,10 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
   console.log(`   ${stockT.length} trades d’actions, dont ${hit.length} un jour de résultats : ${rs(hit.length ? hit : [{ pnlPct: 0, entry: 1, initSl: 0.99 }])} (autres jours : ${rs(stockT.filter((t) => !hit.includes(t)))})`);
   line('ftmo', 'sans les jours de résultats', evaluate('ftmo', accts.ftmo.list.filter((t) => !hit.includes(t))));
   console.log('');
+  }
 
   /* ---------- 7. Or : entrée 1 min au lieu de 5 min (Binance XAUUSDT) ---------- */
+  if (!want(7)) return;
   console.log('=== 7. Cassures de l’or : entrée sur la clôture 1 min au lieu de 5 min (XAUUSDT, Binance) ===');
   const bdir = path.join(CACHE, 'binance-xau'); fs.mkdirSync(bdir, { recursive: true });
   const m1 = [];

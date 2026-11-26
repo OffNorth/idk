@@ -282,6 +282,9 @@ module.exports = {
   // l'objectif — challenges ≈ 1 mois plus rapides ; réussite FTMO 58 / 54 / 71 % contre 64 / 68 / 82 % avec le
   // dégressif doux, Lucid 57 / 71 / 100 % contre 63 / 66 / 71 % (FTMO_SIZING=objectif : dégressif doux pour le remettre)
   ftmoSizing: (process.env.FTMO_SIZING || '').trim() || 'plusieurs positions → moins',
+  // Compte FTMO : réduction selon la corrélation (même groupe de marchés déjà ouvert, ou 3 positions) au lieu de
+  // « 2 positions ouvertes » (npm run optimize : 34 / 43 / 67 % → 42 / 47 / 69 %) ; 0 pour revenir à l'ancienne règle
+  ftmoGroupSizing: num('FTMO_GROUP_SIZING', 1) === 1,
   // IA validatrice (src/aiFilter.js, npm run ai-train) : block (défaut, refuse les signaux sous le seuil), observe
   // (avis seulement) ou off ; FTMO_AI_MIN : seuil de probabilité (défaut : celui du modèle, ≈ 20 % des signaux refusés)
   ftmoAi: ['observe', 'block', 'off'].includes((process.env.FTMO_AI || '').trim()) ? process.env.FTMO_AI.trim() : 'block',

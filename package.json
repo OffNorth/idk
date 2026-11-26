@@ -77,7 +77,8 @@
     "portfolio-ideas": "node --max-old-space-size=4000 portfolio-ideas-research.js",
     "asia": "node --max-old-space-size=12288 asia-research.js",
     "ny": "node --max-old-space-size=12288 ny-research.js",
-    "binance-check": "node scripts/binance-check.js"
+    "binance-check": "node scripts/binance-check.js",
+    "optimize": "node optimize-research.js"
   },
   "engines": {
     "node": ">=20"
