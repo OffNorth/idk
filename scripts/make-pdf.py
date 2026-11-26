@@ -184,8 +184,8 @@ for line in [
     'Les comptes sont réglés sur l’historique puis vérifiés sur des années jamais vues : <b>FTMO</b> réussit ≈ 53 à 76 % des challenges en moins d’un an, '
     '<b>Lucid</b> ≈ 50 à 78 % ; environ une évaluation Lucid sur quatre réussit en 2 semaines.',
     'Plan suivi : réussir Lucid, toucher les retraits Lucid, financer avec eux des comptes FTMO (risque × 0,75 une fois financé, challenge racheté si le compte est perdu).',
-    'L’IA validatrice aide sur FTMO (+3 à +7 points de réussite) mais pas sur Lucid, où elle donne seulement son avis. Order flow et ICT : rien '
-    'd’exploitable après frais.',
+    'L’IA validatrice aide sur FTMO (+3 à +7 points de réussite) mais pas sur Lucid, où elle donne seulement son avis. Order flow, ICT et '
+    '5 autres idées (nuit, panique VIX, mardi, paires, annonces) testés : rien n’améliore les comptes.',
     'Tout est simulé : le paper trading en direct, publié dans le groupe Telegram et sur le site, sert à confirmer ces résultats sans risquer d’argent.',
 ]:
     story.append(Paragraph(line, bullet, bulletText='•'))
@@ -541,6 +541,22 @@ story.append(KeepTogether([Paragraph('ICT (FVG, Silver Bullet, liquidité, SMT, 
     ('Témoin : entrées au hasard', '−0,17', '−0,27', '−0,14'),
     ], [86 * mm, 30 * mm, 30 * mm, 32 * mm])]))
 
+story.append(KeepTogether([Paragraph('Cinq nouvelles idées (26/11/2026)', h2), Paragraph(
+    'Dérive de nuit (acheter l’indice à la clôture, revendre à l’ouverture), rebond après panique (Connors « VIX stretch »), mardi de retournement, '
+    'paires or / argent et Nasdaq / S&amp;P, annonces (jouer contre le 1er mouvement ou le suivre : inflation et emploi à 8 h 30, Fed à 14 h). '
+    'Seules, frais compris, trois tiennent sur 2000–09, 2010–19 et 2020–26 ; mais <b>aucune n’améliore la réussite des comptes</b> : rien d’ajouté.', body),
+    Spacer(1, 3), small_table([
+    ('Idée', 'Seule (R moyen par trade, 3 périodes)', 'Effet sur les comptes'),
+    ('Dérive de nuit Nasdaq (tendance ou après une baisse)', '+0,03 à +0,07 R ✔', 'Lucid 46 → 26–31 % (2009–19) ✘'),
+    ('Rebond après panique (VIX), S&amp;P', '+0,07 à +0,14 R ✔', 'aucun (trop rare)'),
+    ('Mardi de retournement Nasdaq / S&amp;P', '+0,07 à +0,18 R ✔', 'aucun (trop rare)'),
+    ('Paires or / argent, Nasdaq / S&amp;P', 'instables ou perdantes ✘', '—'),
+    ('Annonces : fade ou cassure (indices, or)', 'change de signe selon la période ✘', '—'),
+    ('Ne pas trader autour des annonces', '—', 'FTMO 69 → 67 %, Lucid 53 → 45 % ✘'),
+    ], [70 * mm, 56 * mm, 52 * mm]), Paragraph(
+    'Les jours d’annonce sont repérés dans les données (bougie de 8 h 30 ou de 14 h au moins 3 fois plus grande que d’habitude) : le calendrier '
+    'historique n’est pas fiable. Les comptes sont déjà bien réglés : ajouter des stratégies ajoute surtout du bruit.', note)]))
+
 story += part(4, 'Le bot au quotidien')
 story.append(KeepTogether([Paragraph('Exécution, notifications et outils', h2), Paragraph(
     f'<b>Exécution « comme en vrai »</b> : les comptes FTMO et Lucid entrent et sortent (sur signal) au cours {fc["fd"]:g} s après le signal ; stops et '
@@ -559,6 +575,13 @@ story.append(KeepTogether([Paragraph('Suivi en direct', h2), Paragraph(
     'TradingView (après accord pour ses traceurs). Bouton <b>Pine</b> : script à coller dans TradingView pour voir les trades du bot sur ton '
     'propre graphique. <b>Telegram</b> : chaque trade, chaque trade bloqué par l’IA et son bilan, /pnl (PnL du jour), /ftmo, /lucid, '
     '/portefeuille, /interface, /export. Mise à jour toutes les 15 s environ.', body)]))
+story.append(KeepTogether([Paragraph('Lucid : compte financé à part, et secours des bougies', h2), Paragraph(
+    '<b>Compte Lucid financé à part</b> : quand une évaluation Lucid réussit, le compte financé tourne séparément (« Lucid financé » dans les messages, '
+    'sur le site et dans /pnl, retraits simulés) et une nouvelle évaluation repart dès le jour suivant, en parallèle de FTMO. Un seul compte financé à la fois ; '
+    'perdu, il se met en sommeil jusqu’à la prochaine évaluation réussie (ou /financer lucid). Démarré directement le 26/11/2026, sans attendre d’évaluation. '
+    '<b>Secours des bougies</b> : quand Yahoo n’envoie plus de bougies intraday alors que le cours avance (Thanksgiving 2026 : plus rien depuis 4 h 55 UTC sur '
+    'l’or et les futures), le bot fabrique ses propres bougies de 1 minute avec le cours relevé à chaque passage, jusqu’au retour des vraies. Moins précis '
+    '(un cours par minute) ; jamais utilisé avec OANDA (cours en temps réel, la vraie solution).', body)]))
 story.append(KeepTogether([Paragraph('Portefeuille perso, sans prop firm', h2), Paragraph(
     'Pour son propre argent, sur le long terme : ETF réels, dividendes inclus, sans levier, frais 0,1 %, rééquilibrage mensuel, en euros, '
     'décembre 2004 → novembre 2026. Retenu : <b>50 % monde, 10 % or, 40 % confiés à cinq stratégies journalières du bot</b> (RSI 2 et Double 7 sur '
@@ -573,7 +596,7 @@ story.append(KeepTogether([Paragraph('Portefeuille perso, sans prop firm', h2), 
     ], [72 * mm, 22 * mm, 26 * mm, 26 * mm, 32 * mm]), Paragraph(
     'Versé au total : 79 200 €. Le Nasdaq a eu 20 ans exceptionnels (biais du rétroviseur). Une part de 10 % de Bitcoin avec règle de tendance '
     '(au-dessus de sa moyenne 200 jours, sinon liquidités) a amélioré le rendement sans augmenter la pire baisse, même en partant du sommet de 2021 ; '
-    'non ajoutée.', note)]))
+    'non ajoutée. Rebond VIX et mardi de retournement comme poches du bot : 10,0 → 9,4–9,6 %/an (investies seulement 2 à 12 % du temps) : non ajoutés.', note)]))
 
 # Guide « trader sans le bot » (exemples réels : node scripts/guide-examples.js > docs/guide-examples.json)
 _gx = os.path.join(ROOT, 'docs', 'guide-examples.json')
