@@ -99,7 +99,7 @@ const COST = 0.001;
   const pc = (x, d = 1) => `${(x * 100).toFixed(d)} %`;
   console.log('Poches seules (en €, ETF pendant le trade, liquidités sinon) :');
   for (const [k, r] of Object.entries(NEW)) { R.TMP = r; const inPos = r.filter((x, i) => i && x !== R.SHY[i]).length; const e = run({ TMP: 1 }); console.log(`  ${k.padEnd(16)} ${pc(e.cagr)} /an · pire baisse ${pc(e.dd, 0)} · 2005–15 ${pc(e.c1)} / 2016–26 ${pc(e.c2)} · investie ${Math.round((inPos / days.length) * 100)} % du temps`); }
-  console.log('\\nPortefeuille (en €) : par an · pire baisse · pire année · 2005–15 / 2016–26 · 300 €/mois depuis 2005');
+  console.log('\nPortefeuille (en €) : par an · pire baisse · pire année · 2005–15 / 2016–26 · 300 €/mois depuis 2005');
   for (const [name, W] of [['Actuel : 50 % monde, 10 % or, 40 % bot (5 poches)', { WORLD: 0.5, GLD: 0.1, BOT5: 0.4 }],
     ['+ VIX stretch et mardi sur SPY (7 poches)', { WORLD: 0.5, GLD: 0.1, BOT7: 0.4 }],
     ['+ les 4 nouvelles poches (9 poches)', { WORLD: 0.5, GLD: 0.1, BOT9: 0.4 }],
