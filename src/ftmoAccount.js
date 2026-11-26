@@ -36,8 +36,21 @@ const lucidProgram = (capital, cfg = {}) => ({
   key: `lucid${Math.round(capital / 1000)}k`, label: 'LucidFlex evaluation', firm: 'Lucid', steps: 1, target: 6, daily: Infinity,
   maxUsd: capital > 75_000 ? 3000 : 2000, lockAt: 100, eod: true, bestDay: cfg.lucidConsistency ?? 40, minDays: 2, contracts: true,
   maxContracts: capital > 75_000 ? 60 : 40, levCap: null, split: 90,
-  payout: { rule: 'lucid', cycleDays: 5, minDay: cfg.lucidPayoutMinDay ?? 150, share: 0.5, cap: capital > 75_000 ? 3000 : 2000, min: 500 },
+  payout: { rule: 'lucid', cycleDays: 5, minDay: cfg.lucidPayoutMinDay ?? 150, share: 0.5, cap: capital > 75_000 ? 3000 : 2000, min: 500, max: 5 },
+  /*
+   * Compte financé LucidFlex (centre d'aide Lucid, articles « LucidFlex Funded Account », « Scaling Plan »,
+   * « Drawdown », « Payouts », oct. 2026) : pas de règle de régularité, pas de perte du jour, perte max 2 000 $ suiveuse
+   * en fin de journée, bloquée à capital + 100 $ dès que le solde dépasse capital + 2 100 $ OU dès le 1er retrait ;
+   * contrats selon le gain (plan de scaling, mis à jour à la fin de chaque séance, un retrait peut faire redescendre) ;
+   * 5 retraits au plus, puis le compte passe en réel.
+   */
+  funded: {
+    label: 'LucidFlex funded', bestDay: 0, minDays: 0,
+    scaling: capital > 75_000 ? [[0, 30], [1000, 40], [2000, 50], [3000, 60]] : [[0, 20], [1000, 30], [2000, 40]],
+  },
 });
+/** Plafond de contrats du compte financé Lucid selon le gain du début de séance (plan de scaling). */
+const scaledContracts = (tiers, profit) => tiers.reduce((n, [from, max]) => (profit >= from ? max : n), tiers[0][1]);
 /** Retraits FTMO (compte financé) : tout le gain tous les 14 jours, 80 % pour le trader, le compte repart du capital. */
 const FTMO_PAYOUT = { rule: 'ftmo', every: 14 };
 
@@ -131,7 +144,10 @@ const programOf = (cfg) => PROGRAMS[cfg.ftmoProgram] || PROGRAMS['2step'];
 
 function createFtmo({ cfg, store, account = 'gold' }) {
   const A = accountOf(cfg, account);
-  const P = A.program || programOf(cfg);
+  const P0 = A.program || programOf(cfg);
+  // Règles du compte selon sa phase : compte financé Lucid → règles du financé (pas de régularité, scaling…)
+  const rulesOf = (s) => (s && s.phase === 'funded' && P0.funded ? { ...P0, ...P0.funded } : P0);
+  const P = P0;
   const PKEY = A.program ? A.program.key : cfg.ftmoProgram;
   const CAP = A.capital ?? cfg.ftmoCapital;
   const dayOf = P.eod ? cmeDay : ftmoDay; // Lucid : séance des futures CME
@@ -149,7 +165,9 @@ function createFtmo({ cfg, store, account = 'gold' }) {
   const effTarget = (s) => (targetPct(s) === null ? null : effectiveTarget(targetPct(s), P.bestDay, s.capital, bestDayOf(s)));
   /** Seuil de perte max : Lucid = plus haut solde de clôture − perte max ($), bloqué à capital + 100 $ ; FTMO = 10 %. */
   const maxFloor = (s) => (P.maxUsd
-    ? Math.min((s.eodPeak ?? s.capital) - P.maxUsd, s.capital + (P.lockAt ?? Infinity))
+    // Lucid financé : perte max bloquée à capital + lockAt dès le 1er retrait demandé
+    ? (s.phase === 'funded' && P.lockAt !== undefined && s.funded?.payouts?.length ? s.capital + P.lockAt
+      : Math.min((s.eodPeak ?? s.capital) - P.maxUsd, s.capital + (P.lockAt ?? Infinity)))
     : (P.trailing ? s.peak ?? s.capital : s.capital) - (s.capital * P.max) / 100);
   const dailyFloor = (s) => (Number.isFinite(P.daily) ? s.dayStart - (s.capital * P.daily) / 100 : -Infinity);
   const load = () => {
@@ -215,7 +233,9 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     let amount = 0;
     if (PAY.rule === 'lucid') {
       if ((s.dayPnl?.[prevDay] || 0) >= PAY.minDay) f.good = (f.good || 0) + 1;
-      if ((f.good || 0) < PAY.cycleDays || gain <= 0 || Object.keys(s.open).length) return;
+      if (PAY.max && f.payouts.length >= PAY.max) return; // 5 retraits au plus (le compte passe ensuite en réel chez Lucid)
+      // gain net positif sur le cycle (depuis le dernier retrait)
+      if ((f.good || 0) < PAY.cycleDays || gain <= 0 || s.balance <= (f.cycleStart ?? s.capital) || Object.keys(s.open).length) return;
       amount = Math.min(gain * PAY.share, PAY.cap);
       if (amount < (PAY.min || 0)) return;
       f.good = 0;
@@ -228,6 +248,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     const trader = Math.round(amount * (P.split || 80)) / 100;
     s.balance -= amount;
     s.dayStart = s.balance;
+    f.cycleStart = s.balance;
     if (PAY.rule !== 'lucid') s.peak = s.balance; // FTMO : le compte repart du capital
     f.payouts.push({ t, amount, trader });
     f.paid = (f.paid || 0) + amount;
@@ -502,7 +523,10 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           const mc = MICRO[ev.market.id];
           if (!mc) continue;
           const used = Object.values(s.open).reduce((a, o) => a + (o.n || 0), 0);
-          const room = P.maxContracts - used;
+          // Compte financé Lucid : plafond selon le gain du début de séance (plan de scaling)
+          const R = rulesOf(s);
+          const maxC = R.scaling ? scaledContracts(R.scaling, (s.dayStart ?? s.balance) - s.capital) : P.maxContracts;
+          const room = maxC - used;
           lots = Math.min(Math.floor(notional / (entry * mc.mult)), room);
           if (!(lots >= 1) && room >= 1) {
             // Risque prévu trop petit pour 1 contrat : 1 micro quand même si son risque reste raisonnable
@@ -633,7 +657,8 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     return {
       s,
       account: A,
-      program: P,
+      program: rulesOf(s),
+      maxContracts: rulesOf(s).scaling ? scaledContracts(rulesOf(s).scaling, (s.dayStart ?? s.balance) - s.capital) : P.maxContracts,
       equity: eq,
       unrealized: eq - s.balance, // gains / pertes des positions encore ouvertes (frais de sortie inclus)
       realized: s.balance - s.capital, // gains / pertes des trades clôturés

@@ -233,8 +233,8 @@ async function render(cfg, store, view, marketId, args = []) {
   if (view === 'f') {
     const { createFtmo } = require('./ftmoAccount');
     const prices = Object.fromEntries(activeMarkets(cfg).map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-    const isLucid = args[0] === 'l' || args[0] === 'l2';
-    const lucidId = args[0] === 'l2' ? 'lucid2' : 'lucid';
+    const isLucid = ['l', 'l2', 'lf'].includes(args[0]);
+    const lucidId = { l2: 'lucid2', lf: 'lucidf' }[args[0]] || 'lucid';
     const acct = require('./ftmoAccount').accountOf(cfg, isLucid ? lucidId : marketId);
     const fobj = createFtmo({ cfg, store, account: isLucid ? lucidId : acct.enabled ? marketId : 'gold' });
     const fst = fobj.status(prices);
@@ -248,7 +248,8 @@ async function render(cfg, store, view, marketId, args = []) {
       isLucid
         ? `🟣 <b>Simulated Lucid account · ${fst.account.label}</b> · ${s.phase === 'funded' ? 'funded account' : 'evaluation'} #${s.attempt}`
         : `🏦 <b>Simulated FTMO account ${fst.account.emoji} ${fst.account.label}</b> · ${s.phase === 'funded' ? 'funded account' : fst.program?.steps === 1 ? '1-step challenge' : `step ${s.phase} of 2`} · challenge #${s.attempt}`,
-      ...(isLucid ? [`Rules: +${P.target}%, best day ≤ ${P.bestDay}% of the gain (evaluation), no daily loss limit, max loss ${money(P.maxUsd)} below the highest closing balance (current floor ${money(fst.floor)}), micro futures in whole contracts (${P.maxContracts} max), never long and short at the same time`] : []),
+      ...(isLucid && s.phase === 'funded' ? [`Funded rules: no consistency rule, no daily loss limit, max loss ${money(P.maxUsd)} trailing at end of day, locked at ${money(s.capital + (P.lockAt || 0))} once the balance passes ${money(s.capital + P.maxUsd + (P.lockAt || 0))} or from the 1st payout (current floor ${money(fst.floor)}); contracts by profit (scaling plan): ${(P.scaling || []).map(([f, n]) => `${n} micros from ${money(f)}`).join(', ')} — now ${fst.maxContracts}; payouts: ${P.payout?.cycleDays || 5} winning days ≥ ${money(P.payout?.minDay || 150)}, ≤ 50% of the profit up to ${money(P.payout?.cap || 2000)}, ${money(P.payout?.min || 500)} min, ${P.payout?.max || 5} max`]
+        : isLucid ? [`Rules: +${P.target}%, best day ≤ ${P.bestDay}% of the gain (evaluation), no daily loss limit, max loss ${money(P.maxUsd)} below the highest closing balance (current floor ${money(fst.floor)}), micro futures in whole contracts (${P.maxContracts} max), never long and short at the same time`] : []),
       ...(s.phase === 'funded' ? [payoutText(s, P, isLucid)] : []),
       ...(cfg.fillDelaySec > 0 ? [`⏱ Execution ${cfg.fillDelaySec} s after the signal (price at that moment); stops at their level${s.missed ? ` · ${s.missed} signal(s) missed (stop crossed during the delay)` : ''}`] : []),
       ...(isLucid && s.tooBig ? [`⚠️ ${s.tooBig} signal(s) skipped, too big for this account (a single micro contract would risk over 40% of the max loss): ${Object.entries(s.tooBigBy || {}).slice(0, 6).map(([k, v]) => `<code>${esc(k)}</code> ${money(v)}`).join(', ')} — these strategies stay on the FTMO account`] : []),
@@ -264,8 +265,9 @@ async function render(cfg, store, view, marketId, args = []) {
       ...(s.history || []).slice(-3).map((h) => `• ${isLucid ? 'evaluation' : 'challenge'} #${h.attempt}${isLucid ? '' : `, step ${h.phase}`}: ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
     ];
     const rows = [[btn(`🧾 Trades ${isLucid ? 'Lucid' : 'FTMO'}`, `m:z:${KM[marketId]}:0${sfx}`), ...(rep.n ? [btn('🤖 Refused by the AI', `m:i:${KM[marketId]}:0${sfx}`)] : [])]];
-    if (lucidOn) rows.push([...(isLucid ? [btn('🏦 FTMO account', `m:f:${KM[marketId]}`)] : []), ...(!isLucid || lucidId === 'lucid2' ? [btn(lucid2On ? '🟣 Lucid intraday' : '🟣 Lucid account', `m:f:${KM[marketId]}:l`)] : []),
-      ...(lucid2On && lucidId !== 'lucid2' ? [btn('🟣 Lucid daily', `m:f:${KM[marketId]}:l2`)] : [])]);
+    if (lucidOn) rows.push([...(isLucid ? [btn('🏦 FTMO account', `m:f:${KM[marketId]}`)] : []), ...(!isLucid || lucidId !== 'lucid' ? [btn(lucid2On ? '🟣 Lucid intraday' : '🟣 Lucid account', `m:f:${KM[marketId]}:l`)] : []),
+      ...(lucid2On && lucidId !== 'lucid2' ? [btn('🟣 Lucid daily', `m:f:${KM[marketId]}:l2`)] : []),
+      ...(isLucid && lucidId !== 'lucidf' && !require('./ftmoAccount').createFtmo({ cfg, store, account: 'lucidf' }).asleep() ? [btn('🟣 Lucid funded', `m:f:${KM[marketId]}:lf`)] : [])]);
     if (cfg.siteUrl) rows.push([{ text: '🖥 Live interface', url: `${cfg.siteUrl}/#bot` }]);
     return { png: C.ftmoImage(fst), caption: fitCaption(lines), keyboard: panelKeyboard(cfg, 'f', marketId, rows) };
   }
@@ -335,8 +337,8 @@ async function render(cfg, store, view, marketId, args = []) {
   if (view === 'z') {
     // Trades du compte FTMO simulé
     const { createFtmo } = require('./ftmoAccount');
-    const isLucid = args[1] === 'l' || args[1] === 'l2';
-    const lucidId = args[1] === 'l2' ? 'lucid2' : 'lucid';
+    const isLucid = ['l', 'l2', 'lf'].includes(args[1]);
+    const lucidId = { l2: 'lucid2', lf: 'lucidf' }[args[1]] || 'lucid';
     const sfx = isLucid ? `:${args[1]}` : '';
     const acct = require('./ftmoAccount').accountOf(cfg, marketId);
     const s = createFtmo({ cfg, store, account: isLucid ? lucidId : acct.enabled ? marketId : 'gold' }).load();
@@ -352,8 +354,8 @@ async function render(cfg, store, view, marketId, args = []) {
   if (view === 'i') {
     // Signaux refusés par l'IA validatrice : ce qu'ils auraient fait sur le compte FTMO
     const { createFtmo } = require('./ftmoAccount');
-    const isLucid = args[1] === 'l' || args[1] === 'l2';
-    const lucidId = args[1] === 'l2' ? 'lucid2' : 'lucid';
+    const isLucid = ['l', 'l2', 'lf'].includes(args[1]);
+    const lucidId = { l2: 'lucid2', lf: 'lucidf' }[args[1]] || 'lucid';
     const sfx = isLucid ? `:${args[1]}` : '';
     const acct = require('./ftmoAccount').accountOf(cfg, marketId);
     const f = createFtmo({ cfg, store, account: isLucid ? lucidId : acct.enabled ? marketId : 'gold' });

@@ -53,3 +53,24 @@ test('deux évaluations Lucid (LUCID_SPLIT) : intraday seulement / journalières
   assert.ok(!ftmoAccounts({ ...cfg, lucidSplit: false }).some((x) => x.id === 'lucid2'), 'LUCID_SPLIT=0 : une seule évaluation');
   assert.ok(accountOf({ ...cfg, lucidSplit: false }, 'lucid').riskOf('spx', daily, 'eval') > 0);
 });
+
+test('Lucid financé : règles du financé (pas de régularité, scaling des contrats, perte max bloquée dès le 1er retrait, 5 retraits)', () => {
+  const fs = require('fs'); const os = require('os'); const path = require('path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lucidf-'));
+  const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, lucidEnabled: true, lucidSplit: true, lucidParallel: true, lucidFundedDirect: true, fundedCushion: false, ftmoAi: 'off', lucidAi: 'off' };
+  const { Store } = require('../src/store'); const store = new Store(dir);
+  const { createFtmo } = require('../src/ftmoAccount');
+  const f = createFtmo({ cfg, store, account: 'lucidf' });
+  const T0 = Date.UTC(2026, 10, 16, 15) / 1000;
+  f.onCycle([], { gold: 2000 }, T0); // démarrage direct du compte financé
+  const st = f.status({});
+  assert.strictEqual(st.s.phase, 'funded');
+  assert.strictEqual(st.program.label, 'LucidFlex funded');
+  assert.strictEqual(st.program.bestDay, 0, 'pas de règle de régularité');
+  assert.strictEqual(st.maxContracts, 20, '20 micros au départ (50K)');
+  store.saveJson('lucid-funded.json', { ...f.load(), balance: 51500, dayStart: 51500, eodPeak: 51500 });
+  assert.strictEqual(f.status({}).maxContracts, 30, '30 micros dès +1 000 $');
+  assert.strictEqual(f.status({}).floor, 49500, 'perte max suiveuse avant le 1er retrait');
+  store.saveJson('lucid-funded.json', { ...f.load(), funded: { since: T0, payouts: [{ t: T0, amount: 600, trader: 540 }] } });
+  assert.strictEqual(f.status({}).floor, 50100, 'bloquée à capital + 100 $ dès le 1er retrait');
+});

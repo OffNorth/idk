@@ -55,6 +55,8 @@ function accountView(cfg, store, id, prices) {
     days: (s.days || []).length,
     minDays: P.minDays ?? 4,
     bestDayPct: P.bestDay || 0,
+    payoutsMax: P.payout?.max || null,
+    maxContracts: st.maxContracts || null,
     split: P.split || 80,
     payouts: s.phase === 'funded' ? { n: s.funded?.payouts?.length || 0, paid: Math.round(s.funded?.paid || 0), trader: Math.round(s.funded?.traderPaid || 0), list: (s.funded?.payouts || []).slice(-20) } : null,
     fillDelaySec: cfg.fillDelaySec || 0,
