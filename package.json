@@ -74,7 +74,8 @@
     "ai-research": "node --max-old-space-size=12288 ai-research.js",
     "ftmo-scaling": "node --max-old-space-size=8000 ftmo-scaling-research.js",
     "ideas": "node --max-old-space-size=12288 ideas-research.js",
-    "portfolio-ideas": "node --max-old-space-size=4000 portfolio-ideas-research.js"
+    "portfolio-ideas": "node --max-old-space-size=4000 portfolio-ideas-research.js",
+    "asia": "node --max-old-space-size=12288 asia-research.js"
   },
   "engines": {
     "node": ">=20"

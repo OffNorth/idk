@@ -1,0 +1,356 @@
+#!/usr/bin/env node
+/**
+ * Séance asiatique (npm run asia) : stratégies qui tradent PENDANT la nuit asiatique (la recherche des séances de
+ * novembre portait surtout sur les cassures d'ouverture ; seule g_asiabrk, cassure du range asiatique à Londres, est gardée).
+ *   A. Dérive de nuit de l'or : achat (ou vente) sur les heures d'Asie (22 h → 6 h, 23 h → 5 h, 0 h → 7 h UTC), avec ou
+ *      sans filtre de tendance ; or au comptant 5 min 2009 → 2026.
+ *   B. Retour au milieu du range asiatique : range 0 h – 3 h UTC, le cours en sort entre 3 h et 6 h → on joue le retour au
+ *      milieu ; or (2009 → 2026), USD/JPY et AUD/USD (Polygon 5 min, nov. 2024 → nov. 2026).
+ *   C. Retournement en Asie d'un gros mouvement de New York (13 h 30 → 21 h UTC) sur l'or : contre-tendance de 22 h à 6 h.
+ *   D. Effet « gotobi » (USD/JPY) : les jours en 5 et 10 du mois (Tokyo), le dollar monte avant le fixing de 9 h 55 à
+ *      Tokyo : achat 22 h UTC → 0 h 55 UTC ; comparé aux autres jours.
+ * Frais : or 0,015 %, devises 0,01 % aller-retour. Puis effet sur la réussite FTMO et Lucid (réglages actuels).
+ */
+const fs = require('fs');
+const path = require('path');
+const cfg = require('./src/config');
+const { backtest } = require('./src/gold');
+const { aggregate } = require('./src/history');
+const { challengeStats, runPhase, cmeDay, rStats } = require('./src/ftmo');
+const { RULES } = require('./src/sizing');
+const { buildTrades } = require('./src/ftmoTrades');
+const { accountOf } = require('./src/ftmoAccount');
+const { selectStrategies } = require('./src/strategies');
+const { nySession } = require('./src/oanda');
+const { polygonBars } = require('./src/polygon');
+
+const CACHE = path.join(__dirname, 'data', 'research');
+const Y = (y, m = 1) => Date.UTC(y, m - 1, 1) / 1000;
+const DAY = 86400;
+const sgn = (x, d = 2) => `${x >= 0 ? '+' : ''}${x.toFixed(d)}`;
+const load = (f) => JSON.parse(fs.readFileSync(path.join(CACHE, f), 'utf8')).filter((k) => k.c > 0);
+
+/* ---------- Heure de New York ---------- */
+const offC = new Map();
+const nyOff = (t) => { const d = Math.floor(t / DAY); if (!offC.has(d)) { const s = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'shortOffset' }).formatToParts(new Date((d * DAY + 61200) * 1000)).find((p) => p.type === 'timeZoneName').value; offC.set(d, (Number((s.match(/GMT([+-]\d+)/) || [])[1]) || -5) * 3600); } return offC.get(d); };
+const nyMin = (t) => Math.floor(((t + nyOff(t)) % DAY) / 60);
+const nyDay = (t) => Math.floor((t + nyOff(t)) / DAY);
+
+/* ---------- Indicateurs journaliers ---------- */
+const sma = (a, n, i) => { if (i < n - 1) return null; let s = 0; for (let k = i - n + 1; k <= i; k++) s += a[k]; return s / n; };
+function atrPct(d, n = 14) { const out = []; let a = null; for (let i = 0; i < d.length; i++) { const tr = i ? Math.max(d[i].h - d[i].l, Math.abs(d[i].h - d[i - 1].c), Math.abs(d[i].l - d[i - 1].c)) : d[i].h - d[i].l; a = a === null ? tr : (a * (n - 1) + tr) / n; out.push((a / d[i].c) * 100); } return out; }
+function rsi2(c) { const out = [null]; let up = 0, dn = 0; for (let i = 1; i < c.length; i++) { const ch = c[i] - c[i - 1]; up = (up + Math.max(ch, 0)) / 2; dn = (dn + Math.max(-ch, 0)) / 2; out.push(dn === 0 ? 100 : 100 - 100 / (1 + up / dn)); } return out; }
+
+// Trade au format des simulateurs de comptes : entry, initSl (stop), pnlPct, temps
+const mk = (o) => ({ ...o, initSl: o.side === 'long' ? o.entry * (1 - o.stopPct / 100) : o.entry * (1 + o.stopPct / 100) });
+
+/* ---------- 2. Dérive de nuit ---------- */
+function overnight(d, market, variant, fee = 0.02) {
+  const c = d.map((k) => k.c); const atr = atrPct(d); const out = [];
+  for (let i = 200; i < d.length - 1; i++) {
+    const gapDays = (d[i + 1].t - d[i].t) / DAY;
+    if (variant.noWeekend && gapDays > 1.5) continue;
+    if (variant.trend && !(c[i] > sma(c, 200, i))) continue;
+    if (variant.afterDown && !(d[i].c < d[i].o)) continue;
+    const stopPct = atr[i] * 0.75;
+    let pnl = (d[i + 1].o / c[i] - 1) * 100;
+    if (pnl < -stopPct) pnl = -stopPct; // stop touché pendant la nuit (futures)
+    out.push(mk({ market, sid: `${market}:x_night${variant.tag}`, side: 'long', entry: c[i], stopPct, pnlPct: pnl - fee, entryT: d[i].t + 20.5 * 3600, exitT: d[i + 1].t + 14.5 * 3600, intraday: false }));
+  }
+  return out;
+}
+/* ---------- 4. VIX stretch ---------- */
+function vixStretch(d, vix, market, fee = 0.02) {
+  const vm = new Map(vix.map((k) => [k.t, k.c])); const c = d.map((k) => k.c); const r2 = rsi2(c); const atr = atrPct(d, 10); const out = [];
+  const vs = d.map((k) => vm.get(k.t) ?? null);
+  for (let i = 210; i < d.length - 1; i++) {
+    let ok = c[i] > sma(c, 200, i);
+    for (let k = 0; k < 3 && ok; k++) { const j = i - k; const w = vs.slice(j - 9, j + 1); if (w.some((x) => x == null)) { ok = false; break; } ok = vs[j] >= 1.05 * (w.reduce((a, b) => a + b, 0) / 10); }
+    if (!ok) continue;
+    const e = c[i]; const stopPct = 2.5 * atr[i]; let j = i + 1; let pnl = null;
+    for (; j < Math.min(d.length, i + 11); j++) {
+      if ((d[j].l / e - 1) * 100 <= -stopPct) { pnl = -stopPct; break; }
+      if (r2[j] > 65 || j === i + 10) { pnl = (c[j] / e - 1) * 100; break; }
+    }
+    if (pnl === null) continue;
+    out.push(mk({ market, sid: `${market}:x_vixstretch`, side: 'long', entry: e, stopPct, pnlPct: pnl - fee, entryT: d[i].t + 20.5 * 3600, exitT: d[j].t + 20.5 * 3600, intraday: false }));
+    i = j;
+  }
+  return out;
+}
+/* ---------- 5. Mardi de retournement ---------- */
+function turnaroundTuesday(d, market, fee = 0.02) {
+  const atr = atrPct(d); const out = [];
+  for (let i = 1; i < d.length - 1; i++) {
+    if (new Date(d[i].t * 1000).getUTCDay() !== 1 || !(d[i].c < d[i - 1].c * 0.99)) continue;
+    const e = d[i].c; const stopPct = 2 * atr[i];
+    const pnl = (d[i + 1].l / e - 1) * 100 <= -stopPct ? -stopPct : (d[i + 1].c / e - 1) * 100;
+    out.push(mk({ market, sid: `${market}:x_turntue`, side: 'long', entry: e, stopPct, pnlPct: pnl - fee, entryT: d[i].t + 20.5 * 3600, exitT: d[i + 1].t + 20.5 * 3600, intraday: false }));
+  }
+  return out;
+}
+/* ---------- 3. Paires (z-score du log-ratio, 50 j) ---------- */
+function pairs(a, b, market, tag, fee = 0.04) {
+  const mb = new Map(b.map((k) => [k.t, k.c])); const rows = a.filter((k) => mb.has(k.t)).map((k) => ({ t: k.t, a: k.c, b: mb.get(k.t) }));
+  const lr = rows.map((r) => Math.log(r.a / r.b)); const out = [];
+  const z = (i) => { const w = lr.slice(i - 49, i + 1); const m = w.reduce((x, y) => x + y, 0) / 50; const sd = Math.sqrt(w.reduce((x, y) => x + (y - m) ** 2, 0) / 50); return sd ? (lr[i] - m) / sd : 0; };
+  // Volatilité de l'écart (pour le stop) : écart-type des variations quotidiennes du log-ratio sur 50 j
+  const vol = (i) => { const ch = []; for (let k = i - 49; k <= i; k++) ch.push(lr[k] - lr[k - 1]); const m = ch.reduce((x, y) => x + y, 0) / ch.length; return Math.sqrt(ch.reduce((x, y) => x + (y - m) ** 2, 0) / ch.length); };
+  for (let i = 60; i < rows.length - 1; i++) {
+    const zi = z(i); if (Math.abs(zi) < 2) continue;
+    const dir = zi > 0 ? -1 : 1; // ratio haut : on vend a, on achète b (rendement de l'écart = dir × variation du log-ratio)
+    const stopPct = 3 * vol(i) * 100 * Math.sqrt(5) / 2; // demi-position par jambe
+    let j = i + 1; let pnl = null;
+    for (; j < Math.min(rows.length, i + 21); j++) {
+      const p = (dir * (lr[j] - lr[i]) * 100) / 2;
+      if (p <= -stopPct) { pnl = -stopPct; break; }
+      if (Math.abs(z(j)) < 0.5 || j === i + 20) { pnl = p; break; }
+    }
+    if (pnl === null) continue;
+    out.push(mk({ market, sid: `${market}:x_pair${tag}`, side: 'long', entry: 100, stopPct, pnlPct: pnl - fee, entryT: rows[i].t + 20.5 * 3600, exitT: rows[j].t + 20.5 * 3600, intraday: false }));
+    i = j;
+  }
+  return out;
+}
+/* ---------- 1. Annonces (intraday) ---------- */
+// Jours d'annonce : bougie 5 min de l'heure H ≥ 3 × la médiane des bougies 5 min de l'heure qui précède
+function newsDays(b5, hm) {
+  const byDay = new Map();
+  for (const k of b5) { const d = nyDay(k.t); if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(k); }
+  const out = new Set();
+  for (const [d, list] of byDay) {
+    const at = list.find((k) => nyMin(k.t) === hm); if (!at) continue;
+    const before = list.filter((k) => nyMin(k.t) >= hm - 60 && nyMin(k.t) < hm).map((k) => k.h - k.l).sort((x, y) => x - y);
+    if (before.length < 6) continue;
+    const med = before[Math.floor(before.length / 2)];
+    if (med > 0 && at.h - at.l >= 3 * med) out.add(d);
+  }
+  return out;
+}
+// Fade ou cassure du mouvement d'annonce : mesure entre `from` et `at` (minutes NY), entrée à `at`, sortie `until`
+function newsTrades(b5, days, { from, at, until, mode, market, tag, fee }) {
+  const byDay = new Map();
+  for (const k of b5) { const d = nyDay(k.t); if (!days.has(d)) continue; if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(k); }
+  const out = [];
+  for (const [, list] of byDay) {
+    const pre = list.find((k) => nyMin(k.t) === from - 5); const e = list.find((k) => nyMin(k.t) === at - 5);
+    if (!pre || !e) continue;
+    const win = list.filter((k) => nyMin(k.t) >= from && nyMin(k.t) < at);
+    if (!win.length) continue;
+    const move = e.c - pre.c; if (!move) continue;
+    const hi = Math.max(...win.map((k) => k.h)), lo = Math.min(...win.map((k) => k.l));
+    const dir = mode === 'fade' ? -Math.sign(move) : Math.sign(move);
+    const entry = e.c;
+    const sl = dir > 0 ? lo - 0.0002 * entry : hi + 0.0002 * entry;
+    const risk = Math.abs(entry - sl); if (!(risk > 0)) continue;
+    const tp = mode === 'fade' ? entry + dir * Math.max(risk, Math.abs(move) / 2) : entry + dir * 2 * risk;
+    let exit = null, exitT = null;
+    for (const k of list.filter((x) => nyMin(x.t) >= at && nyMin(x.t) < until)) {
+      if (dir > 0 ? k.l <= sl : k.h >= sl) { exit = sl; exitT = k.t + 300; break; }
+      if (dir > 0 ? k.h >= tp : k.l <= tp) { exit = tp; exitT = k.t + 300; break; }
+      exit = k.c; exitT = k.t + 300;
+    }
+    if (exit === null) continue;
+    const stopPct = (risk / entry) * 100;
+    out.push(mk({ market, sid: `${market}:x_news${tag}`, side: dir > 0 ? 'long' : 'short', entry, stopPct, pnlPct: dir * (exit / entry - 1) * 100 - fee, entryT: e.t + 300, exitT, intraday: true }));
+  }
+  return out;
+}
+
+(async () => {
+  /* ---------- Comptes actuels (comme npm run ai-research) ---------- */
+  const { all, q5 } = await buildTrades(cfg, CACHE, { withLucid: true });
+  const qs = nySession(aggregate(await polygonBars(CACHE, 'QQQ', 1, '2024-11-18', { maxAgeH: Infinity }), 300, 60));
+  const strat = (sid) => { const [m, id] = sid.split(':'); return [m, selectStrategies([id])[0] || { id, tf: '1d' }]; };
+  const nyRun = (bars, s, sid, m, mult, fee) => backtest({ ...s, compute: (c, sec) => s.compute(c, sec, 'nas100') }, bars, { size: 1000, feePct: 0.003, financingPct: 6, barSec: 300, market: 'nas100' }).list
+    .map((t) => ({ ...t, sid, market: m, intraday: true, contractUsd: t.entry * mult, contractFee: fee }));
+  const NYB = {
+    nas100: [qs, 82, 2.5], silver: [nySession(await polygonBars(CACHE, 'SLV', 5, '2024-11-18', { maxAgeH: Infinity })), 1075, 3.5],
+    dow: [nySession(await polygonBars(CACHE, 'DIA', 5, '2024-11-18', { maxAgeH: Infinity })), 50, 2.5],
+    russell: [nySession(await polygonBars(CACHE, 'IWM', 5, '2024-11-18', { maxAgeH: Infinity })), 50, 2.5],
+    spx: [nySession(aggregate(await polygonBars(CACHE, 'SPY', 1, '2024-11-18', { maxAgeH: Infinity }), 300, 60)), 50, 4],
+  };
+  const A0 = q5[0].t + 30 * DAY;
+  const P = { B: [Y(2009) + 60 * DAY, Y(2020)], C: [Y(2020), Infinity], A: [A0, Infinity] };
+  const accts = {};
+  for (const id of ['ftmo', 'lucid']) {
+    const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, id === 'ftmo' ? 'gold' : 'lucid');
+    const sids = A.strategies.filter((k) => A.riskOf(...strat(k), 'eval') > 0);
+    const intra = sids.filter((k) => { const [m, s] = strat(k); return s.tf && s.tf !== '1d' && NYB[m]; })
+      .flatMap((k) => { const [b, mult, fee] = NYB[k.split(':')[0]]; return nyRun(b, strat(k)[1], k, k.split(':')[0], mult, fee); });
+    const list = [...all.filter((t) => sids.includes(t.sid) && !(t.intraday && NYB[t.market])), ...intra].map((t) => ({ ...t, riskPct: A.riskOf(...strat(t.sid), 'eval') }));
+    accts[id] = { A, list };
+  }
+  const RF = { steps: 1, capital: 100_000, target: 10, target1: 10, dailyPct: 3, maxPct: 10, trailingMax: true, bestDayPct: 50, minDays: 4, dayStopPct: cfg.ftmoDayStop, riskPct: 1,
+    sizer: RULES[cfg.ftmoSizing], dayProfitCapUsd: (cfg.ftmoDayProfitCapPct / 100) * 10_000, maxLossesPerDay: cfg.ftmoMaxLossesDay || Infinity };
+  const RL = { capital: 50_000, steps: 1, target1: 6, target: 6, dailyPct: Infinity, maxLossUsd: 2000, eodTrailing: true, lockAt: 100, bestDayPct: cfg.lucidConsistency, minDays: 2,
+    contracts: true, maxContracts: 40, minOneRisk: 0.4, leverage: 1000, dayOf: cmeDay, dayStopPct: cfg.ftmoDayStop, riskPct: 1, sizer: RULES[cfg.ftmoSizing],
+    dayProfitCapUsd: (cfg.lucidDayProfitCapPct / 100) * 50_000 * 0.06, maxLossesPerDay: cfg.lucidMaxLossesDay || Infinity };
+  const evaluate = (id, list) => {
+    const o = id === 'ftmo' ? RF : RL;
+    const per = Object.entries(P).map(([k, [a, b]]) => {
+      const l = list.filter((t) => t.entryT >= a && t.entryT < b && (k === 'A' || !(t.intraday && t.market !== 'gold')));
+      return challengeStats(l, { horizonDays: 365, start: a, ...(Number.isFinite(b) ? { end: b } : {}), ...o }).passRate;
+    });
+    const res = { per, p14: 0, p30: 0, f14: 0 };
+    if (id === 'lucid') {
+      const l = list.filter((t) => t.entryT >= A0).sort((x, y) => x.entryT - y.entryT);
+      const end = l[l.length - 1].entryT - 60 * DAY; let n = 0;
+      for (let s = A0; s < end; s += DAY) {
+        const wd = new Date(s * 1000).getUTCDay(); if (wd === 0 || wd === 6) continue;
+        n++; const r = runPhase(l.filter((t) => t.entryT >= s && t.entryT < s + 200 * DAY), { ...o, from: s }); const d = (r.at - s) / DAY;
+        if (r.outcome === 'target' && d <= 14) res.p14++; if (r.outcome === 'target' && d <= 30) res.p30++; if ((r.outcome === 'daily' || r.outcome === 'maxloss') && d <= 14) res.f14++;
+      }
+      res.p14 = (res.p14 / n) * 100; res.p30 = (res.p30 / n) * 100; res.f14 = (res.f14 / n) * 100;
+    }
+    return res;
+  };
+  const fmt = (r) => `${r.per.map((p) => `${p.toFixed(0).padStart(3)} %`).join(' |')}${r.p14 || r.p30 ? ` || ≤14 j ${r.p14.toFixed(0).padStart(2)} % · ≤30 j ${r.p30.toFixed(0).padStart(2)} % · échec ≤14 j ${r.f14.toFixed(0).padStart(2)} %` : ''}`;
+  const better = (r, ref, id) => r.per.every((p, i) => p >= ref.per[i] - 0.5) && (id !== 'lucid' || (r.p14 >= ref.p14 - 0.5 && r.f14 <= ref.f14 + 0.5))
+    && (r.per.some((p, i) => p > ref.per[i] + 0.5) || (id === 'lucid' && (r.p14 > ref.p14 + 0.5 || r.p30 > ref.p30 + 0.5)));
+  const ref = { ftmo: evaluate('ftmo', accts.ftmo.list), lucid: evaluate('lucid', accts.lucid.list) };
+  console.log(`Référence · FTMO ${fmt(ref.ftmo)}\n            Lucid ${fmt(ref.lucid)}  (réussite < 1 an 2009–19 | 2020–26 | nov. 24–26)\n`);
+
+
+  /* ---------- Données ---------- */
+  const g5 = JSON.parse(fs.readFileSync(path.join(CACHE, 'xauusd-5m.json'), 'utf8')).map(([t, o, h, l, c]) => ({ t, o, h, l, c }));
+  const fx = (p) => JSON.parse(fs.readFileSync(path.join(CACHE, `polygon-C:${p}-5m-2024-11-18.json`), 'utf8')).map((k) => ({ t: k.t, o: k.o, h: k.h, l: k.l, c: k.c }));
+  const uMin = (t) => Math.floor((t % DAY) / 60);
+  const sess = (t) => Math.floor((t + 2 * 3600) / DAY); // séance asiatique : de 22 h UTC la veille à 22 h UTC
+  const bySess = (bars) => { const m = new Map(); for (const b of bars) { const k = sess(b.t); if (!m.has(k)) m.set(k, []); m.get(k).push(b); } return [...m.entries()].sort((a, b) => a[0] - b[0]); };
+  const at = (list, min) => list.find((b) => uMin(b.t) === min);
+  const between = (list, a, b) => list.filter((x) => { const m = (uMin(x.t) + 120) % 1440; return m >= (a + 120) % 1440 && m < (b + 120) % 1440; }); // heures décalées de 2 h (22 h = début)
+  const tradeOf = (o) => mk({ ...o, stopPct: (Math.abs(o.entry - o.sl) / o.entry) * 100, pnlPct: (o.side === 'long' ? 1 : -1) * (o.exit / o.entry - 1) * 100 - o.fee });
+  // Parcourt les bougies d'une fenêtre : stop prioritaire, objectif ensuite, sinon clôture de la dernière
+  const walk = (bars, side, sl, tp) => { let exit = null, exitT = null; for (const b of bars) { if (side === 'long' ? b.l <= sl : b.h >= sl) return [sl, b.t + 300]; if (tp != null && (side === 'long' ? b.h >= tp : b.l <= tp)) return [tp, b.t + 300]; exit = b.c; exitT = b.t + 300; } return [exit, exitT]; };
+
+  // A. Dérive de nuit (fenêtre a → b en minutes UTC), stop = 0,75 × amplitude moyenne de la fenêtre sur les 20 séances précédentes
+  function drift(bars, market, { a, b, side, trend = false, fee, tag }) {
+    const S = bySess(bars); const out = []; const ranges = []; const closes = [];
+    for (const [, list] of S) {
+      const w = between(list, a, b);
+      const e = at(list, a);
+      const avg = ranges.length >= 20 ? ranges.slice(-20).reduce((x, y) => x + y, 0) / 20 : null;
+      const sma50 = closes.length >= 50 ? closes.slice(-50).reduce((x, y) => x + y, 0) / 50 : null;
+      if (e && w.length > 3 && avg && (!trend || (side === 'long' ? e.o > sma50 : e.o < sma50))) {
+        const entry = e.o; const sl = side === 'long' ? entry - 0.75 * avg : entry + 0.75 * avg;
+        const [exit, exitT] = walk(w, side, sl, null);
+        if (exit != null) out.push(tradeOf({ market, sid: `${market}:x_asia_${tag}`, side, entry, sl, exit, entryT: e.t, exitT, fee, intraday: true }));
+      }
+      if (w.length) ranges.push(Math.max(...w.map((x) => x.h)) - Math.min(...w.map((x) => x.l)));
+      const last = list[list.length - 1]; if (last) closes.push(last.c);
+    }
+    return out;
+  }
+  // B. Range 0 h – 3 h, sortie entre 3 h et 6 h → retour au milieu (objectif), stop à 0,5 × largeur au-delà ; fin à 7 h
+  function rangeRevert(bars, market, { fee, tag, k = 0.1 }) {
+    const out = [];
+    for (const [, list] of bySess(bars)) {
+      const r = between(list, 0, 180); if (r.length < 24) continue;
+      const hi = Math.max(...r.map((x) => x.h)), lo = Math.min(...r.map((x) => x.l)), wd = hi - lo; if (!(wd > 0)) continue;
+      const w = between(list, 180, 360);
+      for (let i = 0; i < w.length; i++) {
+        const b = w[i]; let side = null;
+        if (b.c > hi + k * wd) side = 'short'; else if (b.c < lo - k * wd) side = 'long';
+        if (!side) continue;
+        const entry = b.c; const sl = side === 'short' ? entry + 0.5 * wd : entry - 0.5 * wd; const tp = (hi + lo) / 2;
+        const [exit, exitT] = walk(between(list, uMin(b.t) + 5, 420), side, sl, tp);
+        if (exit != null) out.push(tradeOf({ market, sid: `${market}:x_asia_${tag}`, side, entry, sl, exit, entryT: b.t + 300, exitT, fee, intraday: true }));
+        break;
+      }
+    }
+    return out;
+  }
+  // C. Gros mouvement de New York (13 h 30 → 21 h UTC) ≥ k × la moyenne des 20 derniers → contre-tendance 22 h → 6 h
+  function nyReversal(bars, market, { k = 1.5, fee, tag }) {
+    const byDay = new Map(); for (const b of bars) { const d = Math.floor(b.t / DAY); if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(b); }
+    const S = new Map(bySess(bars)); const moves = []; const out = [];
+    for (const [d, list] of [...byDay.entries()].sort((x, y) => x[0] - y[0])) {
+      const o = at(list, 810), c = at(list, 1255); if (!o || !c) continue;
+      const mv = c.c - o.o; const avg = moves.length >= 20 ? moves.slice(-20).reduce((x, y) => x + Math.abs(y), 0) / 20 : null; moves.push(mv);
+      if (!avg || Math.abs(mv) < k * avg) continue;
+      const next = S.get(d + 1); if (!next) continue; const e = at(next, 1320); const w = between(next, 1320, 360); if (!e || w.length < 4) continue;
+      const side = mv > 0 ? 'short' : 'long'; const entry = e.o; const r = 0.5 * Math.abs(mv);
+      const sl = side === 'long' ? entry - r : entry + r; const tp = side === 'long' ? entry + r : entry - r;
+      const [exit, exitT] = walk(w, side, sl, tp);
+      if (exit != null) out.push(tradeOf({ market, sid: `${market}:x_asia_${tag}`, side, entry, sl, exit, entryT: e.t, exitT, fee, intraday: true }));
+    }
+    return out;
+  }
+  // D. Gotobi : jour de Tokyo en 5 / 10 / 15 / 20 / 25 / 30 (ou dernier jour du mois), reporté au vendredi s'il tombe un week-end
+  const isGotobi = (fixT) => {
+    const jst = new Date((fixT + 9 * 3600) * 1000); const y = jst.getUTCFullYear(), m = jst.getUTCMonth(), d = jst.getUTCDate();
+    const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const targets = [5, 10, 15, 20, 25, Math.min(30, last)];
+    const wd = jst.getUTCDay(); if (wd === 0 || wd === 6) return false;
+    for (const tgt of targets) { // le jour cible ou, s'il tombe un week-end, le vendredi d'avant
+      const td = new Date(Date.UTC(y, m, tgt)); let w = td.getUTCDay(); let dd = tgt; while (w === 0 || w === 6) { dd--; w = (w + 6) % 7; }
+      if (dd === d) return true;
+    }
+    return false;
+  };
+  function gotobi(bars, market, { want, fee, tag }) {
+    const out = []; const ranges = [];
+    for (const [, list] of bySess(bars)) {
+      const e = at(list, 1320); const w = between(list, 1320, 55);
+      const avg = ranges.length >= 20 ? ranges.slice(-20).reduce((x, y) => x + y, 0) / 20 : null;
+      if (w.length) ranges.push(Math.max(...w.map((x) => x.h)) - Math.min(...w.map((x) => x.l)));
+      if (!e || w.length < 20 || !avg) continue;
+      const fixT = w[w.length - 1].t; if (isGotobi(fixT) !== want) continue;
+      const entry = e.o; const sl = entry - 1.5 * avg;
+      const [exit, exitT] = walk(w, 'long', sl, null);
+      if (exit != null) out.push(tradeOf({ market, sid: `${market}:x_${tag}`, side: 'long', entry, sl, exit, entryT: e.t, exitT, fee, intraday: true }));
+    }
+    return out;
+  }
+
+  /* ---------- Candidats ---------- */
+  const GF = 0.015, FF = 0.01;
+  const cands = [];
+  for (const [a, b, lbl] of [[1320, 360, '22h-6h'], [1380, 300, '23h-5h'], [0, 420, '0h-7h']]) {
+    for (const side of ['long', 'short']) for (const trend of [false, true]) cands.push({ name: `Or ${side === 'long' ? 'achat' : 'vente'} nuit ${lbl}${trend ? ' + tendance' : ''}`, kind: 'gold', trades: drift(g5, 'gold', { a, b, side, trend, fee: GF, tag: `drift${side[0]}${lbl}${trend ? 't' : ''}` }) });
+  }
+  for (const k of [0, 0.1, 0.25]) cands.push({ name: `Or range asiatique → milieu (sortie ${k})`, kind: 'gold', trades: rangeRevert(g5, 'gold', { fee: GF, tag: `rr${k}`, k }) });
+  for (const k of [1, 1.5, 2]) cands.push({ name: `Or retournement après New York (≥ ${k} ×)`, kind: 'gold', trades: nyReversal(g5, 'gold', { k, fee: GF, tag: `nyrev${k}` }) });
+  const uj = fx('USDJPY'), au = fx('AUDUSD');
+  cands.push({ name: 'USD/JPY gotobi (achat avant le fixing)', kind: 'fx', ftmoOnly: true, trades: gotobi(uj, 'usdjpy', { want: true, fee: FF, tag: 'gotobi' }) });
+  cands.push({ name: 'USD/JPY autres jours (témoin)', kind: 'fx', ftmoOnly: true, trades: gotobi(uj, 'usdjpy', { want: false, fee: FF, tag: 'nogotobi' }) });
+  for (const [p, d] of [['usdjpy', uj], ['audusd', au]]) for (const k of [0, 0.1]) cands.push({ name: `${p.toUpperCase()} range asiatique → milieu (sortie ${k})`, kind: 'fx', ftmoOnly: true, trades: rangeRevert(d, p, { fee: FF, tag: `rr${k}`, k }) });
+
+  /* ---------- 1. Seules ---------- */
+  const PER = {
+    gold: [['2009–12', Y(2009), Y(2013)], ['2013–16', Y(2013), Y(2017)], ['2017–19', Y(2017), Y(2020)], ['2020–26', Y(2020), Infinity]],
+    fx: [['nov. 24–juil. 25', Y(2024, 11), Y(2025, 7)], ['juil. 25–mars 26', Y(2025, 7), Y(2026, 3)], ['mars–nov. 26', Y(2026, 3), Infinity]],
+  };
+  console.log('=== Seules (R moyen par trade, frais compris, par période) ===');
+  const keep = [];
+  for (const c of cands) {
+    const per = PER[c.kind].map(([, a, b]) => rStats(c.trades.filter((t) => t.entryT >= a && t.entryT < b)));
+    const ok = per.every((p) => p.n >= (c.kind === 'fx' ? 12 : 30) && p.expR > 0.02);
+    console.log(`${ok ? '✅' : '  '} ${c.name.padEnd(44)} ${per.map((p) => `${sgn(p.expR)} R (${String(p.n).padStart(4)})`).join(' / ')}`);
+    if (ok && !/témoin/.test(c.name)) keep.push(c);
+  }
+
+  /* ---------- 2. Effet sur les comptes ---------- */
+  console.log('\n=== Effet sur la réussite (ajoutée seule au compte, risque intraday du compte) ===');
+  const added = { ftmo: [], lucid: [] };
+  const withRisk = (id, c) => {
+    const r = id === 'lucid' ? (cfg.lucidIntradayRisk ?? 0.45) * (cfg.lucidEvalIntradayMul ?? 1) : (cfg.ftmoIntradayRisk || 0.15) * (cfg.ftmoRiskMul ?? 1) * (cfg.ftmoEvalIntradayMul ?? 1);
+    return c.trades.map((t) => ({ ...t, riskPct: r, contractUsd: t.market === 'gold' ? t.entry * 10 : t.entry * 100000, contractFee: 3.5 }));
+  };
+  for (const c of keep) {
+    for (const id of ['ftmo', 'lucid']) {
+      if (id === 'lucid' && c.ftmoOnly) continue;
+      const r = evaluate(id, [...accts[id].list, ...withRisk(id, c)]);
+      const good = better(r, ref[id], id);
+      console.log(`${good ? '✅' : '  '} ${id.padEnd(5)} + ${c.name.padEnd(42)} ${fmt(r)}`);
+      if (good) added[id].push(c);
+    }
+  }
+  if (!keep.length) console.log('  (aucune stratégie stable sur toutes les périodes)');
+  for (const id of ['ftmo', 'lucid']) {
+    if (added[id].length < 2) continue;
+    const r = evaluate(id, [...accts[id].list, ...added[id].flatMap((c) => withRisk(id, c))]);
+    console.log(`\n${id} + toutes les retenues (${added[id].map((c) => c.name).join(', ')}) : ${fmt(r)}`);
+  }
+})().catch((e) => { console.error(e); process.exit(1); });
