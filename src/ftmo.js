@@ -106,7 +106,7 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       // risque propre au trade si fourni (comptes multi-marchés) ; `sizer` : multiplicateur de risque selon le trade et l'état du compte
       // Objectif vu par la règle de taille : relevé si la règle du meilleur jour demande plus de gain (effectiveTarget)
       const tgt = effTarget ? effectiveTarget(target, bestDayPct, capital, dayPnl.size ? Math.max(...dayPnl.values()) : 0) : target;
-      const mul = sizer ? sizer(e.tr, { balance, capital, dayStart, target: tgt, open: open.size }) : 1;
+      const mul = sizer ? sizer(e.tr, { balance, capital, dayStart, target: tgt, open: open.size, openTrades: open.keys() }) : 1;
       if (!(mul > 0)) continue;
       const cap = (levCap && e.tr.market && levCap[e.tr.market]) || leverage; // levier max par marché (compte Swing)
       let notional = Math.min((balance * (e.tr.riskPct ?? riskPct) * riskMul * mul) / sp, balance * cap);
