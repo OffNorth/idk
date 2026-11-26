@@ -10,7 +10,29 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import mm
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak, KeepTogether
+import re
+import reportlab.platypus as _pl
+from reportlab.platypus import SimpleDocTemplate, Spacer, Table, TableStyle, Image, PageBreak, KeepTogether, CondPageBreak
+from reportlab.platypus.flowables import HRFlowable
+
+# Les commandes internes (« npm run … ») ne servent pas au lecteur : retirées des textes du PDF
+_NPM = [(re.compile(r'\s*\(npm (?:run|test)[\w\s,.-]*\)'), ''), (re.compile(r'\(npm run [\w.-]+(?:, [\w.-]+)*, '), '('),
+        (re.compile(r',?\s*npm run [\w.-]+'), '')]
+
+
+def _clean(t):
+    if isinstance(t, str):
+        for r, sub_ in _NPM:
+            t = r.sub(sub_, t)
+    return t
+
+
+class Paragraph(_pl.Paragraph):
+    def __init__(self, text, style=None, *a, **k):
+        super().__init__(_clean(text), style, *a, **k)
+
+
+_pl.Paragraph = Paragraph  # aussi pour le guide (scripts/guide_pdf.py)
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.fonts import addMapping
@@ -21,18 +43,44 @@ pdfmetrics.registerFont(TTFont('DV', '/usr/share/fonts/truetype/dejavu/DejaVuSan
 pdfmetrics.registerFont(TTFont('DVB', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'))
 addMapping('DV', 0, 0, 'DV'); addMapping('DV', 1, 0, 'DVB'); addMapping('DV', 0, 1, 'DV'); addMapping('DV', 1, 1, 'DVB')
 
-INK, MUTED, GOLD, LINE = (colors.HexColor(c) for c in ('#1f2937', '#6b7280', '#b45309', '#e5e7eb'))
-title = ParagraphStyle('t', fontName='DVB', fontSize=20, leading=24, textColor=INK, spaceAfter=4)
-sub = ParagraphStyle('s', fontName='DV', fontSize=9.5, leading=13, textColor=MUTED)
-h2 = ParagraphStyle('h2', fontName='DVB', fontSize=13, leading=17, textColor=GOLD, spaceBefore=10, spaceAfter=5)
-body = ParagraphStyle('b', fontName='DV', fontSize=9, leading=12.5, textColor=INK)
-cell = ParagraphStyle('c', fontName='DV', fontSize=8, leading=10.2, textColor=INK)
+# Palette unique : encre, gris, un seul accent (mauve, comme le site), filets clairs
+ACC, MUT, SOFT_HEX = '#6e45c9', '#667085', '#f4f0fd'
+INK, MUTED, ACCENT, LINE, SOFT, ZEBRA, HILITE = (colors.HexColor(c) for c in ('#1d2330', MUT, ACC, '#e6e8ee', SOFT_HEX, '#fafafc', '#f7f3fe'))
+GOLD = ACCENT
+title = ParagraphStyle('t', fontName='DVB', fontSize=24, leading=30, textColor=INK, spaceAfter=6)
+sub = ParagraphStyle('s', fontName='DV', fontSize=10, leading=14.5, textColor=MUTED)
+kicker = ParagraphStyle('k', fontName='DVB', fontSize=8.5, leading=11, textColor=ACCENT, spaceAfter=3)
+parth = ParagraphStyle('p', fontName='DVB', fontSize=20, leading=25, textColor=INK, spaceAfter=2)
+h2 = ParagraphStyle('h2', fontName='DVB', fontSize=13, leading=17, textColor=ACCENT, spaceBefore=12, spaceAfter=5)
+body = ParagraphStyle('b', fontName='DV', fontSize=9.2, leading=13.4, textColor=INK, spaceAfter=3)
+bullet = ParagraphStyle('bl', parent=body, leftIndent=11, bulletIndent=1, spaceAfter=3.5)
+note = ParagraphStyle('n', parent=body, fontSize=8.3, leading=11.6, textColor=MUTED, spaceBefore=2)
+cell = ParagraphStyle('c', fontName='DV', fontSize=7.9, leading=10.4, textColor=INK)
 cellb = ParagraphStyle('cb', parent=cell, fontName='DVB')
-head = ParagraphStyle('h', fontName='DVB', fontSize=8, leading=10, textColor=colors.white)
+head = ParagraphStyle('h', fontName='DVB', fontSize=7.4, leading=9.5, textColor=ACCENT)
+kpi = ParagraphStyle('kpi', parent=body, fontSize=8, leading=11, alignment=0)
 
+
+def tstyle(extra=()):
+    """Style commun des tableaux : en-tête teinté, lignes alternées, filets fins, pas de traits verticaux."""
+    return TableStyle([('BACKGROUND', (0, 0), (-1, 0), SOFT), ('LINEBELOW', (0, 0), (-1, 0), 0.8, ACCENT),
+                       ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, ZEBRA]), ('LINEBELOW', (0, 1), (-1, -1), 0.35, LINE),
+                       ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                       ('LEFTPADDING', (0, 0), (-1, -1), 5), ('RIGHTPADDING', (0, 0), (-1, -1), 5)] + list(extra))
+
+
+def part(n, name, intro=None, soft=False):
+    """Début d'une partie : nouvelle page (ou suite de la page s'il reste la place, soft), numéro, titre, filet."""
+    out = ([CondPageBreak(150 * mm), Spacer(1, 7 * mm)] if soft else [PageBreak()]) + [Paragraph(f'PARTIE {n}', kicker), Paragraph(name, parth), HRFlowable(width='100%', thickness=0.6, color=LINE, spaceBefore=4, spaceAfter=8)]
+    if intro:
+        out.append(Paragraph(intro, sub))
+    return out
+
+# Statut : une pastille par famille de statut (vert actif, ambre à l'essai, gris disponible, rouge rejeté)
 STATUS = {
-    'OR+NAS': ('Active · Or + Nasdaq', '#bbf7d0'), 'OR': ('Active · Or', '#fde68a'), 'NAS': ('Active · Nasdaq', '#bfdbfe'),
-    'ESSAI': ('Active · à l’essai', '#e9d5ff'), 'DISPO': ('Disponible', '#f3f4f6'), 'REJ': ('Rejetée', '#fee2e2'), 'REF': ('Référence', '#e5e7eb'),
+    'OR+NAS': ('Active · Or + Nasdaq', '#ecfdf3', '#067647'), 'OR': ('Active · Or', '#ecfdf3', '#067647'), 'NAS': ('Active · Nasdaq', '#ecfdf3', '#067647'),
+    'ESSAI': ('Active · à l’essai', '#fffaeb', '#b54708'), 'DISPO': ('Disponible', '#f2f4f7', '#475467'), 'REJ': ('Rejetée', '#fef3f2', '#b42318'),
+    'REF': ('Référence', '#f2f4f7', '#475467'),
 }
 TF = {'1d': '1 jour', '6h': '6 h', '1h': '1 h', '5m': '5 min', '1m': '1 min'}
 esc = lambda s: str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
@@ -54,11 +102,10 @@ def status(s):
 
 def table_for(rows):
     data = [[Paragraph(x, head) for x in ('Stratégie', 'Id', 'Bougies', 'Statut', 'Résultat')]]
-    style = [('BACKGROUND', (0, 0), (-1, 0), INK), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LINEBELOW', (0, 1), (-1, -1), 0.4, LINE),
-             ('TOPPADDING', (0, 0), (-1, -1), 3.5), ('BOTTOMPADDING', (0, 0), (-1, -1), 3.5), ('LEFTPADDING', (0, 0), (-1, -1), 4), ('RIGHTPADDING', (0, 0), (-1, -1), 4)]
+    style = []
     for r, s in enumerate(rows, start=1):
         st = status(s)
-        label, bg = STATUS[st]
+        label, bg, fg = STATUS[st]
         if 'spx' in s['active']:
             label += ' + S&amp;P 500'
         if 'silver' in s['active']:
@@ -68,11 +115,11 @@ def table_for(rows):
         if 'eurusd' in s['active']:
             label += ' + EUR/USD (essai)' if st != 'ESSAI' else ' (EUR/USD)'
         on = st in ('OR+NAS', 'OR', 'NAS', 'ESSAI')
-        data.append([Paragraph(esc(s['name']), cellb if on else cell), Paragraph(f'<font color="#4b5563">{esc(s["id"])}</font>', cell),
-                     Paragraph(TF.get(s['tf'], s['tf']), cell), Paragraph(label, cellb if on else cell), Paragraph(esc(s['note'] or '—'), cell)])
+        data.append([Paragraph(esc(s['name']), cellb if on else cell), Paragraph(f'<font color="{MUT}">{esc(s["id"])}</font>', cell),
+                     Paragraph(TF.get(s['tf'], s['tf']), cell), Paragraph(f'<font color="{fg}">{label}</font>', cellb), Paragraph(esc(s['note'] or '—'), cell)])
         style.append(('BACKGROUND', (3, r), (3, r), colors.HexColor(bg)))
-    t = Table(data, colWidths=[50 * mm, 22 * mm, 16 * mm, 30 * mm, 62 * mm], repeatRows=1)
-    t.setStyle(TableStyle(style))
+    t = Table(data, colWidths=[46 * mm, 21 * mm, 18 * mm, 31 * mm, 62 * mm], repeatRows=1)
+    t.setStyle(tstyle(style))
     return t
 
 
@@ -84,10 +131,21 @@ def png_size(path):
 
 def footer(canvas, doc):
     canvas.saveState()
-    canvas.setFont('DV', 7.5)
+    w = A4[0]
+    canvas.setStrokeColor(LINE)
+    canvas.setLineWidth(0.5)
+    canvas.line(16 * mm, 13 * mm, w - 16 * mm, 13 * mm)
+    canvas.setFont('DV', 7.2)
     canvas.setFillColor(MUTED)
-    canvas.drawString(15 * mm, 10 * mm, 'Gold Paper Bot · simulation uniquement, aucun argent réel · résultats passés ≠ résultats futurs')
-    canvas.drawRightString(195 * mm, 10 * mm, f'page {doc.page}')
+    canvas.drawString(16 * mm, 9 * mm, 'Bot de paper trading · simulation uniquement, aucun argent réel · résultats passés ≠ résultats futurs')
+    canvas.drawRightString(w - 16 * mm, 9 * mm, str(doc.page))
+    if doc.page > 1:  # en-tête discret
+        canvas.setFillColor(ACCENT)
+        canvas.setFont('DVB', 7.2)
+        canvas.drawString(16 * mm, A4[1] - 11 * mm, 'STRATÉGIES DU BOT')
+        canvas.setFillColor(MUTED)
+        canvas.setFont('DV', 7.2)
+        canvas.drawRightString(w - 16 * mm, A4[1] - 11 * mm, DATE_TXT)
     canvas.restoreState()
 
 
@@ -105,43 +163,59 @@ n_rej = sum(status(s) == 'REJ' for s in strats)
 months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
 d = datetime.date.today()
 
-doc = SimpleDocTemplate(OUT, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm, topMargin=15 * mm, bottomMargin=17 * mm,
-                        title='Stratégies du bot de paper trading', author='Gold Paper Bot')
-story = [Paragraph('Stratégies du bot de paper trading', title),
-         Paragraph(f'Or (future GC=F), Nasdaq 100 (^NDX), S&amp;P 500 (^GSPC), EUR/USD, argent (SI=F) et Dow Jones (^DJI) · état au {d.day} {months[d.month - 1]} {d.year}', sub), Spacer(1, 8)]
-summary = [
-    (len(strats), 'stratégies codées et testées (+ la référence « garder le marché »)'),
-    (len(active), f'actives en direct : {n_gold} sur l’or, {n_nas} sur le Nasdaq, {n_spx} sur le S&amp;P 500, {n_eur} sur l’EUR/USD, {n_sil} sur l’argent, {n_dow} sur le Dow Jones (certaines sur plusieurs marchés)'),
-    (n_dispo, 'positives mais pas actives : activables dans le .env (GOLD_STRATEGIES, NAS_STRATEGIES)'),
-    (n_rej, 'rejetées aux tests (perdantes ou nulles après frais)'),
-]
-st = Table([[Paragraph(f'<font name="DVB" size="16" color="#b45309">{a}</font>', body), Paragraph(b, body)] for a, b in summary], colWidths=[18 * mm, 162 * mm])
-st.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('BOTTOMPADDING', (0, 0), (-1, -1), 2), ('TOPPADDING', (0, 0), (-1, -1), 2)]))
-story += [st, Spacer(1, 8), Paragraph('À retenir', h2)]
+n_rus = sum('russell' in s['active'] for s in strats)
+n_stk = sum(any(m in s['active'] for m in ('tlt', 'googl', 'pltr', 'lly', 'ba')) for s in strats)
+DATE_TXT = f'{d.day} {months[d.month - 1]} {d.year}'
+doc = SimpleDocTemplate(OUT, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=18 * mm, bottomMargin=19 * mm,
+                        title='Stratégies du bot de paper trading', author='Bot de paper trading')
+W = A4[0] - 32 * mm
+story = [Spacer(1, 16 * mm), Paragraph('BOT DE PAPER TRADING · DOSSIER', kicker),
+         Paragraph('Stratégies, comptes FTMO et Lucid,<br/>et guide pour trader à la main', title),
+         Paragraph(f'Or, Nasdaq 100, S&amp;P 500, Dow Jones, Russell 2000, argent, EUR/USD et cinq actions · état au {DATE_TXT}', sub), Spacer(1, 9 * mm)]
+kpis = [(len(strats), 'stratégies codées<br/>et testées'), (len(active), 'actives<br/>en direct'), (n_dispo, 'positives,<br/>pas activées'), (n_rej, 'rejetées<br/>aux tests')]
+kt = Table([[Paragraph(f'<font name="DVB" size="24" color="{ACC}">{a}</font><br/><br/><font color="{MUT}">{b}</font>', kpi) for a, b in kpis]], colWidths=[W / 4] * 4)
+kt.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), SOFT), ('LINEAFTER', (0, 0), (-2, -1), 5, colors.white), ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                        ('TOPPADDING', (0, 0), (-1, -1), 11), ('BOTTOMPADDING', (0, 0), (-1, -1), 11), ('LEFTPADDING', (0, 0), (-1, -1), 11)]))
+story += [kt, Spacer(1, 4), Paragraph(f'Actives par marché : or {n_gold} · Nasdaq {n_nas} · S&amp;P 500 {n_spx} · Dow Jones {n_dow} · Russell 2000 {n_rus} · '
+                                      f'argent {n_sil} · EUR/USD {n_eur} · actions {n_stk} (certaines sur plusieurs marchés).', ParagraphStyle('n2', parent=note, spaceBefore=6)), Spacer(1, 6 * mm)]
+story.append(Paragraph('À retenir', h2))
 for line in [
     'Les stratégies journalières (tendance de long terme, saisons) sont les plus solides ; en bougies d’1 heure et moins, presque tout perd à cause des frais et du bruit.',
-    'Or : « saison OU tendance » et la saison (août → février) font presque aussi bien que garder l’or, avec beaucoup moins de baisse.',
-    'Nasdaq : garder l’indice reste devant (+17 %/an depuis 2010) ; les stratégies évitent surtout une partie des krachs (croix dorée +10,1 %/an).',
-    'Scalp or : les scalps choisis sur PAXG (jeton or de Binance, 2020–2026) perdent sur l’or au comptant réel (HistData 2009–2026) : leur avantage venait de la cotation de PAXG. Ils ne sont plus suivis par le compte FTMO. Rien n’est validé en scalp sur le Nasdaq.',
-    'Le paper trading en direct, publié dans le groupe Telegram, sert à confirmer ces résultats sans risquer d’argent.',
+    'Les comptes sont réglés sur l’historique puis vérifiés sur des années jamais vues : <b>FTMO</b> réussit ≈ 53 à 76 % des challenges en moins d’un an, '
+    '<b>Lucid</b> ≈ 50 à 78 % ; environ une évaluation Lucid sur quatre réussit en 2 semaines.',
+    'Plan suivi : réussir Lucid, toucher les retraits Lucid, financer avec eux un compte FTMO réglé pour durer (risque × 0,25 une fois financé).',
+    'L’IA validatrice aide sur FTMO (+3 à +7 points de réussite) mais pas sur Lucid, où elle donne seulement son avis. Order flow et ICT : rien '
+    'd’exploitable après frais.',
+    'Tout est simulé : le paper trading en direct, publié dans le groupe Telegram et sur le site, sert à confirmer ces résultats sans risquer d’argent.',
 ]:
-    story.append(Paragraph('• ' + line, body))
+    story.append(Paragraph(line, bullet, bulletText='•'))
+story.append(Paragraph('Sommaire', h2))
+toc = [('1', 'Catalogue des stratégies', 'chaque stratégie, son statut et son résultat'),
+       ('2', 'Comptes FTMO et Lucid', 'règles, réglage du risque, IA, plan Lucid → FTMO'),
+       ('3', 'Recherches', 'traders connus, nouveaux marchés, séances, order flow, ICT'),
+       ('4', 'Le bot au quotidien', 'exécution, suivi en direct, portefeuille perso'),
+       ('5', 'Guide : trader à la main', 'les règles exactes et un exemple réel par stratégie'),
+       ('6', 'Historiques simulés', 'les courbes des stratégies actives')]
+tt = Table([[Paragraph(f'<font name="DVB" color="{ACC}">{n}</font>', body), Paragraph(f'<b>{a}</b>', body), Paragraph(f'<font color="{MUT}">{b}</font>', body)] for n, a, b in toc],
+           colWidths=[10 * mm, 60 * mm, W - 70 * mm])
+tt.setStyle(TableStyle([('LINEBELOW', (0, 0), (-1, -1), 0.35, LINE), ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4), ('LEFTPADDING', (0, 0), (-1, -1), 0)]))
+story.append(tt)
 
+story += part(1, 'Catalogue des stratégies')
 story.append(Paragraph('Comment lire les résultats', h2))
 story.append(Paragraph(
     'Stratégies journalières : rendements <b>par an, gains réinvestis</b>, 1 000 $ au départ. <b>Or</b> : 2001 → 2026 (future GC=F), frais 0,05 % par côté. '
     '<b>Nasdaq</b> : 2010 → 2026 (^NDX), frais 0,01 % par côté + financement CFD de 6 %/an. Chaque stratégie est <b>choisie</b> sur une première période puis '
-    '<b>vérifiée</b> sur une période non utilisée pour choisir. <b>Scalp</b> : PAXG 5 min 2020–2026 et 1 min sur 12 mois, futures Yahoo sur 30 à 60 jours, '
-    'frais réalistes de 0,004 % (or) et 0,003 % (Nasdaq) par côté.', body))
-story.append(Spacer(1, 4))
-keys = ('OR+NAS', 'OR', 'NAS', 'ESSAI', 'DISPO', 'REJ')
-legend = Table([[Paragraph(STATUS[k][0], cellb)] for k in keys], colWidths=[45 * mm], hAlign='LEFT')
-legend.setStyle(TableStyle([('TOPPADDING', (0, 0), (-1, -1), 2), ('BOTTOMPADDING', (0, 0), (-1, -1), 2)] +
-                           [('BACKGROUND', (0, i), (0, i), colors.HexColor(STATUS[k][1])) for i, k in enumerate(keys)]))
-story.append(legend)
+    '<b>vérifiée</b> sur une période non utilisée pour choisir. <b>Intraday</b> : or au comptant réel 2009–2026, Nasdaq / S&amp;P / Dow / Russell / argent '
+    'sur 2 ans (nov. 2024 → nov. 2026), frais réalistes.', body))
+keys = ('OR', 'ESSAI', 'DISPO', 'REJ')
+legend = Table([[Paragraph(f'<font color="{STATUS[k][2]}">{"Active" if k == "OR" else STATUS[k][0]}</font>', cellb) for k in keys]], colWidths=[30 * mm] * 4, hAlign='LEFT')
+legend.setStyle(TableStyle([('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3), ('LINEAFTER', (0, 0), (-2, -1), 4, colors.white)] +
+                           [('BACKGROUND', (i, 0), (i, 0), colors.HexColor(STATUS[k][1])) for i, k in enumerate(keys)]))
+story += [Spacer(1, 3), legend, Spacer(1, 2), Paragraph('« Active » précise le ou les marchés (or, Nasdaq, S&amp;P 500…) ; « à l’essai » : active sur un marché en test.', note)]
 ref = next((s for s in cat if s['id'] == 'hold'), None)
 if ref:
-    story.append(Paragraph('Références', h2))
+    story.append(Paragraph('Référence', h2))
     story.append(Paragraph(f'<b>Garder le marché</b> : {esc(ref["note"])}. Une stratégie qui ne fait pas mieux, ou pas avec moins de risque, n’apporte rien.', body))
 
 ORDER = ['Premières stratégies', 'Maison', 'Analyse technique', 'Tendance multi-horizons', 'Spécifiques à l’or', 'Spécifiques au Nasdaq',
@@ -150,7 +224,7 @@ rank = lambda f: next((i for i, k in enumerate(ORDER) if f.startswith(k)), len(O
 families = sorted({s['family'] for s in strats}, key=rank)
 for i, fam in enumerate(families, start=1):
     rows = [s for s in strats if s['family'] == fam]
-    story.append(KeepTogether([Paragraph(f'{i}. {esc(fam)} ({len(rows)})', h2), table_for(rows)]))
+    story += [CondPageBreak(45 * mm), Paragraph(f'{i}. {esc(fam)} <font color="{MUT}" size="10">· {len(rows)}</font>', h2), table_for(rows)]
 
 # Comptes FTMO simulés (réglages lus dans src/config.js)
 import subprocess
@@ -158,7 +232,7 @@ fc = json.loads(subprocess.run(['node', '-e', "const c=require('./src/config');c
                                cwd=ROOT, capture_output=True, text=True, check=True).stdout)
 ids = lambda l: ', '.join(x.split(':', 1)[-1] for x in l)
 fr = lambda v: f'{round(v, 3):g}'.replace('.', ',')
-story.append(PageBreak())
+story += part(2, 'Comptes FTMO et Lucid')
 story.append(Paragraph('Comptes FTMO et Lucid simulés', h2))
 story.append(Paragraph(
     ('<b>Formule simulée : challenge 1 étape</b> (lancé par FTMO en février 2026 ; règles d’après des sources secondaires, à vérifier) : '
@@ -181,14 +255,13 @@ if fc['cb']:
                   Paragraph(f'{fc["gr"]:g} % (journalières) · {fc["ir"]:g} % (intraday)', cell),
                   Paragraph(('Or réel (HistData 2009–2026), Nasdaq, S&amp;P 500, EUR/USD ; ≈ 2,8 positions intraday par jour (séances d’Asie et '
                              'de New York sur l’or, Crabel NR7 sur le S&amp;P 500). Réussite en moins d’un an avec le réglage actuel (taille normale, '
-                             'divisée par 2 avec 2 positions ouvertes) : <b>50 %</b> (2009–2019), <b>51 %</b> (2020–2026), <b>67 %</b> (nov. 2024 → '
-                             'nov. 2026, intraday compris), en ≈ 55 j médians sur la période récente ; chances du challenge en cours : /timemachine.')
+                             'divisée par 2 avec 2 positions ouvertes, stop suiveur, évaluation « comme Lucid ») : <b>53 %</b> (2009–2019), <b>58 %</b> (2020–2026), '
+                             '<b>76 %</b> (nov. 2024 → nov. 2026, intraday compris), en ≈ 51 j médians sur la période récente ; chances du challenge en cours : /timemachine.')
                             if fc['prog'] == '1step' else
                             ('sept. 2020 → oct. 2024 : <b>97 % en moins de 6 mois</b> (46 j en médiane) ; 2 dernières années (vérification) : <b>46 %</b> (34 j). '
                              'Les scalps or rapportent moins depuis 2024.'), cell)]]
-t = Table(ft, colWidths=[30 * mm, 62 * mm, 20 * mm, 68 * mm], repeatRows=1)
-t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), INK), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LINEBELOW', (0, 1), (-1, -1), 0.4, LINE),
-                       ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4)]))
+t = Table(ft, colWidths=[30 * mm, 62 * mm, 20 * mm, 66 * mm], repeatRows=1)
+t.setStyle(tstyle())
 story += [t, Spacer(1, 5)] + ([] if fc['cb'] else [Paragraph(
     'Nasdaq : les stratégies journalières tradent trop rarement pour faire +10 % en un an à faible risque (0 % de réussite à 0,5 ou 1 %) ; à 3 %, environ '
     '6 challenges sur 10 échouent encore, surtout sur la perte du jour quand plusieurs positions perdent ensemble. Choix sur 1985–2009, vérification sur 2010–2026.', body)])
@@ -200,9 +273,11 @@ story += [Spacer(1, 4), Paragraph(
        if str(fc['sz']).startswith('objectif') else ''), body)]
 
 def small_table(rows, widths):
+    widths = [w * W / sum(widths) for w in widths]  # toujours la largeur de la page
     t = Table([[Paragraph(x, head) for x in rows[0]]] + [[Paragraph(x, cell) for x in r] for r in rows[1:]], colWidths=widths, repeatRows=1)
-    t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), INK), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LINEBELOW', (0, 1), (-1, -1), 0.4, LINE),
-                           ('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]))
+    # Ligne du réglage actuel (texte en gras ou « actuel ») : surlignée
+    hl = [('BACKGROUND', (0, r), (-1, r), HILITE) for r, row in enumerate(rows[1:], start=1) if row[0].startswith('<b>') or 'actuel' in row[0].lower()]
+    t.setStyle(tstyle(hl))
     return t
 
 story += [Spacer(1, 3), small_table([
@@ -220,18 +295,19 @@ story += [Spacer(1, 3), small_table([
 
 story.append(Paragraph('IA validatrice des trades', h2))
 story.append(Paragraph(
-    'Pour chaque signal du compte, un modèle entraîné sur ≈ 13 000 trades passés (régression logistique) estime la chance que le trade soit gagnant, '
-    'avec ce qui est connu à l’entrée : forme récente de la stratégie et du marché, distance du stop, heure, jour, tendance, élan et volatilité du marché, VIX. '
-    + ('<b>En direct, les signaux sous le seuil (≈ 20 % des signaux) ne sont pas pris</b> (« signal refusé par l’IA ») ; chaque refus est gardé et '
-       'son trade paper dit ce qu’il aurait fait (bilan dans /ftmo).' if fc['ai'] == 'block' else 'En direct, l’IA donne seulement son avis sur chaque trade.'), body))
+    'Pour chaque signal, un modèle (régression logistique entraînée sur ≈ 20 000 trades passés) estime la chance que le trade soit gagnant, avec ce '
+    'qui est connu à l’entrée : forme récente de la stratégie et du marché, distance du stop, heure, jour, tendance, élan et volatilité du marché, VIX. '
+    '<b>FTMO</b> : les signaux sous le seuil (≈ 20 % des signaux) ne sont pas pris ; chaque blocage est annoncé dans le groupe (« trade bloqué par '
+    'l’IA »), puis son bilan quand le trade fictif se termine (l’IA a eu raison ou tort). <b>Lucid</b> : l’IA donne seulement son avis.', body))
 story += [Spacer(1, 3), small_table([
-    ('Test (modèle entraîné sans voir la période)', 'Sans IA', 'IA, 20 % refusés'),
-    ('2020–2026 (entraîné sur 2009–2019)', '46 %', '<b>55 %</b>'),
-    ('nov. 2024 → nov. 2026', '44 %', '<b>88 %</b>'),
-    ('2017–2019 (entraîné sur 2009–2016)', '50 %', '42 % ✘'),
-    ('Année par année, 2012–2026', '—', 'garde les meilleurs trades <b>10 années sur 15</b>'),
-], [80 * mm, 30 * mm, 70 * mm]), Spacer(1, 2), Paragraph(
-    'Résultat encourageant mais pas garanti : l’IA s’est trompée plusieurs années de suite (2017–2019). Le bilan des signaux refusés en direct dira si elle aide.', body)]
+    ('Réussite < 1 an · chaque année jugée par un modèle entraîné sur les années d’avant', '2009–19', '2020–26', 'nov. 24–26'),
+    ('FTMO sans IA', '34 %', '43 %', '69 %'),
+    ('<b>FTMO, l’IA refuse 20 % des signaux (actuel)</b>', '<b>37 %</b>', '<b>48 %</b>', '<b>76 %</b>'),
+    ('<b>Lucid sans IA (actuel)</b>', '<b>46 %</b>', '<b>61 %</b>', '<b>53 %</b> · ≤ 14 j : 25 %'),
+    ('Lucid, l’IA refuse 20 % des signaux', '47 %', '75 %', '33 % · ≤ 14 j : 11 % ✘'),
+], [88 * mm, 28 * mm, 28 * mm, 34 * mm]), Paragraph(
+    'Réglage simplifié pour ce test : comparer les lignes entre elles. Sur Lucid, le modèle ne distingue pas les bons trades (AUC 0,53, 0,5 = au hasard). '
+    'Essayés sans gain fiable : modèle d’arbres, gain attendu en R, refuser 10 ou 30 % ; doser le risque selon la note fait nettement baisser la réussite.', note)]
 
 lucid_block = [Paragraph('FTMO ou Lucid Trading ?', h2), Paragraph(
     'Les mêmes stratégies rejouées sous les règles de chaque société (sources secondaires 2026, à vérifier). <b>LucidFlex</b> : micro-futures CME en '
@@ -302,6 +378,20 @@ story.append(KeepTogether([Paragraph('Stratégies pour Lucid : moins de pertes d
     'Seulement 2 ans de données intraday Nasdaq : ces taux sont flatteurs. Sur les périodes plus anciennes (sans intraday), Lucid réussit 55 à 72 % ; '
     'compter plutôt sur 60 à 70 %. Une évaluation réussie en 2 jours relève surtout de la chance (règle du meilleur jour ≤ 40 %).', body)]))
 
+story.append(KeepTogether([Paragraph('Plan : Lucid, retraits, puis un compte FTMO qui dure', h2), Paragraph(
+    'Réussir l’évaluation Lucid vite, toucher des retraits Lucid, s’en servir pour payer un compte FTMO réglé pour durer (scaling jusqu’à 2 M$). '
+    '<b>Lucid financé</b> : le réglage actuel est le meilleur pour toucher au moins un retrait (85 % en ≤ 60 jours, médiane 17 jours, ≈ 2 700 $ sur 12 mois) ; '
+    'un compte Lucid financé dure rarement (perte max bloquée à capital + 100 $). <b>FTMO pendant l’évaluation</b> : réglé « comme Lucid » (intraday × 2, '
+    'journée finie à +2 500 $ ou après 1 perte). <b>FTMO financé</b> : tout le risque × 0,25, plus des sorties partielles (⅓ à +1 R, ⅓ à +2 R, le reste au stop suiveur).', body),
+    Spacer(1, 3), small_table([
+    ('FTMO compte financé (départ chaque semaine 2009–2023)', 'En vie 12 / 24 / 36 mois', 'Retraits trader (36 mois)', 'Scaling ×4 atteint'),
+    ('Risque × 1', '15 / 1 / 0 %', '16 103 $', '5 %'),
+    ('Risque × 0,5', '62 / 40 / 30 %', '19 086 $', '45 %'),
+    ('<b>Risque × 0,25 (actuel)</b>', '<b>100 / 100 / 100 %</b>', '<b>15 342 $</b>', '<b>99 %</b>'),
+    ], [72 * mm, 40 * mm, 34 * mm, 32 * mm]), Paragraph(
+    'Calcul simplifié (capital constant). Sorties partielles : en compte financé seulement (comptes perdus en 12 mois 95 → 87 %) ; en évaluation elles n’aident pas.', note)]))
+
+story += part(3, 'Recherches', 'Ce qui a été testé pour améliorer les comptes, retenu ou non. Chaque idée doit tenir sur toutes les périodes, frais compris.')
 story.append(KeepTogether([Paragraph('Stratégies de traders connus (Lucid)', h2), Paragraph(
     'Méthodes publiées par Toby Crabel (cassure après une journée étroite, NR4 / NR7), Larry Williams (cassure de volatilité : ouverture ± k × '
     'amplitude de la veille) et Linda Raschke, testées sur le Nasdaq (QQQ séance seule, nov. 2024 → nov. 2026). Stables les deux années et ajoutées à '
@@ -421,6 +511,32 @@ story.append(KeepTogether([Paragraph('Stop suiveur du compte FTMO', h2), Paragra
     'version ; pétrole, Dow, argent neutres ou négatifs ; Russell rien. Ajouté : momentum de fin de journée sur le S&amp;P en break-even (MES) : '
     'nov. 24–26 51 → 53 %.', body)]))
 
+story.append(KeepTogether([Paragraph('Order flow (delta, absorption, divergences)', h2), Paragraph(
+    'Vrai order flow gratuit : volume des acheteurs et vendeurs agressifs de Binance, minute par minute, Bitcoin et Ethereum 2020 → 2026 '
+    '(3,6 millions de bougies chacun), plus un delta approximé sur le Nasdaq et le S&amp;P (2 ans). Avant frais, le delta contient un peu '
+    'd’information à 1 minute ; après frais, tout perd, partout : 0,04 % de frais valent ≈ 0,4 R sur une bougie de 1 minute. Rien d’ajouté.', body),
+    Spacer(1, 3), small_table([
+    ('Bitcoin 1 min, vrai delta (R moyen par trade)', 'Avant frais', 'Après frais 0,04 %'),
+    ('Absorption', '+0,09 R', '−0,49 R'),
+    ('Divergence du delta cumulé', '+0,04 R', '−0,76 R'),
+    ('Épuisement', '+0,05 R', '−0,88 R'),
+    ('Témoin « prix seul »', '0,00 R', '−0,77 R'),
+    ], [90 * mm, 44 * mm, 44 * mm])]))
+story.append(KeepTogether([Paragraph('ICT (FVG, Silver Bullet, liquidité, SMT, order blocks)', h2), Paragraph(
+    'Règles ICT écrites précisément et testées frais compris : Nasdaq et S&amp;P en 1 et 5 minutes (2 ans), or en 5 minutes (2009 → 2026). '
+    'Une seule règle passe : un <b>FVG en 5 minutes dans le sens de la veille</b> (≈ +0,1 R par trade sur le Nasdaq et le S&amp;P, positif sur '
+    'les 3 périodes), mais elle échoue en 1 et 15 minutes et ≈ 0 sur l’or en 17 ans : à confirmer sur un historique plus long, non ajoutée.', body),
+    Spacer(1, 3), small_table([
+    ('R moyen par trade, frais compris', 'Nasdaq', 'S&amp;P 500', 'Or 2009–26'),
+    ('Silver Bullet 10 h – 11 h', '−0,15', '−0,11', '−0,06'),
+    ('Balayage du plus haut / bas de la veille', '−0,22', '−0,24', '−0,17'),
+    ('SMT (divergence Nasdaq / S&amp;P)', '−0,31', '−0,39', '—'),
+    ('Order block', '−0,27', '−0,38', '−0,19'),
+    ('FVG 5 min dans le sens de la veille', '+0,11', '+0,09', '+0,01'),
+    ('Témoin : entrées au hasard', '−0,17', '−0,27', '−0,14'),
+    ], [86 * mm, 30 * mm, 30 * mm, 32 * mm])]))
+
+story += part(4, 'Le bot au quotidien')
 story.append(KeepTogether([Paragraph('Exécution, notifications et outils', h2), Paragraph(
     f'<b>Exécution « comme en vrai »</b> : les comptes FTMO et Lucid entrent et sortent (sur signal) au cours {fc["fd"]:g} s après le signal ; stops et '
     'objectifs restent au niveau. Un cours relevé plus ancien que les données du signal (Yahoo : bougies 1 min et 5 min pas au même retard) '
@@ -431,28 +547,58 @@ story.append(KeepTogether([Paragraph('Exécution, notifications et outils', h2),
     'tout le bot rejoué hors ligne (commandes, boutons, messages, cycle complet des comptes).', body)]))
 
 story.append(KeepTogether([Paragraph('Suivi en direct', h2), Paragraph(
-    'Catégorie <b>« Bot »</b> du site marches-eight.vercel.app : comptes FTMO et Lucid simulés (valeur, objectif, perte du jour et perte max avec leur '
-    'seuil), graphique TradingView (Lightweight Charts) avec l’entrée, le stop loss et l’objectif de chaque position ouverte et les repères des trades, '
-    'historique complet (challenge en cours, anciens challenges, trades de chaque stratégie). Mise à jour toutes les 15 s environ. Telegram : '
-    'messages de chaque trade du compte FTMO, /ftmo, /lucid, /interface, /export. Le stop est vérifié au cours actuel avant toute sortie programmée '
-    '(sortie au niveau du stop, comme un vrai ordre).', body)]))
+    'Onglet <b>« Bot »</b> du site marches-eight.vercel.app, en style terminal : comptes FTMO, Lucid et portefeuille perso (solde, objectif, '
+    'limites), marchés suivis, positions et historique des trades en vert / rouge. Graphique <b>« Trades du bot »</b> au style TradingView, '
+    'bougies de 1 minute à 1 jour, zoom automatique sur la position : chaque trade y est dessiné comme l’outil position de TradingView '
+    '(zone rouge = risque jusqu’au stop, zone verte = objectif, pointillé jusqu’à la sortie). Bouton <b>TradingView</b> : le vrai graphique '
+    'TradingView (après accord pour ses traceurs). Bouton <b>Pine</b> : script à coller dans TradingView pour voir les trades du bot sur ton '
+    'propre graphique. <b>Telegram</b> : chaque trade, chaque trade bloqué par l’IA et son bilan, /pnl (PnL du jour), /ftmo, /lucid, '
+    '/portefeuille, /interface, /export. Mise à jour toutes les 15 s environ.', body)]))
+story.append(KeepTogether([Paragraph('Portefeuille perso, sans prop firm', h2), Paragraph(
+    'Pour son propre argent, sur le long terme : ETF réels, dividendes inclus, sans levier, frais 0,1 %, rééquilibrage mensuel, en euros, '
+    'décembre 2004 → novembre 2026. Retenu : <b>50 % monde, 10 % or, 40 % confiés à cinq stratégies journalières du bot</b> (RSI 2 et Double 7 sur '
+    'le S&amp;P 500, croix dorée sur le Nasdaq 100, tendance et saison sur l’or), simulé en direct dans le bot (/portefeuille, 10 000 €).', body),
+    Spacer(1, 3), small_table([
+    ('Portefeuille (en euros)', 'Par an', 'Pire baisse', 'Pire année', '300 €/mois depuis 2005'),
+    ('Monde (60 % S&amp;P 500 + 40 % hors USA)', '9,8 %', '−53 %', '−36 %', '320 000 €'),
+    ('S&amp;P 500', '11,5 %', '−51 %', '−34 %', '438 000 €'),
+    ('Nasdaq 100', '15,3 %', '−47 %', '−39 %', '791 000 €'),
+    ('<b>Cœur + bot : 50 % monde, 10 % or, 40 % bot (actuel)</b>', '<b>10,2 %</b>', '<b>−26 %</b>', '<b>−14 %</b>', '<b>299 000 €</b>'),
+    ('Bot seul (5 stratégies)', '9,3 %', '−16 %', '−2 %', '252 000 €'),
+    ], [72 * mm, 22 * mm, 26 * mm, 26 * mm, 32 * mm]), Paragraph(
+    'Versé au total : 79 200 €. Le Nasdaq a eu 20 ans exceptionnels (biais du rétroviseur). Une part de 10 % de Bitcoin avec règle de tendance '
+    '(au-dessus de sa moyenne 200 jours, sinon liquidités) a amélioré le rendement sans augmenter la pire baisse, même en partant du sommet de 2021 ; '
+    'non ajoutée.', note)]))
 
 # Guide « trader sans le bot » (exemples réels : node scripts/guide-examples.js > docs/guide-examples.json)
 _gx = os.path.join(ROOT, 'docs', 'guide-examples.json')
 if os.path.exists(_gx):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import guide_pdf
-    story += guide_pdf.build({'title': title, 'h2': h2, 'body': body, 'cell': cell, 'cellb': cellb, 'head': head, 'INK': INK, 'LINE': LINE},
+    story += guide_pdf.build({'W': W, 'title': title, 'h2': h2, 'body': body, 'cell': cell, 'cellb': cellb, 'head': head, 'INK': INK, 'LINE': LINE,
+                              'part': part, 'tstyle': tstyle, 'SOFT': SOFT, 'ZEBRA': ZEBRA, 'note': note},
                              json.load(open(_gx, encoding='utf-8')), fc)
 
-story.append(PageBreak())
-story.append(Paragraph('Historiques simulés des stratégies actives', h2))
-story.append(Paragraph('Chaque stratégie part de 1 000 $, gains réinvestis, frais inclus. Légende et rendement annuel dans chaque image ; pointillé gris : garder le marché.', body))
+story += part(6, soft=True, name='Historiques simulés', intro='Chaque stratégie part de 1 000 $, gains réinvestis, frais inclus. Légende et rendement annuel dans chaque image ; '
+              'pointillé gris : garder le marché.')
 for img, cap in [('historique-or-2001.png', 'Or, 2001 → 2026 (future GC=F)'), ('historique-nasdaq-2010.png', 'Nasdaq 100, 2010 → 2026 (financement CFD 6 %/an inclus)')]:
     path = os.path.join(ROOT, 'docs', img)
     w, h = png_size(path)
-    width = 180 * mm
-    story += [Spacer(1, 6), KeepTogether([Paragraph(f'<b>{cap}</b>', body), Spacer(1, 3), Image(path, width=width, height=width * h / w)])]
+    width = W - 8 * mm
+    frame = Table([[Image(path, width=width, height=width * h / w)]], colWidths=[W])
+    frame.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#0b0f14')), ('TOPPADDING', (0, 0), (-1, -1), 4 * mm),
+                               ('BOTTOMPADDING', (0, 0), (-1, -1), 4 * mm), ('LEFTPADDING', (0, 0), (-1, -1), 4 * mm), ('RIGHTPADDING', (0, 0), (-1, -1), 4 * mm)]))
+    story += [Spacer(1, 6), KeepTogether([Paragraph(cap, h2), frame])]
 
-doc.build(story, onFirstPage=footer, onLaterPages=footer)
+def flow(items):
+    out = []
+    for it in items:
+        if isinstance(it, KeepTogether) and not any(isinstance(x, (Image, Table)) and getattr(x, '_cellvalues', None) and isinstance(x._cellvalues[0][0], Image) for x in it._content):
+            out += [CondPageBreak(55 * mm)] + flow(it._content)
+        else:
+            out.append(it)
+    return out
+
+
+doc.build(flow(story), onFirstPage=footer, onLaterPages=footer)
 print(f'PDF écrit : {OUT} ({len(strats)} stratégies, {len(active)} actives, {n_dispo} disponibles, {n_rej} rejetées)')

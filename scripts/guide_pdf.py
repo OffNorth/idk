@@ -7,7 +7,7 @@ import datetime
 from reportlab.lib import colors
 from reportlab.lib.units import mm
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, KeepTogether, PageBreak
+from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, KeepTogether, PageBreak, CondPageBreak
 from reportlab.graphics.shapes import Drawing, Rect, Line, String, Circle
 
 UP, DOWN, ENTRY, STOP, TARGET, LEVEL = (colors.HexColor(c) for c in ('#16a34a', '#dc2626', '#2563eb', '#dc2626', '#16a34a', '#9ca3af'))
@@ -18,7 +18,7 @@ def fr(v, d=2):
     return s
 
 
-def chart(ex, width=180 * mm, height=62 * mm):
+def chart(ex, width=178 * mm, height=62 * mm):
     """Bougies du jour (ou des jours) de l'exemple, niveaux (gris pointillé), entrée (bleu), stop (rouge), objectif (vert)."""
     c = ex['candles']
     d = Drawing(width, height)
@@ -78,18 +78,19 @@ def build(S, ex, fc):
     """S : styles (title, h2, body, cell, cellb, head, INK, LINE) ; ex : exemples ; fc : réglages du bot."""
     body, h2, cell, cellb, head = S['body'], S['h2'], S['cell'], S['cellb'], S['head']
     h3 = ParagraphStyle('h3', parent=body, fontName='DVB', fontSize=10.5, leading=14, spaceBefore=6, spaceAfter=3, textColor=S['INK'])
-    box = ParagraphStyle('box', parent=body, backColor=colors.HexColor('#f3f4f6'), borderPadding=5, spaceBefore=4, spaceAfter=6)
+    box = ParagraphStyle('box', parent=body, backColor=S.get('SOFT', colors.HexColor('#f3f4f6')), borderPadding=6, spaceBefore=5, spaceAfter=7)
     out = []
 
     def table(rows, widths):
+        widths = [w * S['W'] / sum(widths) for w in widths] if 'W' in S else widths
         t = Table([[Paragraph(x, head) for x in rows[0]]] + [[Paragraph(x, cell) for x in r] for r in rows[1:]], colWidths=widths, repeatRows=1)
-        t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), S['INK']), ('VALIGN', (0, 0), (-1, -1), 'TOP'), ('LINEBELOW', (0, 1), (-1, -1), 0.4, S['LINE']),
-                               ('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]))
+        t.setStyle(S['tstyle']([('VALIGN', (0, 0), (-1, -1), 'TOP')]) if 'tstyle' in S else TableStyle([('BACKGROUND', (0, 0), (-1, 0), S['INK']), ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                               ('LINEBELOW', (0, 1), (-1, -1), 0.4, S['LINE']), ('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]))
         return t
 
     def rules(rows):
-        t = Table([[Paragraph(f'<b>{a}</b>', cell), Paragraph(b, cell)] for a, b in rows], colWidths=[30 * mm, 150 * mm])
-        t.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('LINEBELOW', (0, 0), (-1, -1), 0.4, S['LINE']), ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f9fafb')),
+        t = Table([[Paragraph(f'<b>{a}</b>', cell), Paragraph(b, cell)] for a, b in rows], colWidths=[30 * mm, S.get('W', 180 * mm) - 30 * mm])
+        t.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('LINEBELOW', (0, 0), (-1, -1), 0.4, S['LINE']), ('BACKGROUND', (0, 0), (0, -1), S.get('ZEBRA', colors.HexColor('#f9fafb'))),
                                ('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]))
         return t
 
@@ -119,7 +120,7 @@ def build(S, ex, fc):
         return [chart(e), Spacer(1, 2), Paragraph(txt, body)]
 
     # ---------------------------------------------------------------------------------------------------------------
-    out += [PageBreak(), Paragraph('Guide : trader les stratégies à la main', S['title']), Paragraph(
+    out += (S['part'](5, 'Guide : trader les stratégies à la main') if 'part' in S else [PageBreak(), Paragraph('Guide : trader les stratégies à la main', S['title'])]) + [Paragraph(
         'Ce guide explique, sans jargon, comment reproduire toi-même les stratégies qui marchent dans le bot, avec leurs règles exactes et un '
         'exemple réel tiré des données récentes. Tout est en <b>heure de Paris</b>. Règle d’or : décider AVANT d’entrer où est le stop, où est '
         'l’objectif et combien on risque — et ne jamais déplacer le stop pour « laisser une chance » au trade.', body)]
@@ -150,7 +151,7 @@ def build(S, ex, fc):
         'le stop à 1 R sous le meilleur cours de clôture (au-dessus pour une vente), et continue de le suivre ; ne le recule jamais.', body)]
 
     # ---------------------------------------------------------------------------------------------------------------
-    out += [PageBreak(), Paragraph('2. Cassure de l’ouverture (Nasdaq)', h2), Paragraph(
+    out += [CondPageBreak(150 * mm), Paragraph('2. Cassure de l’ouverture (Nasdaq)', h2), Paragraph(
         '<b>L’idée</b> : les premières minutes de la séance fixent une fourchette (le « range d’ouverture »). Quand le prix en sort franchement, '
         'il continue souvent dans ce sens pendant un moment. On entre à la sortie du range, le stop de l’autre côté.', body), Spacer(1, 3), rules([
         ('Marché', 'Nasdaq 100 (MNQ chez Lucid, US100 / NAS100 chez FTMO), séance de New York seulement.'),
@@ -164,7 +165,7 @@ def build(S, ex, fc):
                       'FTMO : 15 min si la séance a ouvert au-dessus de la clôture de la veille ; vente sous le plus bas des 5 premières minutes.'),
     ])] + example('orb', 'points', 2, 'MNQ')
 
-    out += [PageBreak(), Paragraph('3. Crabel : la cassure après une journée calme', h2), Paragraph(
+    out += [CondPageBreak(150 * mm), Paragraph('3. Crabel : la cassure après une journée calme', h2), Paragraph(
         '<b>L’idée</b> (Toby Crabel) : après une journée très étroite, le marché « se détend » et fait souvent un grand mouvement. On ne prend la '
         'cassure d’ouverture QUE ces jours-là, ce qui filtre beaucoup de faux départs.', body), Spacer(1, 3), rules([
         ('Marché', 'Nasdaq 100 (Lucid), S&amp;P 500 (FTMO, version NR7 30 min).'),
@@ -177,7 +178,7 @@ def build(S, ex, fc):
         ('Sortie', 'Objectif, stop, ou 21 h 55.'),
     ])] + example('crabel', 'points', 2, 'MNQ')
 
-    out += [PageBreak(), Paragraph('4. Williams : la cassure de volatilité', h2), Paragraph(
+    out += [CondPageBreak(150 * mm), Paragraph('4. Williams : la cassure de volatilité', h2), Paragraph(
         '<b>L’idée</b> (Larry Williams) : si le prix s’éloigne de l’ouverture de plus de la moitié de l’amplitude de la veille, un vrai mouvement '
         'est en cours. Le seuil s’adapte tout seul à la volatilité du moment.', body), Spacer(1, 3), rules([
         ('Marché', 'Nasdaq 100 (MNQ) et argent (SIL, séance de New York) — Lucid.'),
@@ -189,7 +190,7 @@ def build(S, ex, fc):
         ('Sortie', 'Objectif, stop, ou 21 h 55.'),
     ])] + example('williams', 'points', 2, 'MNQ')
 
-    out += [PageBreak(), Paragraph('5. Le mouvement de la matinée donne la fin de journée', h2), Paragraph(
+    out += [CondPageBreak(150 * mm), Paragraph('5. Le mouvement de la matinée donne la fin de journée', h2), Paragraph(
         '<b>L’idée</b> : quand le Nasdaq a déjà beaucoup bougé en début de séance, la dernière heure va souvent dans le même sens (les gros '
         'investisseurs finissent leurs ordres).', body), Spacer(1, 3), rules([
         ('Marché', 'Nasdaq 100 (MNQ) ; même règle sur le Dow (MYM, Lucid).'),
@@ -200,7 +201,7 @@ def build(S, ex, fc):
         ('Sortie', 'Objectif, stop, ou 21 h 55.'),
     ])] + example('mom', 'points', 2, 'MNQ')
 
-    out += [PageBreak(), Paragraph('6. Or : cassure de l’ouverture de Londres (FTMO)', h2), Paragraph(
+    out += [CondPageBreak(150 * mm), Paragraph('6. Or : cassure de l’ouverture de Londres (FTMO)', h2), Paragraph(
         '<b>L’idée</b> : Londres est la place principale de l’or. Le range de la première demi-heure de Londres sert de rampe de lancement pour la journée.', body),
         Spacer(1, 3), rules([
         ('Marché', 'Or (XAUUSD chez FTMO). Pas sur Lucid (1 micro-contrat or est trop gros pour sa perte max).'),
@@ -211,7 +212,7 @@ def build(S, ex, fc):
         ('Sortie', 'Stop, ou 19 h 55 UTC (20 h 55 à Paris en hiver).'),
     ])] + example('londres', '$', 0, 'MGC', 'Taille FTMO : risque ≈ 0,19 % de 100 000 $ = 190 $ ; 1 lot XAUUSD = 100 $ par dollar.')
 
-    out += [PageBreak(), Paragraph('7. Or : cassure du range de la nuit asiatique (FTMO)', h2), Paragraph(
+    out += [CondPageBreak(150 * mm), Paragraph('7. Or : cassure du range de la nuit asiatique (FTMO)', h2), Paragraph(
         '<b>L’idée</b> : pendant la nuit (Tokyo, Hong Kong, Shanghai) l’or bouge peu. À l’arrivée de l’Europe, la sortie de ce range nocturne '
         'donne souvent la direction de la journée.', body), Spacer(1, 3), rules([
         ('Marché', 'Or (XAUUSD, FTMO).'),
@@ -225,7 +226,7 @@ def build(S, ex, fc):
          'stop 3 ATR, sortie 19 h 55 UTC.'),
     ])] + example('asie', '$', 0, 'MGC', 'Taille FTMO : risque ≈ 190 $ ; stop de 68 $ → 190 ÷ (68 × 100) ≈ 0,03 lot.')
 
-    out += [PageBreak(), Paragraph('8. Achats de replis en journalier', h2), Paragraph(
+    out += [CondPageBreak(150 * mm), Paragraph('8. Achats de replis en journalier', h2), Paragraph(
         '<b>L’idée</b> : dans un marché qui monte sur le long terme (au-dessus de sa moyenne 200 jours), une petite baisse de quelques jours est '
         'souvent rachetée. On achète la baisse à la clôture, on revend au rebond. Ces stratégies gagnent souvent (70–80 % des trades) mais un '
         'trade peut durer plusieurs jours : à garder la nuit.', body), Spacer(1, 3), rules([
@@ -241,7 +242,7 @@ def build(S, ex, fc):
                '10 j), argent (SIL : Double 7). FTMO : or, S&amp;P, Nasdaq, EUR/USD (IBS — pas sur Lucid : pas de micro-euro).'),
     ])] + example('repli', 'points', 5, 'MES') + [Spacer(1, 6)] + example('double7', 'points', 5, 'MES')
 
-    out += [PageBreak(), Paragraph('9. Filtres « macro » (journalier)', h2), Paragraph(
+    out += [CondPageBreak(150 * mm), Paragraph('9. Filtres « macro » (journalier)', h2), Paragraph(
         '<b>L’idée</b> : certains marchés réagissent aux autres. On ne fait que regarder un autre graphique avant d’acheter.', body), Spacer(1, 3), rules([
         ('Dollar en baisse', 'Indice du dollar (DXY) −2 % en 10 séances et Nasdaq au-dessus de sa moyenne 50 jours → achat du Nasdaq ; revente quand le DXY repasse au-dessus de sa moyenne 10 jours.'),
         ('Or en baisse', 'Or −4 % en 10 séances et Nasdaq / S&amp;P au-dessus de leur moyenne 50 jours → achat ; revente quand l’or repasse au-dessus de sa moyenne 10 jours.'),
