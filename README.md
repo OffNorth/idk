@@ -710,6 +710,17 @@ du bot, sans évaluation (annoncé dans le groupe) ; `/financer lucid` le relanc
   → 10,0 %/an → 9,4–9,6 %/an, pire baisse −27 → −25 % ; bot seul 9,3 → 7,9–8,3 %/an. Pas ajoutées (trop peu de temps investi :
   2 à 12 %, le reste en liquidités).
 
+### 🌏 Séance asiatique, 2e recherche (`npm run asia`, 26/11/2026) : rien d'ajouté
+
+Stratégies qui tradent PENDANT la nuit asiatique (or au comptant 2009–2026, USD/JPY et AUD/USD 2 ans) :
+- **Dérive de nuit de l'or** : acheter de 23 h à 5 h UTC rapporte un peu (+0,03 à +0,08 R) mais pas sur 2013–16 (−0,02 R) ;
+  vendre perd partout (−0,07 à −0,24 R) : l'or monte bien un peu la nuit, trop peu après frais.
+- **Retour au milieu du range asiatique** (or, USD/JPY, AUD/USD) : perdant (−0,03 à −0,31 R), sauf AUD/USD instable.
+- **Retournement en Asie d'un gros mouvement de New York** (or) : nul ou instable.
+- **Gotobi USD/JPY** (achat avant le fixing de Tokyo les jours en 5 / 10) : −0,07 / +0,03 / −0,05 R, pas mieux que les autres jours.
+Aucune n'est stable sur toutes les périodes : la seule stratégie asiatique utile reste g_asiabrk (cassure du range
+asiatique à l'ouverture de Londres, déjà sur FTMO).
+
 ### 🧯 Secours quand Yahoo fige ses bougies (`STALE_FEED_FALLBACK=1`, défaut, `src/staleFeed.js`)
 
 Certains jours (Thanksgiving 2026 : plus aucune bougie intraday sur l'or, l'argent, les futures Nasdaq / S&P / Dow

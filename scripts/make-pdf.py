@@ -556,6 +556,17 @@ story.append(KeepTogether([Paragraph('Cinq nouvelles idées (26/11/2026)', h2), 
     ], [70 * mm, 56 * mm, 52 * mm]), Paragraph(
     'Les jours d’annonce sont repérés dans les données (bougie de 8 h 30 ou de 14 h au moins 3 fois plus grande que d’habitude) : le calendrier '
     'historique n’est pas fiable. Les comptes sont déjà bien réglés : ajouter des stratégies ajoute surtout du bruit.', note)]))
+story.append(KeepTogether([Paragraph('Séance asiatique, 2e recherche', h2), Paragraph(
+    'Stratégies qui tradent pendant la nuit asiatique (or au comptant 2009–2026, USD/JPY et AUD/USD 2 ans). <b>Rien n’est stable</b> sur toutes '
+    'les périodes : la seule stratégie asiatique utile reste g_asiabrk (cassure du range asiatique à l’ouverture de Londres, déjà sur FTMO).', body),
+    Spacer(1, 3), small_table([
+    ('Idée (R moyen par trade, frais compris)', 'Résultat'),
+    ('Acheter l’or la nuit (23 h → 5 h UTC)', '+0,04 / −0,02 / +0,03 / +0,08 R : presque, pas 2013–16 ✘'),
+    ('Vendre l’or la nuit', '−0,07 à −0,24 R partout ✘ (l’or monte un peu la nuit)'),
+    ('Retour au milieu du range asiatique (or, USD/JPY, AUD/USD)', '−0,03 à −0,31 R ✘'),
+    ('Retournement en Asie d’un gros mouvement de New York (or)', 'nul ou instable ✘'),
+    ('Effet « gotobi » USD/JPY (avant le fixing de Tokyo)', '−0,07 / +0,03 / −0,05 R, pas mieux que les autres jours ✘'),
+    ], [96 * mm, 82 * mm])]))
 
 story += part(4, 'Le bot au quotidien')
 story.append(KeepTogether([Paragraph('Exécution, notifications et outils', h2), Paragraph(
