@@ -11,8 +11,8 @@ const { backtest } = require('../src/gold');
 const { computeAll } = require('../src/indicators');
 const { nySession } = require('../src/oanda');
 
-const paris = (t) => new Date(t * 1000).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
-const parisDay = (t) => new Date(t * 1000).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const paris = (t) => new Date(t * 1000).toLocaleString('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
+const parisDay = (t) => new Date(t * 1000).toLocaleDateString('en-US', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const nyKey = (t) => new Date(t * 1000).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 const lonKey = (t) => new Date(t * 1000).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
 const nyMin = (t) => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(new Date(t * 1000)).map((x) => [x.type, x.value])); return (Number(p.hour) % 24) * 60 + Number(p.minute); };
@@ -20,25 +20,25 @@ const utcMin = (t) => Math.floor((t % 86400) / 60);
 
 // Fiches : stratégie type, symbole Yahoo, unité de temps, niveaux à tracer
 const FICHES = [
-  { key: 'orb', sid: 'n_orb30l_t075', sym: '^NDX', tf: '5m', mk: 'nas100', maxRisk: 500, levels: (day) => rangeLv(day, (t) => nyMin(t) >= 570 && nyMin(t) < 600, 'range des 30 premières min') },
-  { key: 'crabel', sid: 'n_crabel4_t05', sym: '^NDX', tf: '5m', mk: 'nas100', maxRisk: 500, levels: (day) => rangeLv(day, (t) => nyMin(t) >= 570 && nyMin(t) < 600, 'range des 30 premières min') },
+  { key: 'orb', sid: 'n_orb30l_t075', sym: '^NDX', tf: '5m', mk: 'nas100', maxRisk: 500, levels: (day) => rangeLv(day, (t) => nyMin(t) >= 570 && nyMin(t) < 600, 'first 30 min range') },
+  { key: 'crabel', sid: 'n_crabel4_t05', sym: '^NDX', tf: '5m', mk: 'nas100', maxRisk: 500, levels: (day) => rangeLv(day, (t) => nyMin(t) >= 570 && nyMin(t) < 600, 'first 30 min range') },
   { key: 'williams', sid: 'n_wvb05_t075', sym: '^NDX', tf: '5m', mk: 'nas100', maxRisk: 500, levels: (day, prev) => williamsLv(day, prev, 0.5) },
   { key: 'mom', sid: 'n_mom10_t05', sym: '^NDX', tf: '5m', mk: 'nas100', maxRisk: 500, levels: () => [] },
-  { key: 'londres', sid: 'g_orb30', sym: 'GC=F', tf: '5m', mk: 'gold', session: 'utc', levels: (day) => rangeLv(day, (t) => utcMin(t) >= 420 && utcMin(t) < 450, 'range 8 h – 8 h 30 (Paris, hiver)') },
-  { key: 'asie', sid: 'g_asiabrk', sym: 'GC=F', tf: '5m', mk: 'gold', session: 'utc', levels: (day) => rangeLv(day, (t) => utcMin(t) < 420, 'range de la nuit asiatique') },
+  { key: 'londres', sid: 'g_orb30', sym: 'GC=F', tf: '5m', mk: 'gold', session: 'utc', levels: (day) => rangeLv(day, (t) => utcMin(t) >= 420 && utcMin(t) < 450, '08:00–08:30 range (Paris, winter)') },
+  { key: 'asie', sid: 'g_asiabrk', sym: 'GC=F', tf: '5m', mk: 'gold', session: 'utc', levels: (day) => rangeLv(day, (t) => utcMin(t) < 420, 'Asian overnight range') },
   { key: 'repli', sid: 'rsi2', sym: '^GSPC', tf: '1d', mk: 'spx', maxRisk: 370 },
   { key: 'double7', sid: 'double7', sym: '^GSPC', tf: '1d', mk: 'spx', maxRisk: 370 },
 ];
 function rangeLv(day, inRange, label) {
   const r = day.filter((c) => inRange(c.t));
   if (!r.length) return [];
-  return [{ v: Math.max(...r.map((c) => c.h)), label: `haut du ${label}` }, { v: Math.min(...r.map((c) => c.l)), label: `bas du ${label}` }];
+  return [{ v: Math.max(...r.map((c) => c.h)), label: `${label} high` }, { v: Math.min(...r.map((c) => c.l)), label: `${label} low` }];
 }
 function williamsLv(day, prev, k) {
   if (!day.length || !prev.length) return [];
   const amp = Math.max(...prev.map((c) => c.h)) - Math.min(...prev.map((c) => c.l));
   const o = day[0].o;
-  return [{ v: o, label: 'ouverture' }, { v: o + k * amp, label: `ouverture + ${String(k).replace('.', ',')} × amplitude de la veille` }, { v: o - k * amp, label: `ouverture − ${String(k).replace('.', ',')} × amplitude de la veille` }];
+  return [{ v: o, label: 'open' }, { v: o + k * amp, label: `open + ${k} × previous range` }, { v: o - k * amp, label: `open − ${k} × previous range` }];
 }
 
 const rOf = (t) => ((t.exit - t.entry) / Math.abs(t.entry - t.initSl)) * (t.side === 'long' ? 1 : -1);

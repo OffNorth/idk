@@ -185,6 +185,32 @@ const VERDICT = {
   hold: ['ref', 'Or +10,8 %/an (pire baisse −44 %) · Nasdaq +17,0 %/an (−36 %)'],
 };
 
+// Familles et notes en anglais (PDF et messages en anglais) ; STRATEGY_LANG=fr pour les originales
+const FAMILY_EN = {
+  'Premières stratégies (guides fournis)': 'First strategies (supplied guides)',
+  'Maison': 'In-house',
+  'Analyse technique classique': 'Classic technical analysis',
+  'Or : rebonds, taux, argent, séance asiatique': 'Gold: rebounds, rates, silver, Asian session',
+  'Spécifiques à l’or': 'Gold-specific',
+  'Tendance multi-horizons (or + Nasdaq)': 'Multi-horizon trend (gold + Nasdaq)',
+  'Spécifiques au Nasdaq': 'Nasdaq-specific',
+  'Effets de calendrier Nasdaq': 'Nasdaq calendar effects',
+  'Or intraday : momentum (or au comptant réel)': 'Gold intraday: momentum (real spot gold)',
+  'Séances d’Asie et de New York (npm run sessions, sessions2)': 'Asian and New York sessions',
+  'Compte Lucid : intraday Nasdaq avec objectif 0,5 R (npm run lucid-research)': 'Lucid account: Nasdaq intraday with a 0.5 R target',
+  'Traders connus : Crabel, Williams (npm run traders)': 'Well-known traders: Crabel, Williams',
+  'Tirées de la littérature (recherche web)': 'From the literature (web research)',
+  'Intraday Nasdaq (5 min)': 'Nasdaq intraday (5 min)',
+  'Scalp (1–5 min)': 'Scalp (1–5 min)',
+  'Style FTMO (stop clair, taille au risque)': 'FTMO style (clear stop, risk-based size)',
+  'Retour à la moyenne dans la tendance (FTMO)': 'Mean reversion in the trend (FTMO)',
+  'Scalp 2e série (or et Nasdaq, 1–5 min)': 'Scalp 2nd series (gold and Nasdaq, 1–5 min)',
+  'Référence': 'Benchmark',
+  'Autres': 'Other',
+};
+const EN = process.env.STRATEGY_LANG !== 'fr';
+const NOTE_EN = EN ? require('./verdicts.en.json') : {};
+
 /** Liste complète, avec les marchés où chaque stratégie est active selon la configuration. */
 function catalog(cfg) {
   const sel = {
@@ -199,7 +225,8 @@ function catalog(cfg) {
   };
   const famOf = new Map(FAMILIES.flatMap(([f, ids]) => ids.map((id) => [id, f])));
   return STRATEGIES.map((s) => {
-    const [verdict, note] = VERDICT[s.id] || ['dispo', ''];
+    const [verdict, note0] = VERDICT[s.id] || ['dispo', ''];
+    const note = EN ? NOTE_EN[s.id] || '' : note0;
     // Version active (ex. « macd@1d ») : on affiche son unité de temps et on teste celle-là
     const live = Object.values(sel).flat().find((x) => x.id.split('@')[0] === s.id);
     const tf = tfOf(live || s);
@@ -209,7 +236,7 @@ function catalog(cfg) {
       name: s.name,
       desc: s.desc,
       tf,
-      family: famOf.get(s.id) || 'Autres',
+      family: EN ? FAMILY_EN[famOf.get(s.id) || 'Autres'] || famOf.get(s.id) : famOf.get(s.id) || 'Autres',
       markets: s.markets || ['gold', 'nas100'],
       active: Object.keys(sel).filter((m) => sel[m].some((x) => x.id.split('@')[0] === s.id)),
       verdict,
@@ -219,4 +246,4 @@ function catalog(cfg) {
   });
 }
 
-module.exports = { catalog, FAMILIES, VERDICT };
+module.exports = { catalog, FAMILIES, VERDICT, FAMILY_EN };

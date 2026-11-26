@@ -12,8 +12,8 @@ const { esc } = require('./format');
 
 const CACHE = path.join(__dirname, '..', 'data', 'research');
 const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
-const pct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} %`;
-const date = (t) => new Date(t * 1000).toISOString().slice(0, 10).split('-').reverse().join('/');
+const pct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}%`;
+const date = (t) => new Date(t * 1000).toISOString().slice(0, 10);
 
 /** Couleur de chaque stratégie (la référence achat-conservation en gris). */
 function colorize(strategies) {
