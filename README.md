@@ -697,6 +697,16 @@ sommeil jusqu'à la prochaine évaluation réussie. `/reset` le met en sommeil ;
 du bot, sans évaluation (annoncé dans le groupe) ; `/financer lucid` le relance directement s'il est en sommeil
 (l'évaluation Lucid, elle, continue).
 
+### 💡 Nouvelles idées testées (`npm run ideas`, 26/11/2026) : rien d'ajouté
+
+- **Seules, frais compris** : dérive de nuit Nasdaq (+0,03 à +0,07 R, positive sur 2000–09 / 2010–19 / 2020–26 avec
+  filtre de tendance ou après une journée en baisse ; S&P : nulle), VIX stretch S&P (+0,07 à +0,14 R), mardi de
+  retournement Nasdaq / S&P (+0,07 à +0,18 R) passent ; paires or / argent et Nasdaq / S&P, annonces (fade ou cassure
+  à 8 h 30, Fed à 14 h, or ou indices) instables ou perdantes.
+- **Sur les comptes** : aucune n'améliore la réussite. Dérive de nuit : Lucid 46 / 61 / 53 % → 26–31 / 37–50 / 51–55 %
+  (positions de nuit et perte max suiveuse) ; mardi de retournement et VIX stretch : neutres (trop rares). Filtre « pas
+  de trade autour des annonces » : FTMO 69 → 67 %, Lucid nov. 24–26 53 → 45 % (il retire de bons trades).
+
 ### 🧯 Secours quand Yahoo fige ses bougies (`STALE_FEED_FALLBACK=1`, défaut, `src/staleFeed.js`)
 
 Certains jours (Thanksgiving 2026 : plus aucune bougie intraday sur l'or, l'argent, les futures Nasdaq / S&P / Dow
