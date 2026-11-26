@@ -721,6 +721,13 @@ Stratégies qui tradent PENDANT la nuit asiatique (or au comptant 2009–2026, U
 Aucune n'est stable sur toutes les périodes : la seule stratégie asiatique utile reste g_asiabrk (cassure du range
 asiatique à l'ouverture de Londres, déjà sur FTMO).
 
+### 🗽 Séance de New York, idées restantes (`npm run ny`, 26/11/2026) : rien d'ajouté
+
+Contre l'élan d'ouverture (9 h 30 → 10 h), retournement de mi-journée, retournement à la clôture de Londres (11 h 30),
+cassure du range de midi ; Nasdaq / S&P (2 ans) et or (2009–2026). **Tout perd** (−0,02 à −0,57 R par trade) : jouer contre
+un gros mouvement de la séance de New York perd sur tous les marchés, ce qui confirme que la séance est faite pour le
+momentum (cassures d'ouverture, Crabel, Williams, momentum de fin de journée, déjà dans le bot).
+
 ### 🧯 Secours quand Yahoo fige ses bougies (`STALE_FEED_FALLBACK=1`, défaut, `src/staleFeed.js`)
 
 Certains jours (Thanksgiving 2026 : plus aucune bougie intraday sur l'or, l'argent, les futures Nasdaq / S&P / Dow

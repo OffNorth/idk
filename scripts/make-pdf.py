@@ -567,6 +567,17 @@ story.append(KeepTogether([Paragraph('Séance asiatique, 2e recherche', h2), Par
     ('Retournement en Asie d’un gros mouvement de New York (or)', 'nul ou instable ✘'),
     ('Effet « gotobi » USD/JPY (avant le fixing de Tokyo)', '−0,07 / +0,03 / −0,05 R, pas mieux que les autres jours ✘'),
     ], [96 * mm, 82 * mm])]))
+story.append(KeepTogether([Paragraph('Séance de New York, idées restantes', h2), Paragraph(
+    'La séance de New York porte déjà presque tout l’intraday du bot (cassures d’ouverture, Crabel, Williams, momentum de fin de journée). '
+    'Restaient les idées de retournement et une cassure l’après-midi, testées sur le Nasdaq, le S&amp;P (2 ans) et l’or (2009–2026) : '
+    '<b>tout perd</b>. Jouer contre un gros mouvement de New York perd partout : la séance est faite pour le momentum.', body),
+    Spacer(1, 3), small_table([
+    ('Idée (R moyen par trade, frais compris)', 'Nasdaq', 'S&amp;P 500', 'Or'),
+    ('Contre l’élan d’ouverture (9 h 30 → 10 h)', '−0,02 à −0,55', '−0,09 à −0,57', '−0,14 à −0,30'),
+    ('Retournement de mi-journée', '−0,00 à −0,50', '+0,48 à −0,23 (instable)', '−0,02 à −0,25'),
+    ('Retournement à la clôture de Londres (11 h 30)', '+0,27 à −0,37 (instable)', '+0,23 à −0,52 (instable)', '−0,03 à −0,16'),
+    ('Cassure du range de midi', '−0,05 à −0,06', '−0,03 à −0,11', '−0,02 à −0,07'),
+    ], [72 * mm, 34 * mm, 40 * mm, 32 * mm])]))
 
 story += part(4, 'Le bot au quotidien')
 story.append(KeepTogether([Paragraph('Exécution, notifications et outils', h2), Paragraph(
