@@ -40,7 +40,8 @@ function businessDays(t, horizonDays) {
 /** Options runPhase du compte (règles de la formule FTMO ou Lucid, réglages du bot). */
 function phaseOptions(cfg, A, s) {
   const P = A.program || programOf(cfg);
-  const common = { riskPct: 1, sizer: require('./sizing').ruleFor(cfg, A.firm), dayStopPct: cfg.ftmoDayStop || 0, capital: s.capital, minDays: P.minDays ?? 4 };
+  const common = { riskPct: 1, sizer: s.phase === 'funded' && cfg.fundedCushion !== false
+    ? ((rule) => (t, st) => rule(t, st) * require('./sizing').cushionMul(st.room))(require('./sizing').ruleFor(cfg, A.firm)) : require('./sizing').ruleFor(cfg, A.firm), dayStopPct: cfg.ftmoDayStop || 0, capital: s.capital, minDays: P.minDays ?? 4 };
   const funded = s.phase === 'funded';
   const target = funded ? Infinity : P.target ?? TARGET[s.phase] ?? 10;
   if (P.contracts) {
@@ -118,7 +119,7 @@ function simulate(cfg, store, accountId = 'gold', opts = {}) {
 function cached(cfg, store, accountId = 'gold', opts = {}) {
   const s = createFtmo({ cfg, store, account: accountId }).load();
   const key = [s.attempt, s.phase, Math.round(s.balance), (s.closed || []).length, (s.days || []).length, new Date().toISOString().slice(0, 10),
-    cfg.ftmoSizing, cfg.ftmoGroupSizing, cfg.ftmoRisk, cfg.ftmoIntradayRisk, cfg.lucidRiskMul, cfg.lucidIntradayRisk, cfg.lucidEvalIntradayMul, cfg.ftmoProgram].join('|');
+    cfg.ftmoSizing, cfg.ftmoGroupSizing, cfg.fundedCushion, cfg.ftmoRisk, cfg.ftmoIntradayRisk, cfg.lucidRiskMul, cfg.lucidIntradayRisk, cfg.lucidEvalIntradayMul, cfg.ftmoProgram].join('|');
   const all = store.loadJson('time-machine.json', {});
   if (all[accountId]?.key === key) return all[accountId].res;
   const res = simulate(cfg, store, accountId, { ...opts, state: s });

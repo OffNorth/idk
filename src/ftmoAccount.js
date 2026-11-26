@@ -476,7 +476,11 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         const cap = Math.min((P.levCap && P.levCap[ev.market.id]) || cfg.ftmoLeverage, require('./stocks').STOCKS[ev.market.id] ? require('./stocks').STOCK_LEVERAGE : Infinity);
         const riskPct = A.riskOf(ev.market.id, ev.strategy, s.phase);
         if (!(riskPct > 0)) continue; // stratégie non prise par ce compte (ex. intraday sur Lucid)
-        let notional = Math.min((s.balance * riskPct * mul * wAdapt) / stopPct, s.balance * cap);
+        // Compte financé : risque selon la marge restante avant la perte max (npm run optimize2, FUNDED_CUSHION) :
+        // × 1 avec toute la marge, × 0,5 à mi-chemin de la perte max, × 0,25 au plus bas
+        const cushion = s.phase === 'funded' && cfg.fundedCushion !== false
+          ? require('./sizing').cushionMul((s.balance - maxFloor(s)) / (P.maxUsd || (s.capital * P.max) / 100)) : 1;
+        let notional = Math.min((s.balance * riskPct * mul * wAdapt * cushion) / stopPct, s.balance * cap);
         let lots = null;
         if (P.contracts) {
           // Futures (Lucid) : contrats entiers de micro-futures, arrondis vers le bas, plafond de contrats ouverts

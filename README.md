@@ -1045,6 +1045,18 @@ Le cours « 30 s après le signal » vient aussi d'OANDA.
   Yahoo, `OANDA_ENV=live` pour un compte réel. Volume OANDA = nombre de cotations (pas de contrats) : le VWAP de
   `n_noise` est un peu différent de celui des recherches.
 
+### 🔧 Optimiser le rendement : 7 autres idées (`npm run optimize2`, 26/11/2026)
+
+| Idée | Résultat | Décision |
+|---|---|---|
+| **Risque selon la marge restante** (compte financé : × marge restante ÷ perte max, entre × 0,25 et × 1) | FTMO financé 24 mois (2009–2026) : retraits **17 052 → 23 768 $**, comptes perdus **99 → 29 %** ; Lucid financé 12 mois : retraits 3 025 → 3 091 $, perdus **100 → 30 %** | ✅ **ajouté aux comptes financés FTMO et Lucid** (`FUNDED_CUSHION=1`) |
+| **Deux évaluations Lucid différentes** (une intraday seulement, une journalières seulement) | au moins une réussie < 1 an **92 %** (contre 49 %), délai 34 j (contre 13 j), coût par compte financé **198 $** (contre 279 $) ; ≤ 30 j inchangé (46 %) | à décider (2 comptes Lucid à acheter et suivre) |
+| LucidFlex 100K au lieu de 50K | évaluation plus dure (39 % contre 53 % sur nov. 24–26, 49 % contre 61 % sur 2020–26), coût par compte financé 593 $ (prix estimé 230 $) contre 256 $ ; retraits 12 mois 5 140 $ contre 3 025 $ → net ≈ 4 550 $ contre 2 770 $ par compte financé | à confirmer avec le vrai prix |
+| Abandonner une évaluation mal partie (sous −750 à −1 500 $) | même réussite, un peu plus d'évaluations achetées | ✘ |
+| Objectifs plus longs une fois Lucid financé (1 R, 1,5 R, 2 R, sans) | retraits 12 mois 3 025 $ → 2 977 / 1 574 / 1 687 / 1 022 $ | ✘ |
+| Ordre limite sur un repli après une cassure (¼ ou ½ du risque) | 1er essai faussé (exécution dans la bougie de cassure elle-même) ; corrigé : FTMO 42 / 43 / 53 %, Lucid nov. 24–26 53 → 35 % | ✘ |
+| Journalières fermées le vendredi soir | FTMO 42 / 47 / 69 → 27 / 30 / 43 % | ✘ (les week-ends rapportent) |
+
 ### 🔧 Optimiser le rendement : 7 idées (`npm run optimize`, 26/11/2026)
 
 Même méthode que d'habitude (réussite < 1 an 2009–19 | 2020–26 | nov. 24–26, retenue seulement si rien ne baisse).

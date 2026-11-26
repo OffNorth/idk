@@ -217,9 +217,10 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     const fx = LIST('ftmo').filter((t) => !(t.intraday && t.market !== 'gold'));
     for (const [name, f] of Object.entries(CU)) {
       let n = 0, paid = 0, lost = 0;
-      for (let s = Y(2009) + 60 * DAY; s < Y(2025); s += 7 * DAY) {
-        const r = fundedRun(fx, { ...RF, riskMul: cfg.ftmoFundedRiskMul ?? 0.75, dayProfitCapUsd: Infinity, maxLossesPerDay: Infinity, sizer: (t, st) => baseF(t, st) * f(st.room ?? 1), funded: { rule: 'ftmo', every: 14, days: 365 } }, s);
-        n++; paid += r.paid * 0.8; if (r.lost && r.months <= 12) lost++;
+      const FD = Number(process.env.FUND_DAYS || 365);
+      for (let s = Y(2009) + 60 * DAY; s < Y(2026) - FD * DAY; s += 7 * DAY) {
+        const r = fundedRun(fx, { ...RF, riskMul: cfg.ftmoFundedRiskMul ?? 0.75, dayProfitCapUsd: Infinity, maxLossesPerDay: Infinity, sizer: (t, st) => baseF(t, st) * f(st.room ?? 1), funded: { rule: 'ftmo', every: 14, days: FD } }, s);
+        n++; paid += r.paid * 0.8; if (r.lost) lost++;
       }
       const L = fundedLucid(fundedRisk(LIST('lucid')), { sizer: (t, st) => baseL(t, st) * f(st.room ?? 1) });
       console.log(`   ${name.padEnd(26)} FTMO financé 12 mois (2009–24) : retraits ${usd(paid / n).padStart(8)} · perdus ${pc(lost / n)}  ||  Lucid financé (nov. 24–25) : retraits ${usd(L.paid).padStart(7)} · perdus ${pc(L.lost)}`);
@@ -238,7 +239,7 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
       if (!t.intraday || !isBreak(t.sid) || !BARS[t.market]) return [t];
       const bars = BARS[t.market]; const long = t.side === 'long'; const risk = Math.abs(t.entry - t.initSl);
       const lim = long ? t.entry - f * risk : t.entry + f * risk;
-      let i = firstAt(bars, t.entryT); let fillT = null;
+      let i = firstAt(bars, t.entryT + 1); let fillT = null; // bougies APRÈS la bougie de cassure (entryT = son début)
       for (let k = 0; k < 6 && i < bars.length; k++, i++) {
         if (bars[i].t >= t.exitT) break;
         if (long ? bars[i].l <= lim : bars[i].h >= lim) { fillT = bars[i].t + 300; break; }

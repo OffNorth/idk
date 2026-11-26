@@ -85,4 +85,11 @@ RULES['même groupe → moins'] = (t, s) => {
 const ruleFor = (cfg, firm) => (firm !== 'Lucid' && cfg.ftmoGroupSizing !== false && cfg.ftmoSizing === 'plusieurs positions → moins'
   ? RULES['même groupe → moins'] : RULES[cfg.ftmoSizing] || RULES.fixe);
 
-module.exports = { annotate, RULES, clamp, stopPctOf, progress, ruleFor, groupOf };
+/**
+ * Compte financé : multiplicateur de risque selon la marge restante avant la perte max (room = marge ÷ perte max
+ * autorisée). npm run optimize2 (26/11/2026), FTMO financé sur 24 mois (2009–2026) : retraits 17 052 → 23 768 $,
+ * comptes perdus 99 → 29 % ; Lucid financé sur 12 mois : retraits 3 025 → 3 091 $, comptes perdus 100 → 30 %.
+ */
+const cushionMul = (room) => clamp(Number.isFinite(room) ? room : 1, 0.25, 1);
+
+module.exports = { annotate, RULES, clamp, stopPctOf, progress, ruleFor, groupOf, cushionMul };
