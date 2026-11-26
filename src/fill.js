@@ -32,6 +32,19 @@ async function quoteNow(cfg, id, fetcher = fetchYahoo, { withTime = false } = {}
     const price = await require('./oanda').oandaQuote(cfg, id);
     return withTime ? (price ? { price, t: Math.floor(Date.now() / 1000) } : null) : price;
   }
+  // Bougies Binance (or / argent sans OANDA) : cours Binance, même échelle de prix que les signaux
+  if (fetcher === fetchYahoo && cfg.goldFeed !== 'paxg' && require('./markets').binanceActive(cfg, id)) {
+    const bnc = require('./binance');
+    const t0 = Math.floor(Date.now() / 1000);
+    if (!(id === 'silver' ? require('./oanda').nySession([{ t: t0 }]).length : bnc.openNow(t0))) return null;
+    try {
+      const last = (await bnc.klines(bnc.SYMBOL[id], 60, { limit: 2 })).pop();
+      if (!last || t0 - last.t > 5 * 60) return null;
+      return withTime ? { price: last.c, t: last.t } : last.c;
+    } catch {
+      return null;
+    }
+  }
   if (!SYMBOL[id] || (id === 'gold' && cfg.goldFeed === 'paxg')) return null;
   try {
     const c = await fetcher(SYMBOL[id], '1m', { range: '1d', attempts: 2, timeoutMs: 10_000 });

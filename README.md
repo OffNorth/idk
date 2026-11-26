@@ -1045,6 +1045,23 @@ Le cours « 30 s après le signal » vient aussi d'OANDA.
   Yahoo, `OANDA_ENV=live` pour un compte réel. Volume OANDA = nombre de cotations (pas de contrats) : le VWAP de
   `n_noise` est un peu différent de celui des recherches.
 
+### 🟡 Or et argent en temps réel sans compte : Binance (`BINANCE_FEED=1`, défaut, `src/binance.js`)
+
+OANDA et Capital.com demandent une vérification d'identité. Sans `OANDA_TOKEN`, l'or et l'argent prennent leurs bougies
+intraday (1 / 5 / 15 min) sur les **contrats perpétuels publics de Binance** `XAUUSDT` et `XAGUSDT` : données
+publiques, **aucun compte, aucune clé, aucune donnée personnelle**, en temps réel (Yahoo : ≈ 10 min de retard).
+
+- **Fidélité** : sur novembre 2026, XAUUSDT suit l'or au comptant à **+7,0 $** près (écart-type 0,64 $), corrélation
+  **0,997** des variations 5 min. L'écart avec Yahoo GC=F est mesuré et corrigé au changement de source (positions
+  décalées, comme avec OANDA ; dernier écart gardé si Binance tombe). Le site ramène les trades à l'échelle Yahoo.
+- **Heures** : Binance cote 24 h/24, 7 j/7 ; les bougies du week-end (vendredi 17 h → dimanche 18 h, New York) et de la
+  pause de 17 h sont retirées. Argent : séance de New York seulement, comme avant.
+- **Cours d'exécution** (30 s après le signal) : pris chez Binance aussi, même échelle que le signal.
+- **Pays / hébergeurs bloqués** (réponse 451 « restricted location », ex. certains clouds) : Yahoo tout de suite,
+  nouvel essai toutes les 30 min. Coupure d'une source qui marchait : passage ignoré 10 min, puis Yahoo.
+- Indices (Nasdaq, S&P, Dow, Russell) : pas de contrat équivalent → Yahoo. `npm run binance-check` dit si Binance est
+  joignable depuis la machine du bot et l'écart avec Yahoo ; `/verif` affiche la source de chaque marché.
+
 ### ⏱ Exécution « comme en vrai » (`FILL_DELAY_SEC`, 30 s par défaut)
 
 Les comptes FTMO et Lucid ne sont plus remplis au prix exact du signal : le bot attend **30 secondes** (le temps qu'un

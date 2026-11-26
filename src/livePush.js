@@ -106,6 +106,29 @@ function diagOf(cfg, store) {
   };
 }
 
+/**
+ * Le site trace les trades sur des bougies Yahoo : un marché dont les bougies viennent d'OANDA ou de Binance cote
+ * avec un écart (or Binance ≈ GC=F − 20 $…). Les prix des trades passés par cette source sont ramenés à l'échelle
+ * Yahoo (positions ouvertes : toutes, elles ont été décalées au changement de source ; trades clos : depuis le changement).
+ */
+function feedOffsets(store, markets) {
+  const out = {};
+  for (const m of markets) {
+    const st = store.loadJson(m.file, {});
+    const feed = st.feed || 'yahoo';
+    const b = st.feedBasis?.[feed];
+    if (feed !== 'yahoo' && Number.isFinite(b) && b) out[m.id] = { b, since: st.feedSwitch?.at || 0 };
+  }
+  return out;
+}
+function toChartScale(list, off, open = false) {
+  for (const t of list || []) {
+    const o = off[t.market];
+    if (!o || (!open && !((t.exitT ?? t.entryT) >= o.since))) continue;
+    for (const k of ['entry', 'exit', 'sl', 'sl0', 'tp', 'signal']) if (Number.isFinite(t[k])) t[k] = r6(t[k] - o.b);
+  }
+}
+
 /** État complet envoyé au site. */
 function buildLive(cfg, store, version = '') {
   const markets = activeMarkets(cfg);
@@ -123,12 +146,20 @@ function buildLive(cfg, store, version = '') {
     }
   }
   paper.sort((a, b) => a.exitT - b.exitT);
+  const off = feedOffsets(store, markets);
+  for (const a of accounts) {
+    toChartScale(a.open, off, true);
+    toChartScale(a.closed, off);
+    toChartScale(a.archive, off);
+    toChartScale(a.refused?.last, off);
+  }
+  toChartScale(paper, off);
   return {
     v: 1,
     at: Date.now(),
     version: version || require('./version').version(),
     diag: diagOf(cfg, store),
-    markets: markets.map((m) => ({ id: m.id, name: m.id === 'nas100' ? 'Nasdaq 100' : m.name, symbol: SYMBOL[m.id] || null, price: r6(prices[m.id]), ...(store.loadJson(m.file, {}).synthetic ? { synthetic: true } : {}) })),
+    markets: markets.map((m) => ({ id: m.id, name: m.id === 'nas100' ? 'Nasdaq 100' : m.name, symbol: SYMBOL[m.id] || null, price: r6(Number.isFinite(prices[m.id]) && off[m.id] ? prices[m.id] - off[m.id].b : prices[m.id]), feed: store.loadJson(m.file, {}).feed || 'yahoo', ...(store.loadJson(m.file, {}).synthetic ? { synthetic: true } : {}) })),
     accounts,
     ai: cfg.ftmoAi,
     adapt,
@@ -172,4 +203,4 @@ async function pushLive(cfg, store, { now = Date.now(), version = '', fetchImpl 
 }
 const resetThrottle = () => { lastPush = 0; };
 
-module.exports = { buildLive, pushLive, keyOf, resetThrottle, SYMBOL };
+module.exports = { feedOffsets, toChartScale, buildLive, pushLive, keyOf, resetThrottle, SYMBOL };

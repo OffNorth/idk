@@ -76,7 +76,8 @@
     "ideas": "node --max-old-space-size=12288 ideas-research.js",
     "portfolio-ideas": "node --max-old-space-size=4000 portfolio-ideas-research.js",
     "asia": "node --max-old-space-size=12288 asia-research.js",
-    "ny": "node --max-old-space-size=12288 ny-research.js"
+    "ny": "node --max-old-space-size=12288 ny-research.js",
+    "binance-check": "node scripts/binance-check.js"
   },
   "engines": {
     "node": ">=20"

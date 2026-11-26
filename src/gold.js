@@ -309,10 +309,19 @@ class MarketTrader {
     const paperOpen = Object.values(this.state.accounts).filter((a) => a.position);
     const { shiftOpen, openOn } = require('./ftmoAccount');
     let shift = 0;
-    if ((paperOpen.length || openOn(this.store, M.id)) && M.basis) {
-      const basis = await M.basis();
-      if (basis === null) console.warn(`[${M.id}] écart ${from} → ${to} non mesurable : positions gardées telles quelles`);
-      else shift = to === 'oanda' ? basis : -basis;
+    // Écart de chaque source par rapport à Yahoo (Yahoo : 0) ; celui d'une source qu'on quitte en panne : dernier mesuré
+    const known = this.state.feedBasis || {};
+    const basisOf = async (feed) => {
+      if (feed === 'yahoo' || !M.basis) return 0;
+      const b = await M.basis(feed).catch(() => null);
+      return b ?? (feed === from ? known[feed] ?? null : null);
+    };
+    const needed = paperOpen.length || openOn(this.store, M.id);
+    const [bFrom, bTo] = await Promise.all([needed ? basisOf(from) : 0, basisOf(to)]);
+    if (to !== 'yahoo' && bTo !== null) this.state.feedBasis = { ...known, [to]: bTo };
+    if (needed) {
+      if (bFrom === null || bTo === null) console.warn(`[${M.id}] écart ${from} → ${to} non mesurable : positions gardées telles quelles`);
+      else shift = bTo - bFrom;
     }
     if (shift) {
       for (const a of paperOpen) {
@@ -348,7 +357,7 @@ class MarketTrader {
       console.warn(`[${M.id}] prix indisponible, passage ignoré`);
       return [];
     }
-    // Changement de source des bougies (Yahoo ↔ OANDA) : les positions ouvertes sont décalées de l'écart de cotation
+    // Changement de source des bougies (Yahoo ↔ OANDA / Binance) : les positions ouvertes sont décalées de l'écart de cotation
     const feed = data.feed || 'yahoo';
     if (feed !== (this.state.feed || 'yahoo')) {
       try {

@@ -91,6 +91,8 @@ module.exports = {
   intradayFeed: (process.env.INTRADAY_FEED || '').trim() === 'yahoo' ? 'yahoo' : 'auto',
   // Bougies Yahoo figées alors que le cours avance (jours fériés US) : bougies maison 1 min (src/staleFeed.js) ; 0 pour couper
   staleFeedFallback: num('STALE_FEED_FALLBACK', 1) === 1,
+  // Or / argent sans jeton OANDA : bougies temps réel des contrats publics Binance XAUUSDT / XAGUSDT (sans compte) ; 0 pour couper
+  binanceFeed: num('BINANCE_FEED', 1) === 1,
   goldFeePct: num('GOLD_FEE_PCT', 0.05),
   goldScalpFeePct: num('GOLD_SCALP_FEE_PCT', 0.005), // stratégies 1 / 5 / 15 min (CFD)
   // Par défaut : les combinaisons retenues par le banc d'essai (npm run research) + la référence

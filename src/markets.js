@@ -9,6 +9,7 @@ const { fetchYahoo } = require('./yahoo');
 const { aggregate } = require('./history');
 const { auxSymbol } = require('./aux');
 const oanda = require('./oanda');
+const binance = require('./binance');
 
 /** En direct : 2 essais de 15 s au plus, pour ne pas bloquer le passage si Yahoo répond mal. */
 const LIVE = { attempts: 2, timeoutMs: 15_000 };
@@ -86,12 +87,72 @@ async function oandaIntraday(cfg, id, tfs, { session = false } = {}) {
   }
 }
 
-/** Écart de cotation OANDA − Yahoo (médiane sur les dernières bougies 5 min communes), pour changer de source. */
-async function basisOf(cfg, id, yahooSym, session) {
+/**
+ * Bougies Binance (contrats perpétuels publics XAUUSDT / XAGUSDT, sans compte) : or et argent, si BINANCE_FEED ≠ 0,
+ * sans jeton OANDA, et INTRADAY_FEED ≠ yahoo.
+ */
+const useBinance = (cfg, id) => cfg.binanceFeed !== false && !!binance.SYMBOL[id] && !useOanda(cfg) && cfg.intradayFeed !== 'yahoo';
+const bn = new Map(); // marché → { okAt, failSince, offUntil }
+const BN_FALLBACK_MS = 10 * 60_000; // panne de plus de 10 min → Yahoo
+const BN_RETRY_MS = 30 * 60_000; // Binance réessayé toutes les 30 min après un repli sur Yahoo
+/** Les bougies de ce marché viennent-elles de Binance en ce moment ? (cours d'exécution pris à la même source) */
+const binanceActive = (cfg, id, now = Date.now()) => { const st = bn.get(id); return useBinance(cfg, id) && !!st?.okAt && !(st.offUntil && now < st.offUntil); };
+
+/**
+ * Séries intraday de l'or / l'argent depuis Binance : 5 min sur 60 jours, 15 min (agrégées), 1 min sur 2 jours.
+ * Retourne null (→ Yahoo) si Binance est injoignable (pays ou hébergeur bloqué, panne de plus de 10 min, jamais
+ * joint) ; lève une erreur (passage ignoré) pour une coupure courte d'une source qui marchait.
+ */
+async function binanceIntraday(cfg, id, tfs, { session = false, fetcher = fetch, now = Date.now() } = {}) {
+  const sym = binance.SYMBOL[id];
+  const st = bn.get(id) || {};
+  bn.set(id, st);
+  if (st.offUntil && now < st.offUntil) return null;
+  const keep = (c) => (session ? oanda.nySession(c) : binance.metalsOpen(c));
+  const nowSec = Math.floor(now / 1000);
+  let failed = null; // erreur du relevé récent (le cache rend alors les anciennes bougies : on ne s'y fie pas)
+  const track = (load, recentCall = false) => async () => {
+    try { return await load(); } catch (err) { if (recentCall) failed = err; throw err; }
+  };
+  try {
+    const [long, recent] = await Promise.all([
+      cached(`bn:${id}:5m60`, 1800, track(() => binance.fetchRange(sym, 300, nowSec - 60 * 86400, fetcher))),
+      cached(`bn:${id}:5m`, 50, track(() => binance.klines(sym, 300, { limit: 300 }, fetcher), true)).catch((err) => { failed = err; return null; }),
+    ]);
+    if (failed) throw failed;
+    const byT = new Map((long || []).map((c) => [c.t, c]));
+    for (const c of recent || []) byT.set(c.t, c);
+    const all = [...byT.values()].sort((a, b) => a.t - b.t);
+    // Binance cote en continu : une dernière bougie de plus de 15 min = flux arrêté
+    if (!all.length || nowSec - all[all.length - 1].t > 15 * 60) throw new Error(`Binance ${sym} : bougies arrêtées`);
+    const m5 = keep(all);
+    if (!m5.length) throw new Error(`Binance ${sym} : aucune bougie de marché ouvert`);
+    const series = { '5m': m5, '15m': aggregate(m5, 900, 300) };
+    if (tfs.includes('1m')) series['1m'] = keep(await cached(`bn:${id}:1m`, 45, track(() => binance.fetchRange(sym, 60, nowSec - 2 * 86400, fetcher))) || []);
+    if (!st.okAt) console.log(`[${id}] bougies en temps réel : Binance ${sym} (public, sans compte)`);
+    st.okAt = now;
+    st.failSince = null;
+    // Marché fermé (week-end, pause) : dernier cours = dernière bougie de marché ouvert
+    return { m5, series, price: m5[m5.length - 1].c };
+  } catch (err) {
+    st.failSince ??= now;
+    const blocked = /\b451\b|\b403\b|restricted location/i.test(err.message);
+    if (blocked || !st.okAt || (st.failSince && now - st.failSince > BN_FALLBACK_MS)) {
+      if (!st.offUntil || now >= st.offUntil) console.warn(`[${id}] Binance indisponible (${err.message}) : bougies Yahoo, nouvel essai dans 30 min`);
+      st.offUntil = now + BN_RETRY_MS;
+      st.failSince = null;
+      return null;
+    }
+    throw err;
+  }
+}
+
+/** Écart de cotation source − Yahoo (médiane sur les dernières bougies 5 min communes), pour changer de source. */
+async function basisOf(cfg, id, yahooSym, session, feed = 'oanda') {
   const ins = oanda.INSTRUMENT[id];
   const [y, o] = await Promise.all([
     fetchYahoo(yahooSym, '5m', { range: '5d', ...LIVE }),
-    oanda.fetchOanda(cfg, ins, 300, { count: 2000 }),
+    feed === 'binance' ? binance.klines(binance.SYMBOL[id], 300, { limit: 1500 }) : oanda.fetchOanda(cfg, ins, 300, { count: 2000 }),
   ]);
   const ym = new Map(y.map((c) => [c.t, c.c]));
   const diffs = (session ? oanda.nySession(o) : o).filter((c) => ym.has(c.t)).slice(-12).map((c) => c.c - ym.get(c.t)).sort((a, b) => a - b);
@@ -114,14 +175,16 @@ function goldMarket(cfg) {
     financingPct: cfg.goldFinancingPct,
     yahooSymbol: 'GC=F',
     session: false,
-    basis: () => basisOf(cfg, 'gold', 'GC=F', false),
+    basis: (feed) => basisOf(cfg, 'gold', 'GC=F', false, feed),
     async fetch(tfs, { needsFx, needsVix, aux: auxList = [] } = {}) {
       const yahoo = (key, sym) => cached(key, 3600, () => fetchYahoo(sym, '1d', { range: '2y', ...LIVE })).catch(() => null);
       if (cfg.goldFeed !== 'paxg') {
         // Or « réel » (GOLD_FEED=future, par défaut) : future GC=F de Yahoo, qui suit l'or au comptant que trade un compte
         // FTMO. PAXG (jeton Binance / Coinbase) cote différemment en intraday (marché peu liquide, faux retours à la moyenne).
         // Avec OANDA_TOKEN : bougies 1 / 5 / 15 min de l'or au comptant OANDA (XAU_USD) en temps réel
-        const oa = useOanda(cfg) ? await oandaIntraday(cfg, 'gold', tfs) : null;
+        // Sans jeton OANDA : contrat perpétuel public Binance XAUUSDT (sans compte), Yahoo s'il est injoignable
+        const oa = useOanda(cfg) ? await oandaIntraday(cfg, 'gold', tfs) : useBinance(cfg, 'gold') ? await binanceIntraday(cfg, 'gold', tfs) : null;
+        const src = useOanda(cfg) ? 'oanda' : 'binance';
         const [m5y, d1, fx, vix, aux, h1] = await Promise.all([
           oa ? null : cached('gc5m', 120, () => fetchYahoo('GC=F', '5m', { range: '5d', ...LIVE })),
           cached('gc1d', 3600, () => fetchYahoo('GC=F', '1d', { range: '2y', ...LIVE })),
@@ -134,7 +197,7 @@ function goldMarket(cfg) {
         const series = { '1d': d1, '1h': h1, '6h': h1 ? aggregate(h1, 21600) : null, '5m': m5 };
         if (oa) {
           Object.assign(series, oa.series);
-          return { price: oa.price, stops: m5, daily: d1, fx, vix, aux, series, feed: 'oanda' };
+          return { price: oa.price, stops: m5, daily: d1, fx, vix, aux, series, feed: src };
         }
         if (tfs.some((tf) => tf === '5m' || tf === '15m')) {
           const long = await cached('gc5m60', 1800, () => fetchYahoo('GC=F', '5m', { range: '60d', ...LIVE })).catch(() => null);
@@ -180,7 +243,7 @@ function nasMarket(cfg) {
     financingPct: cfg.nasFinancingPct,
     yahooSymbol: '^NDX',
     session: true,
-    basis: () => basisOf(cfg, 'nas100', '^NDX', true),
+    basis: (feed) => basisOf(cfg, 'nas100', '^NDX', true, feed),
     async fetch(tfs, { needsVix, aux: auxList = [] } = {}) {
       const needIntraday = tfs.some((tf) => tf === '1h' || tf === '6h');
       const yahoo = (key, sym) => cached(key, 3600, () => fetchYahoo(sym, '1d', { range: '2y', ...LIVE })).catch(() => null);
@@ -229,7 +292,7 @@ function eurusdMarket(cfg) {
     financingPct: cfg.eurusdFinancingPct,
     yahooSymbol: 'EURUSD=X',
     session: false,
-    basis: () => basisOf(cfg, 'eurusd', 'EURUSD=X', false),
+    basis: (feed) => basisOf(cfg, 'eurusd', 'EURUSD=X', false, feed),
     async fetch(tfs, { needsVix, aux: auxList = [] } = {}) {
       const oa = useOanda(cfg) ? await oandaIntraday(cfg, 'eurusd', tfs) : null;
       const [m5y, d1, vix, aux] = await Promise.all([
@@ -259,7 +322,7 @@ function spxMarket(cfg) {
     financingPct: cfg.spxFinancingPct,
     yahooSymbol: '^GSPC',
     session: true,
-    basis: () => basisOf(cfg, 'spx', '^GSPC', true),
+    basis: (feed) => basisOf(cfg, 'spx', '^GSPC', true, feed),
     async fetch(tfs, { needsVix, aux: auxList = [] } = {}) {
       const oa = useOanda(cfg) ? await oandaIntraday(cfg, 'spx', tfs, { session: true }) : null;
       const [m5y, d1, vix, aux] = await Promise.all([
@@ -304,10 +367,12 @@ function sessionMarket(cfg, { id, key, name, emoji, symbol }) {
     financingPct: 6,
     yahooSymbol: symbol,
     session: true,
-    basis: () => basisOf(cfg, id, symbol, true),
+    basis: (feed) => basisOf(cfg, id, symbol, true, feed),
     async fetch(tfs, { needsVix, aux: auxList = [] } = {}) {
       // (actions / ETF : pas d'instrument OANDA → toujours Yahoo)
-      const oa = useOanda(cfg) && oanda.INSTRUMENT[id] ? await oandaIntraday(cfg, id, tfs, { session: true }) : null;
+      const oa = useOanda(cfg) && oanda.INSTRUMENT[id] ? await oandaIntraday(cfg, id, tfs, { session: true })
+        : useBinance(cfg, id) ? await binanceIntraday(cfg, id, tfs, { session: true }) : null; // argent : Binance XAGUSDT
+      const src = useOanda(cfg) ? 'oanda' : 'binance';
       const [m5y, long, d1, vix, aux] = await Promise.all([
         oa ? null : cached(`${id}5m`, 120, () => fetchYahoo(symbol, '5m', { range: '5d', ...LIVE })).catch(() => null),
         oa ? null : cached(`${id}5m60`, 1800, () => fetchYahoo(symbol, '5m', { range: '60d', ...LIVE })).catch(() => null),
@@ -322,7 +387,8 @@ function sessionMarket(cfg, { id, key, name, emoji, symbol }) {
         m5 = byT.size ? oanda.nySession([...byT.values()].sort((a, b) => a.t - b.t)) : null;
       }
       const series = { '1d': d1, '5m': m5, '1h': m5 ? aggregate(m5, 3600, 300) : null, '15m': m5 ? aggregate(m5, 900, 300) : null };
-      return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx: null, vix, aux, series, feed: oa ? 'oanda' : 'yahoo' };
+      if (oa && oa.series['1m']) series['1m'] = oa.series['1m'];
+      return { price: m5?.[m5.length - 1]?.c ?? d1?.[d1.length - 1]?.c, stops: m5, daily: d1, fx: null, vix, aux, series, feed: oa ? src : 'yahoo' };
     },
   };
 }
@@ -354,4 +420,4 @@ class GoldTrader extends MarketTrader {
   }
 }
 
-module.exports = { useOanda, oandaIntraday, basisOf, goldMarket, nasMarket, eurusdMarket, spxMarket, silverMarket, dowMarket, russellMarket, allMarkets, activeMarkets, marketById, GoldTrader, MarketTrader };
+module.exports = { useOanda, oandaIntraday, useBinance, binanceIntraday, binanceActive, _bn: bn, _memo: memo, basisOf, goldMarket, nasMarket, eurusdMarket, spxMarket, silverMarket, dowMarket, russellMarket, allMarkets, activeMarkets, marketById, GoldTrader, MarketTrader };

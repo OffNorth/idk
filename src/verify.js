@@ -59,12 +59,12 @@ function verify(cfg, store) {
 /** Source des bougies intraday de chaque marché et âge de la dernière bougie 5 min (retard des données). */
 function feedLines(cfg, store) {
   const { activeMarkets, useOanda } = require('./markets');
-  const lines = [`📡 Bougies intraday : ${useOanda(cfg) ? 'OANDA (temps réel)' : cfg.oandaToken ? 'Yahoo (INTRADAY_FEED=yahoo)' : 'Yahoo (pas de OANDA_TOKEN ; or retardé d’environ 10 min)'}`];
+  const lines = [`📡 Bougies intraday : ${useOanda(cfg) ? 'OANDA (temps réel)' : cfg.intradayFeed === 'yahoo' ? 'Yahoo (INTRADAY_FEED=yahoo)' : cfg.binanceFeed !== false ? 'or et argent : Binance (public, temps réel) si joignable, sinon Yahoo ; indices : Yahoo' : 'Yahoo (or retardé d’environ 10 min)'}`];
   for (const m of activeMarkets(cfg)) {
     const st = store.loadJson(m.file, {});
     if (!st.lastUpdate) continue;
     const age = st.lastBarT ? Math.round((st.lastUpdate / 1000 - st.lastBarT) / 60) : null;
-    lines.push(`  • ${m.emoji} ${m.name} : ${st.feed === 'oanda' ? 'OANDA' : 'Yahoo'}${age !== null ? ` · dernière bougie 5 min ouverte ${age} min avant le dernier passage${age > 15 ? ' (marché fermé ou données en retard)' : ''}` : ''}`);
+    lines.push(`  • ${m.emoji} ${m.name} : ${{ oanda: 'OANDA', binance: 'Binance' }[st.feed] || 'Yahoo'}${age !== null ? ` · dernière bougie 5 min ouverte ${age} min avant le dernier passage${age > 15 ? ' (marché fermé ou données en retard)' : ''}` : ''}`);
   }
   return lines;
 }

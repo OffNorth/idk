@@ -5,8 +5,8 @@
  * Moins précis que de vraies bougies : un seul cours par minute, donc pas les pics à l'intérieur de la minute.
  *
  * Activé seulement si : la dernière bougie Yahoo date de plus de STALE_MIN minutes ET le cours Yahoo date de moins
- * de FRESH_MIN minutes (le marché tourne). Marché fermé (cours figé lui aussi) : rien. OANDA (OANDA_TOKEN) : jamais
- * utilisé, ses bougies sont en temps réel. STALE_FEED_FALLBACK=0 pour le couper.
+ * de FRESH_MIN minutes (le marché tourne). Marché fermé (cours figé lui aussi) : rien. OANDA / Binance : jamais
+ * utilisé, leurs bougies sont en temps réel. STALE_FEED_FALLBACK=0 pour le couper.
  */
 const { fetchQuote } = require('./yahoo');
 
@@ -34,7 +34,7 @@ const lastT = (l) => (l?.length ? l[l.length - 1].t : null);
  * quoteOf : (symbole) → { price, t } (cours Yahoo et son heure, en secondes). Retourne les données (modifiées ou non).
  */
 async function patch(market, data, { now = Math.floor(Date.now() / 1000), quoteOf = fetchQuote, log = console.log } = {}) {
-  if (!data || data.feed === 'oanda' || !market.yahooSymbol || !data.series) return data;
+  if (!data || (data.feed && data.feed !== 'yahoo') || !market.yahooSymbol || !data.series) return data;
   const s5 = data.series['5m'] || data.stops;
   const s1 = data.series['1m'];
   const end = Math.max((lastT(s5) ?? 0) + 300, (lastT(s1) ?? 0) + 60); // fin de la dernière bougie Yahoo
