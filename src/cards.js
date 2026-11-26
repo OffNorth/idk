@@ -340,7 +340,7 @@ function ftmoImage(st) {
   const firm = st.account?.firm || 'FTMO';
   const lucid = firm === 'Lucid';
   const phase = s.phase === 'funded' ? 'Compte financé' : lucid ? 'Évaluation LucidFlex' : st.program?.steps === 1 ? 'Challenge 1 étape' : `Étape ${s.phase} sur 2`;
-  header(cv, { market: st.account ? { id: st.account.id === 'lucid' ? 'gold' : st.account.id, name: st.account.label } : null, title: `Compte ${firm} simulé · ${phase}`, subtitle: `${lucid ? 'Évaluation' : 'Challenge'} n° ${s.attempt} · capital ${money(s.capital)} · ${lucid ? 'micro-futures, contrats entiers' : 'risque par trade selon le stop'} · depuis le ${date(s.startedAt)}` });
+  header(cv, { market: st.account ? { id: st.account.firm === 'Lucid' ? 'gold' : st.account.id, name: st.account.label } : null, title: `Compte ${firm} simulé · ${phase}`, subtitle: `${lucid ? 'Évaluation' : 'Challenge'} n° ${s.attempt} · capital ${money(s.capital)} · ${lucid ? 'micro-futures, contrats entiers' : 'risque par trade selon le stop'} · depuis le ${date(s.startedAt)}` });
   const ret = (st.equity / s.capital - 1) * 100;
   cv.roundRect(24, 96, 952, 150, 16, THEME.surface);
   cv.text('VALEUR DU COMPTE', 48, 112, { style: 'b', size: 13, color: THEME.muted });

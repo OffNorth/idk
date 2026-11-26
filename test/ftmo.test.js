@@ -474,3 +474,42 @@ test('trade bloqué par l’IA : annoncé, puis bilan (raison / tort) une seule 
   assert.match(ftmoTradeMessage(res[0], f.status({ gold: 3960 }), mk), /aurait fait <b>−\$\d[\s\S]*L’IA a eu raison/);
   assert.ok(!f.onCycle([], { gold: 3960 }, T0 + 3800).some((o) => o.type === 'refusedResult'));
 });
+
+test('Lucid en parallèle : évaluation réussie → compte financé à part + nouvelle évaluation ; financé perdu → en sommeil', () => {
+  const { cfg, store } = setup({ lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1, ftmoCombined: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoIntradayRisk: 0, lucidParallel: true, lucidDayProfitCapPct: 0, lucidMaxLossesDay: 0 });
+  const { createFtmo, ftmoAccounts } = require('../src/ftmoAccount');
+  assert.ok(ftmoAccounts(cfg).some((a) => a.id === 'lucidf'));
+  const ev = createFtmo({ cfg, store, account: 'lucid' });
+  const fu = createFtmo({ cfg, store, account: 'lucidf' });
+  const strat = { id: 'x_rsi2', name: 'Scalp RSI 2', tf: '1d' };
+  const trade = (book, k, exit, base = T0) => {
+    const t = base + k * DAY;
+    const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: t };
+    book.onCycle([{ type: 'open', market, strategy: strat, pos }], { gold: 4000 }, t);
+    return book.onCycle([{ type: 'close', market, strategy: strat, trade: { ...pos, exit, exitT: t + 1800, reason: 'signal' } }], { gold: exit }, t + 1800);
+  };
+  // Avant toute réussite : le compte financé à part dort (aucun trade)
+  assert.ok(fu.asleep());
+  assert.deepStrictEqual(fu.onCycle([{ type: 'open', market, strategy: strat, pos: { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 } }], { gold: 4000 }, T0), []);
+  // 4 jours à ≈ +1 000 $ (1 MGC, +2,5 %) : objectif +6 % (3 000 $) atteint, meilleur jour ≤ 40 %
+  let out = [];
+  for (let k = 0; k < 4; k++) out = out.concat(trade(ev, k, 4100));
+  const par = out.find((o) => o.type === 'parallel');
+  assert.ok(out.some((o) => o.type === 'pass') && par && par.kept, 'évaluation réussie → compte financé à part');
+  assert.strictEqual(ev.load().attempt, 2);
+  assert.strictEqual(ev.load().phase, 1);
+  assert.ok(!fu.asleep());
+  assert.strictEqual(fu.load().phase, 'funded');
+  const { ftmoTradeMessage } = require('../src/cycle');
+  // Le compte financé trade en parallèle (messages « Lucid financé »)
+  const o2 = trade(fu, 6, 4040).find((o) => o.type === 'trade');
+  assert.ok(o2);
+  assert.match(ftmoTradeMessage(o2, fu.status({ gold: 4040 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /Lucid financé/);
+  // Deux grosses pertes (−4 % sur 40 000 $) : perte max 2 000 $ dépassée → compte financé perdu, en sommeil
+  out = [];
+  for (const k of [7, 8]) out = out.concat(trade(fu, k, 3840));
+  assert.ok(out.some((o) => o.type === 'fail'));
+  assert.ok(fu.asleep());
+  // L'évaluation, elle, continue
+  assert.ok(trade(ev, 9, 4040).some((o) => o.type === 'trade'));
+});

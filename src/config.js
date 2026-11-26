@@ -204,6 +204,9 @@ module.exports = {
   // Compte Lucid simulé (LucidFlex, micro-futures) à côté du compte FTMO : mêmes signaux, règles Lucid (/lucid)
   lucidEnabled: num('LUCID', 1) === 1,
   lucidCapital: num('LUCID_CAPITAL', 50000), // 50000 ou 100000
+  // Évaluation Lucid réussie → le compte financé tourne À PART (lucid-funded.json, 1 à la fois) et une nouvelle
+  // évaluation repart en parallèle (LUCID_PARALLEL=0 : l'évaluation devient le compte financé, comme avant)
+  lucidParallel: num('LUCID_PARALLEL', 1) === 1,
   // npm run lucid-tune : Lucid sans intraday, journalières à 2,5 % → 62 % / 67 % / 73 % (contre 13 % / 11 % / 21 %)
   lucidRiskMul: upgraded('LUCID_RISK_MUL', ['1'], 1.25), // × le risque des journalières du compte FTMO (2 % → 2,5 %)
   // Intraday sur Lucid : seulement l'intraday Nasdaq (LUCID_INTRADAY_STRATEGIES) à LUCID_INTRADAY_RISK_PCT (0 = aucun).

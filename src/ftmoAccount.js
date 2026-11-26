@@ -41,8 +41,16 @@ const lucidProgram = (capital, cfg = {}) => ({
 /** Retraits FTMO (compte financé) : tout le gain tous les 14 jours, 80 % pour le trader, le compte repart du capital. */
 const FTMO_PAYOUT = { rule: 'ftmo', every: 14 };
 
-/** Réglages d'un compte simulé : 'gold' (FTMO, or ou compte combiné), 'nas100' (FTMO Nasdaq) ou 'lucid' (LucidFlex). */
+const LUCID_FUNDED_FILE = 'lucid-funded.json';
+/**
+ * Réglages d'un compte simulé : 'gold' (FTMO, or ou compte combiné), 'nas100' (FTMO Nasdaq), 'lucid' (LucidFlex,
+ * évaluation) ou 'lucidf' (compte Lucid financé qui tourne à part, LUCID_PARALLEL).
+ */
 function accountOf(cfg, id = 'gold') {
+  if (id === 'lucidf') {
+    const L = accountOf(cfg, 'lucid');
+    return { ...L, id: 'lucidf', label: `${L.label} financé`, file: LUCID_FUNDED_FILE, fundedOnly: true, enabled: L.enabled && !!cfg.lucidParallel };
+  }
   if (id === 'lucid') {
     // Mêmes stratégies et mêmes risques que le compte FTMO combiné (× LUCID_RISK_MUL), règles et contrats Lucid
     // (FTMO_RISK_MUL ne s'applique pas à Lucid : il a son propre multiplicateur LUCID_RISK_MUL)
@@ -89,7 +97,7 @@ function accountOf(cfg, id = 'gold') {
   return { id: 'gold', label: 'Or', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk, riskOf: () => cfg.ftmoRisk * (cfg.ftmoRiskMul ?? 1) };
 }
 /** Comptes FTMO actifs. */
-const ftmoAccounts = (cfg) => ['nas100', 'gold', 'lucid'].map((id) => accountOf(cfg, id)).filter((a) => a.enabled);
+const ftmoAccounts = (cfg) => ['nas100', 'gold', 'lucid', 'lucidf'].map((id) => accountOf(cfg, id)).filter((a) => a.enabled);
 const TARGET = { 1: 10, 2: 5 };
 
 /**
@@ -322,7 +330,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     // Stop suiveur du compte FTMO (npm run ftmo-tsl) : dès que le meilleur cours de clôture des bougies de la stratégie
     // (suivi par le paper trading) a fait +FTMO_TRAIL_ACT_R × le risque initial, le stop suit à FTMO_TRAIL_DIST_R × le
     // risque de ce meilleur cours ; il ne recule jamais. Lucid n'est pas concerné.
-    const trailAct = A.id !== 'lucid' ? cfg.ftmoTrailActR || 0 : 0;
+    const trailAct = A.firm !== 'Lucid' ? cfg.ftmoTrailActR || 0 : 0;
     for (const [k, p] of Object.entries(s.open)) {
       const px = prices[p.market];
       papers[p.market] ??= store.loadJson(`${p.market}.json`, null);
@@ -330,7 +338,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       const paperPos = acc?.position && Math.abs(acc.position.entryT - p.entryT) < 2 ? acc.position : null;
       // Compte financé FTMO : sorties partielles (FTMO_FUNDED_PARTIALS, en R) — à chaque niveau atteint, une part égale de
       // la position d'origine est fermée au niveau (ordre limite) ; le reste suit le stop suiveur (npm run ftmo-partial)
-      if (A.id !== 'lucid' && s.phase === 'funded' && (cfg.ftmoFundedPartials || []).length && p.sl) {
+      if (A.firm !== 'Lucid' && s.phase === 'funded' && (cfg.ftmoFundedPartials || []).length && p.sl) {
         p.sl0 ??= p.sl;
         p.notional0 ??= p.notional;
         const r0 = Math.abs(p.entry - p.sl0);
@@ -387,14 +395,17 @@ function createFtmo({ cfg, store, account = 'gold' }) {
    * Traite les événements du passage et vérifie les règles. Retourne les messages à publier.
    * prices : { gold: cours, nas100: cours }
    */
+  /** Compte financé à part (lucidf) : actif seulement entre la réussite d'une évaluation et sa perte. */
+  const asleep = () => { if (!A.fundedOnly) return false; const x = store.loadJson(FILE, null); return !x || x.dormant || x.phase !== 'funded'; };
+
   function onCycle(events, prices, t = Math.floor(Date.now() / 1000), { fills = null } = {}) {
-    if (!A.enabled) return [];
+    if (!A.enabled || asleep()) return [];
     const s = load();
     const out = [];
     for (const v of refusedVerdicts(t)) out.push({ type: 'refusedResult', s, p: v });
     let aiMode = adapt.aiModeOf(cfg, store); // l'adaptation peut repasser l'IA en observation
     // Lucid : l'IA ne refuse rien par défaut (LUCID_AI=observe, voir config.js) ; avis toujours affiché
-    if (A.id === 'lucid' && aiMode && aiMode !== 'off') aiMode = cfg.lucidAi === 'block' ? aiMode : cfg.lucidAi === 'off' ? 'off' : 'observe';
+    if (A.firm === 'Lucid' && aiMode && aiMode !== 'off') aiMode = cfg.lucidAi === 'block' ? aiMode : cfg.lucidAi === 'off' ? 'off' : 'observe';
     const prevDay = rollDay(s, t);
     if (prevDay && s.phase === 'funded') payoutCheck(s, prevDay, t, out);
     if (s.waitDay && s.day !== s.waitDay) s.waitDay = null; // nouveau challenge : reprise le jour suivant
@@ -418,7 +429,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         // LUCID_DAY_PROFIT_CAP_PCT % de l'objectif ou après LUCID_MAX_LOSSES_DAY trade(s) perdant(s)
         // FTMO pendant l'évaluation, même gestion (FTMO_DAY_PROFIT_CAP_PCT, FTMO_MAX_LOSSES_DAY ; npm run ftmo-lucidlike)
         if (s.phase !== 'funded') {
-          const lucid = A.id === 'lucid';
+          const lucid = A.firm === 'Lucid';
           const capPct = lucid ? cfg.lucidDayProfitCapPct : cfg.ftmoDayProfitCapPct;
           const maxL = lucid ? cfg.lucidMaxLossesDay : cfg.ftmoMaxLossesDay;
           const cap = ((capPct ?? 0) / 100) * s.capital * ((P.target ?? TARGET[s.phase] ?? 10) / 100);
@@ -434,7 +445,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         const ai = aiMode && aiMode !== 'off' ? aiOpinion(ev, p) : null;
         const skey = `${ev.market.id}:${ev.strategy.id}`;
         // Signal jugé mémorisé pour l'apprentissage de l'IA (compte FTMO seulement : Lucid voit les mêmes signaux)
-        if (ai && cfg.autoAdapt && A.id !== 'lucid') {
+        if (ai && cfg.autoAdapt && A.firm !== 'Lucid') {
           adapt.recordSignal(store, { market: ev.market.id, sid: ev.strategy.id, entryT: p.entryT, x: ai.x, p: ai.p, ok: ai.ok, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, v: ai.version });
         }
         // Poids appris par l'adaptation (× 0 = stratégie suspendue, × 0,5 réduite, × 1,25 renforcée)
@@ -534,6 +545,21 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         if (done === 1 && P.steps === 2) {
           archive(s);
           Object.assign(s, { phase: 2, balance: s.capital, dayStart: s.capital, days: [], closed: [], startedAt: t, peak: s.capital, dayPnl: {} });
+        } else if (A.id === 'lucid' && cfg.lucidParallel) {
+          // Lucid : le compte financé tourne à part (lucid-funded.json, 1 seul à la fois) ; nouvelle évaluation dès demain
+          archive(s);
+          const prev = store.loadJson(LUCID_FUNDED_FILE, null);
+          const busy = !!(prev && !prev.dormant && prev.phase === 'funded');
+          if (!busy) {
+            store.saveJson(LUCID_FUNDED_FILE, { ...fresh(s.attempt), phase: 'funded', startedAt: t, funded: { since: t }, fromAttempt: s.attempt,
+              history: [...(prev?.history || [])].slice(-20) });
+          }
+          out.push({ type: 'parallel', s: { ...s }, kept: !busy, next: s.attempt + 1 });
+          const next = fresh(s.attempt + 1);
+          next.history = (s.history || []).slice(-20);
+          next.waitDay = dayOf(t);
+          for (const k of Object.keys(s)) delete s[k];
+          Object.assign(s, next);
         } else {
           archive(s);
           Object.assign(s, { phase: 'funded', balance: s.capital, dayStart: s.capital, days: [], closed: [], startedAt: t, funded: { since: t }, peak: s.capital, eodPeak: s.capital, dayPnl: {} });
@@ -547,6 +573,11 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         const paidTxt = s.funded?.traderPaid ? ` après ${s.funded.payouts.length} retrait${s.funded.payouts.length > 1 ? 's' : ''} (${Math.round(s.funded.traderPaid).toLocaleString('fr-FR')} $ pour toi)` : ' sans retrait';
         out.push({ type: 'fail', s: { ...s }, why: `compte financé perdu (limite de perte)${paidTxt}` });
         archive(s);
+        if (A.fundedOnly) {
+          // Compte financé à part : en sommeil jusqu'à la prochaine évaluation réussie
+          save({ dormant: true, attempt: s.attempt, capital: s.capital, balance: s.balance, history: [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'perdu', at: t, balance: s.balance, payouts: s.funded?.payouts?.length || 0, traderPaid: Math.round(s.funded?.traderPaid || 0) }].slice(-20) });
+          return out;
+        }
         const next = fresh(s.attempt + 1);
         next.history = [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'perdu', at: t, balance: s.balance, payouts: s.funded?.payouts?.length || 0, traderPaid: Math.round(s.funded?.traderPaid || 0) }].slice(-20);
         next.waitDay = dayOf(t);
@@ -622,6 +653,15 @@ function createFtmo({ cfg, store, account = 'gold' }) {
    */
   function restart(prices = {}, t = Math.floor(Date.now() / 1000)) {
     const s = load();
+    if (A.fundedOnly) {
+      // Compte financé à part : fermé et mis en sommeil (une nouvelle évaluation réussie le relancera)
+      const nOpen0 = Object.keys(s.open || {}).length;
+      if (!asleep()) closeAll(s, prices, t, 'remise à zéro (/reset)');
+      archive(s);
+      const was0 = { attempt: s.attempt, phase: s.phase, balance: s.balance, gainPct: ((s.balance - s.capital) / s.capital) * 100, nOpen: nOpen0 };
+      save({ dormant: true, attempt: s.attempt, capital: s.capital, balance: s.balance, history: [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'réinitialisé (/reset)', at: t, balance: s.balance }].slice(-20) });
+      return { was: was0, s: { ...fresh(s.attempt), dormant: true } };
+    }
     const nOpen = Object.keys(s.open || {}).length;
     closeAll(s, prices, t, 'remise à zéro (/reset)');
     const was = { attempt: s.attempt, phase: s.phase, balance: s.balance, gainPct: ((s.balance - s.capital) / s.capital) * 100, nOpen };
@@ -632,13 +672,13 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     return { was, s: next };
   }
 
-  return { onCycle, status, load, refusedReport, follows, forceFunded, restart, archived: () => store.loadJson(ARCHIVE, []), account: A, reset: () => save(fresh()) };
+  return { onCycle, status, load, refusedReport, follows, forceFunded, restart, asleep, archived: () => store.loadJson(ARCHIVE, []), account: A, reset: () => save(fresh()) };
 }
 
 /** /financer : passe les comptes simulés (tous, « ftmo » ou « lucid ») en compte financé ; texte de réponse (HTML). */
 function financerReport(cfg, store, arg = '') {
   const a0 = String(arg || '').trim().toLowerCase();
-  const accts = ftmoAccounts(cfg).filter((a) => (a0 === 'lucid' ? a.id === 'lucid' : a0 === 'ftmo' ? a.id !== 'lucid' : true));
+  const accts = ftmoAccounts(cfg).filter((a) => (a0 === 'lucid' ? a.firm === 'Lucid' : a0 === 'ftmo' ? a.firm !== 'Lucid' : true));
   if (!accts.length) return 'Aucun compte simulé actif. Usage : /financer · /financer ftmo · /financer lucid';
   const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
   const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -663,7 +703,7 @@ function financerReport(cfg, store, arg = '') {
 function resetReport(cfg, store, arg = '') {
   const words = String(arg || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
   const which = words.includes('lucid') ? 'lucid' : words.includes('ftmo') ? 'ftmo' : 'tous';
-  const accts = ftmoAccounts(cfg).filter((a) => (which === 'lucid' ? a.id === 'lucid' : which === 'ftmo' ? a.id !== 'lucid' : true));
+  const accts = ftmoAccounts(cfg).filter((a) => (which === 'lucid' ? a.firm === 'Lucid' : which === 'ftmo' ? a.firm !== 'Lucid' : true));
   if (!accts.length) return 'Aucun compte simulé actif.';
   const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
@@ -693,7 +733,7 @@ function dailyReport(cfg, store, arg = '') {
   const words = String(arg || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
   const nDays = Math.min(30, Math.max(1, Number(words.find((w) => /^\d+$/.test(w))) || 7));
   const which = words.includes('lucid') ? 'lucid' : words.includes('ftmo') ? 'ftmo' : 'tous';
-  const accts = ftmoAccounts(cfg).filter((a) => (which === 'lucid' ? a.id === 'lucid' : which === 'ftmo' ? a.id !== 'lucid' : true));
+  const accts = ftmoAccounts(cfg).filter((a) => (which === 'lucid' ? a.firm === 'Lucid' : which === 'ftmo' ? a.firm !== 'Lucid' : true));
   if (!accts.length) return 'Aucun compte simulé actif.';
   const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const usd = (v) => `${v < -0.004 ? '−' : v > 0.004 ? '+' : ''}$${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
@@ -718,7 +758,7 @@ function dailyReport(cfg, store, arg = '') {
       lines.push(`Perte du jour : encore $${Math.round(room).toLocaleString('en-US')} avant la limite (${st.program.daily} %, plancher $${Math.round(st.dayFloor).toLocaleString('en-US')})`);
     }
     // Gestion de la journée pendant l'évaluation (arrêt après un gain ou N pertes)
-    const lucid = a.id === 'lucid';
+    const lucid = a.firm === 'Lucid';
     const maxL = lucid ? cfg.lucidMaxLossesDay : cfg.ftmoMaxLossesDay;
     const capPct = lucid ? cfg.lucidDayProfitCapPct : cfg.ftmoDayProfitCapPct;
     if (s.phase !== 'funded' && (maxL > 0 || capPct > 0)) {

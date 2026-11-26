@@ -67,7 +67,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
       const firm = acct.firm || 'FTMO';
       const name = `Compte ${firm} simulé ${acct.emoji} ${acct.label}`;
       const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-      const button = ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: acct.id === 'lucid' ? 'm:f:g:l' : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
+      const button = ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: acct.firm === 'Lucid' ? 'm:f:g:l' : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
       for (const msg of ftmo.onCycle(all, prices, undefined, { fills })) {
         // Chaque trade du compte FTMO (ouverture et clôture) : console + message dans le groupe (FTMO_TRADE_MESSAGES)
         if (msg.type === 'open' || msg.type === 'trade' || msg.type === 'refused' || msg.type === 'refusedResult') {
@@ -78,15 +78,24 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
           // Même signal refusé par FTMO et par Lucid dans ce passage : annoncé une seule fois (par FTMO)
           const sigKey = `${msg.type}:${msg.p.market}:${msg.p.sid}:${msg.p.entryT}`;
           if (msg.type === 'refused' || msg.type === 'refusedResult') {
-            if (acct.id === 'lucid' && refusedSeen.has(sigKey)) continue;
+            if (acct.firm === 'Lucid' && refusedSeen.has(sigKey)) continue;
             refusedSeen.add(sigKey);
           }
           console.log(`[${firm.toLowerCase()}] ${{ open: 'ouverture', trade: 'clôture', refused: 'bloqué par l\'IA', refusedResult: 'bilan d\'un trade bloqué' }[msg.type]} ${msg.p.market}:${msg.p.sid} ${msg.p.side}${msg.type === 'trade' ? ` ${usd(msg.p.pnl)}` : ''}${msg.p.ai ? ` (IA ${Math.round(msg.p.ai.p * 100)} %)` : ''}`);
           // Clôture : bouton « 🎬 Vidéo » (PnL card animée, réservé à l'administrateur)
           const extra = msg.type === 'trade' && ui && msg.p.exitT
-            ? { reply_markup: { inline_keyboard: [[...(button.reply_markup?.inline_keyboard?.[0] || []), { text: '🎬 Vidéo', callback_data: `v:t:${acct.id === 'lucid' ? 'lucid' : 'ftmo'}:${msg.p.exitT}:${msg.p.sid}`.slice(0, 64) }]] } }
+            ? { reply_markup: { inline_keyboard: [[...(button.reply_markup?.inline_keyboard?.[0] || []), { text: '🎬 Vidéo', callback_data: `v:t:${acct.id === 'gold' || acct.id === 'nas100' ? 'ftmo' : acct.id}:${msg.p.exitT}:${msg.p.sid}`.slice(0, 64) }]] } }
             : button;
           if (publish && cfg.ftmoTradeMessages !== false) await safeSend(channel, text, extra, { dm: true });
+          continue;
+        }
+        if (msg.type === 'parallel') {
+          // Évaluation Lucid réussie : le compte financé tourne à part, une nouvelle évaluation repart en parallèle
+          const text = msg.kept
+            ? `🟣🏁 <b>Lucid : compte financé lancé à part</b>\nL’évaluation n° ${msg.s.attempt} devient un compte financé qui tourne en parallèle (retraits simulés) ; une <b>nouvelle évaluation n° ${msg.next}</b> démarre au prochain jour de trading.\n<i>Compte simulé : aucun argent réel.</i>`
+            : `🟣🏁 <b>Lucid : évaluation n° ${msg.s.attempt} réussie</b>\nUn compte financé Lucid tourne déjà (1 à la fois) : il continue, et une nouvelle évaluation n° ${msg.next} démarre au prochain jour de trading.\n<i>Compte simulé : aucun argent réel.</i>`;
+          console.log(`[lucid] évaluation n° ${msg.s.attempt} réussie → ${msg.kept ? 'compte financé à part' : 'compte financé déjà en cours'}, nouvelle évaluation n° ${msg.next}`);
+          if (publish) await safeSend(channel, text, button, { dm: true });
           continue;
         }
         if (msg.type === 'payout') {
@@ -222,7 +231,7 @@ function ftmoTradeMessage(msg, st, market) {
   const p = msg.p;
   const mk = market ? `${market.emoji} ${market.id === 'nas100' ? 'Nasdaq' : market.name}` : p.market;
   const name = `<b>${esc(p.name || p.sid)}</b> <code>${esc(p.sid)}</code>`;
-  const tag = st.account?.firm === 'Lucid' ? '🟣 <b>Lucid</b>' : '🏦 <b>FTMO</b>';
+  const tag = st.account?.id === 'lucidf' ? '🟣 <b>Lucid financé</b>' : st.account?.firm === 'Lucid' ? '🟣 <b>Lucid</b>' : '🏦 <b>FTMO</b>';
   if (msg.type === 'open') {
     const pct = st.s.balance ? ((p.risk || 0) / st.s.balance) * 100 : 0;
     return [

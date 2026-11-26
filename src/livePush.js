@@ -18,6 +18,7 @@ function accountView(cfg, store, id, prices) {
   const A = accountOf(cfg, id);
   if (!A.enabled) return null;
   const f = createFtmo({ cfg, store, account: id });
+  if (f.asleep()) return null; // compte Lucid financé à part : seulement quand il existe
   const st = f.status(prices);
   const s = st.s;
   const P = st.program || {};
@@ -29,7 +30,7 @@ function accountView(cfg, store, id, prices) {
   };
   const rep = cfg.ftmoAi === 'block' ? f.refusedReport(prices) : { n: 0, rows: [] };
   return {
-    id: A.id === 'lucid' ? 'lucid' : 'ftmo',
+    id: A.id === 'gold' || A.id === 'nas100' ? 'ftmo' : A.id,
     firm: A.firm || 'FTMO',
     label: A.label,
     program: P.label || '',
@@ -108,7 +109,7 @@ function diagOf(cfg, store) {
 function buildLive(cfg, store, version = '') {
   const markets = activeMarkets(cfg);
   const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-  const accounts = ['gold', 'lucid'].map((id) => accountView(cfg, store, id, prices)).filter(Boolean);
+  const accounts = ['gold', 'lucid', 'lucidf'].map((id) => accountView(cfg, store, id, prices)).filter(Boolean);
   const adapt = cfg.autoAdapt ? require('./adapt').summary(cfg, store) : '';
   // Trades paper des stratégies suivies (tous marchés, depuis le démarrage), 500 les plus récents
   const followed = new Set([...(cfg.ftmoStrategies || []), ...(cfg.ftmoNasStrategies || [])]);

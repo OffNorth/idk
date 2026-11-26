@@ -685,6 +685,15 @@ frais 0,01 %, témoins au hasard. QQQ / SPY 1 et 5 min (nov. 2024 → nov. 2026,
   15 min, et ≈ 0 sur l'or en 17 ans ; QQQ et SPY bougent ensemble (pas deux preuves indépendantes) ; 2 ans seulement.
 Conclusion : piste à vérifier sur un historique long du Nasdaq / S&P avant d'aller sur un compte ; rien n'est ajouté au bot.
 
+### 🟣 Lucid en parallèle : compte financé à part + nouvelle évaluation (`LUCID_PARALLEL=1`, défaut)
+
+Quand l'évaluation Lucid réussit, le compte financé n'est plus le même compte : il tourne **à part**
+(`data/lucid-funded.json`, « Lucid financé » dans les messages, sur le site et dans /pnl, retraits simulés) et une
+**nouvelle évaluation** repart dès le jour de trading suivant, en parallèle de FTMO. Un seul compte financé Lucid à la fois :
+si une évaluation réussit pendant qu'il tourne, il continue et une nouvelle évaluation repart. Compte financé perdu → en
+sommeil jusqu'à la prochaine évaluation réussie. `/reset` le met en sommeil ; `LUCID_PARALLEL=0` : comportement d'avant
+(l'évaluation devient le compte financé).
+
 ### 📅 `/pnl` : PnL du jour des comptes simulés
 
 `/pnl` (ou `/jour`, `/daily`) : pour chaque compte (FTMO, Lucid), gain ou perte de la journée depuis le solde

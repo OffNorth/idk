@@ -20,13 +20,13 @@ const NAME = { gold: 'Or', nas100: 'Nasdaq', spx: 'S&P 500', eurusd: 'EUR/USD', 
 function recentTrades(cfg, store, n = 10) {
   const { createFtmo, accountOf } = require('./ftmoAccount');
   const out = [];
-  for (const id of ['gold', 'lucid']) {
+  for (const id of ['gold', 'lucid', 'lucidf']) {
     const A = accountOf(cfg, id);
     if (!A.enabled) continue;
     const f = createFtmo({ cfg, store, account: id });
     const s = f.load();
     const P = (A.program || require('./ftmoAccount').programOf(cfg));
-    const acct = id === 'lucid' ? 'lucid' : 'ftmo';
+    const acct = id === 'gold' ? 'ftmo' : id;
     for (const t of [...(s.closed || []), ...f.archived()]) {
       out.push({ ...t, acct, account: A.firm || 'FTMO', program: P.label || '', capital: s.capital });
     }
@@ -40,7 +40,7 @@ const findTrade = (cfg, store, acct, exitT, sid) => recentTrades(cfg, store, 400
 
 function tradeLabel(t) {
   const d = new Date(t.exitT * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
-  return `${t.acct === 'lucid' ? '🟣' : '🏦'} ${d} · ${NAME[t.market] || t.market} ${t.side === 'long' ? 'achat' : 'vente'} · ${money(t.pnl)}`;
+  return `${t.acct === 'ftmo' ? '🏦' : '🟣'} ${d} · ${NAME[t.market] || t.market} ${t.side === 'long' ? 'achat' : 'vente'} · ${money(t.pnl)}`;
 }
 
 function attachVideo(bot, { cfg, store, isAdmin }) {
