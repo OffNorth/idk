@@ -79,7 +79,8 @@
     "ny": "node --max-old-space-size=12288 ny-research.js",
     "binance-check": "node scripts/binance-check.js",
     "optimize": "node optimize-research.js",
-    "optimize2": "node optimize2-research.js"
+    "optimize2": "node optimize2-research.js",
+    "lucid-improve": "node --max-old-space-size=12288 lucid-improve-research.js"
   },
   "engines": {
     "node": ">=20"
