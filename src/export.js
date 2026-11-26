@@ -55,6 +55,7 @@ function buildExport(cfg, store, version = 'inconnue') {
     ftmo: store.loadJson('ftmo.json', null),
     ftmoNasdaq: store.loadJson('ftmo-nas.json', null),
     lucid: store.loadJson('lucid.json', null),
+    lucidFunded: store.loadJson('lucid-funded.json', null),
   };
   const out = {
     exportedAt: new Date().toISOString(),

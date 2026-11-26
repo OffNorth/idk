@@ -495,7 +495,7 @@ test('Lucid en parallèle : évaluation réussie → compte financé à part + n
   let out = [];
   for (let k = 0; k < 4; k++) out = out.concat(trade(ev, k, 4100));
   const par = out.find((o) => o.type === 'parallel');
-  assert.ok(out.some((o) => o.type === 'pass') && par && par.kept, 'évaluation réussie → compte financé à part');
+  assert.ok(!out.some((o) => o.type === 'pass') && par && par.kept, 'évaluation réussie → compte financé à part (une seule annonce)');
   assert.strictEqual(ev.load().attempt, 2);
   assert.strictEqual(ev.load().phase, 1);
   assert.ok(!fu.asleep());
@@ -512,6 +512,14 @@ test('Lucid en parallèle : évaluation réussie → compte financé à part + n
   assert.ok(fu.asleep());
   // L'évaluation, elle, continue
   assert.ok(trade(ev, 9, 4040).some((o) => o.type === 'trade'));
+  // En sommeil : pas de faux « challenge » dans /pnl, /reset ne touche pas à son historique
+  const { dailyReport, resetReport } = require('../src/ftmoAccount');
+  assert.match(dailyReport(cfg, store, 'lucid'), /LucidFlex 50K financé<\/b> : en sommeil/);
+  const h = store.loadJson('lucid-funded.json').history.length;
+  assert.match(resetReport(cfg, store, 'lucid ok'), /financé : déjà en sommeil/);
+  assert.strictEqual(store.loadJson('lucid-funded.json').history.length, h);
+  assert.strictEqual(store.loadJson('lucid-funded.json').attempt, 1);
+  assert.ok(fu.asleep());
 });
 
 test('Lucid financé direct : démarré tout de suite (sans évaluation), une seule fois ; /financer lucid le relance', () => {

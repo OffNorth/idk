@@ -88,7 +88,7 @@ const isAdmin = (ctx) => !cfg.allowedUserIds.size || (ctx.from && cfg.allowedUse
 bot.use(async (ctx, next) => {
   // 1re personne qui écrit au bot en privé : reçoit les copies des trades si ALLOWED_TELEGRAM_USER_IDS est vide
   if (ctx.chat?.type === 'private' && ctx.from && !store.getMeta('firstPrivateUser')) store.setMeta('firstPrivateUser', ctx.from.id);
-  const cmd = ctx.message?.text?.match(/^\/([a-z_]+)/i)?.[1]?.toLowerCase();
+  const cmd = (ctx.message?.text ?? ctx.channelPost?.text)?.match(/^\/([a-z_]+)/i)?.[1]?.toLowerCase();
   if (cmd && ADMIN.has(cmd) && !isAdmin(ctx)) return ctx.reply('Commande réservée à l’administrateur du bot.');
   return next();
 });

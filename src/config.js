@@ -180,7 +180,7 @@ module.exports = {
   ftmoEvalIntradayMul: num('FTMO_EVAL_INTRADAY_MUL', 2),
   ftmoDayProfitCapPct: num('FTMO_DAY_PROFIT_CAP_PCT', 25),
   ftmoMaxLossesDay: num('FTMO_MAX_LOSSES_DAY', 1),
-  ftmoFundedRiskMul: num('FTMO_FUNDED_RISK_MUL', 0.75),
+  ftmoFundedRiskMul: upgraded('FTMO_FUNDED_RISK_MUL', ['0.25'], 0.75), // un ancien .env à 0,25 passe à 0,75
   // Compte « Portefeuille perso » simulé (src/personalPortfolio.js, npm run portfolio) : 50 % monde, 10 % or, 40 % bot
   portfolioEnabled: num('PORTFOLIO', process.env.NODE_TEST_CONTEXT ? 0 : 1) === 1, // coupé pendant les tests (réseau)
   portfolioCapital: num('PORTFOLIO_CAPITAL', 10000),

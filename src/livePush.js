@@ -102,6 +102,7 @@ function diagOf(cfg, store) {
     lucidIntradayRisk: cfg.lucidIntradayRisk,
     ftmo: counters('ftmo.json'),
     lucid: counters('lucid.json'),
+    lucidFunded: counters('lucid-funded.json'),
   };
 }
 

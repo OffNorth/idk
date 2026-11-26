@@ -67,7 +67,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
       const firm = acct.firm || 'FTMO';
       const name = `Compte ${firm} simulé ${acct.emoji} ${acct.label}`;
       const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-      const button = ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: acct.firm === 'Lucid' ? 'm:f:g:l' : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
+      const button = ui && !acct.fundedOnly ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: acct.firm === 'Lucid' ? 'm:f:g:l' : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
       for (const msg of ftmo.onCycle(all, prices, undefined, { fills })) {
         // Chaque trade du compte FTMO (ouverture et clôture) : console + message dans le groupe (FTMO_TRADE_MESSAGES)
         if (msg.type === 'open' || msg.type === 'trade' || msg.type === 'refused' || msg.type === 'refusedResult') {
@@ -113,6 +113,11 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
         }
         if (!publish) continue;
         const { ftmoImage } = require('./cards');
+        if (acct.fundedOnly && msg.type === 'fail') {
+          const text = `🟣❌ <b>${name} : compte financé perdu</b>\n${msg.why}. En sommeil jusqu’à la prochaine évaluation Lucid réussie (ou /financer lucid).\n<i>Compte simulé : aucun argent réel.</i>`;
+          await safeSend(channel, text, button, { dm: true });
+          continue;
+        }
         const st = ftmo.status(prices);
         const oneStep = st.program?.steps === 1;
         const split = st.program?.split || 80;
@@ -313,7 +318,9 @@ function scalpDigest(cfg, store, markets, sinceMs) {
   }
   for (const acct of cfg.ftmoEnabled ? require('./ftmoAccount').ftmoAccounts(cfg) : []) {
     const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-    const st = require('./ftmoAccount').createFtmo({ cfg, store, account: acct.id }).status(prices);
+    const book = require('./ftmoAccount').createFtmo({ cfg, store, account: acct.id });
+    if (book.asleep()) continue;
+    const st = book.status(prices);
     const s = st.s;
     lines.push('', `🏦 <b>Compte ${acct.firm || 'FTMO'} simulé ${acct.emoji} ${acct.label}</b> : ${s.phase === 'funded' ? 'compte financé' : st.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} (challenge n° ${s.attempt}) · ${usd(st.equity - s.capital)} (${((st.equity / s.capital - 1) * 100).toFixed(2)} %)${st.target ? ` · ${Math.round(Math.min(1, st.progress) * 100)} % de l’objectif` : ''} · ${s.days.length} jour${s.days.length > 1 ? 's' : ''} de trading`);
     any = true;

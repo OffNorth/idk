@@ -97,7 +97,7 @@ function accountOf(cfg, id = 'gold') {
   return { id: 'gold', label: 'Or', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk, riskOf: () => cfg.ftmoRisk * (cfg.ftmoRiskMul ?? 1) };
 }
 /** Comptes FTMO actifs. */
-const ftmoAccounts = (cfg) => ['nas100', 'gold', 'lucid', 'lucidf'].map((id) => accountOf(cfg, id)).filter((a) => a.enabled);
+const ftmoAccounts = (cfg) => ['nas100', 'gold', 'lucidf', 'lucid'].map((id) => accountOf(cfg, id)).filter((a) => a.enabled);
 const TARGET = { 1: 10, 2: 5 };
 
 /**
@@ -140,6 +140,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
   const load = () => {
     const s = store.loadJson(FILE, null);
     if (!s || !s.capital) return fresh();
+    if (s.dormant) return { ...fresh(s.attempt || 1), ...s }; // compte financé à part en sommeil : rien à réinterpréter
     // Changement de formule (FTMO_PROGRAM) : nouveau challenge, l'ancien reste dans l'historique
     if ((s.program || '2step') !== PKEY) {
       archive(s);
@@ -554,7 +555,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       if (s.balance >= goal && !Object.keys(s.open).length && s.days.length >= (P.minDays ?? 4) && bestOk) {
         const done = s.phase;
         s.history = [...(s.history || []), { attempt: s.attempt, phase: done, outcome: 'réussie', at: t, balance: s.balance, days: s.days.length }].slice(-20);
-        out.push({ type: 'pass', s: { ...s }, phase: done });
+        if (!(A.id === 'lucid' && cfg.lucidParallel && !(done === 1 && P.steps === 2))) out.push({ type: 'pass', s: { ...s }, phase: done });
         if (done === 1 && P.steps === 2) {
           archive(s);
           Object.assign(s, { phase: 2, balance: s.capital, dayStart: s.capital, days: [], closed: [], startedAt: t, peak: s.capital, dayPnl: {} });
@@ -588,7 +589,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         archive(s);
         if (A.fundedOnly) {
           // Compte financé à part : en sommeil jusqu'à la prochaine évaluation réussie
-          save({ dormant: true, attempt: s.attempt, capital: s.capital, balance: s.balance, history: [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'perdu', at: t, balance: s.balance, payouts: s.funded?.payouts?.length || 0, traderPaid: Math.round(s.funded?.traderPaid || 0) }].slice(-20) });
+          save({ dormant: true, program: PKEY, attempt: s.attempt, capital: s.capital, balance: s.balance, history: [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'perdu', at: t, balance: s.balance, payouts: s.funded?.payouts?.length || 0, traderPaid: Math.round(s.funded?.traderPaid || 0) }].slice(-20) });
           return out;
         }
         const next = fresh(s.attempt + 1);
@@ -672,12 +673,13 @@ function createFtmo({ cfg, store, account = 'gold' }) {
   function restart(prices = {}, t = Math.floor(Date.now() / 1000)) {
     const s = load();
     if (A.fundedOnly) {
+      if (asleep()) return { was: null, asleep: true, s };
       // Compte financé à part : fermé et mis en sommeil (une nouvelle évaluation réussie le relancera)
       const nOpen0 = Object.keys(s.open || {}).length;
       if (!asleep()) closeAll(s, prices, t, 'remise à zéro (/reset)');
       archive(s);
       const was0 = { attempt: s.attempt, phase: s.phase, balance: s.balance, gainPct: ((s.balance - s.capital) / s.capital) * 100, nOpen: nOpen0 };
-      save({ dormant: true, attempt: s.attempt, capital: s.capital, balance: s.balance, history: [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'réinitialisé (/reset)', at: t, balance: s.balance }].slice(-20) });
+      save({ dormant: true, program: PKEY, attempt: s.attempt, capital: s.capital, balance: s.balance, history: [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'réinitialisé (/reset)', at: t, balance: s.balance }].slice(-20) });
       return { was: was0, s: { ...fresh(s.attempt), dormant: true } };
     }
     const nOpen = Object.keys(s.open || {}).length;
@@ -744,6 +746,10 @@ function resetReport(cfg, store, arg = '') {
   for (const a of accts) {
     const r = createFtmo({ cfg, store, account: a.id }).restart(prices);
     const w = r.was;
+    if (a.fundedOnly) {
+      lines.push(r.asleep ? `• ${a.firm} ${a.emoji} ${esc(a.label)} : déjà en sommeil` : `• ${a.firm} ${a.emoji} ${esc(a.label)} : arrêté à ${money(w.balance)} (${w.gainPct >= 0 ? '+' : ''}${w.gainPct.toFixed(2)} %)${w.nOpen ? `, ${w.nOpen} position(s) fermée(s)` : ''} → en sommeil (/financer lucid pour le relancer)`);
+      continue;
+    }
     lines.push(`• ${a.firm || 'FTMO'} ${a.emoji} ${esc(a.label)} : ${w.phase === 'funded' ? 'compte financé' : `challenge n° ${w.attempt}`} arrêté à ${money(w.balance)} (${w.gainPct >= 0 ? '+' : ''}${w.gainPct.toFixed(2)} %)${w.nOpen ? `, ${w.nOpen} position(s) fermée(s)` : ''} → challenge n° ${r.s.attempt} à ${money(r.s.capital)}`);
   }
   return lines.join('\n');
@@ -767,7 +773,9 @@ function dailyReport(cfg, store, arg = '') {
   for (const m of require('./markets').allMarkets(cfg)) { const px = store.loadJson(m.file, {})?.lastPrice; if (px) prices[m.id] = px; }
   const lines = ['📅 <b>PnL du jour</b> (comptes simulés)'];
   for (const a of accts) {
-    const st = createFtmo({ cfg, store, account: a.id }).status(prices);
+    const book = createFtmo({ cfg, store, account: a.id });
+    if (book.asleep()) { lines.push('', `${a.firm} ${a.emoji} <b>${esc(a.label)}</b> : en sommeil (relancé à la prochaine évaluation réussie ou par /financer lucid)`); continue; }
+    const st = book.status(prices);
     const s = st.s;
     const realized = s.dayPnl?.[s.day] || 0;
     const total = st.equity - st.dayStart; // depuis l'ouverture de la journée (réalisé + latent)
@@ -795,14 +803,14 @@ function dailyReport(cfg, store, arg = '') {
       lines.push(`Jours précédents (${days.length}, ce challenge) :`);
       for (const [d, v] of days) lines.push(`  ${dot(v)} ${esc(d)} ${usd(v)}`);
       const best = Math.max(...Object.values(s.dayPnl || {}), 0);
-      if (st.program.bestDay > 0 && s.balance > s.capital) lines.push(`Meilleur jour ${usd(best)} = ${Math.round((best / (s.balance - s.capital)) * 100)} % du gain (règle : ≤ ${st.program.bestDay} %)`);
+      if (st.program.bestDay > 0 && s.phase !== 'funded' && s.balance > s.capital) lines.push(`Meilleur jour ${usd(best)} = ${Math.round((best / (s.balance - s.capital)) * 100)} % du gain (règle : ≤ ${st.program.bestDay} %)`);
     }
   }
   lines.push('', '<i>Simulation, argent fictif. /pnl lucid · /pnl ftmo · /pnl 30 (jours)</i>');
   return lines.join('\n');
 }
 
-const ACCOUNT_FILES = ['ftmo.json', 'ftmo-nas.json', 'lucid.json'];
+const ACCOUNT_FILES = ['ftmo.json', 'ftmo-nas.json', 'lucid.json', 'lucid-funded.json'];
 /** Positions ouvertes sur ce marché dans un des comptes FTMO / Lucid ? */
 function openOn(store, marketId) {
   return ACCOUNT_FILES.some((f) => Object.values(store.loadJson(f, null)?.open || {}).some((p) => p.market === marketId));
