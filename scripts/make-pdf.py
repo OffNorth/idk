@@ -183,7 +183,7 @@ for line in [
     'Les stratégies journalières (tendance de long terme, saisons) sont les plus solides ; en bougies d’1 heure et moins, presque tout perd à cause des frais et du bruit.',
     'Les comptes sont réglés sur l’historique puis vérifiés sur des années jamais vues : <b>FTMO</b> réussit ≈ 53 à 76 % des challenges en moins d’un an, '
     '<b>Lucid</b> ≈ 50 à 78 % ; environ une évaluation Lucid sur quatre réussit en 2 semaines.',
-    'Plan suivi : réussir Lucid, toucher les retraits Lucid, financer avec eux un compte FTMO réglé pour durer (risque × 0,25 une fois financé).',
+    'Plan suivi : réussir Lucid, toucher les retraits Lucid, financer avec eux des comptes FTMO (risque × 0,75 une fois financé, challenge racheté si le compte est perdu).',
     'L’IA validatrice aide sur FTMO (+3 à +7 points de réussite) mais pas sur Lucid, où elle donne seulement son avis. Order flow et ICT : rien '
     'd’exploitable après frais.',
     'Tout est simulé : le paper trading en direct, publié dans le groupe Telegram et sur le site, sert à confirmer ces résultats sans risquer d’argent.',
@@ -382,16 +382,18 @@ story.append(KeepTogether([Paragraph('Plan : Lucid, retraits, puis un compte FTM
     'Réussir l’évaluation Lucid vite, toucher des retraits Lucid, s’en servir pour payer un compte FTMO réglé pour durer (scaling jusqu’à 2 M$). '
     '<b>Lucid financé</b> : le réglage actuel est le meilleur pour toucher au moins un retrait (85 % en ≤ 60 jours, médiane 17 jours, ≈ 2 700 $ sur 12 mois) ; '
     'un compte Lucid financé dure rarement (perte max bloquée à capital + 100 $). <b>FTMO pendant l’évaluation</b> : réglé « comme Lucid » (intraday × 2, '
-    'journée finie à +2 500 $ ou après 1 perte). <b>FTMO financé</b> : tout le risque × 0,25, plus des sorties partielles (⅓ à +1 R, ⅓ à +2 R, le reste au stop suiveur).', body),
+    'journée finie à +2 500 $ ou après 1 perte). <b>FTMO financé</b> : tout le risque × 0,75 (choix du 26/11/2026), plus des sorties partielles (⅓ à +1 R, ⅓ à +2 R, le reste au stop suiveur).', body),
     Spacer(1, 3), small_table([
     ('FTMO 100K financé (départ chaque semaine 2009–2023)', 'En vie 12 / 24 / 36 mois', 'Revenu trader / mois (moy. 3 ans)', 'Au moins 1 palier de scaling'),
-    ('Risque × 1', '18 / 3 / 0 %', '657 $', '41 %'),
-    ('Risque × 0,5', '66 / 45 / 35 %', '713 $', '50 %'),
-    ('<b>Risque × 0,25 (actuel)</b>', '<b>100 / 100 / 100 %</b>', '<b>486 $</b>', '<b>0 %</b>'),
+    ('Risque × 1', '18 / 3 / 0 %', '657 $ (≈ 2 340 $ en rachetant)', '41 %'),
+    ('<b>Risque × 0,75 (actuel)</b>', '<b>27 / 10 / 6 %</b>', '<b>655 $ (≈ 1 800 $ en rachetant)</b>', '<b>42 %</b>'),
+    ('Risque × 0,5', '66 / 45 / 35 %', '713 $ (≈ 1 100 $ en rachetant)', '50 %'),
+    ('Risque × 0,25', '100 / 100 / 100 %', '486 $', '0 %'),
     ], [62 * mm, 38 * mm, 42 * mm, 36 * mm]), Paragraph(
     'Scaling officiel FTMO (nov. 2026) : +25 % tous les 4 mois si le gain net de la période atteint +10 %, avec au moins 2 retraits ; plafond 2 M$ tous '
-    'comptes confondus ; 90 % des gains pour le trader (1 étape). À × 0,25 le compte ne fait jamais +10 % en 4 mois : pas de scaling, mais il dure. '
-    'Pour gagner plus, plusieurs comptes identiques (revenu × 2 ou × 3) plutôt que plus de risque ; ils sont perdus ensemble s’ils le sont. '
+    'comptes confondus ; 90 % des gains pour le trader (1 étape). À × 0,25 le compte ne fait jamais +10 % en 4 mois : pas de scaling, mais il dure. « En rachetant » : '
+    'nouveau challenge après chaque perte (réussite 55 %, ≈ 1,7 mois par tentative, 600 $ par tentative ratée) ; plus de risque rapporte plus en moyenne, '
+    'mais le compte est perdu en ≈ 10 mois à × 0,75. Plusieurs comptes identiques : revenu × N, perdus ensemble. '
     'Sorties partielles : en compte financé seulement ; en évaluation elles n’aident pas.', note)]))
 
 story += part(3, 'Recherches', 'Ce qui a été testé pour améliorer les comptes, retenu ou non. Chaque idée doit tenir sur toutes les périodes, frais compris.')

@@ -174,11 +174,13 @@ module.exports = {
   // Réglage « comme Lucid » (npm run ftmo-lucidlike, 26/11/2026, plan de l'utilisateur : Lucid finance un compte FTMO qui
   // doit durer) — ÉVALUATION : intraday × 2 + journée finie à +25 % de l'objectif (2 500 $) ou après 1 trade perdant →
   // réussite 55 / 57 / 73 % → 53 / 58 / 76 %, ≈ 25 j plus rapide (76 → 51 j récent) ; COMPTE FINANCÉ : tout le risque
-  // × 0,25 → comptes en vie à 36 mois 0 → 100 %, 4 hausses de capital de 25 % atteintes 5 → 99 % (scaling vers 2 M$)
+  // × 0,75 (choix de l'utilisateur, 26/11/2026 ; npm run ftmo-scaling, scaling officiel) : vie moyenne ≈ 10 mois, ≈ 1 800 $ / mois
+  // en moyenne en rachetant un challenge après chaque perte, 42 % des comptes ont au moins une hausse de capital ; × 0,25 : jamais
+  // perdu en 3 ans mais pas de scaling (≈ 486 $ / mois) ; × 0,5 : ≈ 21 mois, ≈ 1 100 $ / mois
   ftmoEvalIntradayMul: num('FTMO_EVAL_INTRADAY_MUL', 2),
   ftmoDayProfitCapPct: num('FTMO_DAY_PROFIT_CAP_PCT', 25),
   ftmoMaxLossesDay: num('FTMO_MAX_LOSSES_DAY', 1),
-  ftmoFundedRiskMul: num('FTMO_FUNDED_RISK_MUL', 0.25),
+  ftmoFundedRiskMul: num('FTMO_FUNDED_RISK_MUL', 0.75),
   // Compte « Portefeuille perso » simulé (src/personalPortfolio.js, npm run portfolio) : 50 % monde, 10 % or, 40 % bot
   portfolioEnabled: num('PORTFOLIO', process.env.NODE_TEST_CONTEXT ? 0 : 1) === 1, // coupé pendant les tests (réseau)
   portfolioCapital: num('PORTFOLIO_CAPITAL', 10000),

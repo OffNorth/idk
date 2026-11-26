@@ -915,6 +915,9 @@ qui doit durer (scaling jusqu'à 2 M$).
   713 $ / mois mais 35 % des comptes en vie à 3 ans ; × 1 : 657 $ / mois, 0 % à 3 ans. (L'ancien calcul « 4 hausses atteintes
   99 % » oubliait la condition des +10 % : faux.) Pour gagner plus : 2 ou 3 comptes identiques à × 0,25 (≈ 970 / 1 460 $ / mois),
   perdus ensemble s'ils le sont.
+  **Réglage choisi le 26/11/2026 : × 0,75** (`FTMO_FUNDED_RISK_MUL=0.75`) : en rachetant un challenge après chaque perte
+  (réussite 55 %, ≈ 1,7 mois par tentative, 600 $ par tentative ratée), ≈ 1 800 $ / mois en moyenne contre ≈ 486 $ à × 0,25 ;
+  compte perdu en ≈ 10 mois en moyenne (27 % encore en vie à 1 an), 42 % des comptes ont au moins une hausse de capital.
 
 ### 💼 Portefeuille perso, sans prop firm (`npm run portfolio`)
 
