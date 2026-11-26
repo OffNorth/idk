@@ -909,8 +909,12 @@ qui doit durer (scaling jusqu'à 2 M$).
   réussite (contre 55 / 57 / 73 %), ≈ 25 j plus rapide (`FTMO_EVAL_INTRADAY_MUL=2`, `FTMO_DAY_PROFIT_CAP_PCT=25`,
   `FTMO_MAX_LOSSES_DAY=1`).
 - **FTMO financé** : tout le risque × 0,25 (`FTMO_FUNDED_RISK_MUL=0.25`) → comptes en vie à 12 / 24 / 36 mois 15 / 1 / 0 %
-  → 100 / 100 / 100 %, 4 hausses de capital de 25 % atteintes 5 → 99 % (2009–2023, capital constant dans le calcul).
-  × 0,35 : 85 / 71 / 57 %, × 0,5 : 62 / 40 / 30 % (plus de retraits à court terme, moins de durée).
+  → 100 / 100 / 100 %. **Scaling** (`npm run ftmo-scaling`, règles officielles FTMO nov. 2026 : +25 % tous les 4 mois si
+  +10 % de gain net sur la période et ≥ 2 retraits, plafond 2 M$ tous comptes confondus, 90 % pour le trader) : à × 0,25 le
+  compte n'atteint jamais +10 % en 4 mois → pas de scaling, ≈ 486 $ / mois pour le trader en moyenne sur 3 ans ; × 0,5 :
+  713 $ / mois mais 35 % des comptes en vie à 3 ans ; × 1 : 657 $ / mois, 0 % à 3 ans. (L'ancien calcul « 4 hausses atteintes
+  99 % » oubliait la condition des +10 % : faux.) Pour gagner plus : 2 ou 3 comptes identiques à × 0,25 (≈ 970 / 1 460 $ / mois),
+  perdus ensemble s'ils le sont.
 
 ### 💼 Portefeuille perso, sans prop firm (`npm run portfolio`)
 

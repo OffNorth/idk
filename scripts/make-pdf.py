@@ -384,12 +384,15 @@ story.append(KeepTogether([Paragraph('Plan : Lucid, retraits, puis un compte FTM
     'un compte Lucid financé dure rarement (perte max bloquée à capital + 100 $). <b>FTMO pendant l’évaluation</b> : réglé « comme Lucid » (intraday × 2, '
     'journée finie à +2 500 $ ou après 1 perte). <b>FTMO financé</b> : tout le risque × 0,25, plus des sorties partielles (⅓ à +1 R, ⅓ à +2 R, le reste au stop suiveur).', body),
     Spacer(1, 3), small_table([
-    ('FTMO compte financé (départ chaque semaine 2009–2023)', 'En vie 12 / 24 / 36 mois', 'Retraits trader (36 mois)', 'Scaling ×4 atteint'),
-    ('Risque × 1', '15 / 1 / 0 %', '16 103 $', '5 %'),
-    ('Risque × 0,5', '62 / 40 / 30 %', '19 086 $', '45 %'),
-    ('<b>Risque × 0,25 (actuel)</b>', '<b>100 / 100 / 100 %</b>', '<b>15 342 $</b>', '<b>99 %</b>'),
-    ], [72 * mm, 40 * mm, 34 * mm, 32 * mm]), Paragraph(
-    'Calcul simplifié (capital constant). Sorties partielles : en compte financé seulement (comptes perdus en 12 mois 95 → 87 %) ; en évaluation elles n’aident pas.', note)]))
+    ('FTMO 100K financé (départ chaque semaine 2009–2023)', 'En vie 12 / 24 / 36 mois', 'Revenu trader / mois (moy. 3 ans)', 'Au moins 1 palier de scaling'),
+    ('Risque × 1', '18 / 3 / 0 %', '657 $', '41 %'),
+    ('Risque × 0,5', '66 / 45 / 35 %', '713 $', '50 %'),
+    ('<b>Risque × 0,25 (actuel)</b>', '<b>100 / 100 / 100 %</b>', '<b>486 $</b>', '<b>0 %</b>'),
+    ], [62 * mm, 38 * mm, 42 * mm, 36 * mm]), Paragraph(
+    'Scaling officiel FTMO (nov. 2026) : +25 % tous les 4 mois si le gain net de la période atteint +10 %, avec au moins 2 retraits ; plafond 2 M$ tous '
+    'comptes confondus ; 90 % des gains pour le trader (1 étape). À × 0,25 le compte ne fait jamais +10 % en 4 mois : pas de scaling, mais il dure. '
+    'Pour gagner plus, plusieurs comptes identiques (revenu × 2 ou × 3) plutôt que plus de risque ; ils sont perdus ensemble s’ils le sont. '
+    'Sorties partielles : en compte financé seulement ; en évaluation elles n’aident pas.', note)]))
 
 story += part(3, 'Recherches', 'Ce qui a été testé pour améliorer les comptes, retenu ou non. Chaque idée doit tenir sur toutes les périodes, frais compris.')
 story.append(KeepTogether([Paragraph('Stratégies de traders connus (Lucid)', h2), Paragraph(
