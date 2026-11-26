@@ -398,10 +398,23 @@ function createFtmo({ cfg, store, account = 'gold' }) {
   /** Compte financé à part (lucidf) : actif seulement entre la réussite d'une évaluation et sa perte. */
   const asleep = () => { if (!A.fundedOnly) return false; const x = store.loadJson(FILE, null); return !x || x.dormant || x.phase !== 'funded'; };
 
+  /** Compte Lucid financé à part : démarré directement en compte financé (sans évaluation). */
+  const startFunded = (t, extra = {}) => {
+    const prev = store.loadJson(FILE, null);
+    if (prev && !prev.dormant && prev.phase === 'funded') archive(prev);
+    const s = { ...fresh(prev?.attempt ? prev.attempt + 1 : 1), phase: 'funded', startedAt: t, funded: { since: t, direct: true }, history: (prev?.history || []).slice(-20), ...extra };
+    save(s);
+    return s;
+  };
+
   function onCycle(events, prices, t = Math.floor(Date.now() / 1000), { fills = null } = {}) {
+    // LUCID_FUNDED_DIRECT : le compte financé à part démarre tout de suite s'il n'a jamais existé
+    const direct = A.enabled && A.fundedOnly && cfg.lucidFundedDirect && !store.loadJson(FILE, null);
+    if (direct) startFunded(t);
     if (!A.enabled || asleep()) return [];
     const s = load();
     const out = [];
+    if (direct) out.push({ type: 'fundedStart', s: { ...s } });
     for (const v of refusedVerdicts(t)) out.push({ type: 'refusedResult', s, p: v });
     let aiMode = adapt.aiModeOf(cfg, store); // l'adaptation peut repasser l'IA en observation
     // Lucid : l'IA ne refuse rien par défaut (LUCID_AI=observe, voir config.js) ; avis toujours affiché
@@ -630,6 +643,11 @@ function createFtmo({ cfg, store, account = 'gold' }) {
    * financée : plus d'objectif, donc plus de réduction du risque à l'approche de l'objectif. Positions ouvertes gardées.
    */
   function forceFunded(t = Math.floor(Date.now() / 1000)) {
+    if (A.fundedOnly) {
+      // Compte Lucid financé à part : (re)démarré directement en compte financé
+      if (!asleep()) return { already: true, s: load() };
+      return { already: false, direct: true, s: startFunded(t) };
+    }
     const s = load();
     if (s.phase === 'funded') return { already: true, s };
     const gain = s.balance - s.capital;
@@ -684,8 +702,14 @@ function financerReport(cfg, store, arg = '') {
   const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const lines = ['🏦 <b>Passage en compte financé (simulation)</b>'];
   for (const a of accts) {
+    // Lucid en parallèle : l'évaluation continue, c'est le compte financé à part qui démarre directement
+    if (a.id === 'lucid' && cfg.lucidParallel) continue;
     const r = createFtmo({ cfg, store, account: a.id }).forceFunded();
     const name = `${a.firm || 'FTMO'} ${a.emoji} ${esc(a.label)}`;
+    if (r.direct) {
+      lines.push(`• ${name} : compte financé lancé directement (${money(r.s.capital)}), en parallèle de l’évaluation Lucid et de FTMO`);
+      continue;
+    }
     if (r.already) {
       lines.push(`• ${name} : déjà en compte financé`);
       continue;

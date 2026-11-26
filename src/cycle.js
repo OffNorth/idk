@@ -89,6 +89,12 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
           if (publish && cfg.ftmoTradeMessages !== false) await safeSend(channel, text, extra, { dm: true });
           continue;
         }
+        if (msg.type === 'fundedStart') {
+          const text = `🟣🏁 <b>Lucid : compte financé simulé démarré directement</b>\n${dollars(msg.s.capital)}, sans évaluation, en parallèle de l’évaluation Lucid et de FTMO : risque du compte financé, retraits simulés (5 jours gagnants).\n<i>Compte simulé : aucun argent réel.</i>`;
+          console.log('[lucid] compte financé démarré directement');
+          if (publish) await safeSend(channel, text, button, { dm: true });
+          continue;
+        }
         if (msg.type === 'parallel') {
           // Évaluation Lucid réussie : le compte financé tourne à part, une nouvelle évaluation repart en parallèle
           const text = msg.kept

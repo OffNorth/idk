@@ -693,6 +693,9 @@ Quand l'évaluation Lucid réussit, le compte financé n'est plus le même compt
 si une évaluation réussit pendant qu'il tourne, il continue et une nouvelle évaluation repart. Compte financé perdu → en
 sommeil jusqu'à la prochaine évaluation réussie. `/reset` le met en sommeil ; `LUCID_PARALLEL=0` : comportement d'avant
 (l'évaluation devient le compte financé).
+**Démarrage direct** (`LUCID_FUNDED_DIRECT=1`, défaut) : le compte financé à part démarre tout de suite au premier passage
+du bot, sans évaluation (annoncé dans le groupe) ; `/financer lucid` le relance directement s'il est en sommeil
+(l'évaluation Lucid, elle, continue).
 
 ### 📅 `/pnl` : PnL du jour des comptes simulés
 

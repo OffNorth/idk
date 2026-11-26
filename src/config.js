@@ -207,6 +207,8 @@ module.exports = {
   // Évaluation Lucid réussie → le compte financé tourne À PART (lucid-funded.json, 1 à la fois) et une nouvelle
   // évaluation repart en parallèle (LUCID_PARALLEL=0 : l'évaluation devient le compte financé, comme avant)
   lucidParallel: num('LUCID_PARALLEL', 1) === 1,
+  // Compte Lucid financé à part démarré directement, sans attendre une évaluation réussie (s'il n'existe pas encore)
+  lucidFundedDirect: num('LUCID_FUNDED_DIRECT', 1) === 1,
   // npm run lucid-tune : Lucid sans intraday, journalières à 2,5 % → 62 % / 67 % / 73 % (contre 13 % / 11 % / 21 %)
   lucidRiskMul: upgraded('LUCID_RISK_MUL', ['1'], 1.25), // × le risque des journalières du compte FTMO (2 % → 2,5 %)
   // Intraday sur Lucid : seulement l'intraday Nasdaq (LUCID_INTRADAY_STRATEGIES) à LUCID_INTRADAY_RISK_PCT (0 = aucun).

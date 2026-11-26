@@ -476,7 +476,7 @@ test('trade bloqué par l’IA : annoncé, puis bilan (raison / tort) une seule 
 });
 
 test('Lucid en parallèle : évaluation réussie → compte financé à part + nouvelle évaluation ; financé perdu → en sommeil', () => {
-  const { cfg, store } = setup({ lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1, ftmoCombined: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoIntradayRisk: 0, lucidParallel: true, lucidDayProfitCapPct: 0, lucidMaxLossesDay: 0 });
+  const { cfg, store } = setup({ lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1, ftmoCombined: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoIntradayRisk: 0, lucidParallel: true, lucidFundedDirect: false, lucidDayProfitCapPct: 0, lucidMaxLossesDay: 0 });
   const { createFtmo, ftmoAccounts } = require('../src/ftmoAccount');
   assert.ok(ftmoAccounts(cfg).some((a) => a.id === 'lucidf'));
   const ev = createFtmo({ cfg, store, account: 'lucid' });
@@ -512,4 +512,26 @@ test('Lucid en parallèle : évaluation réussie → compte financé à part + n
   assert.ok(fu.asleep());
   // L'évaluation, elle, continue
   assert.ok(trade(ev, 9, 4040).some((o) => o.type === 'trade'));
+});
+
+test('Lucid financé direct : démarré tout de suite (sans évaluation), une seule fois ; /financer lucid le relance', () => {
+  const { cfg, store } = setup({ lucidEnabled: true, lucidCapital: 50_000, lucidRiskMul: 1, ftmoCombined: true, ftmoStrategies: ['gold:x_rsi2'], ftmoNasStrategies: [], ftmoIntradayRisk: 0, lucidParallel: true, lucidFundedDirect: true });
+  const { createFtmo, financerReport } = require('../src/ftmoAccount');
+  const fu = createFtmo({ cfg, store, account: 'lucidf' });
+  const strat = { id: 'x_rsi2', name: 'Scalp RSI 2', tf: '1d' };
+  const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
+  const out = fu.onCycle([{ type: 'open', market, strategy: strat, pos }], { gold: 4000 }, T0);
+  assert.ok(out.some((o) => o.type === 'fundedStart'), 'annoncé');
+  assert.ok(out.some((o) => o.type === 'open'), 'il trade dès le départ');
+  assert.strictEqual(fu.load().phase, 'funded');
+  assert.ok(!fu.onCycle([], { gold: 4000 }, T0 + 60).some((o) => o.type === 'fundedStart'), 'une seule fois');
+  // L'évaluation Lucid reste une évaluation
+  assert.strictEqual(createFtmo({ cfg, store, account: 'lucid' }).load().phase, 1);
+  // /financer lucid : compte financé déjà en cours → inchangé ; en sommeil → relancé directement
+  assert.match(financerReport(cfg, store, 'lucid'), /déjà en compte financé/);
+  fu.restart({ gold: 4000 }, T0 + 120);
+  assert.ok(fu.asleep());
+  assert.match(financerReport(cfg, store, 'lucid'), /lancé directement/);
+  assert.ok(!fu.asleep());
+  assert.strictEqual(createFtmo({ cfg, store, account: 'lucid' }).load().phase, 1);
 });
