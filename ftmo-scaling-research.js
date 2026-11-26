@@ -74,7 +74,7 @@ const part = (k) => (s) => { const t = withTrail(s); return k ? withTp(t, k, s.i
   const rows = [];
   for (const mul of [0.25, 0.35, 0.5, 0.75, 1]) {
     const list = fl.map((t) => ({ ...t, riskPct: t.riskPct * mul }));
-    let n = 0, a12 = 0, a24 = 0, a36 = 0, ups = 0, up1 = 0, up4 = 0;
+    let n = 0, a12 = 0, a24 = 0, a36 = 0, ups = 0, up1 = 0, up4 = 0, lifeSum = 0;
     const inc = [0, 0, 0];
     for (let s = Y(2009) + 60 * DAY; s < Y(2023); s += 7 * DAY) {
       n++;
@@ -93,13 +93,25 @@ const part = (k) => (s) => { const t = withTrail(s); return k ? withTp(t, k, s.i
         t = segEnd;
       }
       const life = (end - s) / MONTH;
+      lifeSum += Math.min(36, life);
       if (life >= 12) a12++; if (life >= 24) a24++; if (alive || life >= 36 - 0.5) a36++;
       ups += k; if (k >= 1) up1++; if (k >= 4) up4++;
     }
     const pc = (x) => `${Math.round((x / n) * 100)} %`;
     const m = inc.map((x) => x / n / 12);
-    rows.push({ mul, m, avg: (inc[0] + inc[1] + inc[2]) / n / 36 });
+    rows.push({ mul, m, avg: (inc[0] + inc[1] + inc[2]) / n / 36, life: lifeSum / n, perLife: (inc[0] + inc[1] + inc[2]) / n, alive36: a36 / n });
     console.log(`× ${String(mul).replace('.', ',').padEnd(6)} ${pc(a12).padStart(5)} / ${pc(a24).padStart(5)} / ${pc(a36).padStart(5)} · ${(ups / n).toFixed(1)} / ${pc(up1)} / ${pc(up4)} · ${m.map((x) => `${Math.round(x).toLocaleString('fr-FR')} $`.padStart(8)).join(' /')} · ${Math.round((inc[0] + inc[1] + inc[2]) / n / 36).toLocaleString('fr-FR')} $`);
+  }
+  // Avec rachat : compte perdu → nouveau challenge (réussite ≈ 55 %, ≈ 1,7 mois par tentative, prix remboursé au 1er retrait,
+  // tentatives ratées perdues : hypothèse 600 $ le challenge 100K). Régime permanent : gain d'une vie de compte ÷ (durée + attente).
+  const P = 0.55, TRY = 1.7, FEE = 600;
+  console.log('\nAvec rachat après une perte (réussite 55 %, 1,7 mois par tentative, 600 $ par challenge raté) :');
+  for (const r of rows) {
+    const wait = r.alive36 >= 0.999 ? 0 : TRY / P;
+    const lost = r.alive36 >= 0.999 ? 0 : (1 / P - 1) * FEE;
+    // Compte encore en vie à 36 mois : pas de rachat dans la fenêtre ; sinon cycle vie + attente
+    const v = (r.perLife - (1 - r.alive36) * lost) / (r.life + (1 - r.alive36) * wait);
+    console.log(`× ${String(r.mul).replace('.', ',').padEnd(6)} durée de vie moyenne ${r.life.toFixed(1)} mois (sur 36) · ${Math.round(r.perLife).toLocaleString('fr-FR')} $ par compte · avec rachat ≈ ${Math.round(v)} $/mois`);
   }
   console.log('\nPlusieurs comptes identiques : revenu × N, mais ils sont perdus ensemble (mêmes trades, même jour).');
   for (const r of rows) console.log(`× ${String(r.mul).replace('.', ',').padEnd(6)} 1 compte ${Math.round(r.avg)} $/mois · 2 comptes ${Math.round(2 * r.avg)} $ · 3 comptes ${Math.round(3 * r.avg)} $`);
