@@ -1,7 +1,7 @@
 {
   "name": "gold-paper-bot",
   "version": "1.0.0",
-  "description": "Bot Telegram de paper trading de l'or avec plusieurs stratégies",
+  "description": "Telegram paper trading bot: gold, Nasdaq 100 and more, with simulated FTMO and Lucid prop-firm accounts",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
