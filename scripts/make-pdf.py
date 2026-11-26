@@ -355,7 +355,8 @@ story.append(KeepTogether([Paragraph('Risk settings (FTMO and Lucid)', h2), Para
     ('FTMO (20/11 settings)', 'intraday 0.15% · daily 2%, decreasing risk', '64%', '67%', '83%'),
     ('FTMO (24/11, + Asian / NY sessions)', f'intraday {fc["ir"]:g}% · daily {fc["gr"]:g}%, normal size', '56%', '47%', '69%'),
     ('FTMO (25/11)', 'same, risk × 1.25, + Crabel NR7 S&amp;P 500', '50%', '51%', '67% (55 d)'),
-    ('<b>FTMO (current)</b>', '+ trailing stop (from +2 R, 1 R from the best price), + intraday stocks', '<b>55%</b> (80 d)', '<b>57%</b> (76 d)', '<b>73%</b> (76 d)'),
+    ('FTMO (26/11)', '+ trailing stop (from +2 R, 1 R from the best price), + intraday stocks', '55% (80 d)', '57% (76 d)', '73% (76 d)'),
+    ('<b>FTMO (current)</b>', '+ correlation-based sizing (×0.5 if the same market group is open, or from 3 positions): +8 / +4 / +2 points on the test bench', '—', '—', '—'),
     ('Lucid (before)', 'same as FTMO', '13%', '11%', '21%'),
     ('Lucid (24/11)', f'daily {fc["gr"] * fc["lm"]:g}% · Nasdaq intraday {fc["lir"]:g}%, 0.5 R target', '56%', '69%', '100% (≈ 70 d)'),
     ('Lucid (25/11 morning)', '+ breakouts, Crabel, Williams, silver, Dow (≈ 4.7 intraday trades / day)', '55%', '72%', '94% (34 d)'),
@@ -579,6 +580,31 @@ story.append(KeepTogether([Paragraph('New York session, remaining ideas', h2), P
     ('Reversal at the London close (11:30)', '+0.27 to −0.37 (unstable)', '+0.23 to −0.52 (unstable)', '−0.03 to −0.16'),
     ('Midday range breakout', '−0.05 to −0.06', '−0.03 to −0.11', '−0.02 to −0.07'),
     ], [72 * mm, 34 * mm, 40 * mm, 32 * mm])]))
+
+story.append(KeepTogether([Paragraph('Optimizing returns: 7 ideas (26/11/2026)', h2), Paragraph(
+    'Seven ideas never tested before, same method as always (pass rate in under a year 2009–19 | 2020–26 | Nov 24–26, kept only if nothing drops). '
+    'Baseline of this test bench: FTMO 34 / 43 / 67%, Lucid 46 / 61 / 53% (≤ 14 days: 25%). <b>One idea is kept</b>: on the FTMO account, '
+    'size is halved only when a position <b>from the same market group</b> (US indices and stocks, metals, currencies) is already open, or from '
+    '3 open positions — instead of “as soon as 2 positions are open, whatever they are”.', body), Spacer(1, 3), small_table([
+    ('Idea', 'Result', 'Decision'),
+    ('<b>Correlation-based sizing (FTMO)</b>', 'FTMO <b>42 / 47 / 69%</b> (+2 / +18 / +6 median days); Lucid worse (39 / 46 / 51%)', '<b>added to FTMO</b> (FTMO_GROUP_SIZING=1)'),
+    ('Other futures prop firms (same strategies)', 'nearly the same pass rate everywhere (44–46 / 63–64 / 47–51%)', 'Lucid stays a good choice'),
+    ('Adding to winners (2nd unit at +1 R, stop to entry), FTMO funded', '12-month payouts +5% ($15,002 → $15,707), as many accounts lost, evaluation −1 point', '✘ too small'),
+    ('VIX term structure (VIX / VIX3M)', 'no variant better everywhere (stress on 11% of days)', '✘'),
+    ('Risk by entry hour', 'winning hours change from one period to the next; FTMO 28 / 39 / 49%', '✘'),
+    ('No stock intraday on earnings days', '53 trades out of 1,039 (−0.01 R vs +0.08 R); pass rate unchanged', '✘ no effect'),
+    ('Gold: 1-min entry instead of 5-min (Binance, Dec 2025 → Oct 2026)', 'total of the 6 breakouts +34% → +24% (g_mom8 +12.5 → +0.1%)', '✘'),
+    ], [58 * mm, 82 * mm, 38 * mm]), Spacer(1, 4), Paragraph(
+    '<b>Cost per funded account</b> (50K evaluation, Lucid strategies, failed evaluations and monthly fees included; list / promo price):', body), Spacer(1, 2), small_table([
+    ('Firm', '2009–2019', '2020–2026', 'Nov 24–26'),
+    ('<b>LucidFlex 50K (current)</b>', '$313 / $161', '$216 / $111', '$279 / $144'),
+    ('Tradeify Select 50K', '$379 / $228', '$262 / $157', '$339 / $203'),
+    ('Topstep 50K (monthly + $149 activation)', '$429', '$512', '$247'),
+    ('Apex 50K EOD (monthly)', '$891 / $187', '$1,179 / $247', '$359 / $75'),
+    ('Take Profit Trader 50K (monthly)', '$922 / $553', '$1,221 / $732', '$345 / $207'),
+    ], [72 * mm, 36 * mm, 36 * mm, 36 * mm]), Paragraph(
+    'Monthly subscriptions cost 2 to 5 times more when evaluations last months. Apex is only worth it during its big sales. Rules and prices '
+    'from third-party 2026 sources, promo prices are assumptions: check them before buying. Payout rules once funded differ too much to compare here.', note)]))
 
 story += part(4, 'The bot day to day')
 story.append(KeepTogether([Paragraph('Execution, notifications and tools', h2), Paragraph(
