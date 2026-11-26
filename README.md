@@ -706,6 +706,9 @@ du bot, sans évaluation (annoncé dans le groupe) ; `/financer lucid` le relanc
 - **Sur les comptes** : aucune n'améliore la réussite. Dérive de nuit : Lucid 46 / 61 / 53 % → 26–31 / 37–50 / 51–55 %
   (positions de nuit et perte max suiveuse) ; mardi de retournement et VIX stretch : neutres (trop rares). Filtre « pas
   de trade autour des annonces » : FTMO 69 → 67 %, Lucid nov. 24–26 53 → 45 % (il retire de bons trades).
+- **Portefeuille perso** (`npm run portfolio-ideas`) : VIX stretch et mardi de retournement comme poches du bot (SPY, QQQ)
+  → 10,0 %/an → 9,4–9,6 %/an, pire baisse −27 → −25 % ; bot seul 9,3 → 7,9–8,3 %/an. Pas ajoutées (trop peu de temps investi :
+  2 à 12 %, le reste en liquidités).
 
 ### 🧯 Secours quand Yahoo fige ses bougies (`STALE_FEED_FALLBACK=1`, défaut, `src/staleFeed.js`)
 
