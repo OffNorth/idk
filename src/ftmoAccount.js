@@ -44,12 +44,27 @@ const FTMO_PAYOUT = { rule: 'ftmo', every: 14 };
 const LUCID_FUNDED_FILE = 'lucid-funded.json';
 /**
  * Réglages d'un compte simulé : 'gold' (FTMO, or ou compte combiné), 'nas100' (FTMO Nasdaq), 'lucid' (LucidFlex,
- * évaluation) ou 'lucidf' (compte Lucid financé qui tourne à part, LUCID_PARALLEL).
+ * évaluation), 'lucid2' (2e évaluation LucidFlex, LUCID_SPLIT) ou 'lucidf' (compte Lucid financé qui tourne à part,
+ * LUCID_PARALLEL).
+ * LUCID_SPLIT (npm run optimize2, 26/11/2026) : deux évaluations Lucid en même temps, 'lucid' ne prend que l'intraday
+ * et 'lucid2' que les journalières (leurs pertes ne s'additionnent plus le même jour) : au moins une réussie en moins
+ * d'un an 92 % contre 49 % (nov. 24–26), coût par compte financé 198 $ contre 279 $. Le compte financé prend tout.
  */
 function accountOf(cfg, id = 'gold') {
   if (id === 'lucidf') {
-    const L = accountOf(cfg, 'lucid');
-    return { ...L, id: 'lucidf', label: `${L.label} funded`, file: LUCID_FUNDED_FILE, fundedOnly: true, enabled: L.enabled && !!cfg.lucidParallel };
+    const L = accountOf({ ...cfg, lucidSplit: false }, 'lucid');
+    return { ...L, id: 'lucidf', label: `${L.label} funded`, file: LUCID_FUNDED_FILE, fundedOnly: true, tag: 'funded', enabled: L.enabled && !!cfg.lucidParallel };
+  }
+  if (id === 'lucid2') {
+    const L = accountOf({ ...cfg, lucidSplit: false }, 'lucid');
+    const intra = (st) => !!(st && st.tf && st.tf !== '1d');
+    return { ...L, id: 'lucid2', label: `${L.label} daily`, file: 'lucid2.json', tag: 'daily', enabled: L.enabled && !!cfg.lucidSplit,
+      riskOf: (m, st, phase) => (intra(st) ? 0 : L.riskOf(m, st, phase)) };
+  }
+  if (id === 'lucid' && cfg.lucidSplit) {
+    const L = accountOf({ ...cfg, lucidSplit: false }, 'lucid');
+    const intra = (st) => !!(st && st.tf && st.tf !== '1d');
+    return { ...L, label: `${L.label} intraday`, tag: 'intraday', riskOf: (m, st, phase) => (intra(st) ? L.riskOf(m, st, phase) : 0) };
   }
   if (id === 'lucid') {
     // Mêmes stratégies et mêmes risques que le compte FTMO combiné (× LUCID_RISK_MUL), règles et contrats Lucid
@@ -97,7 +112,7 @@ function accountOf(cfg, id = 'gold') {
   return { id: 'gold', label: 'Gold', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk, riskOf: () => cfg.ftmoRisk * (cfg.ftmoRiskMul ?? 1) };
 }
 /** Comptes FTMO actifs. */
-const ftmoAccounts = (cfg) => ['nas100', 'gold', 'lucidf', 'lucid'].map((id) => accountOf(cfg, id)).filter((a) => a.enabled);
+const ftmoAccounts = (cfg) => ['nas100', 'gold', 'lucidf', 'lucid', 'lucid2'].map((id) => accountOf(cfg, id)).filter((a) => a.enabled);
 const TARGET = { 1: 10, 2: 5 };
 
 /**
@@ -559,11 +574,11 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       if (s.balance >= goal && !Object.keys(s.open).length && s.days.length >= (P.minDays ?? 4) && bestOk) {
         const done = s.phase;
         s.history = [...(s.history || []), { attempt: s.attempt, phase: done, outcome: 'passed', at: t, balance: s.balance, days: s.days.length }].slice(-20);
-        if (!(A.id === 'lucid' && cfg.lucidParallel && !(done === 1 && P.steps === 2))) out.push({ type: 'pass', s: { ...s }, phase: done });
+        if (!(A.firm === 'Lucid' && !A.fundedOnly && cfg.lucidParallel && !(done === 1 && P.steps === 2))) out.push({ type: 'pass', s: { ...s }, phase: done });
         if (done === 1 && P.steps === 2) {
           archive(s);
           Object.assign(s, { phase: 2, balance: s.capital, dayStart: s.capital, days: [], closed: [], startedAt: t, peak: s.capital, dayPnl: {} });
-        } else if (A.id === 'lucid' && cfg.lucidParallel) {
+        } else if (A.firm === 'Lucid' && !A.fundedOnly && cfg.lucidParallel) {
           // Lucid : le compte financé tourne à part (lucid-funded.json, 1 seul à la fois) ; nouvelle évaluation dès demain
           archive(s);
           const prev = store.loadJson(LUCID_FUNDED_FILE, null);
@@ -709,7 +724,7 @@ function financerReport(cfg, store, arg = '') {
   const lines = ['🏦 <b>Switch to funded account (simulation)</b>'];
   for (const a of accts) {
     // Lucid en parallèle : l'évaluation continue, c'est le compte financé à part qui démarre directement
-    if (a.id === 'lucid' && cfg.lucidParallel) continue;
+    if (a.firm === 'Lucid' && !a.fundedOnly && cfg.lucidParallel) continue;
     const r = createFtmo({ cfg, store, account: a.id }).forceFunded();
     const name = `${a.firm || 'FTMO'} ${a.emoji} ${esc(a.label)}`;
     if (r.direct) {
@@ -814,7 +829,7 @@ function dailyReport(cfg, store, arg = '') {
   return lines.join('\n');
 }
 
-const ACCOUNT_FILES = ['ftmo.json', 'ftmo-nas.json', 'lucid.json', 'lucid-funded.json'];
+const ACCOUNT_FILES = ['ftmo.json', 'ftmo-nas.json', 'lucid.json', 'lucid2.json', 'lucid-funded.json'];
 /** Positions ouvertes sur ce marché dans un des comptes FTMO / Lucid ? */
 function openOn(store, marketId) {
   return ACCOUNT_FILES.some((f) => Object.values(store.loadJson(f, null)?.open || {}).some((p) => p.market === marketId));

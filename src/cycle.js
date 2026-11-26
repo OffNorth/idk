@@ -67,7 +67,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
       const firm = acct.firm || 'FTMO';
       const name = `Simulated ${firm} account ${acct.emoji} ${acct.label}`;
       const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-      const button = ui && !acct.fundedOnly ? { reply_markup: { inline_keyboard: [[{ text: '🏦 View the account', callback_data: acct.firm === 'Lucid' ? 'm:f:g:l' : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
+      const button = ui && !acct.fundedOnly ? { reply_markup: { inline_keyboard: [[{ text: '🏦 View the account', callback_data: acct.firm === 'Lucid' ? (acct.id === 'lucid2' ? 'm:f:g:l2' : 'm:f:g:l') : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
       for (const msg of ftmo.onCycle(all, prices, undefined, { fills })) {
         // Chaque trade du compte FTMO (ouverture et clôture) : console + message dans le groupe (FTMO_TRADE_MESSAGES)
         if (msg.type === 'open' || msg.type === 'trade' || msg.type === 'refused' || msg.type === 'refusedResult') {
@@ -98,8 +98,8 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
         if (msg.type === 'parallel') {
           // Évaluation Lucid réussie : le compte financé tourne à part, une nouvelle évaluation repart en parallèle
           const text = msg.kept
-            ? `🟣🏁 <b>Lucid: separate funded account started</b>\nEvaluation #${msg.s.attempt} becomes a funded account running in parallel (simulated payouts); a <b>new evaluation #${msg.next}</b> starts on the next trading day.\n<i>Simulated account: no real money.</i>`
-            : `🟣🏁 <b>Lucid: evaluation #${msg.s.attempt} passed</b>\nA Lucid funded account is already running (1 at a time): it carries on, and a new evaluation #${msg.next} starts on the next trading day.\n<i>Simulated account: no real money.</i>`;
+            ? `🟣🏁 <b>Lucid${acct.tag ? ` ${acct.tag}` : ''}: separate funded account started</b>\nEvaluation #${msg.s.attempt} becomes a funded account running in parallel (simulated payouts); a <b>new evaluation #${msg.next}</b> starts on the next trading day.\n<i>Simulated account: no real money.</i>`
+            : `🟣🏁 <b>Lucid${acct.tag ? ` ${acct.tag}` : ''}: evaluation #${msg.s.attempt} passed</b>\nA Lucid funded account is already running (1 at a time): it carries on, and a new evaluation #${msg.next} starts on the next trading day.\n<i>Simulated account: no real money.</i>`;
           console.log(`[lucid] évaluation n° ${msg.s.attempt} réussie → ${msg.kept ? 'compte financé à part' : 'compte financé déjà en cours'}, nouvelle évaluation n° ${msg.next}`);
           if (publish) await safeSend(channel, text, button, { dm: true });
           continue;
@@ -242,7 +242,7 @@ function ftmoTradeMessage(msg, st, market) {
   const p = msg.p;
   const mk = market ? `${market.emoji} ${market.id === 'nas100' ? 'Nasdaq' : market.name}` : p.market;
   const name = `<b>${esc(p.name || p.sid)}</b> <code>${esc(p.sid)}</code>`;
-  const tag = st.account?.id === 'lucidf' ? '🟣 <b>Lucid funded</b>' : st.account?.firm === 'Lucid' ? '🟣 <b>Lucid</b>' : '🏦 <b>FTMO</b>';
+  const tag = st.account?.firm === 'Lucid' ? `🟣 <b>Lucid${st.account.tag ? ` ${st.account.tag}` : ''}</b>` : '🏦 <b>FTMO</b>';
   if (msg.type === 'open') {
     const pct = st.s.balance ? ((p.risk || 0) / st.s.balance) * 100 : 0;
     return [

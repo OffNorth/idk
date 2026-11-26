@@ -286,7 +286,7 @@ bot.command('ftmo', async (ctx) => {
 bot.command('lucid', async (ctx) => {
   try {
     if (!require('./src/ftmoAccount').accountOf(cfg, 'lucid').enabled) return ctx.reply('The simulated Lucid account is off (LUCID=0 in the .env).');
-    await sendPanel(ctx.api, ctx.chat.id, cfg, store, { view: 'f', marketId: 'gold', args: ['l'] });
+    await sendPanel(ctx.api, ctx.chat.id, cfg, store, { view: 'f', marketId: 'gold', args: [/daily|journ|2/i.test(ctx.match || '') && require('./src/ftmoAccount').accountOf(cfg, 'lucid2').enabled ? 'l2' : 'l'] });
   } catch (err) {
     await ctx.reply(`❌ ${esc(err.message)}`);
   }
@@ -405,7 +405,7 @@ console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) �
     { command: 'menu', description: '🎛 Interactive panel (Nasdaq; /menu gold for gold)' },
     { command: 'chart', description: '🕯 Candlestick chart: /chart (Nasdaq) · /chart gold' },
     { command: 'ftmo', description: '🏦 Simulated FTMO accounts: /ftmo (Nasdaq) · /ftmo gold' },
-    { command: 'lucid', description: '🟣 Simulated Lucid account (LucidFlex, micro futures)' },
+    { command: 'lucid', description: '🟣 Simulated Lucid accounts: /lucid (intraday) · /lucid daily' },
     { command: 'pnl', description: '📅 Daily PnL: /pnl · /pnl lucid · /pnl 30 (days)' },
     { command: 'myportfolio', description: '💼 Simulated personal portfolio (world, gold, bot strategies)' },
     { command: 'timemachine', description: '🔮 Odds of passing the current challenge (1,000 simulated years)' },

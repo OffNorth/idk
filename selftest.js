@@ -169,7 +169,7 @@ async function run({ live = false, log = console.log } = {}) {
     for (const { a, f } of books) {
       const s = f.load();
       const arch = f.archived();
-      const tag = a.id === 'lucidf' ? '🟣 <b>Lucid funded</b>' : a.firm === 'Lucid' ? '🟣 <b>Lucid</b>' : '🏦 <b>FTMO</b>';
+      const tag = a.firm === 'Lucid' ? `🟣 <b>Lucid${a.tag ? ` ${a.tag}` : ''}</b>` : '🏦 <b>FTMO</b>';
       const opens = sent.filter((x) => x.startsWith(`${tag} · 📈`) || x.startsWith(`${tag} · 📉`)).length;
       const closes = sent.filter((x) => x.startsWith(`${tag} · 🟢`) || x.startsWith(`${tag} · 🔴`)).length;
       const taken = arch.length + s.closed.length + Object.keys(s.open).length;

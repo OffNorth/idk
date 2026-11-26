@@ -38,3 +38,18 @@ test('compte financé : risque selon la marge restante avant la perte max (FUNDE
   const full = notionalAt(100000, true), half = notionalAt(95000, true), off = notionalAt(95000, false);
   assert.ok(full > 0 && Math.abs(half / (off) - 0.5) < 0.01, `${full} / ${half} / ${off}`);
 });
+
+test('deux évaluations Lucid (LUCID_SPLIT) : intraday seulement / journalières seulement ; le compte financé prend tout', () => {
+  const cfg = { ...require('../src/config'), ftmoEnabled: true, lucidEnabled: true, lucidSplit: true, lucidParallel: true };
+  const { accountOf, ftmoAccounts } = require('../src/ftmoAccount');
+  const { selectStrategies } = require('../src/strategies');
+  const intra = selectStrategies(['n_mom10_t05'])[0], daily = selectStrategies(['double7'])[0];
+  const a = accountOf(cfg, 'lucid'), b = accountOf(cfg, 'lucid2'), f = accountOf(cfg, 'lucidf');
+  assert.ok(a.riskOf('nas100', intra, 'eval') > 0 && a.riskOf('spx', daily, 'eval') === 0, 'lucid : intraday seulement');
+  assert.ok(b.riskOf('spx', daily, 'eval') > 0 && b.riskOf('nas100', intra, 'eval') === 0, 'lucid2 : journalières seulement');
+  assert.ok(f.riskOf('nas100', intra, 'funded') > 0 && f.riskOf('spx', daily, 'funded') > 0, 'financé : tout');
+  assert.deepStrictEqual([a.file, b.file, f.file], ['lucid.json', 'lucid2.json', 'lucid-funded.json']);
+  assert.ok(ftmoAccounts(cfg).some((x) => x.id === 'lucid2'));
+  assert.ok(!ftmoAccounts({ ...cfg, lucidSplit: false }).some((x) => x.id === 'lucid2'), 'LUCID_SPLIT=0 : une seule évaluation');
+  assert.ok(accountOf({ ...cfg, lucidSplit: false }, 'lucid').riskOf('spx', daily, 'eval') > 0);
+});

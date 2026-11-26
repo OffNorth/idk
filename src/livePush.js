@@ -32,6 +32,7 @@ function accountView(cfg, store, id, prices) {
   return {
     id: A.id === 'gold' || A.id === 'nas100' ? 'ftmo' : A.id,
     firm: A.firm || 'FTMO',
+    tag: A.tag || null,
     label: A.label,
     program: P.label || '',
     attempt: s.attempt,
@@ -133,7 +134,7 @@ function toChartScale(list, off, open = false) {
 function buildLive(cfg, store, version = '') {
   const markets = activeMarkets(cfg);
   const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-  const accounts = ['gold', 'lucid', 'lucidf'].map((id) => accountView(cfg, store, id, prices)).filter(Boolean);
+  const accounts = ['gold', 'lucid', 'lucid2', 'lucidf'].map((id) => accountView(cfg, store, id, prices)).filter(Boolean);
   const adapt = cfg.autoAdapt ? require('./adapt').summary(cfg, store) : '';
   // Trades paper des stratégies suivies (tous marchés, depuis le démarrage), 500 les plus récents
   const followed = new Set([...(cfg.ftmoStrategies || []), ...(cfg.ftmoNasStrategies || [])]);
