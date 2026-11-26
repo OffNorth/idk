@@ -169,7 +169,7 @@ async function run({ live = false, log = console.log } = {}) {
     for (const { a, f } of books) {
       const s = f.load();
       const arch = f.archived();
-      const tag = a.id === 'lucidf' ? '🟣 <b>Lucid financé</b>' : a.firm === 'Lucid' ? '🟣 <b>Lucid</b>' : '🏦 <b>FTMO</b>';
+      const tag = a.id === 'lucidf' ? '🟣 <b>Lucid funded</b>' : a.firm === 'Lucid' ? '🟣 <b>Lucid</b>' : '🏦 <b>FTMO</b>';
       const opens = sent.filter((x) => x.startsWith(`${tag} · 📈`) || x.startsWith(`${tag} · 📉`)).length;
       const closes = sent.filter((x) => x.startsWith(`${tag} · 🟢`) || x.startsWith(`${tag} · 🔴`)).length;
       const taken = arch.length + s.closed.length + Object.keys(s.open).length;
@@ -182,8 +182,8 @@ async function run({ live = false, log = console.log } = {}) {
     const ev = (re) => sent.filter((x) => re.test(x)).length;
     const pass = ev(/^🏦(🏆|✅)/);
     const fail = ev(/^🏦❌/);
-    const pay = ev(/retrait simulé n°/);
-    const refused = ev(/refusé par l'IA/);
+    const pay = ev(/simulated payout #/);
+    const refused = ev(/refused by the AI/);
     step('scénario : réussite → compte financé → retrait → perte → nouveau challenge', pass > 0 && fail > 0 && pay > 0, `${pass} réussite(s), ${pay} retrait(s), ${fail} échec(s)/perte(s), ${refused} signal(s) refusé(s) par l'IA annoncé(s), ${sent.length} messages dans le groupe`);
     const bad = sent.filter((x) => /undefined|NaN|\[object Object\]/.test(x));
     step('messages du groupe sans « undefined » / « NaN »', !bad.length, bad.slice(0, 3).join(' ‖ ').slice(0, 400));
@@ -227,7 +227,7 @@ async function run({ live = false, log = console.log } = {}) {
     const leaked = [];
     for (const cmd of ADMIN_CMDS) {
       const { out } = await send(message(cmd, MEMBER_ID));
-      if (!out.some((c) => /réservée à l’administrateur/.test(c.payload?.text || ''))) leaked.push(cmd);
+      if (!out.some((c) => /reserved for the bot admin/i.test(c.payload?.text || ''))) leaked.push(cmd);
     }
     step('commandes admin refusées à un simple membre', !leaked.length, leaked.join(', '));
 
@@ -264,7 +264,7 @@ async function run({ live = false, log = console.log } = {}) {
     failGroup = null;
     await new Promise((r) => setImmediate(r));
     const lastErr = store.getMeta('channelLastError');
-    step('panne : envoi au groupe refusé → erreur gardée + alerte en privé à l’admin', !!lastErr && /ADMINISTRATEUR/.test(lastErr.text) && dm1 > dm0, lastErr?.text || 'aucune erreur gardée');
+    step('panne : envoi au groupe refusé → erreur gardée + alerte en privé à l’admin', !!lastErr && /ADMIN/.test(lastErr.text) && dm1 > dm0, lastErr?.text || 'aucune erreur gardée');
     failGroup = { code: 400, description: 'Bad Request: group chat was upgraded to a supergroup chat', parameters: { migrate_to_chat_id: -100777 }, once: true };
     await channel.sendText('test supergroupe').catch((e) => errors.push(`supergroupe : ${e.message}`));
     const moved = calls.filter((c) => c.method === 'sendMessage' && String(c.payload.chat_id) === '-100777').length;

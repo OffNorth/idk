@@ -28,7 +28,7 @@ test('exécution 30 s après le signal : entrée au cours relevé, stop au même
   // Taille : 1 % de 100 000 $ sur 42 $ de stop (1,05 %) → ≈ 95 238 $
   assert.ok(Math.abs(o.notional - 100000 * 1 / ((42 / 4002) * 100)) < 1e-6);
   const { ftmoTradeMessage } = require('../src/cycle');
-  assert.match(ftmoTradeMessage({ type: 'open', p: o }, f.status({ gold: 4002 }), null), /Entrée \$4002\.00 \(signal \$4000\.00, 2\.00 contre toi\)/);
+  assert.match(ftmoTradeMessage({ type: 'open', p: o }, f.status({ gold: 4002 }), null), /Entry \$4002\.00 \(signal \$4000\.00, 2\.00 against you\)/);
   // Sortie sur signal : cours 30 s plus tard
   const c = f.onCycle([{ type: 'close', market, strategy, trade: { ...pos, exit: 4040, exitT: T0 + 3600, reason: 'signal de sortie' } }], { gold: 4038 }, T0 + 3630, { fills: { gold: { price: 4038, t: T0 + 3630 } } });
   const tr = c.find((m) => m.type === 'trade').p;
@@ -142,7 +142,7 @@ test('règle du meilleur jour : objectif effectif pour la taille des trades (pas
   const st = f.status({ gold: 4000 });
   assert.strictEqual(Math.round(st.needed), 15138);
   const v = await require('../src/interactive').render(cfg, store, 'f', 'gold');
-  assert.match(v.caption, /Règle du meilleur jour/);
+  assert.match(v.caption, /Best-day rule/);
 });
 
 test('/financer : évaluation bloquée → compte financé, risque normal (plus de réduction), positions gardées', () => {
@@ -153,19 +153,19 @@ test('/financer : évaluation bloquée → compte financé, risque normal (plus 
   const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 };
   f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0);
   const txt = financerReport(cfg, store, 'ftmo');
-  assert.match(txt, /ne serait pas validée : meilleur jour 74 % du gain &gt; 50 %/);
+  assert.match(txt, /would not be validated: best day 74% of the gain &gt; 50%/);
   const s = f.load();
   assert.strictEqual(s.phase, 'funded');
   assert.strictEqual(s.balance, 100000);
   assert.strictEqual(Object.keys(s.open).length, 1, 'position ouverte gardée');
-  assert.match(s.history.at(-1).outcome, /réussite forcée/);
+  assert.match(s.history.at(-1).outcome, /forced pass/);
   assert.ok(f.archived().some((t) => t.pnl === 7569), 'trades de l’évaluation archivés');
   // Nouveau trade : risque plein (× 1) en compte financé
   const pos2 = { ...pos, side: 'long', entryT: T0 + 60 };
   const o = f.onCycle([{ type: 'open', market, strategy: { ...strategy, id: 'x_rsi2' }, pos: pos2 }], { gold: 4000 }, T0 + 60).find((m) => m.type === 'open');
   assert.ok(o);
   assert.strictEqual(o.p.mul, 1);
-  assert.match(financerReport(cfg, store, 'ftmo'), /déjà en compte financé/);
+  assert.match(financerReport(cfg, store, 'ftmo'), /already a funded account/);
 });
 
 test('Lucid : intraday Nasdaq choisi pris à 0,2 % (1 MNQ), intraday or ignoré', () => {
@@ -193,15 +193,15 @@ test('/reset : nouveau challenge au capital de départ, positions fermées au de
   const before = f.load();
   assert.strictEqual(Object.keys(before.open).length, 1);
   store.saveJson('gold.json', { lastPrice: 4010 });
-  assert.match(acc.resetReport(cfg, store, ''), /Pour confirmer/);
+  assert.match(acc.resetReport(cfg, store, ''), /To confirm/);
   assert.strictEqual(f.load().attempt, before.attempt, 'sans « ok » : rien ne change');
   const txt = acc.resetReport(cfg, store, 'ftmo ok');
-  assert.match(txt, /remis à zéro/);
+  assert.match(txt, /accounts reset/);
   const after = f.load();
   assert.strictEqual(after.attempt, before.attempt + 1);
   assert.strictEqual(after.balance, after.capital);
   assert.deepStrictEqual(after.open, {});
-  assert.strictEqual(after.history.at(-1).outcome, 'réinitialisé (/reset)');
+  assert.strictEqual(after.history.at(-1).outcome, 'reset (/reset)');
   const arch = f.archived();
   assert.strictEqual(arch.length, 2, 'trade clôturé + position fermée au reset gardés dans l’archive');
   assert.strictEqual(arch.at(-1).exit, 4010);
@@ -243,7 +243,7 @@ test('FTMO : stop suiveur — dès +2 R (meilleure clôture du paper), stop à 1
   const out = f.onCycle([], { gold: 4044 }, T0 + 1800);
   const tr = out.find((m) => m.type === 'trade').p;
   assert.strictEqual(tr.exit, 4050);
-  assert.match(tr.reason, /stop suiveur/);
+  assert.match(tr.reason, /trailing stop/);
 });
 
 test('FTMO financé : ⅓ fermé à +1 R, ⅓ à +2 R, le reste continue ; rien en évaluation', () => {
@@ -260,7 +260,7 @@ test('FTMO financé : ⅓ fermé à +1 R, ⅓ à +2 R, le reste continue ; rien 
   const out = f.onCycle([], { gold: 4045 }, T0 + 1200); // +1,125 R (le paper a déjà vu 4 090 = +2,25 R)
   const parts = out.filter((m) => m.type === 'trade').map((m) => m.p);
   assert.deepStrictEqual(parts.map((p) => p.exit), [4040, 4080]);
-  assert.match(parts[0].reason, /objectif partiel \+1 R/);
+  assert.match(parts[0].reason, /partial target \+1 R/);
   const left = Object.values(f.load().open)[0];
   assert.ok(Math.abs(left.notional - n0 / 3) < 1e-6, 'reste ⅓ de la position');
   assert.ok(!f.onCycle([], { gold: 4085 }, T0 + 1800).some((m) => m.type === 'trade'), 'pas de partiel en double');

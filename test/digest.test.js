@@ -24,20 +24,20 @@ test('résumé du jour : trades regroupés par stratégie (scalp seul, puis tout
   assert.strictEqual(isScalp({ tf: '5m' }), true);
   assert.strictEqual(isScalp({ tf: '1d' }), false);
   const txt = scalpDigest(cfg, store, activeMarkets(cfg), Date.now() - 86_400_000);
-  assert.match(txt, /Résumé du jour/);
-  assert.match(txt, /3 trades clôturés · 33 % gagnants · <b>\+\$0<\/b>/); // +8 −3 −5
-  assert.match(txt, /1 position ouverte/);
-  assert.match(txt, /Scalp RSI 2[^\n]*2 trades, 1 gagnant/);
+  assert.match(txt, /Daily summary/);
+  assert.match(txt, /3 trades closed · 33% winners · <b>\+\$0<\/b>/); // +8 −3 −5
+  assert.match(txt, /1 open position/);
+  assert.match(txt, /Scalp RSI 2[^\n]*2 trades, 1 winner/);
   assert.doesNotMatch(txt, /Saison/);
-  assert.match(txt, /Compte FTMO simulé/);
+  assert.match(txt, /Simulated FTMO account/);
   // Toutes les stratégies : la clôture de la stratégie journalière et sa nouvelle position apparaissent
   const acc = store.loadJson('gold.json', {});
   acc.accounts.season.position = { side: 'long', entry: 4010, sl: 3800, size: 1100, entryT: now - 300 };
   store.saveJson('gold.json', acc);
   const all = scalpDigest({ ...cfg, digestAll: true }, store, activeMarkets(cfg), Date.now() - 86_400_000);
-  assert.match(all, /Saison de l’or[^\n]*📈 achat à \$4010\.00/);
-  assert.match(all, /4 trades clôturés/);
-  assert.match(all, /1 nouvelle position/);
+  assert.match(all, /Gold season[^\n]*📈 buy at \$4010\.00/);
+  assert.match(all, /4 trades closed/);
+  assert.match(all, /1 new position/);
 });
 
 test('mode FTMO seul : le groupe ne reçoit que les messages du compte FTMO', async () => {

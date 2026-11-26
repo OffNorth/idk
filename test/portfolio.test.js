@@ -44,6 +44,6 @@ test('portefeuille perso : ouverture au premier passage, un calcul par jour apr√
   await pp.update(cfg, store, { fetcher, now: t3 });
   const st = store.loadJson(pp.FILE, null);
   assert.ok(st.value > 0);
-  assert.match(pp.report(cfg, store), /Portefeuille perso \(simul√©\)/);
+  assert.match(pp.report(cfg, store), /Personal portfolio \(simulated\)/);
   assert.ok(pp.view(store).sleeves.length === 5);
 });

@@ -38,7 +38,7 @@ function liveChart(store, cfg, marketId = 'gold') {
     {
       baseline: market.startCapital,
       title: `Portefeuille ${market.name} · ${money(total)} (${pct((total / start - 1) * 100)})`,
-      subtitle: `Paper trading, gains réinvestis · ${strat.length} stratégies × ${money(market.startCapital)}${st.since ? ` depuis le ${date(st.since)}` : ''} · prix ${st.price ? money(st.price) : '?'}`,
+      subtitle: `Paper trading, gains reinvested · ${strat.length} strategies × ${money(market.startCapital)}${st.since ? ` since ${date(st.since)}` : ''} · price ${st.price ? money(st.price) : '?'}`,
       legend: order.map(({ r }) => ({
         label: r.strategy.name, rgb: byId.get(r.strategy.id).color.rgb, dash: byId.get(r.strategy.id).color.dash, reference: r.strategy.id === 'hold',
         value: pct(r.returnPct), valueColor: r.returnPct > 0 ? THEME.up : r.returnPct < 0 ? THEME.down : THEME.text,
@@ -46,8 +46,8 @@ function liveChart(store, cfg, marketId = 'gold') {
     },
   );
   const lines = [
-    `<b>📈 Portefeuille ${market.emoji} ${esc(market.name)}</b> <i>(simulation, gains réinvestis)</i>`,
-    `${strat.length} stratégies × ${money(market.startCapital)}${st.since ? ` depuis le ${date(st.since)}` : ''}`,
+    `<b>📈 Portfolio ${market.emoji} ${esc(market.name)}</b> <i>(simulation, gains reinvested)</i>`,
+    `${strat.length} strategies × ${money(market.startCapital)}${st.since ? ` since ${date(st.since)}` : ''}`,
     `Valeur : <b>${money(total)}</b> (${pct((total / start - 1) * 100)}) · prix ${st.price ? money(st.price) : '?'}`,
     '',
     ...order.map(({ r, color }) =>
@@ -71,7 +71,7 @@ async function loadHistory(marketId, cacheDir, fromYear = 2021) {
   if (marketId === 'spx') {
     const { cachedYahoo } = require('./yahoo');
     const d = (await cachedYahoo(cacheDir, '^GSPC', '1d')).filter((k) => k.c > 0);
-    return { '1d': d, daily: d, fx: null, vix: await cachedYahoo(cacheDir, '^VIX', '1d').catch(() => null), aux: await loadAux(cacheDir, 'nas100'), source: 'indice ^GSPC, Yahoo Finance' };
+    return { '1d': d, daily: d, fx: null, vix: await cachedYahoo(cacheDir, '^VIX', '1d').catch(() => null), aux: await loadAux(cacheDir, 'nas100'), source: '^GSPC index, Yahoo Finance' };
   }
   if (marketId === 'eurusd') {
     const { cachedYahoo } = require('./yahoo');
@@ -82,7 +82,7 @@ async function loadHistory(marketId, cacheDir, fromYear = 2021) {
     const { cachedYahoo } = require('./yahoo');
     const d = await cachedYahoo(cacheDir, '^NDX', '1d');
     const y = (s) => cachedYahoo(cacheDir, s, '1d').catch(() => null);
-    return { '1d': d, daily: d, fx: null, vix: await y('^VIX'), aux: await loadAux(cacheDir, 'nas100'), source: 'indice ^NDX, Yahoo Finance' };
+    return { '1d': d, daily: d, fx: null, vix: await y('^VIX'), aux: await loadAux(cacheDir, 'nas100'), source: '^NDX index, Yahoo Finance' };
   }
   const hourly = await loadHourly(cacheDir);
   const fx = aggregate(await loadHourly(cacheDir, { symbol: 'EURUSDT' }), TF_SEC['1d']);
@@ -90,7 +90,7 @@ async function loadHistory(marketId, cacheDir, fromYear = 2021) {
   const { cachedYahoo } = require('./yahoo');
   const y = (s) => cachedYahoo(cacheDir, s, '1d').catch(() => null);
   const aux = await loadAux(cacheDir, 'gold');
-  return { aux, vix: await y('^VIX'), '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': d, daily: d, fx, source: 'PAXG, archive Binance' };
+  return { aux, vix: await y('^VIX'), '1h': hourly, '6h': aggregate(hourly, TF_SEC['6h']), '1d': d, daily: d, fx, source: 'PAXG, Binance archive' };
 }
 
 /**
@@ -124,7 +124,7 @@ async function simulateHistory(cfg, { marketId = 'gold', fromYear, ids = null, c
   });
   const last = data['1d'][data['1d'].length - 1];
   const years = Math.max(0.1, (last.t + 86400 - fromT) / (365.25 * 86400));
-  const fees = `frais ${market.feePct} %/côté${market.financingPct ? ` + financement ${market.financingPct} %/an` : ''}`;
+  const fees = `fees ${market.feePct}%/side${market.financingPct ? ` + financing ${market.financingPct}%/yr` : ''}`;
   for (const x of results) x.stats = tradeStats(x.r, market.startCapital, years);
   return { market, year, last, years, fees, source: data.source, results };
 }
@@ -138,11 +138,11 @@ async function historyChart(cfg, opts = {}) {
     {
       baseline: market.startCapital,
       log: years > 8,
-      title: `${market.name} · historique simulé ${year} → ${date(last.t)}`,
-      subtitle: `Gains réinvestis, ${fees} · départ ${money(market.startCapital)} par stratégie${years > 8 ? ' · échelle log' : ''} · ${source}`,
+      title: `${market.name} · simulated history ${year} → ${date(last.t)}`,
+      subtitle: `Gains reinvested, ${fees} · start ${money(market.startCapital)} per strategy${years > 8 ? ' · log scale' : ''} · ${source}`,
       legend: results.map(({ s, r, color, stats }) => ({
         label: s.name, rgb: color.rgb, dash: color.dash, reference: s.id === 'hold',
-        value: `${money(r.equity)} · ${pct(stats.perYear)}/an`, valueColor: stats.perYear > 0 ? THEME.up : stats.perYear < 0 ? THEME.down : THEME.text,
+        value: `${money(r.equity)} · ${pct(stats.perYear)}/yr`, valueColor: stats.perYear > 0 ? THEME.up : stats.perYear < 0 ? THEME.down : THEME.text,
       })),
     },
   );
@@ -150,30 +150,30 @@ async function historyChart(cfg, opts = {}) {
 
   // Légende de la photo (≤ 1 024 caractères) : valeur finale + rendement annuel
   const caption = [
-    `<b>🕰 ${market.emoji} ${esc(market.name)} · historique simulé ${year} → ${date(last.t)}</b>`,
-    `<i>Gains réinvestis, ${fees}. Chaque stratégie part de ${money(market.startCapital)} · ${data.source}</i>`,
+    `<b>🕰 ${market.emoji} ${esc(market.name)} · simulated history ${year} → ${date(last.t)}</b>`,
+    `<i>Gains reinvested, ${fees}. Each strategy starts from ${money(market.startCapital)} · ${data.source}</i>`,
     '',
     ...results.map(({ s, r, color, stats }) =>
-      `${color.emoji} ${esc(s.name)} — <b>${money(r.equity)}</b> (${pct((r.equity / market.startCapital - 1) * 100)}) · <b>${pct(stats.perYear)}/an</b>`),
+      `${color.emoji} ${esc(s.name)} — <b>${money(r.equity)}</b> (${pct((r.equity / market.startCapital - 1) * 100)}) · <b>${pct(stats.perYear)}/yr</b>`),
     '',
-    '<i>Détail par trade dans le message suivant. Résultats passés ≠ résultats futurs.</i>',
+    '<i>Per-trade details in the next message. Past results ≠ future results.</i>',
   ].join('\n').slice(0, 1024);
 
   // Message détaillé : statistiques par trade et par an
   const details = [
-    `<b>📊 ${market.emoji} ${esc(market.name)} · détail ${year} → ${date(last.t)}</b> <i>(${years.toFixed(1)} ans)</i>`,
+    `<b>📊 ${market.emoji} ${esc(market.name)} · details ${year} → ${date(last.t)}</b> <i>(${years.toFixed(1)} years)</i>`,
     ...results.map(({ s, r, color, dd, stats: st }) => {
-      const head = `\n${color.emoji} <b>${esc(s.name)}</b> — ${money(r.equity)} · <b>${pct(st.perYear)}/an</b> · pire baisse −${(dd * 100).toFixed(0)} %`;
-      if (s.id === 'hold') return `${head}\n   acheté au départ et gardé, sans trade`;
-      if (!st.trades) return `${head}\n   aucun trade sur la période`;
+      const head = `\n${color.emoji} <b>${esc(s.name)}</b> — ${money(r.equity)} · <b>${pct(st.perYear)}/yr</b> · worst drawdown −${(dd * 100).toFixed(0)}%`;
+      if (s.id === 'hold') return `${head}\n   bought at the start and held, no trade`;
+      if (!st.trades) return `${head}\n   no trade over the period`;
       return [
         head,
-        `   ${st.trades} trades (${st.perYearTrades.toFixed(0)}/an) · gain moyen <b>${pct(st.avg)}</b> par trade · durée moyenne ${st.days.toFixed(0)} j`,
-        `   ${st.winRate.toFixed(0)} % gagnants (moy. ${pct(st.avgWin)}) · perdants moy. ${pct(st.avgLoss)}${st.best ? ` · meilleur ${pct(st.best)}, pire ${pct(st.worst)}` : ''}`,
+        `   ${st.trades} trades (${st.perYearTrades.toFixed(0)}/yr) · average gain <b>${pct(st.avg)}</b> per trade · average duration ${st.days.toFixed(0)} d`,
+        `   ${st.winRate.toFixed(0)}% winners (avg ${pct(st.avgWin)}) · losers avg ${pct(st.avgLoss)}${st.best ? ` · best ${pct(st.best)}, worst ${pct(st.worst)}` : ''}`,
       ].join('\n');
     }),
     '',
-    '<i>« par an » = rendement annuel moyen composé. Gain moyen par trade = frais inclus.</i>',
+    '<i>"per year" = compound average annual return. Average gain per trade = fees included.</i>',
   ].join('\n');
   return { png, caption, details, results };
 }

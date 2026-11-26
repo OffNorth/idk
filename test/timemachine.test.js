@@ -37,7 +37,7 @@ test('Time Machine : tout gagnant → 100 % de réussite, tout perdant → 0 %, 
   assert.strictEqual(lose.failPct, 100);
   const mix = (seed) => simulate(cfg, store, 'gold', { days: [day(1), day(-1), day(0)], paths: 200, now: NOW, seed }).passPct;
   assert.strictEqual(mix(7), mix(7));
-  assert.match(line(win), /Time Machine \(50 années simulées\) : réussite <b>100 %<\/b>/);
+  assert.match(line(win), /Time Machine \(50 simulated years\): pass <b>100%<\/b>/);
 });
 
 test('Time Machine : compte financé → part des comptes encore en vie', () => {
@@ -46,7 +46,7 @@ test('Time Machine : compte financé → part des comptes encore en vie', () => 
   const state = { attempt: 3, phase: 'funded', capital: 100000, balance: 100000, peak: 100000, dayPnl: {}, days: [] };
   const r = simulate(cfg, store, 'gold', { days: [day(-1)], paths: 20, now: NOW, seed: 1, state });
   assert.strictEqual(r.alive[365], 0);
-  assert.match(line(r), /compte financé encore en vie/);
+  assert.match(line(r), /funded account still alive/);
 });
 
 test('Time Machine : données réelles (src/mcDays.json) et rapport /timemachine', () => {
@@ -56,5 +56,5 @@ test('Time Machine : données réelles (src/mcDays.json) et rapport /timemachine
   const { simulate } = require('../src/timeMachine');
   const r = simulate(cfg, store, 'gold', { paths: 30, now: NOW, seed: 3 });
   assert.strictEqual(r.pass + r.daily + r.maxloss + r.open, 30);
-  assert.match(require('../src/timeMachine').report(cfg, store), /Time Machine[\s\S]*Réussite \d+ %/);
+  assert.match(require('../src/timeMachine').report(cfg, store), /Time Machine[\s\S]*Pass \d+%/);
 });

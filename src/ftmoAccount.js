@@ -33,7 +33,7 @@ const MICRO = {
  * 3 000 $, 500 $ au moins, 90 % pour le trader.
  */
 const lucidProgram = (capital, cfg = {}) => ({
-  key: `lucid${Math.round(capital / 1000)}k`, label: 'Évaluation LucidFlex', firm: 'Lucid', steps: 1, target: 6, daily: Infinity,
+  key: `lucid${Math.round(capital / 1000)}k`, label: 'LucidFlex evaluation', firm: 'Lucid', steps: 1, target: 6, daily: Infinity,
   maxUsd: capital > 75_000 ? 3000 : 2000, lockAt: 100, eod: true, bestDay: cfg.lucidConsistency ?? 40, minDays: 2, contracts: true,
   maxContracts: capital > 75_000 ? 60 : 40, levCap: null, split: 90,
   payout: { rule: 'lucid', cycleDays: 5, minDay: cfg.lucidPayoutMinDay ?? 150, share: 0.5, cap: capital > 75_000 ? 3000 : 2000, min: 500 },
@@ -49,7 +49,7 @@ const LUCID_FUNDED_FILE = 'lucid-funded.json';
 function accountOf(cfg, id = 'gold') {
   if (id === 'lucidf') {
     const L = accountOf(cfg, 'lucid');
-    return { ...L, id: 'lucidf', label: `${L.label} financé`, file: LUCID_FUNDED_FILE, fundedOnly: true, enabled: L.enabled && !!cfg.lucidParallel };
+    return { ...L, id: 'lucidf', label: `${L.label} funded`, file: LUCID_FUNDED_FILE, fundedOnly: true, enabled: L.enabled && !!cfg.lucidParallel };
   }
   if (id === 'lucid') {
     // Mêmes stratégies et mêmes risques que le compte FTMO combiné (× LUCID_RISK_MUL), règles et contrats Lucid
@@ -79,7 +79,7 @@ function accountOf(cfg, id = 'gold') {
   if (cfg.ftmoCombined) {
     // Compte unique or + Nasdaq (npm run ftmo-combo) : chaque marché garde son propre risque par trade
     return {
-      id: 'gold', firm: 'FTMO', label: 'Or + Nasdaq + EUR/USD', emoji: '🌍', file: 'ftmo.json', enabled: cfg.ftmoEnabled,
+      id: 'gold', firm: 'FTMO', label: 'Gold + Nasdaq + EUR/USD', emoji: '🌍', file: 'ftmo.json', enabled: cfg.ftmoEnabled,
       strategies: [...cfg.ftmoStrategies, ...cfg.ftmoNasStrategies], risk: cfg.ftmoRisk,
       // Stratégies intraday (tf ≠ 1d) : risque propre (FTMO_INTRADAY_RISK_PCT), plus petit que celui des journalières
       // × FTMO_RISK_MUL (1,25 : challenge ≈ 2–3 semaines plus rapide, npm run speed)
@@ -94,7 +94,7 @@ function accountOf(cfg, id = 'gold') {
       },
     };
   }
-  return { id: 'gold', label: 'Or', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk, riskOf: () => cfg.ftmoRisk * (cfg.ftmoRiskMul ?? 1) };
+  return { id: 'gold', label: 'Gold', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk, riskOf: () => cfg.ftmoRisk * (cfg.ftmoRiskMul ?? 1) };
 }
 /** Comptes FTMO actifs. */
 const ftmoAccounts = (cfg) => ['nas100', 'gold', 'lucidf', 'lucid'].map((id) => accountOf(cfg, id)).filter((a) => a.enabled);
@@ -108,9 +108,9 @@ const TARGET = { 1: 10, 2: 5 };
  *           meilleur jour ≤ 50 % du gain total
  */
 const PROGRAMS = {
-  '2step': { label: 'Challenge 2 étapes', steps: 2, daily: 5, max: 10, trailing: false, bestDay: 0, levCap: null },
-  swing: { label: 'Challenge 2 étapes Swing', steps: 2, daily: 5, max: 10, trailing: false, bestDay: 0, levCap: { gold: 10, nas100: 10, spx: 10, eurusd: 30 } },
-  '1step': { label: 'Challenge 1 étape', steps: 1, daily: 3, max: 10, trailing: true, bestDay: 50, levCap: null },
+  '2step': { label: '2-step challenge', steps: 2, daily: 5, max: 10, trailing: false, bestDay: 0, levCap: null },
+  swing: { label: '2-step Swing challenge', steps: 2, daily: 5, max: 10, trailing: false, bestDay: 0, levCap: { gold: 10, nas100: 10, spx: 10, eurusd: 30 } },
+  '1step': { label: '1-step challenge', steps: 1, daily: 3, max: 10, trailing: true, bestDay: 50, levCap: null },
 };
 const programOf = (cfg) => PROGRAMS[cfg.ftmoProgram] || PROGRAMS['2step'];
 
@@ -145,7 +145,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     if ((s.program || '2step') !== PKEY) {
       archive(s);
       const next = fresh((s.attempt || 0) + 1);
-      next.history = [...(s.history || []), { attempt: s.attempt, phase: s.phase, outcome: `arrêté (passage au ${P.label.toLowerCase()})`, at: Math.floor(Date.now() / 1000), balance: s.balance }].slice(-20);
+      next.history = [...(s.history || []), { attempt: s.attempt, phase: s.phase, outcome: `stopped (switch to ${P.label.toLowerCase()})`, at: Math.floor(Date.now() / 1000), balance: s.balance }].slice(-20);
       return next;
     }
     return s;
@@ -359,7 +359,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           s.peak = Math.max(s.peak ?? s.capital, s.balance);
           s.dayPnl = s.dayPnl || {};
           s.dayPnl[s.day] = (s.dayPnl[s.day] || 0) + pnl;
-          const done = { ...piece, exit: target, exitT: t, pnl, reason: `objectif partiel +${lv} R` };
+          const done = { ...piece, exit: target, exitT: t, pnl, reason: `partial target +${lv} R` };
           s.closed.push(done);
           out.push({ type: 'trade', s, p: done });
           p.risk = (p.risk || 0) * (1 - part / p.notional);
@@ -380,15 +380,15 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       }
       if (px && p.sl && (p.side === 'long' ? px <= p.sl : px >= p.sl)) {
         // Stop suiveur : ordre stop posé au niveau ; stop initial : au cours actuel (déjà au-delà, prudent en cas de trou)
-        if (p.trailing) closeOne(s, k, p.sl, t, 'stop suiveur (compte FTMO)', out);
-        else closeOne(s, k, px, t, 'stop loss (compte FTMO)', out);
+        if (p.trailing) closeOne(s, k, p.sl, t, 'trailing stop (FTMO account)', out);
+        else closeOne(s, k, px, t, 'stop loss (FTMO account)', out);
         continue;
       }
       if (!acc) continue; // stratégie inconnue du paper trading : rien à comparer
       if (acc.position && Math.abs(acc.position.entryT - p.entryT) < 2) continue;
       const tr = [...(acc.closed || [])].reverse().find((c) => Math.abs(c.entryT - p.entryT) < 2);
-      if (tr) closeOne(s, k, tr.exit, tr.exitT, `${tr.reason} (réconciliation)`, out);
-      else if (px) closeOne(s, k, px, t, 'réconciliation (position paper introuvable)', out);
+      if (tr) closeOne(s, k, tr.exit, tr.exitT, `${tr.reason} (reconciliation)`, out);
+      else if (px) closeOne(s, k, px, t, 'reconciliation (paper position not found)', out);
     }
   }
 
@@ -537,14 +537,14 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       const dFloor = dailyFloor(s);
       const mFloor = maxFloor(s);
       if (eq <= dFloor || eq <= mFloor) {
-        closeAll(s, prices, t, `règle ${A.firm || 'FTMO'}`, out);
+        closeAll(s, prices, t, `${A.firm || 'FTMO'} rule`, out);
         const why = eq <= mFloor
-          ? (P.maxUsd ? `perte maximale (${P.maxUsd.toLocaleString('fr-FR')} $ sous le plus haut solde de clôture) atteinte` : `perte maximale (−${P.max} %${P.trailing ? ' depuis le plus haut' : ''}) atteinte`)
-          : `perte du jour (−${P.daily} %) atteinte`;
+          ? (P.maxUsd ? `max loss ($${P.maxUsd.toLocaleString('en-US')} below the highest closing balance) hit` : `max loss (−${P.max}%${P.trailing ? ' from the high' : ''}) hit`)
+          : `daily loss (−${P.daily}%) hit`;
         out.push({ type: 'fail', s: { ...s }, why });
         archive(s);
         const next = fresh(s.attempt + 1);
-        next.history = [...(s.history || []), { attempt: s.attempt, phase: s.phase, outcome: 'échec', why, at: t, balance: s.balance }].slice(-20);
+        next.history = [...(s.history || []), { attempt: s.attempt, phase: s.phase, outcome: 'failed', why, at: t, balance: s.balance }].slice(-20);
         next.waitDay = dayOf(t);
         save(next);
         return out;
@@ -554,7 +554,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       const bestOk = !(P.bestDay > 0) || Math.max(0, ...Object.values(s.dayPnl || {})) <= ((s.balance - s.capital) * P.bestDay) / 100;
       if (s.balance >= goal && !Object.keys(s.open).length && s.days.length >= (P.minDays ?? 4) && bestOk) {
         const done = s.phase;
-        s.history = [...(s.history || []), { attempt: s.attempt, phase: done, outcome: 'réussie', at: t, balance: s.balance, days: s.days.length }].slice(-20);
+        s.history = [...(s.history || []), { attempt: s.attempt, phase: done, outcome: 'passed', at: t, balance: s.balance, days: s.days.length }].slice(-20);
         if (!(A.id === 'lucid' && cfg.lucidParallel && !(done === 1 && P.steps === 2))) out.push({ type: 'pass', s: { ...s }, phase: done });
         if (done === 1 && P.steps === 2) {
           archive(s);
@@ -583,17 +583,17 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       // Compte financé : mêmes limites de perte ; on suit le gain (partage 80 %)
       const eq = equity(s, prices);
       if (eq <= dailyFloor(s) || eq <= maxFloor(s)) {
-        closeAll(s, prices, t, `règle ${A.firm || 'FTMO'}`, out);
-        const paidTxt = s.funded?.traderPaid ? ` après ${s.funded.payouts.length} retrait${s.funded.payouts.length > 1 ? 's' : ''} (${Math.round(s.funded.traderPaid).toLocaleString('fr-FR')} $ pour toi)` : ' sans retrait';
-        out.push({ type: 'fail', s: { ...s }, why: `compte financé perdu (limite de perte)${paidTxt}` });
+        closeAll(s, prices, t, `${A.firm || 'FTMO'} rule`, out);
+        const paidTxt = s.funded?.traderPaid ? ` after ${s.funded.payouts.length} payout${s.funded.payouts.length > 1 ? 's' : ''} ($${Math.round(s.funded.traderPaid).toLocaleString('en-US')} for you)` : ' with no payout';
+        out.push({ type: 'fail', s: { ...s }, why: `funded account lost (loss limit)${paidTxt}` });
         archive(s);
         if (A.fundedOnly) {
           // Compte financé à part : en sommeil jusqu'à la prochaine évaluation réussie
-          save({ dormant: true, program: PKEY, attempt: s.attempt, capital: s.capital, balance: s.balance, history: [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'perdu', at: t, balance: s.balance, payouts: s.funded?.payouts?.length || 0, traderPaid: Math.round(s.funded?.traderPaid || 0) }].slice(-20) });
+          save({ dormant: true, program: PKEY, attempt: s.attempt, capital: s.capital, balance: s.balance, history: [...(s.history || []), { attempt: s.attempt, phase: 'funded', outcome: 'lost', at: t, balance: s.balance, payouts: s.funded?.payouts?.length || 0, traderPaid: Math.round(s.funded?.traderPaid || 0) }].slice(-20) });
           return out;
         }
         const next = fresh(s.attempt + 1);
-        next.history = [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'perdu', at: t, balance: s.balance, payouts: s.funded?.payouts?.length || 0, traderPaid: Math.round(s.funded?.traderPaid || 0) }].slice(-20);
+        next.history = [...(s.history || []), { attempt: s.attempt, phase: 'funded', outcome: 'lost', at: t, balance: s.balance, payouts: s.funded?.payouts?.length || 0, traderPaid: Math.round(s.funded?.traderPaid || 0) }].slice(-20);
         next.waitDay = dayOf(t);
         save(next);
         return out;
@@ -654,11 +654,11 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     const gain = s.balance - s.capital;
     const best = bestDayOf(s);
     const blocked = [];
-    if (targetPct(s) !== null && s.balance < s.capital * (1 + targetPct(s) / 100)) blocked.push(`objectif +${targetPct(s)} % pas atteint`);
-    if (P.bestDay > 0 && gain > 0 && best > (gain * P.bestDay) / 100) blocked.push(`meilleur jour ${Math.round((best / gain) * 100)} % du gain > ${P.bestDay} %`);
-    if (s.days.length < (P.minDays ?? 4)) blocked.push(`${s.days.length} jour(s) de trading sur ${P.minDays ?? 4}`);
+    if (targetPct(s) !== null && s.balance < s.capital * (1 + targetPct(s) / 100)) blocked.push(`+${targetPct(s)}% target not reached`);
+    if (P.bestDay > 0 && gain > 0 && best > (gain * P.bestDay) / 100) blocked.push(`best day ${Math.round((best / gain) * 100)}% of the gain > ${P.bestDay}%`);
+    if (s.days.length < (P.minDays ?? 4)) blocked.push(`${s.days.length} trading day(s) out of ${P.minDays ?? 4}`);
     const was = { attempt: s.attempt, phase: s.phase, balance: s.balance, gainPct: (gain / s.capital) * 100, blocked };
-    s.history = [...(s.history || []), { attempt: s.attempt, phase: s.phase, outcome: 'réussite forcée (/financer)', ...(blocked.length ? { why: blocked.join(', ') } : {}), at: t, balance: s.balance, days: s.days.length }].slice(-20);
+    s.history = [...(s.history || []), { attempt: s.attempt, phase: s.phase, outcome: 'forced pass (/financer)', ...(blocked.length ? { why: blocked.join(', ') } : {}), at: t, balance: s.balance, days: s.days.length }].slice(-20);
     archive(s);
     Object.assign(s, { phase: 'funded', balance: s.capital, dayStart: s.capital, days: [], closed: [], startedAt: t, funded: { since: t, forced: true }, peak: s.capital, eodPeak: s.capital, dayPnl: {}, waitDay: null });
     save(s);
@@ -676,18 +676,18 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       if (asleep()) return { was: null, asleep: true, s };
       // Compte financé à part : fermé et mis en sommeil (une nouvelle évaluation réussie le relancera)
       const nOpen0 = Object.keys(s.open || {}).length;
-      if (!asleep()) closeAll(s, prices, t, 'remise à zéro (/reset)');
+      if (!asleep()) closeAll(s, prices, t, 'reset (/reset)');
       archive(s);
       const was0 = { attempt: s.attempt, phase: s.phase, balance: s.balance, gainPct: ((s.balance - s.capital) / s.capital) * 100, nOpen: nOpen0 };
-      save({ dormant: true, program: PKEY, attempt: s.attempt, capital: s.capital, balance: s.balance, history: [...(s.history || []), { attempt: s.attempt, phase: 'financé', outcome: 'réinitialisé (/reset)', at: t, balance: s.balance }].slice(-20) });
+      save({ dormant: true, program: PKEY, attempt: s.attempt, capital: s.capital, balance: s.balance, history: [...(s.history || []), { attempt: s.attempt, phase: 'funded', outcome: 'reset (/reset)', at: t, balance: s.balance }].slice(-20) });
       return { was: was0, s: { ...fresh(s.attempt), dormant: true } };
     }
     const nOpen = Object.keys(s.open || {}).length;
-    closeAll(s, prices, t, 'remise à zéro (/reset)');
+    closeAll(s, prices, t, 'reset (/reset)');
     const was = { attempt: s.attempt, phase: s.phase, balance: s.balance, gainPct: ((s.balance - s.capital) / s.capital) * 100, nOpen };
     archive(s);
     const next = fresh((s.attempt || 0) + 1);
-    next.history = [...(s.history || []), { attempt: s.attempt, phase: s.phase, outcome: 'réinitialisé (/reset)', at: t, balance: s.balance, days: (s.days || []).length }].slice(-20);
+    next.history = [...(s.history || []), { attempt: s.attempt, phase: s.phase, outcome: 'reset (/reset)', at: t, balance: s.balance, days: (s.days || []).length }].slice(-20);
     save(next);
     return { was, s: next };
   }
@@ -699,29 +699,29 @@ function createFtmo({ cfg, store, account = 'gold' }) {
 function financerReport(cfg, store, arg = '') {
   const a0 = String(arg || '').trim().toLowerCase();
   const accts = ftmoAccounts(cfg).filter((a) => (a0 === 'lucid' ? a.firm === 'Lucid' : a0 === 'ftmo' ? a.firm !== 'Lucid' : true));
-  if (!accts.length) return 'Aucun compte simulé actif. Usage : /financer · /financer ftmo · /financer lucid';
+  if (!accts.length) return 'No active simulated account. Usage: /financer · /financer ftmo · /financer lucid';
   const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
   const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const lines = ['🏦 <b>Passage en compte financé (simulation)</b>'];
+  const lines = ['🏦 <b>Switch to funded account (simulation)</b>'];
   for (const a of accts) {
     // Lucid en parallèle : l'évaluation continue, c'est le compte financé à part qui démarre directement
     if (a.id === 'lucid' && cfg.lucidParallel) continue;
     const r = createFtmo({ cfg, store, account: a.id }).forceFunded();
     const name = `${a.firm || 'FTMO'} ${a.emoji} ${esc(a.label)}`;
     if (r.direct) {
-      lines.push(`• ${name} : compte financé lancé directement (${money(r.s.capital)}), en parallèle de l’évaluation Lucid et de FTMO`);
+      lines.push(`• ${name}: funded account started directly (${money(r.s.capital)}), alongside the Lucid evaluation and FTMO`);
       continue;
     }
     if (r.already) {
-      lines.push(`• ${name} : déjà en compte financé`);
+      lines.push(`• ${name}: already a funded account`);
       continue;
     }
     const w = r.was;
-    lines.push(`• ${name} : évaluation n° ${w.attempt} arrêtée à ${money(w.balance)} (${w.gainPct >= 0 ? '+' : ''}${w.gainPct.toFixed(2)} %)${w.blocked.length ? ` — en vrai elle ne serait pas validée : ${esc(w.blocked.join(', '))}` : ''}`);
+    lines.push(`• ${name}: evaluation #${w.attempt} stopped at ${money(w.balance)} (${w.gainPct >= 0 ? '+' : ''}${w.gainPct.toFixed(2)}%)${w.blocked.length ? ` — for real it would not be validated: ${esc(w.blocked.join(', '))}` : ''}`);
     const nOpen = Object.keys(r.s.open).length;
-    lines.push(`  → compte financé de ${money(r.s.capital)}, risque normal (plus d’objectif), retraits simulés${nOpen ? `, ${nOpen} position(s) ouverte(s) gardée(s)` : ''}`);
+    lines.push(`  → funded account of ${money(r.s.capital)}, normal risk (no more target), simulated payouts${nOpen ? `, ${nOpen} open position(s) kept` : ''}`);
   }
-  lines.push('', '<i>Simulation : les trades de l’évaluation restent dans l’archive.</i>');
+  lines.push('', '<i>Simulation: the evaluation trades stay in the archive.</i>');
   return lines.join('\n');
 }
 
@@ -730,27 +730,27 @@ function resetReport(cfg, store, arg = '') {
   const words = String(arg || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
   const which = words.includes('lucid') ? 'lucid' : words.includes('ftmo') ? 'ftmo' : 'tous';
   const accts = ftmoAccounts(cfg).filter((a) => (which === 'lucid' ? a.firm === 'Lucid' : which === 'ftmo' ? a.firm !== 'Lucid' : true));
-  if (!accts.length) return 'Aucun compte simulé actif.';
+  if (!accts.length) return 'No active simulated account.';
   const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
   const names = accts.map((a) => `${a.firm || 'FTMO'} ${a.emoji} ${esc(a.label)}`).join(', ');
   if (!words.includes('ok')) {
-    return [`♻️ <b>Remise à zéro</b> : ${names}`,
-      'Nouveau challenge au capital de départ ; positions ouvertes fermées au dernier cours. <b>Gardé</b> : historique des challenges, trades archivés (site, /export), paper trading, IA.',
-      `Pour confirmer : <code>/reset ${which === 'tous' ? '' : `${which} `}ok</code>`].join('\n');
+    return [`♻️ <b>Reset</b>: ${names}`,
+      'New challenge at the starting capital; open positions closed at the last price. <b>Kept</b>: challenge history, archived trades (site, /export), paper trading, AI.',
+      `To confirm: <code>/reset ${which === 'tous' ? '' : `${which} `}ok</code>`].join('\n');
   }
   // Dernier cours connu de chaque marché (fichiers du paper trading)
   const prices = {};
   for (const m of require('./markets').allMarkets(cfg)) { const p = store.loadJson(m.file, {})?.lastPrice; if (p) prices[m.id] = p; }
-  const lines = ['♻️ <b>Comptes simulés remis à zéro</b> (stats gardées)'];
+  const lines = ['♻️ <b>Simulated accounts reset</b> (stats kept)'];
   for (const a of accts) {
     const r = createFtmo({ cfg, store, account: a.id }).restart(prices);
     const w = r.was;
     if (a.fundedOnly) {
-      lines.push(r.asleep ? `• ${a.firm} ${a.emoji} ${esc(a.label)} : déjà en sommeil` : `• ${a.firm} ${a.emoji} ${esc(a.label)} : arrêté à ${money(w.balance)} (${w.gainPct >= 0 ? '+' : ''}${w.gainPct.toFixed(2)} %)${w.nOpen ? `, ${w.nOpen} position(s) fermée(s)` : ''} → en sommeil (/financer lucid pour le relancer)`);
+      lines.push(r.asleep ? `• ${a.firm} ${a.emoji} ${esc(a.label)}: already asleep` : `• ${a.firm} ${a.emoji} ${esc(a.label)}: stopped at ${money(w.balance)} (${w.gainPct >= 0 ? '+' : ''}${w.gainPct.toFixed(2)}%)${w.nOpen ? `, ${w.nOpen} position(s) closed` : ''} → asleep (/financer lucid to restart it)`);
       continue;
     }
-    lines.push(`• ${a.firm || 'FTMO'} ${a.emoji} ${esc(a.label)} : ${w.phase === 'funded' ? 'compte financé' : `challenge n° ${w.attempt}`} arrêté à ${money(w.balance)} (${w.gainPct >= 0 ? '+' : ''}${w.gainPct.toFixed(2)} %)${w.nOpen ? `, ${w.nOpen} position(s) fermée(s)` : ''} → challenge n° ${r.s.attempt} à ${money(r.s.capital)}`);
+    lines.push(`• ${a.firm || 'FTMO'} ${a.emoji} ${esc(a.label)}: ${w.phase === 'funded' ? 'funded account' : `challenge #${w.attempt}`} stopped at ${money(w.balance)} (${w.gainPct >= 0 ? '+' : ''}${w.gainPct.toFixed(2)}%)${w.nOpen ? `, ${w.nOpen} position(s) closed` : ''} → challenge #${r.s.attempt} at ${money(r.s.capital)}`);
   }
   return lines.join('\n');
 }
@@ -764,30 +764,30 @@ function dailyReport(cfg, store, arg = '') {
   const nDays = Math.min(30, Math.max(1, Number(words.find((w) => /^\d+$/.test(w))) || 7));
   const which = words.includes('lucid') ? 'lucid' : words.includes('ftmo') ? 'ftmo' : 'tous';
   const accts = ftmoAccounts(cfg).filter((a) => (which === 'lucid' ? a.firm === 'Lucid' : which === 'ftmo' ? a.firm !== 'Lucid' : true));
-  if (!accts.length) return 'Aucun compte simulé actif.';
+  if (!accts.length) return 'No active simulated account.';
   const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const usd = (v) => `${v < -0.004 ? '−' : v > 0.004 ? '+' : ''}$${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   const pct = (v, cap) => `${v < 0 ? '−' : '+'}${Math.abs((v / cap) * 100).toFixed(2)} %`;
   const dot = (v) => (v > 0.5 ? '🟢' : v < -0.5 ? '🔴' : '⚪');
   const prices = {};
   for (const m of require('./markets').allMarkets(cfg)) { const px = store.loadJson(m.file, {})?.lastPrice; if (px) prices[m.id] = px; }
-  const lines = ['📅 <b>PnL du jour</b> (comptes simulés)'];
+  const lines = ['📅 <b>Daily PnL</b> (simulated accounts)'];
   for (const a of accts) {
     const book = createFtmo({ cfg, store, account: a.id });
-    if (book.asleep()) { lines.push('', `${a.firm} ${a.emoji} <b>${esc(a.label)}</b> : en sommeil (relancé à la prochaine évaluation réussie ou par /financer lucid)`); continue; }
+    if (book.asleep()) { lines.push('', `${a.firm} ${a.emoji} <b>${esc(a.label)}</b>: asleep (restarts at the next passed evaluation or with /financer lucid)`); continue; }
     const st = book.status(prices);
     const s = st.s;
     const realized = s.dayPnl?.[s.day] || 0;
     const total = st.equity - st.dayStart; // depuis l'ouverture de la journée (réalisé + latent)
     const wins = st.today.filter((x) => x.pnl > 0).length;
     const nOpen = Object.keys(s.open).length;
-    lines.push('', `${a.firm || 'FTMO'} ${a.emoji} <b>${esc(a.label)}</b> · ${s.phase === 'funded' ? 'compte financé' : `challenge n° ${s.attempt}`} · journée du ${esc(s.day || '—')}`);
-    lines.push(`${dot(total)} <b>${usd(total)}</b> (${pct(total, s.capital)}) · réalisé ${usd(realized)} · latent ${usd(st.unrealized)}${nOpen ? ` (${nOpen} position(s))` : ''}`);
-    lines.push(`Trades clôturés aujourd'hui : ${st.today.length}${st.today.length ? ` (${wins} gagnant(s))` : ''}`);
+    lines.push('', `${a.firm || 'FTMO'} ${a.emoji} <b>${esc(a.label)}</b> · ${s.phase === 'funded' ? 'funded account' : `challenge #${s.attempt}`} · trading day ${esc(s.day || '—')}`);
+    lines.push(`${dot(total)} <b>${usd(total)}</b> (${pct(total, s.capital)}) · realized ${usd(realized)} · unrealized ${usd(st.unrealized)}${nOpen ? ` (${nOpen} position(s))` : ''}`);
+    lines.push(`Trades closed today: ${st.today.length}${st.today.length ? ` (${wins} winner(s))` : ''}`);
     for (const x of st.today.slice(-8)) lines.push(`  ${x.pnl > 0 ? '✅' : '❌'} ${esc(x.market)} ${esc(x.sid)} ${x.side === 'long' ? 'achat' : 'vente'} ${usd(x.pnl)}`);
     if (Number.isFinite(st.dayFloor)) {
       const room = Math.max(0, st.equity - st.dayFloor);
-      lines.push(`Perte du jour : encore $${Math.round(room).toLocaleString('en-US')} avant la limite (${st.program.daily} %, plancher $${Math.round(st.dayFloor).toLocaleString('en-US')})`);
+      lines.push(`Daily loss: $${Math.round(room).toLocaleString('en-US')} left before the limit (${st.program.daily}%, floor $${Math.round(st.dayFloor).toLocaleString('en-US')})`);
     }
     // Gestion de la journée pendant l'évaluation (arrêt après un gain ou N pertes)
     const lucid = a.firm === 'Lucid';
@@ -796,17 +796,17 @@ function dailyReport(cfg, store, arg = '') {
     if (s.phase !== 'funded' && (maxL > 0 || capPct > 0)) {
       const cap = ((capPct ?? 0) / 100) * s.capital * ((st.program.target ?? TARGET[s.phase] ?? 10) / 100);
       const done = (maxL > 0 && (s.dayLosses || 0) >= maxL) || (cap > 0 && s.balance - st.dayStart >= cap);
-      lines.push(`Gestion de la journée : ${done ? '⏸ journée finie (plus de nouveaux trades aujourd’hui)' : 'ouverte'}${cap > 0 ? ` · arrêt à +$${Math.round(cap).toLocaleString('en-US')}` : ''}${maxL > 0 ? ` ou après ${maxL} perte(s) (${s.dayLosses || 0} aujourd’hui)` : ''}`);
+      lines.push(`Day management: ${done ? '⏸ day over (no new trades today)' : 'open'}${cap > 0 ? ` · stop at +$${Math.round(cap).toLocaleString('en-US')}` : ''}${maxL > 0 ? ` or after ${maxL} loss(es) (${s.dayLosses || 0} today)` : ''}`);
     }
     const days = Object.entries(s.dayPnl || {}).filter(([d]) => d !== s.day).sort((p, q) => (p[0] < q[0] ? 1 : -1)).slice(0, nDays);
     if (days.length) {
-      lines.push(`Jours précédents (${days.length}, ce challenge) :`);
+      lines.push(`Previous days (${days.length}, this challenge):`);
       for (const [d, v] of days) lines.push(`  ${dot(v)} ${esc(d)} ${usd(v)}`);
       const best = Math.max(...Object.values(s.dayPnl || {}), 0);
-      if (st.program.bestDay > 0 && s.phase !== 'funded' && s.balance > s.capital) lines.push(`Meilleur jour ${usd(best)} = ${Math.round((best / (s.balance - s.capital)) * 100)} % du gain (règle : ≤ ${st.program.bestDay} %)`);
+      if (st.program.bestDay > 0 && s.phase !== 'funded' && s.balance > s.capital) lines.push(`Best day ${usd(best)} = ${Math.round((best / (s.balance - s.capital)) * 100)}% of the gain (rule: ≤ ${st.program.bestDay}%)`);
     }
   }
-  lines.push('', '<i>Simulation, argent fictif. /pnl lucid · /pnl ftmo · /pnl 30 (jours)</i>');
+  lines.push('', '<i>Simulation, fake money. /pnl lucid · /pnl ftmo · /pnl 30 (days)</i>');
   return lines.join('\n');
 }
 

@@ -5,12 +5,12 @@ const HTML = { parse_mode: 'HTML', link_preview_options: { is_disabled: true } }
 
 function explainTelegramError(err) {
   const d = err?.description || err?.message || String(err);
-  if (/upgraded to a supergroup/i.test(d)) return `${d} → le groupe est devenu un « supergroupe » : son ID a changé (nouvel ID : ${err?.parameters?.migrate_to_chat_id ?? '?'}) ; mets-le dans TELEGRAM_CHANNEL_ID.`;
-  if (/can't parse entities/i.test(d)) return `${d} → message mal formé (HTML) : signale-le pour correction.`;
-  if (err?.error_code === 401 || /unauthorized/i.test(d)) return `${d} → TELEGRAM_BOT_TOKEN invalide (vérifie le token donné par @BotFather).`;
-  if (/chat not found/i.test(d)) return `${d} → TELEGRAM_CHANNEL_ID est faux (utilise @nom_du_canal ou l'ID -100…).`;
+  if (/upgraded to a supergroup/i.test(d)) return `${d} → the group became a "supergroup": its ID changed (new ID: ${err?.parameters?.migrate_to_chat_id ?? '?'}); put it in TELEGRAM_CHANNEL_ID.`;
+  if (/can't parse entities/i.test(d)) return `${d} → malformed message (HTML): report it so it gets fixed.`;
+  if (err?.error_code === 401 || /unauthorized/i.test(d)) return `${d} → invalid TELEGRAM_BOT_TOKEN (check the token given by @BotFather).`;
+  if (/chat not found/i.test(d)) return `${d} → TELEGRAM_CHANNEL_ID is wrong (use @channel_name or the -100… ID).`;
   if (/not enough rights|need administrator|have no rights|not a member|kicked/i.test(d)) {
-    return `${d} → ajoute le bot comme ADMINISTRATEUR du canal avec le droit « Publier des messages ».`;
+    return `${d} → add the bot as an ADMIN of the channel with the "Post messages" right.`;
   }
   return d;
 }
@@ -87,11 +87,11 @@ function createChannel(api, cfg, store, { onError = null, dm = null } = {}) {
 
   /** État des envois au groupe (une ligne, pour /version et /testcanal). */
   function status() {
-    if (!cfg.channelId) return '📬 Groupe : TELEGRAM_CHANNEL_ID non défini → aucun message envoyé';
-    const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} j`; };
+    if (!cfg.channelId) return '📬 Group: TELEGRAM_CHANNEL_ID not set → no message sent';
+    const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} d`; };
     const ok = store.getMeta('channelLastOk');
     const bad = store.getMeta('channelLastError');
-    return `📬 Groupe ${cfg.channelId} : ${ok ? `dernier envoi réussi il y a ${ago(ok)}` : 'aucun envoi réussi enregistré'}${bad && (!ok || bad.at > ok) ? ` · ❌ dernière erreur il y a ${ago(bad.at)} : ${bad.text}` : ''}`;
+    return `📬 Group ${cfg.channelId}: ${ok ? `last successful post ${ago(ok)} ago` : 'no successful post recorded'}${bad && (!ok || bad.at > ok) ? ` · ❌ last error ${ago(bad.at)} ago: ${bad.text}` : ''}`;
   }
 
   /** Le bilan périodique est-il dû (selon SUMMARY_HOURS) ? */
@@ -138,10 +138,10 @@ function createChannel(api, cfg, store, { onError = null, dm = null } = {}) {
         (isGroup && member.status === 'member') ||
         (isGroup && member.status === 'restricted' && member.can_send_messages);
       if (!canPost) {
-        const where = isGroup ? 'du groupe' : 'du canal';
+        const where = isGroup ? 'of the group' : 'of the channel';
         console.error(
-          `❌ Le bot ne peut pas publier dans « ${chat.title} » (type : ${chat.type}, statut du bot : ${member.status}). ` +
-            `Ajoute-le comme ADMINISTRATEUR ${where} avec le droit « Publier des messages ».`,
+          `❌ The bot can't post in "${chat.title}" (type: ${chat.type}, bot status: ${member.status}). ` +
+            `Add it as an ADMIN ${where} with the "Post messages" right.`,
         );
         return false;
       }

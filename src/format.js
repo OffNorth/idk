@@ -12,37 +12,37 @@ function fmtDuration(ms) {
   const h = ms / 3_600_000;
   if (h < 1) return `${Math.round(h * 60)} min`;
   if (h < 48) return `${h.toFixed(1)} h`;
-  return `${Math.round(h / 24)} j`;
+  return `${Math.round(h / 24)} d`;
 }
 
 /** Ouverture ou clôture d'une position simulée. */
 function goldEventMessage(ev) {
   const name = esc(ev.strategy.name);
   const mk = ev.market?.emoji || '🥇';
-  const mn = esc(ev.market?.name || 'Or');
+  const mn = esc(ev.market?.name || 'Gold');
   if (ev.type === 'open' && ev.strategy.id === 'hold') {
     return [
       `${mk} <b>${mn} · ${name}</b>`,
-      `Achat de référence simulé à <b>$${px(ev.pos.entry)}</b> · taille $${ev.pos.size}, gardé sans limite de durée`,
-      `<i>Sert à comparer : une stratégie doit faire mieux que simplement détenir ${ev.market?.id === 'nas100' ? 'l’indice (comme un ETF, sans financement)' : 'l’or'}.</i>`,
+      `Simulated benchmark buy at <b>$${px(ev.pos.entry)}</b> · size $${ev.pos.size}, held with no time limit`,
+      `<i>For comparison: a strategy must beat simply holding ${ev.market?.id === 'nas100' ? 'the index (like an ETF, no financing)' : 'gold'}.</i>`,
     ].join('\n');
   }
   if (ev.type === 'open') {
     const p = ev.pos;
     return [
       `${mk} <b>${mn} · ${name}</b>`,
-      `${p.side === 'long' ? '📈 <b>ACHAT</b> (long)' : '📉 <b>VENTE À DÉCOUVERT</b> (short)'} simulé à <b>$${px(p.entry)}</b> · taille $${p.size}`,
-      `Stop : $${px(p.sl)}${ev.strategy.trail ? ' (suiveur)' : ''} · Objectif : ${p.tp ? `$${px(p.tp)}` : 'signal de sortie'}`,
-      `<i>${ev.rsi != null ? `RSI ${Number(ev.rsi).toFixed(0)} · ` : ""}paper trading, aucun argent réel</i>`,
+      `${p.side === 'long' ? '📈 <b>BUY</b> (long)' : '📉 <b>SELL SHORT</b> (short)'} simulated at <b>$${px(p.entry)}</b> · size $${p.size}`,
+      `Stop: $${px(p.sl)}${ev.strategy.trail ? ' (trailing)' : ''} · Target: ${p.tp ? `$${px(p.tp)}` : 'exit signal'}`,
+      `<i>${ev.rsi != null ? `RSI ${Number(ev.rsi).toFixed(0)} · ` : ""}paper trading, no real money</i>`,
     ].join('\n');
   }
   const t = ev.trade;
   return [
-    `${mk} ${t.pnlUsd >= 0 ? '🟢' : '🔴'} <b>${mn} · ${name}</b> — ${t.side === 'long' ? 'long' : 'short'} clôturé`,
-    `$${px(t.entry)} → $${px(t.exit)} · <b>${signedPct(t.pnlPct)}</b> (${signedUsd(t.pnlUsd)} sur $${t.size})`,
-    `Raison : ${esc(t.reason)} · durée ${fmtDuration((t.exitT - t.entryT) * 1000)} · <i>paper trading, frais inclus</i>`,
+    `${mk} ${t.pnlUsd >= 0 ? '🟢' : '🔴'} <b>${mn} · ${name}</b> — ${t.side === 'long' ? 'long' : 'short'} closed`,
+    `$${px(t.entry)} → $${px(t.exit)} · <b>${signedPct(t.pnlPct)}</b> (${signedUsd(t.pnlUsd)} on $${t.size})`,
+    `Reason: ${esc(t.reason)} · duration ${fmtDuration((t.exitT - t.entryT) * 1000)} · <i>paper trading, fees included</i>`,
     ...(ev.capital !== undefined
-      ? [`Capital de la stratégie : <b>${money(ev.capital)}</b> (${signedPct((ev.capital / ev.start - 1) * 100)} depuis le départ)`]
+      ? [`Strategy capital: <b>${money(ev.capital)}</b> (${signedPct((ev.capital / ev.start - 1) * 100)} since start)`]
       : []),
   ].join('\n');
 }
@@ -56,19 +56,19 @@ function portfolioMessage(gold) {
   const total = strat.reduce((s, r) => s + r.equity, 0);
   const start = gold.start * strat.length;
   const lines = [
-    `<b>📒 Bilan paper trading — ${gold.market?.emoji || '🥇'} ${esc(gold.market?.name || 'Or')}</b> <i>(simulation, gains réinvestis)</i>`,
-    `Prix : ${gold.price ? `$${px(gold.price)}` : '?'} · ${strat.length} stratégies × ${money(gold.start)}`,
-    `Valeur du portefeuille : <b>${money(total)}</b> (${signedPct((total / start - 1) * 100)})`,
+    `<b>📒 Paper trading report — ${gold.market?.emoji || '🥇'} ${esc(gold.market?.name || 'Gold')}</b> <i>(simulation, gains reinvested)</i>`,
+    `Price: ${gold.price ? `$${px(gold.price)}` : '?'} · ${strat.length} strategies × ${money(gold.start)}`,
+    `Portfolio value: <b>${money(total)}</b> (${signedPct((total / start - 1) * 100)})`,
   ];
-  if (ref) lines.push(`Référence achat-conservation : ${money(ref.equity)} (${signedPct(ref.returnPct)})`);
+  if (ref) lines.push(`Buy-and-hold benchmark: ${money(ref.equity)} (${signedPct(ref.returnPct)})`);
   for (const r of [...strat].sort((a, b) => b.equity - a.equity)) {
     const pos = r.position
-      ? `${r.position.side === 'long' ? '📈 long' : '📉 short'} depuis $${px(r.position.entry)} (${signedUsd(r.unrealized)})`
-      : 'pas de position';
+      ? `${r.position.side === 'long' ? '📈 long' : '📉 short'} since $${px(r.position.entry)} (${signedUsd(r.unrealized)})`
+      : 'no position';
     lines.push(
       '',
       `<b>${esc(r.strategy.name)}</b> — ${money(r.equity)} (${signedPct(r.returnPct)})`,
-      `  ${r.trades} trades · ${r.winRate.toFixed(0)}% gagnants${r.profitFactor ? ` · PF ${r.profitFactor.toFixed(2)}` : ''} · ${pos}`,
+      `  ${r.trades} trades · ${r.winRate.toFixed(0)}% winners${r.profitFactor ? ` · PF ${r.profitFactor.toFixed(2)}` : ''} · ${pos}`,
     );
   }
   return lines.join('\n');
@@ -77,18 +77,18 @@ function portfolioMessage(gold) {
 /** Résultat d'un backtest (commande /backtest). */
 function backtestMessage(results, info, cfg) {
   const lines = [
-    `<b>🧪 Backtest or · ${info.days} jours (bougies 1 h)</b>`,
-    `$${info.from.toFixed(0)} → $${info.to.toFixed(0)} · achat-conservation ${signedPct(info.buyHold)}`,
-    `$${cfg.goldSizeUsd} par trade · frais ${cfg.goldFeePct}% par côté`,
+    `<b>🧪 Gold backtest · ${info.days} days (1 h candles)</b>`,
+    `$${info.from.toFixed(0)} → $${info.to.toFixed(0)} · buy-and-hold ${signedPct(info.buyHold)}`,
+    `$${cfg.goldSizeUsd} per trade · fees ${cfg.goldFeePct}% per side`,
     '',
   ];
   for (const { strategy, r } of results) {
     lines.push(
       `<b>${esc(strategy.name)}</b>`,
-      `  ${r.trades} trades · ${r.winRate.toFixed(0)}% gagnants · <b>${signedUsd(r.pnlUsd)}</b> · PF ${r.profitFactor ? r.profitFactor.toFixed(2) : '-'} · DD max $${r.maxDrawdown.toFixed(0)}`,
+      `  ${r.trades} trades · ${r.winRate.toFixed(0)}% winners · <b>${signedUsd(r.pnlUsd)}</b> · PF ${r.profitFactor ? r.profitFactor.toFixed(2) : '-'} · DD max $${r.maxDrawdown.toFixed(0)}`,
     );
   }
-  lines.push('', '<i>PF > 1 = rentable sur la période. Résultats passés ≠ résultats futurs.</i>');
+  lines.push('', '<i>PF > 1 = profitable over the period. Past results ≠ future results.</i>');
   return lines.join('\n');
 }
 

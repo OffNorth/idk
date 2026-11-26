@@ -1229,4 +1229,11 @@ function selectStrategies(ids) {
   return out;
 }
 
+// Noms et descriptions en anglais (messages du bot en anglais) : src/strategies.en.json, par id
+const EN = require('./strategies.en.json');
+for (const s of STRATEGIES) {
+  const t = EN[s.id];
+  if (t) { s.name = t[0]; s.desc = t[1]; }
+}
+
 module.exports = { STRATEGIES, selectStrategies, withTf, tfOf, TF_SEC };

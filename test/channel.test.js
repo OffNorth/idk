@@ -24,7 +24,7 @@ test('groupe : supergroupe (nouvel ID) → nouvel essai et ID mémorisé ; erreu
   await ch.sendText('achat');
   assert.deepStrictEqual(sent, [['-100222', 'achat']]);
   assert.strictEqual(cfg.channelId, '-100222');
-  assert.match(ch.status(), /dernier envoi réussi il y a 0 min/);
+  assert.match(ch.status(), /last successful post 0 min ago/);
   // Au redémarrage avec l'ancien ID du .env : le nouvel ID est repris
   const cfg2 = { channelId: '-111' };
   createChannel(api, cfg2, store);
@@ -34,5 +34,5 @@ test('groupe : supergroupe (nouvel ID) → nouvel essai et ID mémorisé ; erreu
   const { setTimeout: wait } = require('timers/promises');
   await wait(5);
   store.setMeta('channelLastOk', Date.now() - 3_600_000);
-  assert.match(ch.status(), /dernière erreur il y a 0 min : .*kicked.*ADMINISTRATEUR/);
+  assert.match(ch.status(), /last error 0 min ago: .*kicked.*ADMIN/);
 });

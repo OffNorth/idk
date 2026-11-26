@@ -19,8 +19,8 @@ const DAY = 86400;
 const COST = 0.001;
 const ETF = ['SPY', 'EFA', 'QQQ', 'GLD', 'SHY'];
 // Poches gérées par le bot : [nom, ETF, stratégie]
-const BOT = [['RSI 2 · S&P 500', 'SPY', 'rsi2'], ['Double 7 · S&P 500', 'SPY', 'double7'], ['Croix dorée · Nasdaq 100', 'QQQ', 'golden'],
-  ['Tendance · or', 'GLD', 'trendmix'], ['Saison · or', 'GLD', 'season']];
+const BOT = [['RSI 2 · S&P 500', 'SPY', 'rsi2'], ['Double 7 · S&P 500', 'SPY', 'double7'], ['Golden cross · Nasdaq 100', 'QQQ', 'golden'],
+  ['Trend · gold', 'GLD', 'trendmix'], ['Season · gold', 'GLD', 'season']];
 const WEIGHTS = { WORLD: 0.5, GLD: 0.1, BOT: 0.4 };
 const FILE = 'portfolio.json';
 
@@ -121,30 +121,30 @@ async function update(cfg, store, { fetcher, now = Date.now() } = {}) {
   return events;
 }
 
-const eur = (v) => `${Math.round(v).toLocaleString('fr-FR')} €`;
-const pct = (x) => `${x >= 0 ? '+' : '−'}${Math.abs(x * 100).toFixed(1).replace('.', ',')} %`;
+const eur = (v) => `€${Math.round(v).toLocaleString('en-US')}`;
+const pct = (x) => `${x >= 0 ? '+' : '−'}${Math.abs(x * 100).toFixed(1)}%`;
 
 /** Message du groupe pour un événement. */
 function eventMessage(ev, st) {
-  const head = `💼 <b>Portefeuille perso</b> · ${st ? `${eur(st.value)} (${pct(st.ret)})` : ''}`;
-  if (ev.type === 'rebalance') return `${head}\n🔁 Rééquilibrage du mois : 50 % monde · 10 % or · 40 % stratégies du bot.\n<i>Compte simulé, argent fictif.</i>`;
+  const head = `💼 <b>Personal portfolio</b> · ${st ? `${eur(st.value)} (${pct(st.ret)})` : ''}`;
+  if (ev.type === 'rebalance') return `${head}\n🔁 Monthly rebalance: 50% world · 10% gold · 40% bot strategies.\n<i>Simulated account, fake money.</i>`;
   const s = ev.sleeve;
-  return `${head}\n${ev.type === 'buy' ? '🟢 Achat' : '🔴 Vente'} <b>${s.sym}</b> — ${s.name}${ev.type === 'buy' ? ' (8 % du portefeuille)' : ' → liquidités'}\n<i>Compte simulé, argent fictif.</i>`;
+  return `${head}\n${ev.type === 'buy' ? '🟢 Buy' : '🔴 Sell'} <b>${s.sym}</b> — ${s.name}${ev.type === 'buy' ? ' (8% of the portfolio)' : ' → cash'}\n<i>Simulated account, fake money.</i>`;
 }
 
 /** Texte de /portefeuille. */
 function report(cfg, store) {
   const st = store.loadJson(FILE, null);
-  if (!cfg.portfolioEnabled) return 'Portefeuille perso désactivé (PORTFOLIO=0).';
-  if (!st || !st.value) return '💼 Portefeuille perso : ouverture au prochain passage du bot (calcul une fois par jour, après la clôture de New York).';
+  if (!cfg.portfolioEnabled) return 'Personal portfolio is off (PORTFOLIO=0).';
+  if (!st || !st.value) return '💼 Personal portfolio: opens on the bot’s next pass (computed once a day, after the New York close).';
   const w = st.weights || {};
   const lines = [
-    `💼 <b>Portefeuille perso (simulé)</b> · ouvert le ${new Date(st.startT * 1000).toLocaleDateString('fr-FR')}`,
-    `Valeur <b>${eur(st.value)}</b> (${pct(st.ret)} sur ${eur(st.capital)}) · baisse depuis le plus haut ${pct(st.drawdown)} · pire baisse ${pct(st.maxDrawdown)}`,
-    `Répartition actuelle : monde ${Math.round((w.WORLD || 0) * 100)} % · or ${Math.round((w.GLD || 0) * 100)} % · bot ${Math.round((w.BOT || 0) * 100)} % (cible 50 / 10 / 40, rééquilibré chaque mois)`,
-    '', '<b>Poches du bot</b> (8 % chacune) :',
-    ...st.sleeves.map((s) => `• ${s.name} : ${s.open ? `🟢 investi en ${s.sym} depuis le ${new Date(s.last.since * 1000).toLocaleDateString('fr-FR')}` : '⚪ en liquidités'}`),
-    '', '<i>Historique 2005–2026 de cette répartition : 10,2 %/an, pire baisse −26 % (ETF monde seul : 9,8 %/an, −53 %). Simulation : aucun argent réel, pas un conseil financier.</i>',
+    `💼 <b>Personal portfolio (simulated)</b> · opened on ${new Date(st.startT * 1000).toLocaleDateString('en-US')}`,
+    `Value <b>${eur(st.value)}</b> (${pct(st.ret)} on ${eur(st.capital)}) · drawdown from the high ${pct(st.drawdown)} · worst drawdown ${pct(st.maxDrawdown)}`,
+    `Current allocation: world ${Math.round((w.WORLD || 0) * 100)}% · gold ${Math.round((w.GLD || 0) * 100)}% · bot ${Math.round((w.BOT || 0) * 100)}% (target 50 / 10 / 40, rebalanced monthly)`,
+    '', '<b>Bot sleeves</b> (8% each):',
+    ...st.sleeves.map((s) => `• ${s.name}: ${s.open ? `🟢 invested in ${s.sym} since ${new Date(s.last.since * 1000).toLocaleDateString('en-US')}` : '⚪ in cash'}`),
+    '', '<i>2005–2026 history of this allocation: 10.2%/yr, worst drawdown −26% (world ETF alone: 9.8%/yr, −53%). Simulation: no real money, not financial advice.</i>',
   ];
   return lines.join('\n');
 }

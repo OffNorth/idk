@@ -94,7 +94,7 @@ test('jeu : votes, vote modifié, résolution et points', async () => {
   await game.onVote(ctx(1, 'Alice'), ['g', '1', 'g', 'u']);
   await game.onVote(ctx(2, 'Bob'), ['g', '1', 'g', 'u']);
   await game.onVote(ctx(2, 'Bob'), ['g', '1', 'g', 'd']); // change d'avis
-  assert.match(answers[2], /modifié/);
+  assert.match(answers[2], /changed/);
   // L'or monte : Alice gagne, Bob perd
   const s = store.loadJson('gold.json', {});
   s.lastPrice = 2200;
@@ -104,6 +104,6 @@ test('jeu : votes, vote modifié, résolution et points', async () => {
   assert.strictEqual(scores[1].points, 1);
   assert.strictEqual(scores[2].points, 0);
   assert.strictEqual(scores[2].played, 1);
-  assert.match(sent[1], /Résultat du pronostic n° 1/);
+  assert.match(sent[1], /Prediction #1 result/);
   assert.ok(isPng(game.scoreboardImage()));
 });

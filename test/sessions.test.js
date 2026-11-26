@@ -232,7 +232,7 @@ test('Lucid : risque intraday × LUCID_EVAL_INTRADAY_MUL pendant l’évaluation
   assert.ok(Math.abs(F.riskOf('gold', { id: 'g_orb30', tf: '5m' }, 'funded') - 0.25 * base) < 1e-12, 'FTMO financé : × 0,25');
   assert.ok(Math.abs(F.riskOf('gold', { id: 'down3', tf: '1d' }, 1) - F.riskOf('gold', { id: 'down3', tf: '1d' })) < 1e-12, 'journalières FTMO inchangées en évaluation');
   const { riskText } = require('../src/interactive');
-  if (riskText) assert.match(riskText(cfg, L, 1), /1\.35 % \(intraday pendant l'évaluation, 0\.45 % une fois financé\)/);
+  if (riskText) assert.match(riskText(cfg, L, 1), /1\.35% \(intraday during the evaluation, 0\.45% once funded\)/);
 });
 
 test('Lucid : euro en 6E standard (pas de micro M6E chez Lucid) ; journalières Russell / Nasdaq / argent sur micros M2K / MNQ / SIL', () => {

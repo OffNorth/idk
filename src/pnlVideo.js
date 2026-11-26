@@ -18,13 +18,13 @@ const ANIM_S = 5;
 const HOLD_S = 2.2;
 const SYMBOL = { gold: 'GC=F', nas100: '^NDX', spx: '^GSPC', eurusd: 'EURUSD=X', silver: 'SI=F', dow: '^DJI', russell: '^RUT',
   ...Object.fromEntries(Object.entries(require('./stocks').STOCKS).map(([k, v]) => [k, v.symbol])) };
-const NAME = { gold: 'Or', nas100: 'Nasdaq 100', spx: 'S&P 500', eurusd: 'EUR/USD', silver: 'Argent', dow: 'Dow Jones', russell: 'Russell 2000',
+const NAME = { gold: 'Gold', nas100: 'Nasdaq 100', spx: 'S&P 500', eurusd: 'EUR/USD', silver: 'Silver', dow: 'Dow Jones', russell: 'Russell 2000',
   ...Object.fromEntries(Object.entries(require('./stocks').STOCKS).map(([k, v]) => [k, v.name])) };
 const COL = {
   card: [16, 22, 29], ink: [238, 242, 238], mute: [138, 151, 163], line: [29, 39, 49],
   gain: [61, 220, 151], loss: [255, 107, 107], level: [156, 200, 255], dark: [11, 15, 20],
 };
-const BUILTIN = { uni: 'Uni', grille: 'Grille animée', particules: 'Particules' };
+const BUILTIN = { uni: 'Plain', grille: 'Animated grid', particules: 'Particles' };
 
 /* ------------------------------------------------------------------ */
 /* ffmpeg                                                              */
@@ -66,7 +66,7 @@ function ensureFfmpeg(cfg) {
     const os = require('os');
     const url = `https://github.com/eugeneware/ffmpeg-static/releases/download/${RELEASE}/ffmpeg-${os.platform()}-${os.arch()}.gz`;
     const res = await fetch(url, { signal: AbortSignal.timeout(180_000) });
-    if (!res.ok) throw new Error(`téléchargement de ffmpeg impossible (HTTP ${res.status}, ${os.platform()}-${os.arch()})`);
+    if (!res.ok) throw new Error(`ffmpeg download failed (HTTP ${res.status}, ${os.platform()}-${os.arch()})`);
     const bin = require('zlib').gunzipSync(Buffer.from(await res.arrayBuffer()));
     fs.mkdirSync(path.dirname(own), { recursive: true });
     fs.writeFileSync(`${own}.part`, bin, { mode: 0o755 });
@@ -75,7 +75,7 @@ function ensureFfmpeg(cfg) {
   })().then((p) => { lastError = ''; return p; }, (err) => {
     ready = null;
     lastError = String(err.cause?.code || err.message || err);
-    throw Object.assign(new Error(`ffmpeg absent sur le serveur (${lastError})`), { code: 'NOFFMPEG' });
+    throw Object.assign(new Error(`ffmpeg missing on the server (${lastError})`), { code: 'NOFFMPEG' });
   });
   return ready;
 }
@@ -148,12 +148,12 @@ async function candlesFor(trade, fetcher = require('./yahoo').fetchYahoo) {
 /* Carte                                                               */
 /* ------------------------------------------------------------------ */
 
-const frNum = (v, d = 2) => (Number.isFinite(v) ? v.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d }).replace(/ /g, ' ') : '—');
+const frNum = (v, d = 2) => (Number.isFinite(v) ? v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }).replace(/ /g, ' ') : '—');
 const usd = (v) => `${v >= 0 ? '+' : '-'}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const pxDigits = (m) => (m === 'eurusd' ? 5 : 2);
-const dur = (s) => { const m = Math.round(s / 60); return m < 60 ? `${m} min` : m < 1440 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${Math.floor(m / 1440)} j ${Math.floor((m % 1440) / 60)} h`; };
-const day = (t) => new Date(t * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' }).toUpperCase();
-const hm = (t) => new Date(t * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+const dur = (s) => { const m = Math.round(s / 60); return m < 60 ? `${m} min` : m < 1440 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${Math.floor(m / 1440)} d ${Math.floor((m % 1440) / 60)} h`; };
+const day = (t) => new Date(t * 1000).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' }).toUpperCase();
+const hm = (t) => new Date(t * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Paris' });
 
 const WHITE = [255, 255, 255];
 const BLACK = [0, 0, 0];
@@ -230,7 +230,7 @@ function prepareCard(trade, data, { seconds = 0, handle = '' } = {}) {
   const base = new Layer(W, H); // transparent : seuls les textes, bougies et niveaux sont visibles
   // en-tête
   // « DÉMO » : trades d'un compte simulé (paper trading du bot), à garder visible même une fois la vidéo partagée
-  base.text(`${trade.account || 'FTMO'} · ${(trade.program || 'Challenge').toUpperCase()} · DÉMO`, 30, 26, { size: 13, color: COL.mute });
+  base.text(`${trade.account || 'FTMO'} · ${(trade.program || 'Challenge').toUpperCase()} · DEMO`, 30, 26, { size: 13, color: COL.mute });
   base.text(day(trade.exitT), W - 30, 26, { size: 13, color: COL.mute, align: 'right' });
   const sideTxt = long ? 'ACHAT' : 'VENTE';
   const bw = base.measure(sideTxt, 'b', 15) + 24;
@@ -241,7 +241,7 @@ function prepareCard(trade, data, { seconds = 0, handle = '' } = {}) {
   // bas : niveaux, durée
   const statsY = H - 112;
   base.line(30, statsY - 14, W - 30, statsY - 14, WHITE, 1, 0, 0.25);
-  const stats = [['ENTRÉE', frNum(trade.entry, pxDigits(trade.market))], ['SORTIE', frNum(trade.exit, pxDigits(trade.market))], ['STOP', frNum(trade.sl, pxDigits(trade.market))], ['DURÉE', dur(trade.exitT - trade.entryT)]];
+  const stats = [['ENTRY', frNum(trade.entry, pxDigits(trade.market))], ['EXIT', frNum(trade.exit, pxDigits(trade.market))], ['STOP', frNum(trade.sl, pxDigits(trade.market))], ['DURATION', dur(trade.exitT - trade.entryT)]];
   const colW = (W - 60) / 4;
   stats.forEach(([k, v], i) => {
     base.text(k, 30 + i * colW, statsY, { size: 13, color: COL.mute });
@@ -256,8 +256,8 @@ function prepareCard(trade, data, { seconds = 0, handle = '' } = {}) {
   let cx = 30;
   const chipsY = 176;
   if (R !== null) cx += chip(base, cx, chipsY, `${R >= 0 ? '+' : ''}${frNum(R, 1)} R`, accent) + 10;
-  if (capPct !== null) cx += chip(base, cx, chipsY, `${capPct >= 0 ? '+' : ''}${frNum(capPct)} % du capital`, COL.ink) + 10;
-  chip(base, cx, chipsY, `${mkPct >= 0 ? '+' : ''}${frNum(mkPct)} % sur le marché`, COL.ink);
+  if (capPct !== null) cx += chip(base, cx, chipsY, `${capPct >= 0 ? '+' : ''}${frNum(capPct)}% of capital`, COL.ink) + 10;
+  chip(base, cx, chipsY, `${mkPct >= 0 ? '+' : ''}${frNum(mkPct)}% market move`, COL.ink);
 
   // graphique
   const top = 226; const bottom = statsY - 46; const right = W - 92; const left = 22;
@@ -283,7 +283,7 @@ function prepareCard(trade, data, { seconds = 0, handle = '' } = {}) {
   }
   // heures
   const every = Math.max(1, Math.round(C.length / 5));
-  for (let i = every; i < C.length; i += every) base.text(data.sec >= 86400 ? new Date(C[i].t * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : hm(C[i].t), X(i), bottom + 8, { size: 13, color: COL.mute, align: 'center' });
+  for (let i = every; i < C.length; i += every) base.text(data.sec >= 86400 ? new Date(C[i].t * 1000).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : hm(C[i].t), X(i), bottom + 8, { size: 13, color: COL.mute, align: 'center' });
 
   // Durée de l'animation calée sur la vidéo : les bougies défilent jusqu'à la fin, avec une courte pause sur le
   // résultat (10 % de la vidéo, entre 1,5 et 3 s). Vidéo courte (≤ 7,2 s) : 5 s d'animation + 2,2 s de pause.
@@ -338,7 +338,7 @@ function prepareCard(trade, data, { seconds = 0, handle = '' } = {}) {
     if (entered) {
       const close = Math.abs(Y(trade.sl) - Y(trade.entry)) < 22;
       tag(trade.sl, 'SL', COL.loss, close ? (Y(trade.sl) < Y(trade.entry) ? -11 : 11) : 0);
-      tag(trade.entry, 'Entrée', COL.level, close ? (Y(trade.sl) < Y(trade.entry) ? 11 : -11) : 0);
+      tag(trade.entry, 'Entry', COL.level, close ? (Y(trade.sl) < Y(trade.entry) ? 11 : -11) : 0);
       const ex = X(iEntry); const ey = Y(long ? C[iEntry].l : C[iEntry].h) + (long ? 10 : -10);
       cv.circle(ex, ey, 4.5, COL.level);
     }
@@ -442,8 +442,8 @@ async function encode(bin, cfg, bgId, card, src, level) {
       ff.on('close', (code, signal) => {
         clearTimeout(timer);
         if (code === 0) return resolve();
-        if (timedOut) return reject(new Error('ffmpeg trop long (plus de 4 min)'));
-        if (signal || code === null) return reject(Object.assign(new Error(`ffmpeg arrêté (${signal || 'signal'})`), { killed: true, signal: signal || 'SIGKILL' }));
+        if (timedOut) return reject(new Error('ffmpeg too slow (over 4 min)'));
+        if (signal || code === null) return reject(Object.assign(new Error(`ffmpeg stopped (${signal || 'signal'})`), { killed: true, signal: signal || 'SIGKILL' }));
         return reject(new Error(`ffmpeg : ${err.trim().split('\n').pop() || `code ${code}`}`));
       });
       ff.stdin.on('error', () => { /* ffmpeg arrêté : l'erreur sort par « close » */ });
@@ -467,12 +467,12 @@ let busy = 0;
  * poser la carte transparente (sa durée, 30 s au plus, et son son sont gardés). Une seule vidéo à la fois.
  */
 function makeVideo(cfg, trade, bgId, { fetcher, sourceFile, handle = '', light = false } = {}) {
-  if (busy >= 3) return Promise.reject(new Error('trop de vidéos en attente, réessaie dans une minute'));
+  if (busy >= 3) return Promise.reject(new Error('too many videos queued, try again in a minute'));
   busy++;
   const job = chain.then(async () => {
     const bin = await ensureFfmpeg(cfg);
     const data = await candlesFor(trade, fetcher);
-    if (data.candles.length < 5) throw new Error('bougies indisponibles pour ce trade');
+    if (data.candles.length < 5) throw new Error('candles unavailable for this trade');
     let src = null;
     if (sourceFile) src = { file: sourceFile, ...(await probe(bin, sourceFile)) };
     const seconds = Math.min(30, Math.max(ANIM_S + HOLD_S, src?.duration || 0));
@@ -488,7 +488,7 @@ function makeVideo(cfg, trade, bgId, { fetcher, sourceFile, handle = '', light =
         console.warn(`[vidéo] ffmpeg coupé (${err.signal}) en ${level.short} px, nouvel essai plus léger`);
       }
     }
-    throw new Error(`ffmpeg arrêté par le serveur (${lastErr.signal}) même en 540 px : mémoire du serveur probablement insuffisante`);
+    throw new Error(`ffmpeg stopped by the server (${lastErr.signal}) even at 540 px: server memory probably too low`);
   });
   chain = job.catch(() => {}).finally(() => { busy--; });
   return job;
@@ -503,10 +503,10 @@ async function cardPng(trade, { fetcher, handle = '' } = {}) {
 /** Enregistre une vidéo de fond (Buffer) sous un nom ; 10 fonds au plus. */
 function saveBackground(cfg, name, buf) {
   const n = safeName(name);
-  if (!n) throw new Error('nom de fond invalide (lettres, chiffres, tirets)');
+  if (!n) throw new Error('invalid background name (letters, digits, dashes)');
   fs.mkdirSync(fondsDir(cfg), { recursive: true });
   const existing = fs.readdirSync(fondsDir(cfg)).filter((f) => f.endsWith('.mp4'));
-  if (existing.length >= 10 && !existing.includes(`${n}.mp4`)) throw new Error('10 fonds au plus : supprime-en un avec /fonds');
+  if (existing.length >= 10 && !existing.includes(`${n}.mp4`)) throw new Error('10 backgrounds max: delete one with /fonds');
   fs.writeFileSync(path.join(fondsDir(cfg), `${n}.mp4`), buf);
   return n;
 }

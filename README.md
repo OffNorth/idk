@@ -1045,6 +1045,13 @@ Le cours « 30 s après le signal » vient aussi d'OANDA.
   Yahoo, `OANDA_ENV=live` pour un compte réel. Volume OANDA = nombre de cotations (pas de contrats) : le VWAP de
   `n_noise` est un peu différent de celui des recherches.
 
+### 🇬🇧 Messages du bot en anglais (26/11/2026)
+
+Tous les messages Telegram, boutons, images (cartes, comptes, vidéos PnL) et le menu des commandes sont en anglais.
+Noms et descriptions des stratégies : `src/strategies.en.json` (par id) ; notes du banc d'essai : `src/verdicts.en.json`.
+Commandes anglaises ajoutées (les françaises marchent toujours) : `/chart`, `/history`, `/fund`, `/myportfolio`,
+`/game`, `/leaderboard`. Les journaux de la console et la documentation restent en français.
+
 ### 🟡 Or et argent en temps réel sans compte : Binance (`BINANCE_FEED=1`, défaut, `src/binance.js`)
 
 OANDA et Capital.com demandent une vérification d'identité. Sans `OANDA_TOKEN`, l'or et l'argent prennent leurs bougies

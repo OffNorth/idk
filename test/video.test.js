@@ -35,7 +35,7 @@ test('vidéo PnL : carte image par image, fonds, arguments ffmpeg', async () => 
   const cs = V.cardSize(1920, 1080);
   assert.ok(cs.ch <= 1080 * 0.82 + 1 && cs.cw % 2 === 0);
   for (let i = 0; i < 9; i++) V.saveBackground(cfg, `f${i}`, Buffer.from('x'));
-  assert.throws(() => V.saveBackground(cfg, 'onzieme', Buffer.from('x')), /10 fonds/);
+  assert.throws(() => V.saveBackground(cfg, 'onzieme', Buffer.from('x')), /10 backgrounds/);
   assert.ok(V.deleteBackground(cfg, 'plage-ete'));
   // unité des bougies selon la durée et l'ancienneté
   assert.strictEqual(V.intervalFor({ entryT: 1000, exitT: 1000 + 5 * 3600 }, 1000 + 86400).iv, '5m');
@@ -72,7 +72,7 @@ test('vidéo PnL : derniers trades des comptes (challenge en cours + archive)', 
   assert.strictEqual(list.length, 2);
   assert.strictEqual(list[0].sid, 'n_noise');
   assert.strictEqual(list[0].account, 'FTMO');
-  assert.match(require('../src/videoBot').tradeLabel(list[0]), /Nasdaq vente · \+7.290 \$/);
+  assert.match(require('../src/videoBot').tradeLabel(list[0]), /Nasdaq sell · \+\$7,290/);
 });
 
 test('Telegram : « 📤 Ma vidéo » puis envoi d’une vidéo → la carte est posée sur cette vidéo', async () => {
@@ -99,7 +99,7 @@ test('Telegram : « 📤 Ma vidéo » puis envoi d’une vidéo → la carte est
     const key = `ftmo:${trade.exitT}:${trade.sid}`;
     await H.cb[0](ctx({ callbackQuery: { data: `v:t:${key}` } }));
     const kb = sent[sent.length - 1].o.reply_markup.inline_keyboard;
-    assert.match(kb[0][0].text, /Ma vidéo/);
+    assert.match(kb[0][0].text, /My video/);
     // bouton « Ma vidéo » → le bot attend la vidéo ; vidéo envoyée dans le groupe (sans légende) → rendu sur elle
     await H.cb[0](ctx({ callbackQuery: { data: kb[0][0].callback_data } }));
     let passed = false;
@@ -108,8 +108,8 @@ test('Telegram : « 📤 Ma vidéo » puis envoi d’une vidéo → la carte est
     await vb.idle(); // la vidéo se prépare en arrière-plan
     assert.strictEqual(passed, false);
     // accusé de réception immédiat avec durée, taille, format ; puis modifié en « en préparation »
-    assert.match(sent[before].t, /Vidéo reçue<\/b> \(12 s · 3,0 Mo · 1080×1920\)/);
-    assert.ok(edits.some((e) => /Vidéo reçue/.test(e.t) && /Vidéo en préparation/.test(e.t)));
+    assert.match(sent[before].t, /Video received<\/b> \(12 s · 3\.0 MB · 1080×1920\)/);
+    assert.ok(edits.some((e) => /Video received/.test(e.t) && /Preparing the video/.test(e.t)));
     assert.strictEqual(calls.length, 1);
     assert.strictEqual(calls[0].t.sid, 'n_noise');
     assert.match(calls[0].src, /src-42\.mp4$/);
@@ -117,9 +117,9 @@ test('Telegram : « 📤 Ma vidéo » puis envoi d’une vidéo → la carte est
     // en privé, sans bouton : accusé puis choix du trade sur le même message
     edits.length = 0;
     await H.on[0](ctx({ chat: { id: 7, type: 'private' }, message: { video: { file_id: 'h', file_size: 1000, duration: 45 } } }), async () => {});
-    const choice = edits.find((e) => /Quel trade/.test(e.t));
+    const choice = edits.find((e) => /Which trade/.test(e.t));
     assert.ok(choice && choice.o.reply_markup.inline_keyboard.length >= 1);
-    assert.match(choice.t, /30 premières secondes/);
+    assert.match(choice.t, /first 30 seconds/);
     // une autre vidéo dans le groupe, sans attente ni légende : ignorée
     await H.on[0](ctx({ message: { video: { file_id: 'g', file_size: 1000 } } }), async () => { passed = true; });
     assert.strictEqual(passed, true);
@@ -164,7 +164,7 @@ test('vidéo PnL : bot coupé pendant la préparation → message au redémarrag
   await new Promise((r) => setTimeout(r, 5200));
   assert.strictEqual(sent.length, 1);
   assert.strictEqual(sent[0].c, 42);
-  assert.match(sent[0].t, /n’a pas été envoyée.*coupé pendant sa préparation/s);
+  assert.match(sent[0].t, /was not sent.*stopped while preparing it/s);
   const st = store.loadJson('video.json');
   assert.strictEqual(st.light, true);
   assert.strictEqual(st.inflight, null);

@@ -45,7 +45,7 @@ const channel = createChannel(bot.api, cfg, store, {
     if (Date.now() - lastAlert < 3_600_000) return;
     lastAlert = Date.now();
     for (const id of dmTargets()) {
-      await bot.api.sendMessage(id, `⚠️ <b>Le bot n’arrive pas à envoyer dans le groupe</b>\n${esc(explainTelegramError(err))}\nTeste avec /testcanal.`, { parse_mode: 'HTML' }).catch(() => {});
+      await bot.api.sendMessage(id, `⚠️ <b>The bot can’t post in the group</b>\n${esc(explainTelegramError(err))}\nTest with /testcanal.`, { parse_mode: 'HTML' }).catch(() => {});
     }
   },
 });
@@ -81,7 +81,7 @@ function tick() {
 /* Accès                                                               */
 /* ------------------------------------------------------------------ */
 
-const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'export', 'video', 'fonds', 'signature', 'financer', 'reset']);
+const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'export', 'video', 'fonds', 'signature', 'financer', 'fund', 'reset']);
 const isAdmin = (ctx) => !cfg.allowedUserIds.size || (ctx.from && cfg.allowedUserIds.has(String(ctx.from.id)));
 
 // Les boutons et les commandes de consultation sont ouverts à tout le groupe ; les réglages sont réservés.
@@ -89,7 +89,7 @@ bot.use(async (ctx, next) => {
   // 1re personne qui écrit au bot en privé : reçoit les copies des trades si ALLOWED_TELEGRAM_USER_IDS est vide
   if (ctx.chat?.type === 'private' && ctx.from && !store.getMeta('firstPrivateUser')) store.setMeta('firstPrivateUser', ctx.from.id);
   const cmd = (ctx.message?.text ?? ctx.channelPost?.text)?.match(/^\/([a-z_]+)/i)?.[1]?.toLowerCase();
-  if (cmd && ADMIN.has(cmd) && !isAdmin(ctx)) return ctx.reply('Commande réservée à l’administrateur du bot.');
+  if (cmd && ADMIN.has(cmd) && !isAdmin(ctx)) return ctx.reply('Command reserved for the bot admin.');
   return next();
 });
 
@@ -107,27 +107,27 @@ const marketArg = (text) => (/\b(argent|silver|xag)\b/i.test(text || '') ? 'silv
 bot.command(['start', 'aide', 'help'], (ctx) =>
   ctx.reply(
     [
-      '<b>📊 Paper trading : 🇺🇸 Nasdaq 100 (+ 🥇 or)</b>',
-      ...activeMarkets(cfg).map((m) => `${m.emoji} ${m.name} : ${selectStrategies(m.strategies).length} stratégies, $${m.startCapital} chacune au départ, gains réinvestis`),
-      'Les trades sont regroupés dans un résumé chaque soir ; /menu pour tout voir (portefeuille, positions, fiches…).',
+      '<b>📊 Paper trading: 🇺🇸 Nasdaq 100 (+ 🥇 gold)</b>',
+      ...activeMarkets(cfg).map((m) => `${m.emoji} ${m.name}: ${selectStrategies(m.strategies).length} strategies, $${m.startCapital} each at the start, gains reinvested`),
+      'Trades are grouped in a summary every evening; /menu to see everything (portfolio, positions, strategy cards…).',
       '',
-      '/menu — 🎛 panneau interactif (images qui changent avec les boutons)',
-      '/graphique [nasdaq|or] — 🕯 cours en bougies (Nasdaq par défaut)',
-      '/ftmo [nasdaq|or] — 🏦 comptes FTMO simulés (challenge +10 % puis +5 %)',
-      '/lucid — 🟣 compte Lucid simulé (LucidFlex : +6 %, pas de perte du jour, micro-futures)',
-      '/pnl [ftmo|lucid] [jours] — 📅 PnL du jour des comptes simulés (réalisé, latent, trades, limite du jour, jours précédents)',
-      '/interface — 🖥 interface en direct sur le site (graphiques, SL / TP, comptes FTMO et Lucid)',
-      '/version — version du bot en service (à vérifier après un redémarrage)',
-      '/export — 📦 (admin) fichier des statistiques du bot, à envoyer à Claude pour une analyse',
-      '🎬 Envoie une vidéo au bot (en privé) : il te demande le trade et te la renvoie avec la PnL card transparente par-dessus (admin) · /video : fond intégré · /fond, /fonds · /signature @nom',
-      '/jeu — 🎯 pronostic du jour · /classement — points des joueurs',
-      '/nasdaq · /gold — bilan texte',
-      '/portfolio — graphiques des portefeuilles',
-      '/historique [nasdaq|or|sp500|eur|ftmo] — historique des trades pris par le bot',
-      '/simulation [nasdaq|or] [année] — simulation des stratégies sur l’historique des cours',
-      '/strategies — comment fonctionne chaque stratégie',
+      '/menu — 🎛 interactive panel (images that change with the buttons)',
+      '/chart [nasdaq|gold] — 🕯 candlestick chart (Nasdaq by default)',
+      '/ftmo [nasdaq|gold] — 🏦 simulated FTMO accounts',
+      '/lucid — 🟣 simulated Lucid account (LucidFlex: +6%, no daily loss limit, micro futures)',
+      '/pnl [ftmo|lucid] [days] — 📅 daily PnL of the simulated accounts (realized, unrealized, trades, daily limit, previous days)',
+      '/interface — 🖥 live interface on the website (charts, SL / TP, FTMO and Lucid accounts)',
+      '/version — bot version in service (check it after a restart)',
+      '/export — 📦 (admin) bot statistics file, to send to Claude for analysis',
+      '🎬 Send a video to the bot (in private): it asks you for the trade and sends it back with the transparent PnL card on top (admin) · /video: built-in background · /fond, /fonds · /signature @name',
+      '/game — 🎯 daily prediction · /leaderboard — player points',
+      '/nasdaq · /gold — text report',
+      '/portfolio — portfolio charts',
+      '/history [nasdaq|gold|sp500|eur|ftmo] — history of the trades taken by the bot',
+      '/simulation [nasdaq|gold] [year] — strategy simulation over the price history',
+      '/strategies — how each strategy works',
       '',
-      '<i>⚠️ Simulation uniquement, aucun argent réel. Pas un conseil financier.</i>',
+      '<i>⚠️ Simulation only, no real money. Not financial advice.</i>',
     ].join('\n'),
     HTML,
   ),
@@ -142,7 +142,7 @@ async function replyImage(ctx, build, waitText) {
     if (out.details) await ctx.reply(out.details.slice(0, 4096), HTML);
     await ctx.api.deleteMessage(ctx.chat.id, wait.message_id).catch(() => {});
   } catch (err) {
-    await ctx.api.editMessageText(ctx.chat.id, wait.message_id, `❌ Image impossible : ${esc(err.message)}`).catch(() => {});
+    await ctx.api.editMessageText(ctx.chat.id, wait.message_id, `❌ Image failed: ${esc(err.message)}`).catch(() => {});
   }
 }
 
@@ -172,11 +172,11 @@ bot.command(['sp500', 'spx', 'us500'], (ctx) => ctx.reply(portfolio(cfg, store, 
 bot.command(['eurusd', 'eur', 'euro'], (ctx) => ctx.reply(portfolio(cfg, store, 'eurusd'), { ...HTML, reply_markup: summaryKeyboard('eurusd') }));
 
 bot.command('portfolio', async (ctx) => {
-  for (const m of activeMarkets(cfg)) await replyImage(ctx, async () => liveChart(store, cfg, m.id), `⏳ Graphique ${m.emoji} ${m.name}…`);
+  for (const m of activeMarkets(cfg)) await replyImage(ctx, async () => liveChart(store, cfg, m.id), `⏳ Chart ${m.emoji} ${m.name}…`);
 });
 
 // Historique des trades réellement pris (paper trading en direct) ; « /historique ftmo » : trades du compte FTMO
-bot.command(['historique', 'trades'], async (ctx) => {
+bot.command(['historique', 'history', 'trades'], async (ctx) => {
   try {
     const ftmo = /\bftmo\b/i.test(ctx.match || '');
     await sendPanel(ctx.api, ctx.chat.id, cfg, store, {
@@ -196,24 +196,24 @@ bot.command('export', async (ctx) => {
   try {
     const data = JSON.stringify(require('./src/export').buildExport(cfg, store, version()));
     const name = `stats-bot-${new Date().toISOString().slice(0, 10)}.json`;
-    await ctx.replyWithDocument(new InputFile(Buffer.from(data, 'utf8'), name), { caption: `📦 Statistiques du bot (version ${version()}, ${(data.length / 1024).toFixed(0)} Ko) — envoie ce fichier à Claude pour l’analyse` });
+    await ctx.replyWithDocument(new InputFile(Buffer.from(data, 'utf8'), name), { caption: `📦 Bot statistics (version ${version()}, ${(data.length / 1024).toFixed(0)} KB) — send this file to Claude for analysis` });
   } catch (err) {
-    await ctx.reply(`❌ Export impossible : ${esc(err.message)}`);
+    await ctx.reply(`❌ Export failed: ${esc(err.message)}`);
   }
 });
 
 // Interface en direct sur le site (catégorie « Bot ») : graphiques avec entrée / SL / TP, comptes FTMO et Lucid
-bot.command(['interface', 'site'], (ctx) => ctx.reply(`🖥 <b>Interface en direct du bot</b>\n${cfg.siteUrl}/#bot\nGraphiques TradingView avec les trades en cours (entrée, SL, TP), comptes FTMO et Lucid simulés, historique des trades.`, { ...HTML, reply_markup: { inline_keyboard: [[{ text: '🖥 Ouvrir l’interface', url: `${cfg.siteUrl}/#bot` }]] } }));
+bot.command(['interface', 'site'], (ctx) => ctx.reply(`🖥 <b>Bot live interface</b>\n${cfg.siteUrl}/#bot\nTradingView charts with the current trades (entry, SL, TP), simulated FTMO and Lucid accounts, trade history.`, { ...HTML, reply_markup: { inline_keyboard: [[{ text: '🖥 Open the interface', url: `${cfg.siteUrl}/#bot` }]] } }));
 
 // Version déployée et réglages clés : pour vérifier après un redémarrage que Bot-Hosting a pris la nouvelle version
 bot.command('version', (ctx) => {
   const lucid = require('./src/ftmoAccount').accountOf(cfg, 'lucid');
   return ctx.reply([
     `🔖 Version <code>${version()}</code> · Node ${process.version}`,
-    `🏦 Compte FTMO : ${cfg.ftmoEnabled ? 'actif' : 'coupé'} · 🟣 compte Lucid : ${lucid.enabled ? `actif (${lucid.label})` : 'coupé (LUCID=0)'}`,
-    `🤖 IA validatrice : ${cfg.ftmoAi} · 🧠 adaptation : ${cfg.autoAdapt ? `IA qui apprend${cfg.adaptStrategies ? ' + stratégies' : ''}` : 'coupée'} · risque : ${esc(cfg.ftmoSizing)}`,
+    `🏦 FTMO account: ${cfg.ftmoEnabled ? 'on' : 'off'} · 🟣 Lucid account: ${lucid.enabled ? `on (${lucid.label})` : 'off (LUCID=0)'}`,
+    `🤖 Validator AI: ${cfg.ftmoAi} · 🧠 adaptation: ${cfg.autoAdapt ? `learning AI${cfg.adaptStrategies ? ' + strategies' : ''}` : 'off'} · risk: ${esc(cfg.ftmoSizing)}`,
     esc(channel.status()),
-    `📣 Achats / ventes FTMO et Lucid annoncés dans le groupe : ${cfg.ftmoTradeMessages === false ? 'non (FTMO_TRADE_MESSAGES=0)' : paused ? 'en pause (/resume)' : 'oui'}`,
+    `📣 FTMO and Lucid buys / sells posted in the group: ${cfg.ftmoTradeMessages === false ? 'no (FTMO_TRADE_MESSAGES=0)' : paused ? 'paused (/resume)' : 'yes'}`,
   ].join('\n'), HTML);
 });
 
@@ -221,13 +221,13 @@ bot.command('verif', (ctx) => ctx.reply(require('./src/verify').verifyReport(cfg
 
 // Passage forcé en compte financé (admin) : /financer (FTMO et Lucid), /financer ftmo, /financer lucid
 bot.command('timemachine', async (ctx) => {
-  await ctx.reply('🔮 Simulation de 1 000 années en cours…');
+  await ctx.reply('🔮 Simulating 1,000 years…');
   return ctx.reply(require('./src/timeMachine').report(cfg, store), HTML);
 });
 
-bot.command('financer', (ctx) => ctx.reply(require('./src/ftmoAccount').financerReport(cfg, store, ctx.match), HTML));
+bot.command(['financer', 'fund'], (ctx) => ctx.reply(require('./src/ftmoAccount').financerReport(cfg, store, ctx.match), HTML));
 // Portefeuille perso simulé (50 % monde, 10 % or, 40 % stratégies du bot)
-bot.command('portefeuille', (ctx) => ctx.reply(require('./src/personalPortfolio').report(cfg, store), HTML));
+bot.command(['portefeuille', 'myportfolio'], (ctx) => ctx.reply(require('./src/personalPortfolio').report(cfg, store), HTML));
 // PnL du jour des comptes simulés : /pnl [ftmo|lucid] [jours]
 bot.command(['pnl', 'jour', 'daily'], (ctx) => ctx.reply(require('./src/ftmoAccount').dailyReport(cfg, store, ctx.match), HTML));
 // Remise à zéro des comptes simulés en gardant les stats (admin) : /reset, /reset ftmo, /reset lucid (+ « ok » pour confirmer)
@@ -236,17 +236,17 @@ bot.command('reset', (ctx) => ctx.reply(require('./src/ftmoAccount').resetReport
 // Adaptation automatique (admin) : /adapt (état), /adapt now (revue tout de suite), /adapt reset (retour à l'origine)
 bot.command('adapt', async (ctx) => {
   const ad = require('./src/adapt');
-  if (!cfg.autoAdapt) return ctx.reply('Adaptation automatique désactivée (AUTO_ADAPT=0 dans le .env).');
+  if (!cfg.autoAdapt) return ctx.reply('Automatic adaptation is off (AUTO_ADAPT=0 in the .env).');
   const arg = (ctx.match || '').trim().toLowerCase();
   if (arg === 'reset') {
     ad.reset(cfg, store);
-    return ctx.reply('🧠 Adaptation remise à zéro : IA d’origine, tous les poids à × 1, aucune candidate promue.');
+    return ctx.reply('🧠 Adaptation reset: original AI, all weights at × 1, no candidate promoted.');
   }
   if (arg === 'now') return ctx.reply(ad.weeklyReview(cfg, store).text, HTML);
   const st = ad.loadState(store);
-  const w = Object.entries(st.weights || {}).filter(([, v]) => v !== 1).map(([k, v]) => `• <code>${esc(k)}</code> ${v === 0 ? 'suspendue' : `× ${String(v).replace('.', ',')}`}`);
+  const w = Object.entries(st.weights || {}).filter(([, v]) => v !== 1).map(([k, v]) => `• <code>${esc(k)}</code> ${v === 0 ? 'suspended' : `× ${v}`}`);
   const n = store.loadJson('ai-samples.json', []).length;
-  return ctx.reply([ad.summary(cfg, store), `Signaux jugés mémorisés : ${n}`, ...(w.length ? ['Poids appris :', ...w] : ['Aucun poids modifié pour l’instant.']), (st.promoted || []).length ? `Candidates promues : ${st.promoted.map((k) => `<code>${esc(k)}</code>`).join(', ')}` : '', `Candidates en observation : ${cfg.adaptCandidates.map((k) => `<code>${esc(k)}</code>`).join(', ')}`].filter(Boolean).join('\n').slice(0, 4000), HTML);
+  return ctx.reply([ad.summary(cfg, store), `Judged signals stored: ${n}`, ...(w.length ? ['Learned weights:', ...w] : ['No weight changed yet.']), (st.promoted || []).length ? `Promoted candidates: ${st.promoted.map((k) => `<code>${esc(k)}</code>`).join(', ')}` : '', `Candidates under observation: ${cfg.adaptCandidates.map((k) => `<code>${esc(k)}</code>`).join(', ')}`].filter(Boolean).join('\n').slice(0, 4000), HTML);
 });
 
 // Simulation des stratégies sur l'historique des cours (ex-« /historique »)
@@ -257,14 +257,14 @@ bot.command('simulation', (ctx) => {
   const asked = Number(args.find((a) => /^\d{4}$/.test(a)));
   const year = Math.min(Math.max(asked || (marketId === 'nas100' ? 2010 : 2021), minYear), new Date().getUTCFullYear() - 1);
   const m = marketById(cfg, marketId);
-  return replyImage(ctx, () => historyChart(cfg, { marketId, fromYear: year }), `⏳ ${m.emoji} ${m.name} : simulation depuis ${year} (le premier appel télécharge l’historique, jusqu’à ~1 min)…`);
+  return replyImage(ctx, () => historyChart(cfg, { marketId, fromYear: year }), `⏳ ${m.emoji} ${m.name}: simulation since ${year} (the first call downloads the history, up to ~1 min)…`);
 });
 
 bot.command('strategies', (ctx) =>
   ctx.reply(
     activeMarkets(cfg)
       .map((m) => `<b>${m.emoji} ${esc(m.name)}</b>\n\n` + selectStrategies(m.strategies)
-        .map((s) => `<b>${esc(s.name)}</b> (<code>${s.id}</code> · bougies ${s.tf || '1h'})\n${esc(s.desc)}`)
+        .map((s) => `<b>${esc(s.name)}</b> (<code>${s.id}</code> · ${s.tf || '1h'} candles)\n${esc(s.desc)}`)
         .join('\n\n'))
       .join('\n\n———\n\n')
       .slice(0, 4000),
@@ -285,7 +285,7 @@ bot.command('ftmo', async (ctx) => {
 // Compte Lucid simulé (LucidFlex, micro-futures) : mêmes signaux que le compte FTMO, règles Lucid
 bot.command('lucid', async (ctx) => {
   try {
-    if (!require('./src/ftmoAccount').accountOf(cfg, 'lucid').enabled) return ctx.reply('Le compte Lucid simulé est désactivé (LUCID=0 dans le .env).');
+    if (!require('./src/ftmoAccount').accountOf(cfg, 'lucid').enabled) return ctx.reply('The simulated Lucid account is off (LUCID=0 in the .env).');
     await sendPanel(ctx.api, ctx.chat.id, cfg, store, { view: 'f', marketId: 'gold', args: ['l'] });
   } catch (err) {
     await ctx.reply(`❌ ${esc(err.message)}`);
@@ -293,17 +293,17 @@ bot.command('lucid', async (ctx) => {
   return null;
 });
 
-bot.command('jeu', (ctx) => ctx.reply(game.status(), HTML));
+bot.command(['jeu', 'game'], (ctx) => ctx.reply(game.status(), HTML));
 
-bot.command(['classement', 'scores'], async (ctx) => {
-  await ctx.replyWithPhoto(new InputFile(game.scoreboardImage(), 'classement.png'), { caption: '🏆 <b>Classement du pronostic</b> · 1 point par bonne réponse', parse_mode: 'HTML' });
+bot.command(['classement', 'leaderboard', 'scores'], async (ctx) => {
+  await ctx.replyWithPhoto(new InputFile(game.scoreboardImage(), 'classement.png'), { caption: '🏆 <b>Prediction leaderboard</b> · 1 point per correct answer', parse_mode: 'HTML' });
 });
 
 bot.command('pronostic', async (ctx) => {
-  if (!cfg.channelId) return ctx.reply('❌ TELEGRAM_CHANNEL_ID n’est pas défini dans le .env.');
-  if (game.load().round) return ctx.reply('Un tour est déjà en cours (/jeu).');
+  if (!cfg.channelId) return ctx.reply('❌ TELEGRAM_CHANNEL_ID is not set in the .env.');
+  if (game.load().round) return ctx.reply('A round is already running (/game).');
   const ok = await game.open(Date.now()).catch((err) => ctx.reply(`❌ ${explainTelegramError(err)}`));
-  if (ok === false) return ctx.reply('❌ Cours indisponibles pour l’instant, réessaie après le prochain passage du bot.');
+  if (ok === false) return ctx.reply('❌ Prices unavailable right now, try again after the bot’s next pass.');
   return null;
 });
 
@@ -311,10 +311,10 @@ bot.command('pronostic', async (ctx) => {
 
 bot.command('backtest', async (ctx) => {
   const days = Math.min(Math.max(Number(ctx.match.trim()) || 90, 20), 365);
-  const wait = await ctx.reply(`⏳ Backtest des stratégies sur ${days} jours…`);
+  const wait = await ctx.reply(`⏳ Backtesting the strategies over ${days} days…`);
   try {
     const { hourly: candles, daily } = await fetchBacktestData(days);
-    if (candles.length < 250) throw new Error('historique insuffisant');
+    if (candles.length < 250) throw new Error('not enough history');
     const from = candles[0].c;
     const to = candles[candles.length - 1].c;
     const results = selectStrategies(cfg.goldStrategies).map((strategy) => {
@@ -325,26 +325,26 @@ bot.command('backtest', async (ctx) => {
     const txt = backtestMessage(results, { days, from, to, buyHold: (to / from - 1) * 100 }, cfg);
     await ctx.api.editMessageText(ctx.chat.id, wait.message_id, txt, HTML);
   } catch (err) {
-    await ctx.api.editMessageText(ctx.chat.id, wait.message_id, `❌ Backtest impossible : ${esc(err.message)}`);
+    await ctx.api.editMessageText(ctx.chat.id, wait.message_id, `❌ Backtest failed: ${esc(err.message)}`);
   }
 });
 
 bot.command('bilan', async (ctx) => {
-  if (!cfg.channelId) return ctx.reply('❌ TELEGRAM_CHANNEL_ID n’est pas défini dans le .env.');
+  if (!cfg.channelId) return ctx.reply('❌ TELEGRAM_CHANNEL_ID is not set in the .env.');
   try {
     for (const m of activeMarkets(cfg)) await channel.sendText(portfolio(cfg, store, m.id), { reply_markup: summaryKeyboard(m.id) });
     channel.markSummary();
-    await ctx.reply('✅ Bilan publié sur le canal.');
+    await ctx.reply('✅ Report posted to the channel.');
   } catch (err) {
     await ctx.reply(`❌ ${explainTelegramError(err)}`);
   }
 });
 
 bot.command('testcanal', async (ctx) => {
-  if (!cfg.channelId) return ctx.reply('❌ TELEGRAM_CHANNEL_ID n’est pas défini dans le .env.');
+  if (!cfg.channelId) return ctx.reply('❌ TELEGRAM_CHANNEL_ID is not set in the .env.');
   try {
-    await channel.sendText('✅ <b>Test</b> : le bot peut publier ici (achats / ventes des comptes FTMO et Lucid).');
-    await ctx.reply(`✅ Message de test publié sur le groupe.\n${esc(channel.status())}${paused ? '\n⏸ Publications en pause : /resume pour les relancer.' : ''}${cfg.ftmoTradeMessages === false ? '\n⚠️ FTMO_TRADE_MESSAGES=0 : les trades ne sont pas annoncés.' : ''}`);
+    await channel.sendText('✅ <b>Test</b>: the bot can post here (FTMO and Lucid account buys / sells).');
+    await ctx.reply(`✅ Test message posted to the group.\n${esc(channel.status())}${paused ? '\n⏸ Posts paused: /resume to restart them.' : ''}${cfg.ftmoTradeMessages === false ? '\n⚠️ FTMO_TRADE_MESSAGES=0: trades are not posted.' : ''}`);
   } catch (err) {
     await ctx.reply(`❌ ${esc(explainTelegramError(err))}\n${esc(channel.status())}`);
   }
@@ -353,13 +353,13 @@ bot.command('testcanal', async (ctx) => {
 bot.command('settings', (ctx) =>
   ctx.reply(
     [
-      '<b>⚙️ Paramètres</b>',
+      '<b>⚙️ Settings</b>',
       ...activeMarkets(cfg).map((m) =>
-        `${m.emoji} ${esc(m.name)} : ${selectStrategies(m.strategies).map((s) => s.id).join(', ')} · $${m.startCapital} au départ, ${m.positionPct} % du capital par trade · frais ${m.feePct} %/côté${m.financingPct ? ` · financement ${m.financingPct} %/an` : ''}`),
-      `Vérification toutes les ${cfg.checkIntervalMin} min`,
-      `Bilan sur le canal : ${cfg.summaryHours > 0 ? `toutes les ${cfg.summaryHours} h` : 'désactivé'} · graphique : ${cfg.chartHours > 0 ? `toutes les ${cfg.chartHours} h` : 'désactivé'}`,
-      `Jeu : ${cfg.gameEnabled ? `chaque jour de semaine à ${cfg.gameHourUtc} h UTC, ${cfg.gameVoteHours} h pour voter` : 'désactivé'}`,
-      `Canal : ${cfg.channelId ? esc(cfg.channelId) : 'non défini'} · publications ${paused ? '⏸ en pause' : '▶️ actives'}`,
+        `${m.emoji} ${esc(m.name)}: ${selectStrategies(m.strategies).map((s) => s.id).join(', ')} · $${m.startCapital} at the start, ${m.positionPct}% of capital per trade · fees ${m.feePct}%/side${m.financingPct ? ` · financing ${m.financingPct}%/yr` : ''}`),
+      `Check every ${cfg.checkIntervalMin} min`,
+      `Channel report: ${cfg.summaryHours > 0 ? `every ${cfg.summaryHours} h` : 'off'} · chart: ${cfg.chartHours > 0 ? `every ${cfg.chartHours} h` : 'off'}`,
+      `Game: ${cfg.gameEnabled ? `every weekday at ${cfg.gameHourUtc}:00 UTC, ${cfg.gameVoteHours} h to vote` : 'off'}`,
+      `Channel: ${cfg.channelId ? esc(cfg.channelId) : 'not set'} · posts ${paused ? '⏸ paused' : '▶️ on'}`,
     ].join('\n'),
     HTML,
   ),
@@ -368,13 +368,13 @@ bot.command('settings', (ctx) =>
 bot.command('pause', (ctx) => {
   paused = true;
   store.setMeta("paused", true);
-  return ctx.reply('⏸ Publications sur le canal en pause (le paper trading continue).');
+  return ctx.reply('⏸ Channel posts paused (paper trading continues).');
 });
 
 bot.command('resume', (ctx) => {
   paused = false;
   store.setMeta("paused", false);
-  return ctx.reply('▶️ Publications sur le canal relancées.');
+  return ctx.reply('▶️ Channel posts resumed.');
 });
 
 bot.catch((err) => console.error('[bot] erreur :', err.error || err));
@@ -402,28 +402,28 @@ console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) �
 (async () => {
   console.log('… connexion à Telegram');
   await step('commandes du menu', bot.api.setMyCommands([
-    { command: 'menu', description: '🎛 Panneau interactif (Nasdaq ; /menu or pour l’or)' },
-    { command: 'graphique', description: '🕯 Cours en bougies : /graphique (Nasdaq) · /graphique or' },
-    { command: 'ftmo', description: '🏦 Comptes FTMO simulés : /ftmo (Nasdaq) · /ftmo or' },
-    { command: 'lucid', description: '🟣 Compte Lucid simulé (LucidFlex, micro-futures)' },
-    { command: 'pnl', description: '📅 PnL du jour : /pnl · /pnl lucid · /pnl 30 (jours)' },
-    { command: 'portefeuille', description: '💼 Portefeuille perso simulé (monde, or, stratégies du bot)' },
-    { command: 'timemachine', description: '🔮 Chances de réussir le challenge en cours (1 000 années simulées)' },
-    { command: 'financer', description: '🏦 Passer les comptes simulés en compte financé (admin)' },
-    { command: 'reset', description: '♻️ Remettre les comptes simulés à zéro, stats gardées (admin)' },
-    { command: 'interface', description: '🖥 Interface en direct (graphiques, comptes FTMO / Lucid)' },
-    { command: 'video', description: '🎬 Vidéo PnL d’un trade (fond au choix)' },
-    { command: 'version', description: '🔖 Version du bot en service' },
-    { command: 'jeu', description: '🎯 Pronostic du jour' },
-    { command: 'classement', description: '🏆 Classement des joueurs' },
-    { command: 'nasdaq', description: 'Bilan du Nasdaq 100' },
-    { command: 'sp500', description: 'Bilan du S&P 500' },
-    { command: 'eurusd', description: 'Bilan de l’EUR/USD (à l’essai)' },
-    { command: 'gold', description: 'Bilan de l’or' },
-    { command: 'portfolio', description: 'Graphiques de l’évolution des portefeuilles' },
-    { command: 'historique', description: 'Historique des trades : /historique or · /historique ftmo' },
-    { command: 'simulation', description: 'Simulation : /simulation 2010 (Nasdaq) · /simulation or 2001' },
-    { command: 'strategies', description: 'Comment fonctionne chaque stratégie' },
+    { command: 'menu', description: '🎛 Interactive panel (Nasdaq; /menu gold for gold)' },
+    { command: 'chart', description: '🕯 Candlestick chart: /chart (Nasdaq) · /chart gold' },
+    { command: 'ftmo', description: '🏦 Simulated FTMO accounts: /ftmo (Nasdaq) · /ftmo gold' },
+    { command: 'lucid', description: '🟣 Simulated Lucid account (LucidFlex, micro futures)' },
+    { command: 'pnl', description: '📅 Daily PnL: /pnl · /pnl lucid · /pnl 30 (days)' },
+    { command: 'myportfolio', description: '💼 Simulated personal portfolio (world, gold, bot strategies)' },
+    { command: 'timemachine', description: '🔮 Odds of passing the current challenge (1,000 simulated years)' },
+    { command: 'fund', description: '🏦 Switch the simulated accounts to funded (admin)' },
+    { command: 'reset', description: '♻️ Reset the simulated accounts, stats kept (admin)' },
+    { command: 'interface', description: '🖥 Live interface (charts, FTMO / Lucid accounts)' },
+    { command: 'video', description: '🎬 PnL video of a trade (background of your choice)' },
+    { command: 'version', description: '🔖 Bot version in service' },
+    { command: 'game', description: '🎯 Daily prediction' },
+    { command: 'leaderboard', description: '🏆 Player leaderboard' },
+    { command: 'nasdaq', description: 'Nasdaq 100 report' },
+    { command: 'sp500', description: 'S&P 500 report' },
+    { command: 'eurusd', description: 'EUR/USD report (trial)' },
+    { command: 'gold', description: 'Gold report' },
+    { command: 'portfolio', description: 'Portfolio evolution charts' },
+    { command: 'history', description: 'Trade history: /history gold · /history ftmo' },
+    { command: 'simulation', description: 'Simulation: /simulation 2010 (Nasdaq) · /simulation gold 2001' },
+    { command: 'strategies', description: 'How each strategy works' },
   ])).catch((err) => {
     if (err.error_code === 401) throw err; // token invalide : inutile de continuer
     console.warn(`⚠️ ${err.message} (on continue)`);

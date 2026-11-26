@@ -26,7 +26,7 @@ test('IA : apprentissage prudent, adoption seulement si meilleur sur les signaux
   // Trop peu de signaux : rien ne change
   const few = ad.reviewAI(synth(50, origin), origin, origin, 1_800_000_000);
   assert.strictEqual(few.adopt, false);
-  assert.match(few.why, /pas encore assez/);
+  assert.match(few.why, /not enough/);
   // Beaucoup de signaux avec une règle nette : le modèle ré-appris fait mieux → adopté, et il a appris la règle
   const many = synth(1200, origin);
   const rv = ad.reviewAI(many, origin, origin, 1_800_000_000);
@@ -65,7 +65,7 @@ test('stratégies : réduction, suspension, réintégration, plafonds et promoti
   // Réintégration quand la note redevient positive
   const back = ad.reviewStrategies({ 'gold:a': [...rs(25, -0.8), ...rs(60, 0.6)] }, followed, [], rv);
   assert.strictEqual(back.weights['gold:a'], 1);
-  assert.match(back.changes[0].why, /réintégrée/);
+  assert.match(back.changes[0].why, /reinstated/);
   // Plafonds : au plus 3 changements, au plus un tiers suspendues (2 sur 6)
   const allBad = Object.fromEntries(followed.map((k) => [k, rs(30, -0.9)]));
   rv = ad.reviewStrategies(allBad, followed, [], {});
@@ -118,7 +118,7 @@ test('en direct : signaux mémorisés, poids appliqué au compte, stratégie sus
   assert.strictEqual(ad.reviewDue(cfg, store, sunday), true);
   assert.strictEqual(ad.reviewDue(cfg, store, sunday - 86400_000), false);
   const { text } = ad.weeklyReview(cfg, store, sunday);
-  assert.match(text, /Revue automatique/);
+  assert.match(text, /Automatic weekly review/);
   assert.strictEqual(ad.reviewDue(cfg, store, sunday + 3600_000), false);
-  assert.match(ad.summary(cfg, store), /Adaptation : IA v0/);
+  assert.match(ad.summary(cfg, store), /Adaptation: AI v0/);
 });

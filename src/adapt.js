@@ -42,8 +42,8 @@ const quantile = (l, q) => { const s = [...l].sort((a, b) => a - b); return s.le
  */
 function reviewAI(samples, current, origin, now, { minSamples = MIN_SAMPLES, refuse = REFUSE } = {}) {
   const n = samples.length;
-  if (!current || !origin) return { adopt: false, why: 'pas de modèle', n };
-  if (n < minSamples) return { adopt: false, why: `pas encore assez de signaux jugés et clôturés (${n} / ${minSamples})`, n };
+  if (!current || !origin) return { adopt: false, why: 'no model', n };
+  if (n < minSamples) return { adopt: false, why: `not enough judged and closed signals yet (${n} / ${minSamples})`, n };
   const cut = Math.floor(n * 0.75);
   const train = samples.slice(0, cut);
   const hold = samples.slice(cut);
@@ -53,13 +53,13 @@ function reviewAI(samples, current, origin, now, { minSamples = MIN_SAMPLES, ref
   const before = { loss: logLoss(current, hold), keptR: keptR(current) };
   const after = { loss: logLoss(cand, hold), keptR: keptR(cand) };
   if (!(after.loss < before.loss - 1e-4 && after.keptR >= before.keptR)) {
-    return { adopt: false, why: 'le modèle ré-appris ne fait pas mieux sur les signaux récents', before, after, n };
+    return { adopt: false, why: 'the retrained model does no better on recent signals', before, after, n };
   }
   // Adopté : ré-ajusté sur tous les signaux, seuil = 20 % des scores des 3 derniers mois refusés
   const model = fineTune(current, origin.w, samples);
   const recent = samples.filter((t) => t.entryT >= now - 90 * 86400);
   model.min = thr(model, recent.length >= 30 ? recent : samples);
-  return { adopt: true, model, why: 'meilleur sur les signaux récents', before, after, n };
+  return { adopt: true, model, why: 'better on recent signals', before, after, n };
 }
 
 /**
@@ -113,13 +113,13 @@ function reviewStrategies(stats, followed, candidates, state = {}) {
     if (c.to === 'out') {
       promoted.splice(promoted.indexOf(c.key), 1);
       delete weights[c.key];
-      changes.push({ ...c, why: 'candidate retirée du compte (note négative)' });
+      changes.push({ ...c, why: 'candidate removed from the account (negative score)' });
       continue;
     }
     if (c.to === 0) susp++;
     if (c.from === 0) susp--;
     weights[c.key] = c.to;
-    changes.push({ ...c, why: c.to === 0 ? 'suspendue' : c.from === 0 ? 'réintégrée' : c.to > c.from ? 'renforcée' : 'réduite' });
+    changes.push({ ...c, why: c.to === 0 ? 'suspended' : c.from === 0 ? 'reinstated' : c.to > c.from ? 'increased' : 'reduced' });
   }
   // Promotion : au plus 1 candidate par semaine, si elle fait mieux que la moins bonne stratégie suivie
   if (changes.length < MAX_CHANGES) {
@@ -129,7 +129,7 @@ function reviewStrategies(stats, followed, candidates, state = {}) {
     if (best) {
       promoted.push(best.key);
       weights[best.key] = 0.5;
-      changes.push({ key: best.key, from: null, to: 0.5, n: best.n, score: best.score, why: 'candidate promue sur le compte (risque × 0,5)' });
+      changes.push({ key: best.key, from: null, to: 0.5, n: best.n, score: best.score, why: 'candidate promoted to the account (risk × 0.5)' });
     }
   }
   return { weights, promoted, changes };
@@ -199,13 +199,13 @@ function reviewDue(cfg, store, now = Date.now()) {
   return new Date(now).getUTCDay() === 0 && now - (st.lastReview || 0) > 6 * 86400_000;
 }
 
-const fmtW = (w) => (w === 0 ? 'suspendue' : w === null || w === undefined ? '—' : `× ${String(w).replace('.', ',')}`);
+const fmtW = (w) => (w === 0 ? 'suspended' : w === null || w === undefined ? '—' : `× ${w}`);
 
 /** Revue hebdomadaire : met à jour l'IA et les poids des stratégies. Retourne { text, state }. */
 function weeklyReview(cfg, store, now = Date.now()) {
   const st = loadState(store);
   const t = Math.floor(now / 1000);
-  const lines = ['🧠 <b>Revue automatique de la semaine</b>'];
+  const lines = ['🧠 <b>Automatic weekly review</b>'];
   // IA
   const samples = labelSamples(store);
   const origin = originModel();
@@ -218,21 +218,21 @@ function weeklyReview(cfg, store, now = Date.now()) {
     try { if (fs.existsSync(file)) st.aiPrevious = [fs.readFileSync(file, 'utf8'), ...(st.aiPrevious || [])].slice(0, 3); } catch { /* rien */ }
     fs.writeFileSync(file, JSON.stringify(model));
     st.aiVersion = version;
-    lines.push(`🤖 IA : <b>nouvelle version v${version} adoptée</b> (${ai.n} signaux live) · précision ${ai.before.loss.toFixed(3)} → ${ai.after.loss.toFixed(3)} · R moyen des signaux gardés ${ai.before.keptR.toFixed(2)} → ${ai.after.keptR.toFixed(2)} · seuil ${Math.round(model.min * 100)} %`);
+    lines.push(`🤖 AI: <b>new version v${version} adopted</b> (${ai.n} live signals) · loss ${ai.before.loss.toFixed(3)} → ${ai.after.loss.toFixed(3)} · average R of kept signals ${ai.before.keptR.toFixed(2)} → ${ai.after.keptR.toFixed(2)} · threshold ${Math.round(model.min * 100)}%`);
   } else {
-    lines.push(`🤖 IA : version v${st.aiVersion || 0} gardée — ${ai.why}`);
+    lines.push(`🤖 AI: version v${st.aiVersion || 0} kept — ${ai.why}`);
   }
   const safe = aiSafety(samples);
   if (safe && cfg.ftmoAi === 'block') {
     const prev = st.aiMode || 'block';
     st.aiMode = safe.mode;
     if (safe.mode !== prev) lines.push(safe.mode === 'observe'
-      ? `⚠️ IA repassée en <b>observation</b> : ses refus récents auraient rapporté plus (R ${safe.refusedR.toFixed(2)}) que les trades gardés (R ${safe.keptR.toFixed(2)})`
-      : `✅ IA remise en <b>blocage</b> : ses refus récents font moins bien (R ${safe.refusedR.toFixed(2)}) que les trades gardés (R ${safe.keptR.toFixed(2)})`);
+      ? `⚠️ AI switched back to <b>observe</b>: its recent refusals would have earned more (R ${safe.refusedR.toFixed(2)}) than the kept trades (R ${safe.keptR.toFixed(2)})`
+      : `✅ AI back to <b>blocking</b>: its recent refusals do worse (R ${safe.refusedR.toFixed(2)}) than the kept trades (R ${safe.keptR.toFixed(2)})`);
   }
   // Stratégies (ADAPT_STRATEGIES=1 seulement : sur l'historique, adapter les poids n'a pas aidé)
   if (!cfg.adaptStrategies) {
-    lines.push('📊 Stratégies : réglage fixe (l’adaptation des poids n’a pas amélioré la réussite sur l’historique 2015–2026 ; ADAPT_STRATEGIES=1 pour l’activer)');
+    lines.push('📊 Strategies: fixed settings (weight adaptation did not improve the pass rate on 2015–2026 history; ADAPT_STRATEGIES=1 to turn it on)');
     st.lastReview = now;
     st.history = [...(st.history || []), { at: now, ai: ai.adopt ? st.aiVersion : null, changes: [] }].slice(-30);
     store.saveJson(FILE, st);
@@ -246,14 +246,14 @@ function weeklyReview(cfg, store, now = Date.now()) {
   st.weights = rv.weights;
   st.promoted = rv.promoted;
   if (rv.changes.length) {
-    lines.push('📊 Stratégies :');
-    for (const c of rv.changes) lines.push(`• <code>${c.key}</code> ${c.why} (${fmtW(c.from)} → ${c.to === 'out' ? 'retirée' : fmtW(c.to)}) · ${c.n} trades live, note ${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)} R`);
+    lines.push('📊 Strategies:');
+    for (const c of rv.changes) lines.push(`• <code>${c.key}</code> ${c.why} (${fmtW(c.from)} → ${c.to === 'out' ? 'removed' : fmtW(c.to)}) · ${c.n} live trades, score ${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)} R`);
   } else {
-    lines.push('📊 Stratégies : aucun changement (pas assez de trades live pour conclure, ou rien à corriger)');
+    lines.push('📊 Strategies: no change (not enough live trades to conclude, or nothing to fix)');
   }
   const red = Object.entries(st.weights).filter(([, w]) => w > 0 && w < 1).length;
   const sus = Object.entries(st.weights).filter(([, w]) => w === 0).length;
-  lines.push(`<i>En cours : ${red} réduite(s), ${sus} suspendue(s), ${(st.promoted || []).length} candidate(s) promue(s) · trades paper de toutes les stratégies conservés.</i>`);
+  lines.push(`<i>Current: ${red} reduced, ${sus} suspended, ${(st.promoted || []).length} candidate(s) promoted · paper trades of all strategies kept.</i>`);
   st.lastReview = now;
   st.history = [...(st.history || []), { at: now, ai: ai.adopt ? st.aiVersion : null, changes: rv.changes.map((c) => ({ key: c.key, to: c.to, why: c.why })) }].slice(-30);
   store.saveJson(FILE, st);
@@ -267,9 +267,9 @@ function summary(cfg, store) {
   const red = Object.values(st.weights || {}).filter((w) => w > 0 && w < 1).length;
   const up = Object.values(st.weights || {}).filter((w) => w > 1).length;
   const sus = Object.values(st.weights || {}).filter((w) => w === 0).length;
-  const when = st.lastReview ? new Date(st.lastReview).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : 'dimanche prochain';
-  const strat = cfg.adaptStrategies ? ` · ${up} renforcée(s), ${red} réduite(s), ${sus} suspendue(s), ${(st.promoted || []).length} promue(s)` : '';
-  return `🧠 Adaptation : IA v${st.aiVersion || 0} (apprend chaque dimanche)${st.aiMode === 'observe' ? ', repassée en observation' : ''}${strat} · ${st.lastReview ? `dernière revue le ${when}` : `1re revue ${when}`}`;
+  const when = st.lastReview ? new Date(st.lastReview).toLocaleDateString('en-US', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : 'next Sunday';
+  const strat = cfg.adaptStrategies ? ` · ${up} increased, ${red} reduced, ${sus} suspended, ${(st.promoted || []).length} promoted` : '';
+  return `🧠 Adaptation: AI v${st.aiVersion || 0} (learns every Sunday)${st.aiMode === 'observe' ? ', switched back to observe' : ''}${strat} · ${st.lastReview ? `last review on ${when}` : `1st review ${when}`}`;
 }
 
 /** Remise à zéro : poids, promotions et modèle live supprimés. */

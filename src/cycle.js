@@ -36,7 +36,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
       for (const ev of evs) {
         n++;
         console.log(
-          `[${market.id}] ${ev.strategy.id} : ${ev.type === 'open' ? `ouverture ${ev.pos.side} à ${ev.pos.entry.toFixed(2)}` : `clôture ${ev.trade.pnlPct.toFixed(2)}% (${ev.trade.reason})`}`,
+          `[${market.id}] ${ev.strategy.id} : ${ev.type === 'open' ? `open ${ev.pos.side} at ${ev.pos.entry.toFixed(2)}` : `close ${ev.trade.pnlPct.toFixed(2)}% (${ev.trade.reason})`}`,
         );
         // Un message par trade (TRADE_MESSAGES=1) ; sinon trades regroupés dans le résumé du jour (DIGEST_ALL / SCALP_DIGEST)
         if (publish && !cfg.publishFtmoOnly && (cfg.tradeMessages || !inDigest(cfg, ev.strategy))) await safeSend(channel, goldEventMessage(ev), ui ? { reply_markup: ui.tradeKeyboard(ev) } : {});
@@ -65,15 +65,15 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
     try {
       const ftmo = books[acct.id];
       const firm = acct.firm || 'FTMO';
-      const name = `Compte ${firm} simulé ${acct.emoji} ${acct.label}`;
+      const name = `Simulated ${firm} account ${acct.emoji} ${acct.label}`;
       const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-      const button = ui && !acct.fundedOnly ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Voir le compte', callback_data: acct.firm === 'Lucid' ? 'm:f:g:l' : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
+      const button = ui && !acct.fundedOnly ? { reply_markup: { inline_keyboard: [[{ text: '🏦 View the account', callback_data: acct.firm === 'Lucid' ? 'm:f:g:l' : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
       for (const msg of ftmo.onCycle(all, prices, undefined, { fills })) {
         // Chaque trade du compte FTMO (ouverture et clôture) : console + message dans le groupe (FTMO_TRADE_MESSAGES)
         if (msg.type === 'open' || msg.type === 'trade' || msg.type === 'refused' || msg.type === 'refusedResult') {
           // Clôture forcée par la limite de perte : le compte repart ensuite à zéro, on montre le solde du challenge clôturé
           const st0 = ftmo.status(prices);
-          const st = msg.type === 'trade' && /^règle /.test(msg.p.reason || '') ? { ...st0, s: msg.s, equity: msg.s.balance, target: null } : st0;
+          const st = msg.type === 'trade' && / rule$/.test(msg.p.reason || '') ? { ...st0, s: msg.s, equity: msg.s.balance, target: null } : st0;
           const text = ftmoTradeMessage(msg, st, marketById(cfg, msg.p.market));
           // Même signal refusé par FTMO et par Lucid dans ce passage : annoncé une seule fois (par FTMO)
           const sigKey = `${msg.type}:${msg.p.market}:${msg.p.sid}:${msg.p.entryT}`;
@@ -81,16 +81,16 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
             if (acct.firm === 'Lucid' && refusedSeen.has(sigKey)) continue;
             refusedSeen.add(sigKey);
           }
-          console.log(`[${firm.toLowerCase()}] ${{ open: 'ouverture', trade: 'clôture', refused: 'bloqué par l\'IA', refusedResult: 'bilan d\'un trade bloqué' }[msg.type]} ${msg.p.market}:${msg.p.sid} ${msg.p.side}${msg.type === 'trade' ? ` ${usd(msg.p.pnl)}` : ''}${msg.p.ai ? ` (IA ${Math.round(msg.p.ai.p * 100)} %)` : ''}`);
+          console.log(`[${firm.toLowerCase()}] ${{ open: 'open', trade: 'close', refused: 'blocked by the AI', refusedResult: 'blocked trade result' }[msg.type]} ${msg.p.market}:${msg.p.sid} ${msg.p.side}${msg.type === 'trade' ? ` ${usd(msg.p.pnl)}` : ''}${msg.p.ai ? ` (AI ${Math.round(msg.p.ai.p * 100)}%)` : ''}`);
           // Clôture : bouton « 🎬 Vidéo » (PnL card animée, réservé à l'administrateur)
           const extra = msg.type === 'trade' && ui && msg.p.exitT
-            ? { reply_markup: { inline_keyboard: [[...(button.reply_markup?.inline_keyboard?.[0] || []), { text: '🎬 Vidéo', callback_data: `v:t:${acct.id === 'gold' || acct.id === 'nas100' ? 'ftmo' : acct.id}:${msg.p.exitT}:${msg.p.sid}`.slice(0, 64) }]] } }
+            ? { reply_markup: { inline_keyboard: [[...(button.reply_markup?.inline_keyboard?.[0] || []), { text: '🎬 Video', callback_data: `v:t:${acct.id === 'gold' || acct.id === 'nas100' ? 'ftmo' : acct.id}:${msg.p.exitT}:${msg.p.sid}`.slice(0, 64) }]] } }
             : button;
           if (publish && cfg.ftmoTradeMessages !== false) await safeSend(channel, text, extra, { dm: true });
           continue;
         }
         if (msg.type === 'fundedStart') {
-          const text = `🟣🏁 <b>Lucid : compte financé simulé démarré directement</b>\n${dollars(msg.s.capital)}, sans évaluation, en parallèle de l’évaluation Lucid et de FTMO : risque du compte financé, retraits simulés (5 jours gagnants).\n<i>Compte simulé : aucun argent réel.</i>`;
+          const text = `🟣🏁 <b>Lucid: simulated funded account started directly</b>\n${dollars(msg.s.capital)}, no evaluation, running alongside the Lucid evaluation and FTMO: funded-account risk, simulated payouts (5 winning days).\n<i>Simulated account: no real money.</i>`;
           console.log('[lucid] compte financé démarré directement');
           if (publish) await safeSend(channel, text, button, { dm: true });
           continue;
@@ -98,15 +98,15 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
         if (msg.type === 'parallel') {
           // Évaluation Lucid réussie : le compte financé tourne à part, une nouvelle évaluation repart en parallèle
           const text = msg.kept
-            ? `🟣🏁 <b>Lucid : compte financé lancé à part</b>\nL’évaluation n° ${msg.s.attempt} devient un compte financé qui tourne en parallèle (retraits simulés) ; une <b>nouvelle évaluation n° ${msg.next}</b> démarre au prochain jour de trading.\n<i>Compte simulé : aucun argent réel.</i>`
-            : `🟣🏁 <b>Lucid : évaluation n° ${msg.s.attempt} réussie</b>\nUn compte financé Lucid tourne déjà (1 à la fois) : il continue, et une nouvelle évaluation n° ${msg.next} démarre au prochain jour de trading.\n<i>Compte simulé : aucun argent réel.</i>`;
+            ? `🟣🏁 <b>Lucid: separate funded account started</b>\nEvaluation #${msg.s.attempt} becomes a funded account running in parallel (simulated payouts); a <b>new evaluation #${msg.next}</b> starts on the next trading day.\n<i>Simulated account: no real money.</i>`
+            : `🟣🏁 <b>Lucid: evaluation #${msg.s.attempt} passed</b>\nA Lucid funded account is already running (1 at a time): it carries on, and a new evaluation #${msg.next} starts on the next trading day.\n<i>Simulated account: no real money.</i>`;
           console.log(`[lucid] évaluation n° ${msg.s.attempt} réussie → ${msg.kept ? 'compte financé à part' : 'compte financé déjà en cours'}, nouvelle évaluation n° ${msg.next}`);
           if (publish) await safeSend(channel, text, button, { dm: true });
           continue;
         }
         if (msg.type === 'payout') {
           const pct = Math.round((msg.trader / msg.amount) * 100);
-          const text = `${firm === 'Lucid' ? '🟣' : '🏦'}💸 <b>${name} : retrait simulé n° ${msg.n}</b>\n${dollars(msg.amount)} retirés du compte financé → <b>${dollars(msg.trader)} pour toi</b> (${pct} %) · total ${dollars(msg.total)}\n<i>Compte simulé : aucun argent réel.</i>`;
+          const text = `${firm === 'Lucid' ? '🟣' : '🏦'}💸 <b>${name}: simulated payout #${msg.n}</b>\n${dollars(msg.amount)} withdrawn from the funded account → <b>${dollars(msg.trader)} for you</b> (${pct}%) · total ${dollars(msg.total)}\n<i>Simulated account: no real money.</i>`;
           console.log(`[${firm.toLowerCase()}] retrait simulé ${dollars(msg.amount)} (${dollars(msg.trader)} pour le trader)`);
           if (publish) await safeSend(channel, text, button, { dm: true });
           continue;
@@ -114,7 +114,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
         if (!publish) continue;
         const { ftmoImage } = require('./cards');
         if (acct.fundedOnly && msg.type === 'fail') {
-          const text = `🟣❌ <b>${name} : compte financé perdu</b>\n${msg.why}. En sommeil jusqu’à la prochaine évaluation Lucid réussie (ou /financer lucid).\n<i>Compte simulé : aucun argent réel.</i>`;
+          const text = `🟣❌ <b>${name}: funded account lost</b>\n${msg.why}. Asleep until the next passed Lucid evaluation (or /financer lucid).\n<i>Simulated account: no real money.</i>`;
           await safeSend(channel, text, button, { dm: true });
           continue;
         }
@@ -122,9 +122,9 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
         const oneStep = st.program?.steps === 1;
         const split = st.program?.split || 80;
         const text = msg.type === 'pass'
-          ? (oneStep ? `🏦🏆 <b>${name} : ${firm === 'Lucid' ? 'évaluation' : 'challenge 1 étape'} réussi${firm === 'Lucid' ? 'e' : ''} (+${st.program?.target || 10} %), compte financé !</b>\nOn suit maintenant les gains mensuels (partage ${split} %).`
-            : msg.phase === 1 ? `🏦✅ <b>${name} : étape 1 réussie (+10 %)</b>\nPassage à l’étape 2 (vérification, objectif +5 %).` : `🏦🏆 <b>${name} : étape 2 réussie, compte financé !</b>\nOn suit maintenant les gains mensuels (partage 80 %).`)
-          : `🏦❌ <b>${name} : ${firm === 'Lucid' ? 'évaluation' : 'challenge'} n° ${msg.s.attempt} échoué${firm === 'Lucid' ? 'e' : ''}</b>\n${msg.why}. Un nouveau challenge démarre au prochain jour de trading.`;
+          ? (oneStep ? `🏦🏆 <b>${name}: ${firm === 'Lucid' ? 'evaluation' : '1-step challenge'} passed (+${st.program?.target || 10}%), funded account!</b>\nNow tracking monthly gains (${split}% split).`
+            : msg.phase === 1 ? `🏦✅ <b>${name}: step 1 passed (+10%)</b>\nMoving to step 2 (verification, +5% target).` : `🏦🏆 <b>${name}: step 2 passed, funded account!</b>\nNow tracking monthly gains (80% split).`)
+          : `🏦❌ <b>${name}: ${firm === 'Lucid' ? 'evaluation' : 'challenge'} #${msg.s.attempt} failed</b>\n${msg.why}. A new challenge starts on the next trading day.`;
         await channel.sendPhoto(ftmoImage(st), text, button, { dm: true }).catch((err) => console.error(`[ftmo] ${explainTelegramError(err)}`));
       }
     } catch (err) {
@@ -154,7 +154,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
     if (now.getUTCHours() >= cfg.digestHourUtc && store.getMeta('lastDigestDay') !== today) {
       try {
         const text = scalpDigest(cfg, store, markets, store.getMeta('lastDigestAt') || Date.now() - 86_400_000);
-        if (text) await channel.sendText(text, ui ? { reply_markup: { inline_keyboard: [[{ text: '🎛 Menu', callback_data: 'm:h:n' }, ...(cfg.ftmoEnabled ? [{ text: '🏦 Compte FTMO', callback_data: 'm:f:n' }] : [])]] } } : {});
+        if (text) await channel.sendText(text, ui ? { reply_markup: { inline_keyboard: [[{ text: '🎛 Menu', callback_data: 'm:h:n' }, ...(cfg.ftmoEnabled ? [{ text: '🏦 FTMO account', callback_data: 'm:f:n' }] : [])]] } } : {});
         store.setMeta('lastDigestDay', today);
         store.setMeta('lastDigestAt', Date.now());
       } catch (err) {
@@ -174,7 +174,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
     try {
       const { text } = require('./adapt').weeklyReview(cfg, store);
       console.log(`[adapt] ${text.replace(/<[^>]+>/g, '').split('\n').join(' | ')}`);
-      if (publish) await channel.sendText(text, ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 Compte FTMO', callback_data: 'm:f:g' }]] } } : {});
+      if (publish) await channel.sendText(text, ui ? { reply_markup: { inline_keyboard: [[{ text: '🏦 FTMO account', callback_data: 'm:f:g' }]] } } : {});
     } catch (err) {
       console.error('[adapt] revue impossible :', err.message);
     }
@@ -189,7 +189,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
       } else {
         const ftmo = require('./ftmoAccount').createFtmo({ cfg, store, account: 'gold' });
         const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-        await channel.sendPhoto(require('./cards').ftmoImage(ftmo.status(prices)), '🏦 <b>Compte FTMO simulé</b> · état du jour');
+        await channel.sendPhoto(require('./cards').ftmoImage(ftmo.status(prices)), '🏦 <b>Simulated FTMO account</b> · daily status');
       }
     } catch (err) {
       console.error(`[canal] image FTMO impossible : ${explainTelegramError(err)}`);
@@ -227,62 +227,62 @@ const dollars = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
 function slip(p, signal, fill, exit = false) {
   const d = (fill - signal) * (p.side === 'long' ? 1 : -1) * (exit ? 1 : -1);
   const v = Math.abs(fill - signal);
-  return `${Math.abs(fill) < 10 ? v.toFixed(4) : v.toFixed(2)} ${d >= 0 ? 'en ta faveur' : 'contre toi'}`;
+  return `${Math.abs(fill) < 10 ? v.toFixed(4) : v.toFixed(2)} ${d >= 0 ? 'in your favor' : 'against you'}`;
 }
 
 /** Message d'un trade du compte FTMO : ouverture (`open`) ou clôture (`trade`). */
 /** Avis de l'IA validatrice sur un trade du compte FTMO. */
 function aiLine(ai) {
   const pc = Math.round(ai.p * 100);
-  if (ai.ok) return `🤖 IA : ✅ validé · chances estimées ${pc} %`;
-  return `🤖 IA (observation) : ⚠️ aurait refusé · chances estimées ${pc} % (seuil ${Math.round(ai.min * 100)} %)`;
+  if (ai.ok) return `🤖 AI: ✅ approved · estimated odds ${pc}%`;
+  return `🤖 AI (observe): ⚠️ would have refused · estimated odds ${pc}% (threshold ${Math.round(ai.min * 100)}%)`;
 }
 
 function ftmoTradeMessage(msg, st, market) {
   const p = msg.p;
   const mk = market ? `${market.emoji} ${market.id === 'nas100' ? 'Nasdaq' : market.name}` : p.market;
   const name = `<b>${esc(p.name || p.sid)}</b> <code>${esc(p.sid)}</code>`;
-  const tag = st.account?.id === 'lucidf' ? '🟣 <b>Lucid financé</b>' : st.account?.firm === 'Lucid' ? '🟣 <b>Lucid</b>' : '🏦 <b>FTMO</b>';
+  const tag = st.account?.id === 'lucidf' ? '🟣 <b>Lucid funded</b>' : st.account?.firm === 'Lucid' ? '🟣 <b>Lucid</b>' : '🏦 <b>FTMO</b>';
   if (msg.type === 'open') {
     const pct = st.s.balance ? ((p.risk || 0) / st.s.balance) * 100 : 0;
     return [
-      `${tag} · ${p.side === 'long' ? '📈 <b>ACHAT</b>' : '📉 <b>VENTE</b>'} ${mk}`,
+      `${tag} · ${p.side === 'long' ? '📈 <b>BUY</b>' : '📉 <b>SELL</b>'} ${mk}`,
       name,
-      `Entrée $${px(p.entry)}${p.signal ? ` (signal $${px(p.signal)}, ${slip(p, p.signal, p.entry)})` : ''} · stop $${px(p.sl)} · ${p.n ? `${p.n} micro-contrat${p.n > 1 ? 's' : ''} ${p.contract} (${dollars(p.notional)})` : `${dollars(p.notional)} engagés (levier ${p.lev.toFixed(1)})`}`,
-      `Risque ${dollars(p.risk || 0)} (${pct.toFixed(2)} % du compte) · <i>compte simulé</i>`,
+      `Entry $${px(p.entry)}${p.signal ? ` (signal $${px(p.signal)}, ${slip(p, p.signal, p.entry)})` : ''} · stop $${px(p.sl)} · ${p.n ? `${p.n} micro contract${p.n > 1 ? 's' : ''} ${p.contract} (${dollars(p.notional)})` : `${dollars(p.notional)} committed (leverage ${p.lev.toFixed(1)})`}`,
+      `Risk ${dollars(p.risk || 0)} (${pct.toFixed(2)}% of the account) · <i>simulated account</i>`,
       ...(p.ai ? [aiLine(p.ai)] : []),
     ].join('\n');
   }
   if (msg.type === 'refused') {
     return [
-      `${tag} · 🤖⛔ <b>Trade bloqué par l'IA</b> ${mk}`,
+      `${tag} · 🤖⛔ <b>Trade blocked by the AI</b> ${mk}`,
       name,
-      `${p.side === 'long' ? 'Achat' : 'Vente'} à $${px(p.entry)} · stop $${px(p.sl)} · ${dollars(p.notional)} · risque évité ${dollars(p.risk || 0)}`,
-      `Chances estimées ${Math.round(p.ai.p * 100)} % (seuil ${Math.round(p.ai.min * 100)} %) → pas de trade, refusé par l'IA. Bilan annoncé quand le trade fictif se termine.`,
+      `${p.side === 'long' ? 'Buy' : 'Sell'} at $${px(p.entry)} · stop $${px(p.sl)} · ${dollars(p.notional)} · risk avoided ${dollars(p.risk || 0)}`,
+      `Estimated odds ${Math.round(p.ai.p * 100)}% (threshold ${Math.round(p.ai.min * 100)}%) → no trade, refused by the AI. The result will be posted when the shadow trade ends.`,
     ].join('\n');
   }
   if (msg.type === 'refusedResult') {
     return [
-      `${tag} · 🤖 <b>Bilan d'un trade bloqué par l'IA</b> ${mk}`,
+      `${tag} · 🤖 <b>Result of a trade blocked by the AI</b> ${mk}`,
       name,
-      `${p.side === 'long' ? 'Achat' : 'Vente'} $${px(p.entry)} → $${px(p.exit)}${p.reason ? ` (${esc(p.reason)})` : ''} : il aurait fait <b>${usd(p.pnl)}</b>`,
-      `${p.pnl < 0 ? '✅ L’IA a eu raison : perte évitée' : '❌ L’IA a eu tort : gain manqué'} · <i>compte simulé</i>`,
+      `${p.side === 'long' ? 'Buy' : 'Sell'} $${px(p.entry)} → $${px(p.exit)}${p.reason ? ` (${esc(p.reason)})` : ''}: it would have made <b>${usd(p.pnl)}</b>`,
+      `${p.pnl < 0 ? '✅ The AI was right: loss avoided' : '❌ The AI was wrong: missed gain'} · <i>simulated account</i>`,
     ].join('\n');
   }
-  const goal = st.target ? ` · objectif ${dollars(st.target)} (${Math.round(Math.min(1, Math.max(0, st.progress)) * 100)} %)` : '';
+  const goal = st.target ? ` · target ${dollars(st.target)} (${Math.round(Math.min(1, Math.max(0, st.progress)) * 100)} %)` : '';
   return [
-    `${tag} · ${p.pnl >= 0 ? '🟢' : '🔴'} clôture ${mk}`,
+    `${tag} · ${p.pnl >= 0 ? '🟢' : '🔴'} close ${mk}`,
     name,
     `$${px(p.entry)} → $${px(p.exit)}${p.signalExit ? ` (signal $${px(p.signalExit)}, ${slip(p, p.signalExit, p.exit, true)})` : ''} · <b>${usd(p.pnl)}</b>`,
-    `Compte ${dollars(st.equity)} (${((st.equity / st.s.capital - 1) * 100).toFixed(2)} %)${goal} · <i>compte simulé</i>`,
+    `Account ${dollars(st.equity)} (${((st.equity / st.s.capital - 1) * 100).toFixed(2)}%)${goal} · <i>simulated account</i>`,
   ].join('\n');
 }
 
 /** Résumé des trades (clôtures et nouvelles positions) depuis `sinceMs`, par marché et par stratégie (+ compte FTMO simulé). */
 function scalpDigest(cfg, store, markets, sinceMs) {
   const since = Math.floor(sinceMs / 1000);
-  const date = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
-  const lines = [`📋 <b>Résumé du jour${cfg.digestAll ? '' : ' — scalp'}</b> <i>(${date}, paper trading)</i>`];
+  const date = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const lines = [`📋 <b>Daily summary${cfg.digestAll ? '' : ' — scalp'}</b> <i>(${date}, paper trading)</i>`];
   let any = false;
   for (const market of markets) {
     const tr = new MarketTrader(market, store, cfg);
@@ -301,7 +301,7 @@ function scalpDigest(cfg, store, markets, sinceMs) {
       if (acc.position) open++;
       if (fresh && !isScalp(s)) {
         // Stratégie journalière : la nouvelle position compte (elle est souvent gardée des semaines)
-        rows.push(`  • ${esc(s.name)} : ${fresh.side === 'long' ? '📈 achat' : '📉 vente'} à $${px(fresh.entry)} (stop $${px(fresh.sl)})`);
+        rows.push(`  • ${esc(s.name)} : ${fresh.side === 'long' ? '📈 buy' : '📉 sell'} at $${px(fresh.entry)} (stop $${px(fresh.sl)})`);
         opened++;
       }
       if (!done.length) continue;
@@ -310,9 +310,9 @@ function scalpDigest(cfg, store, markets, sinceMs) {
       n += done.length;
       wins += w;
       pnl += p;
-      rows.push(`  • ${esc(s.name)} : ${done.length} trade${done.length > 1 ? 's' : ''}, ${w} gagnant${w > 1 ? 's' : ''}, <b>${usd(p)}</b> (${usd(acc.capital - market.startCapital)} depuis le début)`);
+      rows.push(`  • ${esc(s.name)} : ${done.length} trade${done.length > 1 ? 's' : ''}, ${w} winner${w > 1 ? 's' : ''}, <b>${usd(p)}</b> (${usd(acc.capital - market.startCapital)} since start)`);
     }
-    lines.push('', `${market.emoji} <b>${esc(market.name)}</b> : ${n ? `${n} trade${n > 1 ? 's' : ''} clôturé${n > 1 ? 's' : ''} · ${Math.round((wins / n) * 100)} % gagnants · <b>${usd(pnl)}</b>` : 'aucun trade clôturé'}${opened ? ` · ${opened} nouvelle${opened > 1 ? 's' : ''} position${opened > 1 ? 's' : ''}` : ''}${open ? ` · ${open} position${open > 1 ? 's' : ''} ouverte${open > 1 ? 's' : ''} au total` : ''}`);
+    lines.push('', `${market.emoji} <b>${esc(market.name)}</b> : ${n ? `${n} trade${n > 1 ? 's' : ''} closed · ${Math.round((wins / n) * 100)}% winners · <b>${usd(pnl)}</b>` : 'no closed trade'}${opened ? ` · ${opened} new position${opened > 1 ? 's' : ''}` : ''}${open ? ` · ${open} open position${open > 1 ? 's' : ''} in total` : ''}`);
     lines.push(...rows);
     if (n || opened) any = true;
   }
@@ -322,10 +322,10 @@ function scalpDigest(cfg, store, markets, sinceMs) {
     if (book.asleep()) continue;
     const st = book.status(prices);
     const s = st.s;
-    lines.push('', `🏦 <b>Compte ${acct.firm || 'FTMO'} simulé ${acct.emoji} ${acct.label}</b> : ${s.phase === 'funded' ? 'compte financé' : st.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} (challenge n° ${s.attempt}) · ${usd(st.equity - s.capital)} (${((st.equity / s.capital - 1) * 100).toFixed(2)} %)${st.target ? ` · ${Math.round(Math.min(1, st.progress) * 100)} % de l’objectif` : ''} · ${s.days.length} jour${s.days.length > 1 ? 's' : ''} de trading`);
+    lines.push('', `🏦 <b>Simulated ${acct.firm || 'FTMO'} account ${acct.emoji} ${acct.label}</b>: ${s.phase === 'funded' ? 'funded account' : st.program?.steps === 1 ? '1-step challenge' : `step ${s.phase} of 2`} (challenge #${s.attempt}) · ${usd(st.equity - s.capital)} (${((st.equity / s.capital - 1) * 100).toFixed(2)}%)${st.target ? ` · ${Math.round(Math.min(1, st.progress) * 100)}% of target` : ''} · ${s.days.length} trading day${s.days.length > 1 ? 's' : ''}`);
     any = true;
   }
-  lines.push('', '<i>Montants : chaque stratégie a son propre compte de paper trading. Argent fictif.</i>');
+  lines.push('', '<i>Amounts: each strategy has its own paper trading account. Fake money.</i>');
   return any ? lines.join('\n').slice(0, 4096) : null;
 }
 

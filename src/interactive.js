@@ -18,7 +18,7 @@ const { selectStrategies } = require('./strategies');
 const { liveChart, historyChart, colorize } = require('./portfolio');
 const C = require('./cards');
 const { esc } = require('./format');
-const { VERDICT } = require('./catalog');
+const VERDICT_EN = require('./verdicts.en.json'); // notes du banc d'essai en anglais (stratégies actives)
 
 const MK = { g: 'gold', n: 'nas100', e: 'eurusd', p: 'spx' };
 const KM = { gold: 'g', nas100: 'n', eurusd: 'e', spx: 'p' };
@@ -26,16 +26,16 @@ const YEARS = { gold: [2001, 2010, 2016, 2021], nas100: [1990, 2000, 2010, 2020]
 const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
 /** Cours : 4 décimales sous 10 (EUR/USD), entier au-delà de 1 000, 2 décimales sinon. */
 const quote = (v) => (Math.abs(v) < 10 ? `$${v.toFixed(4)}` : Math.abs(v) >= 1000 ? money(v) : `$${v.toFixed(2)}`);
-const pct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} %`;
+const pct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}%`;
 const signedMoney = (v) => `${v >= 0 ? '+' : '−'}${money(Math.abs(v || 0))}`;
 const MARKET_EMOJI = { gold: '🥇', nas100: '🇺🇸', eurusd: '💶', spx: '🗽', silver: '🥈', dow: '🏭', russell: '🐎' };
 /** Stratégies suivies : noms si la ligne reste courte, sinon nombre par marché. */
 function strategiesLine(list) {
-  const full = `Stratégies suivies : ${list.map((x) => `${MARKET_EMOJI[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')}`;
+  const full = `Strategies followed: ${list.map((x) => `${MARKET_EMOJI[x.split(':')[0]] || ''}<code>${esc(x.split(':')[1])}</code>`).join(', ')}`;
   if (full.length <= 380) return full;
   const by = {};
   for (const x of list) by[x.split(':')[0]] = (by[x.split(':')[0]] || 0) + 1;
-  return `Stratégies suivies : ${list.length} (${Object.entries(by).map(([m, n]) => `${MARKET_EMOJI[m] || m} ${n}`).join(' · ')}) — liste dans /strategies`;
+  return `Strategies followed: ${list.length} (${Object.entries(by).map(([m, n]) => `${MARKET_EMOJI[m] || m} ${n}`).join(' · ')}) — list in /strategies`;
 }
 
 /**
@@ -57,10 +57,10 @@ function timeMachineLine(cfg, store, accountId) {
 function payoutText(s, P, isLucid) {
   const f = s.funded || {};
   const n = f.payouts?.length || 0;
-  const done = n ? `${n} retrait(s) simulé(s), ${money(f.traderPaid || 0)} pour toi` : 'aucun retrait pour l’instant';
+  const done = n ? `${n} simulated payout(s), ${money(f.traderPaid || 0)} for you` : 'no payout yet';
   const next = isLucid
-    ? `prochain après ${Math.max(0, (P.payout?.cycleDays || 5) - (f.good || 0))} jour(s) gagnant(s) ≥ ${money(P.payout?.minDay || 150)} (50 % du gain, ${money(P.payout?.cap || 2000)} au plus)`
-    : 'tout le gain tous les 14 jours (80 % pour toi)';
+    ? `next after ${Math.max(0, (P.payout?.cycleDays || 5) - (f.good || 0))} winning day(s) ≥ ${money(P.payout?.minDay || 150)} (50% of the gain, ${money(P.payout?.cap || 2000)} max)`
+    : 'the whole gain every 14 days (80% for you)';
   return `💸 ${done} · ${next}`;
 }
 
@@ -80,19 +80,19 @@ function fitCaption(lines, max = 1024) {
 function aiText(cfg, s) {
   if (!cfg.ftmoAi || cfg.ftmoAi === 'off') return [];
   const judged = (s.closed || []).filter((t) => t.ai);
-  const mode = cfg.ftmoAi === 'block' ? 'bloque les signaux sous le seuil' : 'observation, ne bloque rien';
-  if (!judged.length) return [`🤖 IA validatrice (${mode}) : pas encore de trade jugé clôturé${s.aiRefused ? ` · ${s.aiRefused} signal(s) refusé(s)` : ''}`];
-  const part = (l) => `${l.length} trade(s), ${signedMoney(l.reduce((a, t) => a + t.pnl, 0))}, ${l.length ? Math.round((l.filter((t) => t.pnl > 0).length / l.length) * 100) : 0} % gagnants`;
+  const mode = cfg.ftmoAi === 'block' ? 'blocks signals below the threshold' : 'observe only, blocks nothing';
+  if (!judged.length) return [`🤖 Validator AI (${mode}): no judged trade closed yet${s.aiRefused ? ` · ${s.aiRefused} signal(s) refused` : ''}`];
+  const part = (l) => `${l.length} trade(s), ${signedMoney(l.reduce((a, t) => a + t.pnl, 0))}, ${l.length ? Math.round((l.filter((t) => t.pnl > 0).length / l.length) * 100) : 0}% winners`;
   const ok = judged.filter((t) => t.ai.ok);
   const no = judged.filter((t) => !t.ai.ok);
-  return [`🤖 IA validatrice (${mode}) : validés ${part(ok)} · ${cfg.ftmoAi === 'block' ? 'sous le seuil' : 'aurait refusé'} ${part(no)}${s.aiRefused ? ` · ${s.aiRefused} signal(s) refusé(s)` : ''}`];
+  return [`🤖 Validator AI (${mode}): approved ${part(ok)} · ${cfg.ftmoAi === 'block' ? 'below threshold' : 'would have refused'} ${part(no)}${s.aiRefused ? ` · ${s.aiRefused} signal(s) refused` : ''}`];
 }
 
 /** Une ligne : ce qu'auraient fait les signaux refusés par l'IA (rep = refusedReport()). */
 function refusedLine(rep) {
   if (!rep.n) return '';
-  const verdict = rep.closed ? (rep.closedPnl <= 0 ? '✅ l’IA a eu raison' : '⚠️ ils auraient gagné') : '';
-  return `🤖 Refusés par l’IA : ${rep.n} signal(s)${rep.closed ? ` · clôturés ${rep.closed} : auraient fait <b>${signedMoney(rep.closedPnl)}</b> (${rep.wins} gagnant(s)) ${verdict}` : ''}${rep.open ? ` · encore ouverts ${rep.open} : ${signedMoney(rep.openPnl)} latents` : ''}`;
+  const verdict = rep.closed ? (rep.closedPnl <= 0 ? '✅ the AI was right' : '⚠️ they would have won') : '';
+  return `🤖 Refused by the AI: ${rep.n} signal(s)${rep.closed ? ` · closed ${rep.closed}: would have made <b>${signedMoney(rep.closedPnl)}</b> (${rep.wins} winner(s)) ${verdict}` : ''}${rep.open ? ` · still open ${rep.open}: ${signedMoney(rep.openPnl)} unrealized` : ''}`;
 }
 
 /** Réduction du risque à l'approche de l'objectif (FTMO_SIZING « objectif : … »), pour la légende du compte FTMO. */
@@ -101,19 +101,19 @@ function protectText(cfg, s, targetPct = null) {
   const { RULES } = require('./sizing');
   const { TARGET } = require('./ftmoAccount');
   const mul = (RULES[cfg.ftmoSizing] || (() => 1))({}, { balance: s.balance, capital: s.capital, dayStart: s.dayStart, target: targetPct ?? TARGET[s.phase] ?? Infinity, open: 0 });
-  return mul < 0.999 ? ` · <b>réduit × ${mul.toFixed(2).replace('.', ',')}</b> (gain proche de l'objectif)` : ' · baisse à l\'approche de l\'objectif';
+  return mul < 0.999 ? ` · <b>reduced × ${mul.toFixed(2)}</b> (gain close to the target)` : ' · lowered when nearing the target';
 }
 
 /** Risque par trade du compte FTMO : journalières / intraday (stratégies factices pour interroger riskOf). */
 function riskText(cfg, acct, phase) {
-  if (!acct.riskOf) return `${acct.risk} %`;
+  if (!acct.riskOf) return `${acct.risk}%`;
   const daily = [...new Set(['gold', 'nas100', 'spx', 'eurusd', 'silver', 'dow', 'russell', ...require('./stocks').STOCK_IDS].filter((m) => acct.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => acct.riskOf(m, { tf: '1d' })))];
   // Risque intraday : celui d'une stratégie intraday que le compte prend vraiment
   const intraSid = acct.strategies.find((x) => { const s = selectStrategies([x.split(':')[1]])[0]; return s && s.tf && s.tf !== '1d' && acct.riskOf(x.split(':')[0], s, phase) > 0; });
   const r = (x) => Math.round(x * 1000) / 1000;
   const intra = intraSid ? r(acct.riskOf(intraSid.split(':')[0], selectStrategies([intraSid.split(':')[1]])[0], phase)) : 0;
-  const boost = acct.id === 'lucid' && phase !== 'funded' && (cfg.lucidEvalIntradayMul ?? 1) !== 1 ? ` pendant l'évaluation, ${r(cfg.lucidIntradayRisk)} % une fois financé` : '';
-  return `${daily.join(' / ')} % (journalières)${intra > 0 ? ` · ${intra} % (intraday${boost})` : ''}`;
+  const boost = acct.id === 'lucid' && phase !== 'funded' && (cfg.lucidEvalIntradayMul ?? 1) !== 1 ? ` during the evaluation, ${r(cfg.lucidIntradayRisk)}% once funded` : '';
+  return `${daily.join(' / ')}% (daily)${intra > 0 ? ` · ${intra}% (intraday${boost})` : ''}`;
 }
 const PAGE = 6;
 
@@ -131,11 +131,11 @@ function panelKeyboard(cfg, view, marketId, extra = []) {
   if (markets.length > 1) {
     rows.push(markets.map((m) => btn(`${m.id === marketId ? '• ' : ''}${m.emoji} ${m.id === 'nas100' ? 'Nasdaq' : m.name}`, `m:${view === 's' || view === 't' ? 'h' : view}:${KM[m.id]}`)));
   }
-  rows.push([btn('📈 Portefeuille', `m:h:${k}`), btn('🏆 Classement', `m:r:${k}`), btn('📍 Positions', `m:o:${k}`)]);
-  rows.push([btn('🕯 Cours', `m:c:${k}:1d`), btn('🕰 Historique', `m:y:${k}`), btn('📚 Stratégies', `m:l:${k}:0`)]);
+  rows.push([btn('📈 Portfolio', `m:h:${k}`), btn('🏆 Ranking', `m:r:${k}`), btn('📍 Positions', `m:o:${k}`)]);
+  rows.push([btn('🕯 Chart', `m:c:${k}:1d`), btn('🕰 History', `m:y:${k}`), btn('📚 Strategies', `m:l:${k}:0`)]);
   if (cfg.ftmoEnabled) {
-    rows.push(cfg.ftmoCombined ? [btn('🏦 Compte FTMO', 'm:f:g'), btn('🧾 Trades FTMO', 'm:z:g:0')]
-      : [btn('🏦 FTMO 🇺🇸 Nasdaq', 'm:f:n'), btn('🏦 FTMO 🥇 Or', 'm:f:g')].filter((b) => b.callback_data !== 'm:f:n' || cfg.ftmoNasEnabled));
+    rows.push(cfg.ftmoCombined ? [btn('🏦 FTMO account', 'm:f:g'), btn('🧾 FTMO trades', 'm:z:g:0')]
+      : [btn('🏦 FTMO 🇺🇸 Nasdaq', 'm:f:n'), btn('🏦 FTMO 🥇 Gold', 'm:f:g')].filter((b) => b.callback_data !== 'm:f:n' || cfg.ftmoNasEnabled));
   }
   return { inline_keyboard: [...extra, ...rows] };
 }
@@ -147,8 +147,8 @@ function tradeKeyboard(ev) {
   const id = ev.strategy.id;
   return {
     inline_keyboard: [
-      [btn(ev.type === 'open' ? '🧾 Carte du trade' : '🧾 Carte du résultat', `x:k:${k}:${id}:${t}`), btn('🕯 Cours + niveaux', `x:c:${k}:${id}:${t}`)],
-      [btn('ℹ️ La stratégie', `x:s:${k}:${id}:${t}`), btn('🎛 Menu', `m:h:${k}`)],
+      [btn(ev.type === 'open' ? '🧾 Trade card' : '🧾 Result card', `x:k:${k}:${id}:${t}`), btn('🕯 Chart + levels', `x:c:${k}:${id}:${t}`)],
+      [btn('ℹ️ The strategy', `x:s:${k}:${id}:${t}`), btn('🎛 Menu', `m:h:${k}`)],
     ],
   };
 }
@@ -199,15 +199,15 @@ function tradePage(all, askedPage, cb, unit = '') {
   const page = Math.min(Math.max(askedPage, 0), pages - 1);
   const rows = all.slice(page * TRADES_PAGE, page * TRADES_PAGE + TRADES_PAGE);
   const extra = [];
-  if (pages > 1) extra.push([btn('◀️ Plus récents', cb(Math.max(0, page - 1))), btn(`${page + 1} / ${pages}`, cb(page)), btn('Plus anciens ▶️', cb(Math.min(pages - 1, page + 1)))]);
+  if (pages > 1) extra.push([btn('◀️ Newer', cb(Math.max(0, page - 1))), btn(`${page + 1} / ${pages}`, cb(page)), btn('Older ▶️', cb(Math.min(pages - 1, page + 1)))]);
   const wins = all.filter((t) => t.pnlUsd > 0).length;
   const total = all.reduce((s, t) => s + (t.pnlUsd || 0), 0);
   const best = all.reduce((b, t) => (!b || t.pnlPct > b.pnlPct ? t : b), null);
   const worst = all.reduce((w, t) => (!w || t.pnlPct < w.pnlPct ? t : w), null);
   const caption = all.length
-    ? [`${all.length} trades · ${Math.round((wins / all.length) * 100)} % gagnants · total <b>${total >= 0 ? '+' : '−'}${money(Math.abs(total))}</b>`,
-      `Meilleur : ${esc(best.name)} ${pct(best.pnlPct)}${unit ? ` ${unit}` : ''} · pire : ${esc(worst.name)} ${pct(worst.pnlPct)}${unit ? ` ${unit}` : ''}`].join('\n')
-    : 'Aucun trade clôturé pour l’instant.';
+    ? [`${all.length} trades · ${Math.round((wins / all.length) * 100)}% winners · total <b>${total >= 0 ? '+' : '−'}${money(Math.abs(total))}</b>`,
+      `Best: ${esc(best.name)} ${pct(best.pnlPct)}${unit ? ` ${unit}` : ''} · worst: ${esc(worst.name)} ${pct(worst.pnlPct)}${unit ? ` ${unit}` : ''}`].join('\n')
+    : 'No closed trade yet.';
   return { rows, page, pages, extra, caption };
 }
 
@@ -225,7 +225,7 @@ function queued(fn) {
 
 async function render(cfg, store, view, marketId, args = []) {
   const market = marketById(cfg, marketId);
-  if (!market || !market.enabled) throw new Error('marché inactif');
+  if (!market || !market.enabled) throw new Error('inactive market');
   const tr = trader(cfg, store, marketId);
   const st = tr.stats();
   const head = `${market.emoji} <b>${esc(market.name)}</b>`;
@@ -244,26 +244,26 @@ async function render(cfg, store, view, marketId, args = []) {
     const P = fst.program || {};
     const lines = [
       isLucid
-        ? `🟣 <b>Compte Lucid simulé · ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : 'évaluation'} n° ${s.attempt}`
-        : `🏦 <b>Compte FTMO simulé ${fst.account.emoji} ${fst.account.label}</b> · ${s.phase === 'funded' ? 'compte financé' : fst.program?.steps === 1 ? 'challenge 1 étape' : `étape ${s.phase} sur 2`} · challenge n° ${s.attempt}`,
-      ...(isLucid ? [`Règles : +${P.target} %, meilleur jour ≤ ${P.bestDay} % du gain (évaluation), pas de perte du jour, perte max ${money(P.maxUsd)} sous le plus haut solde de clôture (seuil actuel ${money(fst.floor)}), micro-futures en contrats entiers (${P.maxContracts} au plus), jamais acheteur et vendeur en même temps`] : []),
+        ? `🟣 <b>Simulated Lucid account · ${fst.account.label}</b> · ${s.phase === 'funded' ? 'funded account' : 'evaluation'} #${s.attempt}`
+        : `🏦 <b>Simulated FTMO account ${fst.account.emoji} ${fst.account.label}</b> · ${s.phase === 'funded' ? 'funded account' : fst.program?.steps === 1 ? '1-step challenge' : `step ${s.phase} of 2`} · challenge #${s.attempt}`,
+      ...(isLucid ? [`Rules: +${P.target}%, best day ≤ ${P.bestDay}% of the gain (evaluation), no daily loss limit, max loss ${money(P.maxUsd)} below the highest closing balance (current floor ${money(fst.floor)}), micro futures in whole contracts (${P.maxContracts} max), never long and short at the same time`] : []),
       ...(s.phase === 'funded' ? [payoutText(s, P, isLucid)] : []),
-      ...(cfg.fillDelaySec > 0 ? [`⏱ Exécution ${cfg.fillDelaySec} s après le signal (cours de ce moment-là) ; stops au niveau${s.missed ? ` · ${s.missed} signal(s) manqué(s) (stop dépassé pendant le délai)` : ''}`] : []),
-      ...(isLucid && s.tooBig ? [`⚠️ ${s.tooBig} signal(s) sauté(s), trop gros pour ce compte (1 seul micro-contrat risquerait plus de 40 % de la perte max) : ${Object.entries(s.tooBigBy || {}).slice(0, 6).map(([k, v]) => `<code>${esc(k)}</code> ${money(v)}`).join(', ')} — ces stratégies restent sur le compte FTMO`] : []),
-      `Valeur <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · objectif ${money(fst.target)}` : ''}`,
-      `dont ${signedMoney(fst.unrealized)} latents sur ${Object.keys(s.open).length} position(s) ouverte(s) · réalisé ${signedMoney(fst.realized)} sur ${s.closed.length} trade(s) clôturé(s)${s.skipped ? ` · ${s.skipped} signal(s) opposé(s) ignoré(s)` : ''}`,
+      ...(cfg.fillDelaySec > 0 ? [`⏱ Execution ${cfg.fillDelaySec} s after the signal (price at that moment); stops at their level${s.missed ? ` · ${s.missed} signal(s) missed (stop crossed during the delay)` : ''}`] : []),
+      ...(isLucid && s.tooBig ? [`⚠️ ${s.tooBig} signal(s) skipped, too big for this account (a single micro contract would risk over 40% of the max loss): ${Object.entries(s.tooBigBy || {}).slice(0, 6).map(([k, v]) => `<code>${esc(k)}</code> ${money(v)}`).join(', ')} — these strategies stay on the FTMO account`] : []),
+      `Value <b>${money(fst.equity)}</b> (${pct((fst.equity / s.capital - 1) * 100)})${fst.target ? ` · target ${money(fst.target)}` : ''}`,
+      `incl. ${signedMoney(fst.unrealized)} unrealized on ${Object.keys(s.open).length} open position(s) · realized ${signedMoney(fst.realized)} on ${s.closed.length} closed trade(s)${s.skipped ? ` · ${s.skipped} opposite signal(s) ignored` : ''}`,
       strategiesLine(fst.account.strategies),
-      `Risque par trade : ${riskText(cfg, fst.account, s.phase)}${protectText(cfg, s, fst.needed ? ((fst.needed / s.capital) * 100) : fst.targetPct)}`,
-      ...(fst.target && fst.needed > fst.target - s.capital + 1 ? [`📏 Règle du meilleur jour (≤ ${P.bestDay} % du gain) : ton meilleur jour fait ${money(fst.bestDay)} → il faut <b>${money(fst.needed)}</b> de gain au total (encore ${money(Math.max(0, fst.needed - (fst.equity - s.capital)))})${String(cfg.ftmoSizing).startsWith('objectif') ? ' ; la taille des trades suit ce vrai objectif' : ''}`] : []),
+      `Risk per trade: ${riskText(cfg, fst.account, s.phase)}${protectText(cfg, s, fst.needed ? ((fst.needed / s.capital) * 100) : fst.targetPct)}`,
+      ...(fst.target && fst.needed > fst.target - s.capital + 1 ? [`📏 Best-day rule (≤ ${P.bestDay}% of the gain): your best day is ${money(fst.bestDay)} → you need <b>${money(fst.needed)}</b> of total gain (${money(Math.max(0, fst.needed - (fst.equity - s.capital)))} to go)${String(cfg.ftmoSizing).startsWith('objectif') ? '; trade size follows this real target' : ''}`] : []),
       ...aiText(cfg, s),
       ...timeMachineLine(cfg, store, isLucid ? 'lucid' : fst.account.id),
       ...(rep.n ? [refusedLine(rep)] : []),
       ...(cfg.autoAdapt ? [require('./adapt').summary(cfg, store)] : []),
-      ...(s.history || []).slice(-3).map((h) => `• ${isLucid ? 'évaluation' : 'challenge'} n° ${h.attempt}${isLucid ? '' : `, étape ${h.phase}`} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
+      ...(s.history || []).slice(-3).map((h) => `• ${isLucid ? 'evaluation' : 'challenge'} #${h.attempt}${isLucid ? '' : `, step ${h.phase}`}: ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`),
     ];
-    const rows = [[btn(`🧾 Trades ${isLucid ? 'Lucid' : 'FTMO'}`, `m:z:${KM[marketId]}:0${sfx}`), ...(rep.n ? [btn('🤖 Refusés par l’IA', `m:i:${KM[marketId]}:0${sfx}`)] : [])]];
-    if (lucidOn) rows.push([isLucid ? btn('🏦 Compte FTMO', `m:f:${KM[marketId]}`) : btn('🟣 Compte Lucid', `m:f:${KM[marketId]}:l`)]);
-    if (cfg.siteUrl) rows.push([{ text: '🖥 Interface en direct', url: `${cfg.siteUrl}/#bot` }]);
+    const rows = [[btn(`🧾 Trades ${isLucid ? 'Lucid' : 'FTMO'}`, `m:z:${KM[marketId]}:0${sfx}`), ...(rep.n ? [btn('🤖 Refused by the AI', `m:i:${KM[marketId]}:0${sfx}`)] : [])]];
+    if (lucidOn) rows.push([isLucid ? btn('🏦 FTMO account', `m:f:${KM[marketId]}`) : btn('🟣 Lucid account', `m:f:${KM[marketId]}:l`)]);
+    if (cfg.siteUrl) rows.push([{ text: '🖥 Live interface', url: `${cfg.siteUrl}/#bot` }]);
     return { png: C.ftmoImage(fst), caption: fitCaption(lines), keyboard: panelKeyboard(cfg, 'f', marketId, rows) };
   }
 
@@ -273,9 +273,9 @@ async function render(cfg, store, view, marketId, args = []) {
     const total = strat.reduce((s, r) => s + r.equity, 0);
     const best = [...strat].sort((a, b) => b.returnPct - a.returnPct)[0];
     const caption = [
-      `${head} · portefeuille <b>${money(total)}</b> (${pct((total / (market.startCapital * strat.length) - 1) * 100)})`,
-      best ? `En tête : ${esc(best.strategy.name)} (${pct(best.returnPct)})` : '',
-      '<i>Paper trading, argent fictif. Touchez les boutons pour changer de vue.</i>',
+      `${head} · portfolio <b>${money(total)}</b> (${pct((total / (market.startCapital * strat.length) - 1) * 100)})`,
+      best ? `Leading: ${esc(best.strategy.name)} (${pct(best.returnPct)})` : '',
+      '<i>Paper trading, fake money. Tap the buttons to switch views.</i>',
     ].filter(Boolean).join('\n');
     return { png, caption, keyboard: panelKeyboard(cfg, 'h', marketId) };
   }
@@ -284,15 +284,15 @@ async function render(cfg, store, view, marketId, args = []) {
     const colors = colorize(st.rows.map((r) => r.strategy));
     const rows = st.rows.map((r, k) => ({ r, color: colors[k] })).sort((a, b) => b.r.returnPct - a.r.returnPct)
       .map(({ r, color }) => ({ label: r.strategy.name, value: r.returnPct, text: pct(r.returnPct), rgb: color.rgb, badge: r.position ? (r.position.side === 'long' ? '▲' : '▼') : '' }));
-    const png = C.rankingImage({ market, title: 'Classement des stratégies', subtitle: `Valeur de chaque compte depuis le lancement · gains réinvestis · ▲ = en position`, rows, minScale: 5 });
+    const png = C.rankingImage({ market, title: 'Strategy ranking', subtitle: `Value of each account since launch · gains reinvested · ▲ = in a position`, rows, minScale: 5 });
     const top = rows.slice(0, 3).map((r, i) => `${['🥇', '🥈', '🥉'][i]} ${esc(r.label)} ${r.text}`).join('\n');
-    return { png, caption: `${head} · 🏆 classement\n${top}`, keyboard: panelKeyboard(cfg, 'r', marketId) };
+    return { png, caption: `${head} · 🏆 ranking\n${top}`, keyboard: panelKeyboard(cfg, 'r', marketId) };
   }
 
   if (view === 'o') {
     const open = st.rows.filter((r) => r.position);
     const png = C.positionsImage({ market, rows: open, price: st.price });
-    return { png, caption: `${head} · 📍 ${open.length} position${open.length > 1 ? 's' : ''} ouverte${open.length > 1 ? 's' : ''} · cours ${st.price ? quote(st.price) : 'n/d'}`, keyboard: panelKeyboard(cfg, 'o', marketId) };
+    return { png, caption: `${head} · 📍 ${open.length} open position${open.length > 1 ? 's' : ''} · price ${st.price ? quote(st.price) : 'n/a'}`, keyboard: panelKeyboard(cfg, 'o', marketId) };
   }
 
   if (view === 'c') {
@@ -306,11 +306,11 @@ async function render(cfg, store, view, marketId, args = []) {
       market,
       candles: shown,
       title: `${market.name} · ${price ? quote(price) : ''}`,
-      subtitle: `Bougies ${tf === '1d' ? '1 jour · 120 derniers jours' : '1 heure · 4 derniers jours'} · ${pct(chg)} sur la période`,
-      levels: price ? [{ price, label: 'Cours', rgb: [124, 196, 255] }] : [],
+      subtitle: `${tf === '1d' ? '1-day candles · last 120 days' : '1-hour candles · last 4 days'} · ${pct(chg)} over the period`,
+      levels: price ? [{ price, label: 'Price', rgb: [124, 196, 255] }] : [],
     });
-    const extra = [[btn(`${tf === '1d' ? '• ' : ''}Bougies 1 jour`, `m:c:${KM[marketId]}:1d`), btn(`${tf === '1h' ? '• ' : ''}Bougies 1 heure`, `m:c:${KM[marketId]}:1h`)]];
-    return { png, caption: `${head} · 🕯 cours ${price ? `<b>${quote(price)}</b>` : 'n/d'} (${pct(chg)} sur la période)`, keyboard: panelKeyboard(cfg, 'c', marketId, extra) };
+    const extra = [[btn(`${tf === '1d' ? '• ' : ''}1-day candles`, `m:c:${KM[marketId]}:1d`), btn(`${tf === '1h' ? '• ' : ''}1-hour candles`, `m:c:${KM[marketId]}:1h`)]];
+    return { png, caption: `${head} · 🕯 price ${price ? `<b>${quote(price)}</b>` : 'n/a'} (${pct(chg)} over the period)`, keyboard: panelKeyboard(cfg, 'c', marketId, extra) };
   }
 
   if (view === 'y') {
@@ -325,8 +325,8 @@ async function render(cfg, store, view, marketId, args = []) {
     const btns = rows.map((t) => btn(`🧾 ${t.sid} ${pct(t.pnlPct)}`, `x:k:${KM[marketId]}:${t.sid}:${t.entryT}`));
     const tradeRows = [];
     for (let i = 0; i < btns.length; i += 2) tradeRows.push(btns.slice(i, i + 2));
-    const png = C.tradesImage({ market, title: 'Historique des trades', subtitle: `${all.length} trades clôturés · page ${page + 1} / ${pages} · paper trading en direct, frais inclus`, rows });
-    return { png, caption: `${head} · 🕰 historique des trades\n${caption}`, keyboard: panelKeyboard(cfg, 'y', marketId, [...tradeRows, ...extra]) };
+    const png = C.tradesImage({ market, title: 'Trade history', subtitle: `${all.length} closed trades · page ${page + 1} / ${pages} · live paper trading, fees included`, rows });
+    return { png, caption: `${head} · 🕰 trade history\n${caption}`, keyboard: panelKeyboard(cfg, 'y', marketId, [...tradeRows, ...extra]) };
   }
 
   if (view === 'z') {
@@ -337,12 +337,12 @@ async function render(cfg, store, view, marketId, args = []) {
     const acct = require('./ftmoAccount').accountOf(cfg, marketId);
     const s = createFtmo({ cfg, store, account: isLucid ? 'lucid' : acct.enabled ? marketId : 'gold' }).load();
     const all = [...(s.closed || [])].map((t) => ({ ...t, name: `${MARKET_EMOJI[t.market] || ''} ${t.sid}`, pnlUsd: t.pnl, pnlPct: (t.pnl / s.capital) * 100 })).sort((a, b) => b.exitT - a.exitT);
-    const { rows, page, pages, extra, caption } = tradePage(all, Number(args[0]) || 0, (p) => `m:z:${KM[marketId]}:${p}${sfx}`, 'du compte');
+    const { rows, page, pages, extra, caption } = tradePage(all, Number(args[0]) || 0, (p) => `m:z:${KM[marketId]}:${p}${sfx}`, 'of account');
     const hist = (s.history || []).slice(-3).map((h) => `• challenge n° ${h.attempt} : ${esc(h.outcome)}${h.why ? ` (${esc(h.why)})` : ''}`);
     const firm = isLucid ? 'Lucid' : 'FTMO';
-    const png = C.tradesImage({ market: null, title: `Trades du compte ${firm} · ${isLucid ? 'évaluation' : 'challenge'} n° ${s.attempt}`, subtitle: `${all.length} trades clôturés depuis le début · page ${page + 1} / ${pages} · résultat en % du compte`, rows, footerText: `Simulation · compte ${firm} · argent fictif · pas un conseil financier` });
-    extra.push([btn(`⬅️ Compte ${firm}`, `m:f:${KM[marketId]}${sfx}`)]);
-    return { png, caption: fitCaption([`${isLucid ? '🟣' : '🏦'} <b>Compte ${firm} simulé</b> · 🧾 trades`, caption, ...hist]), keyboard: panelKeyboard(cfg, 'z', marketId, extra) };
+    const png = C.tradesImage({ market: null, title: `${firm} account trades · ${isLucid ? 'evaluation' : 'challenge'} #${s.attempt}`, subtitle: `${all.length} trades closed since the start · page ${page + 1} / ${pages} · result in % of the account`, rows, footerText: `Simulation · ${firm} account · fake money · not financial advice` });
+    extra.push([btn(`⬅️ ${firm} account`, `m:f:${KM[marketId]}${sfx}`)]);
+    return { png, caption: fitCaption([`${isLucid ? '🟣' : '🏦'} <b>Simulated ${firm} account</b> · 🧾 trades`, caption, ...hist]), keyboard: panelKeyboard(cfg, 'z', marketId, extra) };
   }
 
   if (view === 'i') {
@@ -358,24 +358,24 @@ async function render(cfg, store, view, marketId, args = []) {
     const now = Math.floor(Date.now() / 1000);
     const all = rep.rows.filter((r) => r.state !== 'unknown').map((r) => ({
       ...r, name: `${MARKET_EMOJI[r.market] || ''} ${r.sid}`, pnlUsd: r.pnl, pnlPct: (r.pnl / s.capital) * 100,
-      exitT: r.exitT ?? now, exit: r.exit ?? prices[r.market] ?? r.entry, reason: `${r.state === 'open' ? 'encore ouvert · ' : ''}IA ${Math.round(r.ai.p * 100)} % (seuil ${Math.round(r.ai.min * 100)} %)`,
+      exitT: r.exitT ?? now, exit: r.exit ?? prices[r.market] ?? r.entry, reason: `${r.state === 'open' ? 'still open · ' : ''}AI ${Math.round(r.ai.p * 100)}% (threshold ${Math.round(r.ai.min * 100)}%)`,
     })).sort((a, b) => b.entryT - a.entryT);
-    const { rows, page, pages, extra } = tradePage(all, Number(args[0]) || 0, (p) => `m:i:${KM[marketId]}:${p}${sfx}`, 'du compte');
-    const png = C.tradesImage({ market: null, title: 'Signaux refusés par l’IA', subtitle: `Ce qu’ils auraient fait sur le compte FTMO · ${all.length} signaux · page ${page + 1} / ${pages}`, rows, footerText: 'Simulation · argent fictif · pas un conseil financier' });
-    extra.push([btn(`⬅️ Compte ${isLucid ? 'Lucid' : 'FTMO'}`, `m:f:${KM[marketId]}${sfx}`)]);
-    return { png, caption: fitCaption([`${isLucid ? '🟣' : '🏦'} <b>Compte ${isLucid ? 'Lucid' : 'FTMO'} simulé</b> · 🤖 signaux refusés par l’IA`, refusedLine(rep) || 'Aucun signal refusé pour l’instant.']), keyboard: panelKeyboard(cfg, 'i', marketId, extra) };
+    const { rows, page, pages, extra } = tradePage(all, Number(args[0]) || 0, (p) => `m:i:${KM[marketId]}:${p}${sfx}`, 'of account');
+    const png = C.tradesImage({ market: null, title: 'Signals refused by the AI', subtitle: `What they would have made on the FTMO account · ${all.length} signals · page ${page + 1} / ${pages}`, rows, footerText: 'Simulation · fake money · not financial advice' });
+    extra.push([btn(`⬅️ ${isLucid ? 'Lucid' : 'FTMO'} account`, `m:f:${KM[marketId]}${sfx}`)]);
+    return { png, caption: fitCaption([`${isLucid ? '🟣' : '🏦'} <b>Simulated ${isLucid ? 'Lucid' : 'FTMO'} account</b> · 🤖 signals refused by the AI`, refusedLine(rep) || 'No refused signal yet.']), keyboard: panelKeyboard(cfg, 'i', marketId, extra) };
   }
 
   if (view === 't') {
     const id = args[0];
     const year = Number(args[1]) || (marketId === 'nas100' ? 2010 : 2021);
     const out = await queued(() => historyChart(cfg, { marketId, fromYear: year, ids: [id, 'hold'] }));
-    const lines = out.results.slice(0, 6).map(({ s, stats }) => `${esc(s.name)} : <b>${pct(stats.perYear)}/an</b>`);
+    const lines = out.results.slice(0, 6).map(({ s, stats }) => `${esc(s.name)}: <b>${pct(stats.perYear)}/yr</b>`);
     const yearsRow = YEARS[marketId].map((y) => btn(`${y === year ? '• ' : ''}${y}`, `m:t:${KM[marketId]}:${id}:${y}`));
-    const extra = [yearsRow, [btn('⬅️ Retour à la fiche', `m:s:${KM[marketId]}:${id}`)]];
+    const extra = [yearsRow, [btn('⬅️ Back to the card', `m:s:${KM[marketId]}:${id}`)]];
     return {
       png: out.png,
-      caption: `${head} · 🧪 test sur l’historique depuis ${year} (simulation, gains réinvestis, frais inclus)\n${lines.join('\n')}\n<i>Résultats passés ≠ résultats futurs.</i>`.slice(0, 1024),
+      caption: `${head} · 🧪 backtest since ${year} (simulation, gains reinvested, fees included)\n${lines.join('\n')}\n<i>Past results ≠ future results.</i>`.slice(0, 1024),
       keyboard: panelKeyboard(cfg, view, marketId, extra),
     };
   }
@@ -386,31 +386,31 @@ async function render(cfg, store, view, marketId, args = []) {
     const page = Math.min(Math.max(Number(args[0]) || 0, 0), pages - 1);
     const colors = colorize(st.rows.map((r) => r.strategy));
     const rows = st.rows.map((r, k) => ({ label: r.strategy.name, value: r.returnPct, text: pct(r.returnPct), rgb: colors[k].rgb }));
-    const png = C.rankingImage({ market, title: `${list.length} stratégies actives`, subtitle: 'Touchez une stratégie pour voir sa fiche', rows, minScale: 5 });
+    const png = C.rankingImage({ market, title: `${list.length} active strategies`, subtitle: 'Tap a strategy to see its card', rows, minScale: 5 });
     const items = list.slice(page * PAGE, page * PAGE + PAGE).map((s) => btn(s.name.length > 30 ? `${s.name.slice(0, 29)}…` : s.name, `m:s:${KM[marketId]}:${s.id}`));
     const extra = [];
     for (let i = 0; i < items.length; i += 2) extra.push(items.slice(i, i + 2));
     if (pages > 1) extra.push([btn('◀️', `m:l:${KM[marketId]}:${(page - 1 + pages) % pages}`), btn(`Page ${page + 1} / ${pages}`, `m:l:${KM[marketId]}:${page}`), btn('▶️', `m:l:${KM[marketId]}:${(page + 1) % pages}`)]);
-    return { png, caption: `${head} · 📚 stratégies actives (page ${page + 1} / ${pages})`, keyboard: panelKeyboard(cfg, 'l', marketId, extra) };
+    return { png, caption: `${head} · 📚 active strategies (page ${page + 1} / ${pages})`, keyboard: panelKeyboard(cfg, 'l', marketId, extra) };
   }
 
   if (view === 's') {
     const id = args[0];
     const row = st.rows.find((r) => r.strategy.id === id);
-    if (!row) throw new Error('stratégie inconnue sur ce marché');
+    if (!row) throw new Error('unknown strategy on this market');
     const colors = colorize(st.rows.map((r) => r.strategy));
     const color = colors[st.rows.indexOf(row)];
     const curve = (tr.curves().find((c) => c.strategy.id === id) || { points: [] }).points;
-    const note = (VERDICT[id.split('@')[0]] || [])[1] || '';
+    const note = VERDICT_EN[id.split('@')[0]] || '';
     const png = C.strategyCardImage({ market, row, curve, note, color: color.rgb });
     const testable = (row.strategy.tf || '1h') === '1d';
     const extra = [[
-      ...(testable ? [btn('🕰 Tester sur l’historique', `m:t:${KM[marketId]}:${id}:${YEARS[marketId][0]}`)] : []),
-      btn('⬅️ Liste', `m:l:${KM[marketId]}:0`),
+      ...(testable ? [btn('🕰 Test on history', `m:t:${KM[marketId]}:${id}:${YEARS[marketId][0]}`)] : []),
+      btn('⬅️ List', `m:l:${KM[marketId]}:0`),
     ]];
     return {
       png,
-      caption: `${head} · ℹ️ <b>${esc(row.strategy.name)}</b>\n${money(row.equity)} (${pct(row.returnPct)}) · ${row.trades} trades${row.position ? ` · en position (${row.position.side === 'long' ? 'achat' : 'vente'})` : ' · à plat'}`,
+      caption: `${head} · ℹ️ <b>${esc(row.strategy.name)}</b>\n${money(row.equity)} (${pct(row.returnPct)}) · ${row.trades} trades${row.position ? ` · in a position (${row.position.side === 'long' ? 'buy' : 'sell'})` : ' · flat'}`,
       keyboard: panelKeyboard(cfg, 's', marketId, extra),
     };
   }
@@ -432,14 +432,14 @@ async function renderTrade(cfg, store, action, marketId, id, entryT) {
   const head = `${market.emoji} <b>${esc(market.name)} · ${esc(strat.name)}</b>`;
   const keyboard = {
     inline_keyboard: [
-      [btn(action === 'k' ? '• 🧾 Carte' : '🧾 Carte', `x:k:${KM[marketId]}:${id}:${t.entryT}`), btn(action === 'c' ? '• 🕯 Cours' : '🕯 Cours', `x:c:${KM[marketId]}:${id}:${t.entryT}`), btn('ℹ️ Stratégie', `m:s:${KM[marketId]}:${id}`)],
+      [btn(action === 'k' ? '• 🧾 Card' : '🧾 Card', `x:k:${KM[marketId]}:${id}:${t.entryT}`), btn(action === 'c' ? '• 🕯 Chart' : '🕯 Chart', `x:c:${KM[marketId]}:${id}:${t.entryT}`), btn('ℹ️ Strategy', `m:s:${KM[marketId]}:${id}`)],
       [btn('🎛 Menu', `m:h:${KM[marketId]}`)],
     ],
   };
   if (action === 'k') {
     const png = C.tradeCardImage({ market, strategy: strat, trade: found.trade, pos: found.pos, price, candles: list, capital: found.trade ? found.trade.capital ?? null : acc.capital, start: market.startCapital });
-    const res = found.trade ? `résultat <b>${pct(found.trade.pnlPct)}</b>` : `en cours (${price ? pct((t.side === 'long' ? 1 : -1) * (price / t.entry - 1) * 100) : 'n/d'})`;
-    return { png, caption: `${head}\n🧾 ${t.side === 'long' ? 'achat' : 'vente'} à ${quote(t.entry)} · ${res}`, keyboard };
+    const res = found.trade ? `result <b>${pct(found.trade.pnlPct)}</b>` : `running (${price ? pct((t.side === 'long' ? 1 : -1) * (price / t.entry - 1) * 100) : 'n/a'})`;
+    return { png, caption: `${head}\n🧾 ${t.side === 'long' ? 'buy' : 'sell'} at ${quote(t.entry)} · ${res}`, keyboard };
   }
   const shown = list.filter((c) => c.t >= t.entryT - (tf === '1d' ? 40 : 30) * (tf === '1d' ? 86400 : 3600)).slice(-120);
   const markers = [{ t: t.entryT, price: t.entry, rgb: [124, 196, 255], label: t.side === 'long' ? 'achat' : 'vente' }];
@@ -448,11 +448,11 @@ async function renderTrade(cfg, store, action, marketId, id, entryT) {
     market,
     candles: shown,
     title: `${market.name} · ${strat.name}`,
-    subtitle: `Bougies ${tf === '1d' ? '1 jour' : '1 heure'} · entrée${t.sl ? ', stop' : ''}${t.tp ? ', objectif' : ''}${found.trade ? ', sortie' : ''}${price ? ` · cours ${quote(price)}` : ''}`,
+    subtitle: `${tf === '1d' ? '1-day' : '1-hour'} candles · entry${t.sl ? ', stop' : ''}${t.tp ? ', target' : ''}${found.trade ? ', exit' : ''}${price ? ` · price ${quote(price)}` : ''}`,
     levels: C.positionLevels(found.trade ? { ...t, sl: t.initSl || t.sl } : t),
     markers,
   });
-  return { png, caption: `${head}\n🕯 cours et niveaux du trade`, keyboard };
+  return { png, caption: `${head}\n🕯 price and trade levels`, keyboard };
 }
 
 /* ------------------------------------------------------------------ */
@@ -500,14 +500,14 @@ function attachInteractive(bot, { cfg, store, gameHandler = null }) {
     lastClick.set(who, now);
     const msg = ctx.callbackQuery.message;
     const key = msg ? `${msg.chat.id}:${msg.message_id}` : data;
-    if (busy.has(key)) return ctx.answerCallbackQuery({ text: '⏳ Image en cours de création…' }).catch(() => {});
+    if (busy.has(key)) return ctx.answerCallbackQuery({ text: '⏳ Building the image…' }).catch(() => {});
     busy.add(key);
 
     const marketId = MK[parts[2]];
     const slow = parts[1] === 't';
-    await ctx.answerCallbackQuery(slow ? { text: '⏳ Simulation en cours (jusqu’à 1 min la première fois)…' } : {}).catch(() => {});
+    await ctx.answerCallbackQuery(slow ? { text: '⏳ Simulation running (up to 1 min the first time)…' } : {}).catch(() => {});
     try {
-      if (!marketId) throw new Error('marché inconnu');
+      if (!marketId) throw new Error('unknown market');
       if (parts[0] === 'm') {
         const out = await render(cfg, store, parts[1], marketId, parts.slice(3));
         // Le panneau change d'image sur place ; un message texte (bilan, trade) reçoit une nouvelle image en réponse

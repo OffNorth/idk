@@ -49,7 +49,7 @@ test('compte FTMO en direct : taille au risque, étape 1 réussie, puis échec s
   const pos = { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: t };
   f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, t);
   const out = f.onCycle([], { gold: 3760 }, t + 600); // −6 % en latent
-  assert.ok(out.some((m) => m.type === 'fail' && /jour/.test(m.why)));
+  assert.ok(out.some((m) => m.type === 'fail' && /daily/.test(m.why)));
   assert.strictEqual(f.load().attempt, 2);
   assert.strictEqual(f.load().phase, 1);
 });
@@ -59,7 +59,7 @@ test('image et vue du panneau FTMO', async () => {
   const { render } = require('../src/interactive');
   const out = await render(cfg, store, 'f', 'gold');
   assert.strictEqual(out.png.subarray(1, 4).toString(), 'PNG');
-  assert.match(out.caption, /Compte FTMO simulé/);
+  assert.match(out.caption, /Simulated FTMO account/);
 });
 
 test('2e compte FTMO (Nasdaq) : indépendant du compte or', async () => {
@@ -80,7 +80,7 @@ test('2e compte FTMO (Nasdaq) : indépendant du compte or', async () => {
   assert.ok(fs.existsSync(path.join(cfg.dataDir, 'ftmo-nas.json')));
   const { render } = require('../src/interactive');
   const out = await render(cfg, store, 'f', 'nas100');
-  assert.match(out.caption, /FTMO simulé 🇺🇸 Nasdaq/);
+  assert.match(out.caption, /FTMO account 🇺🇸 Nasdaq/);
 });
 
 test('compte FTMO unique or + Nasdaq : un risque par marché', () => {
@@ -134,7 +134,7 @@ test('challenge 1 étape : perte du jour 3 %, perte max suiveuse, réussite dire
     for (let k = 1; k <= 4 && !failed; k++) {
       a.onCycle([mk(k, 2000, 1980)], { gold: 2000 }, T0 + k * DAY);
       const r = a.onCycle([cl(k, 2000, 1945)], { gold: 1945 }, T0 + k * DAY + 60); // −2 750 $ par jour (< 3 %)
-      failed = r.some((m) => m.type === 'fail' && /perte maximale/.test(m.why));
+      failed = r.some((m) => m.type === 'fail' && /max loss/.test(m.why));
     }
     assert.ok(failed, 'échec sur la perte max suiveuse');
   }
@@ -150,12 +150,12 @@ test('compte FTMO : chaque trade est annoncé (ouverture puis clôture)', () => 
   assert.deepStrictEqual(o.map((m) => m.type), ['open']);
   assert.strictEqual(Math.round(o[0].p.risk), 1000); // risque 1 % de 100 000 $
   const t1 = ftmoTradeMessage(o[0], a.status({ gold: 2000 }), { id: 'gold', name: 'Or', emoji: '🥇' });
-  assert.match(t1, /ACHAT/);
-  assert.match(t1, /\$1,000 \(1\.00 % du compte\)/);
+  assert.match(t1, /BUY/);
+  assert.match(t1, /\$1,000 \(1\.00% of the account\)/);
   const c = a.onCycle([{ type: 'close', market, strategy, trade: { ...pos, exit: 2020, exitT: T0 + 600, reason: 'objectif' } }], { gold: 2020 }, T0 + 600);
   assert.deepStrictEqual(c.map((m) => m.type), ['trade']);
   const t2 = ftmoTradeMessage(c[0], a.status({ gold: 2020 }), { id: 'gold', name: 'Or', emoji: '🥇' });
-  assert.match(t2, /🟢 clôture/);
+  assert.match(t2, /🟢 close/);
   assert.match(t2, /\+\$1,000/);
 });
 
@@ -188,7 +188,7 @@ test('garde-fous FTMO : stop franchi, position orpheline réconciliée, /verif',
   a.onCycle([{ type: 'open', market, strategy: mom, pos }], { gold: 3717 }, T0);
   store.saveJson('gold.json', { lastPrice: 3681, accounts: { g_mom8: { capital: 1000, closed: [], position: pos } } });
   const v = verify({ ...cfg, nasEnabled: false, spxEnabled: false, eurusdEnabled: false }, store);
-  assert.ok(v.issues.some((x) => /franchi le stop/.test(x)), v.issues.join(' | '));
+  assert.ok(v.issues.some((x) => /crossed the stop/.test(x)), v.issues.join(' | '));
   const out = a.onCycle([], { gold: 3681 }, T0 + 3600);
   assert.ok(out.some((m) => m.type === 'trade' && /stop loss/.test(m.p.reason)));
   assert.strictEqual(Object.keys(a.load().open).length, 0);
@@ -200,7 +200,7 @@ test('garde-fous FTMO : stop franchi, position orpheline réconciliée, /verif',
   store.saveJson('gold.json', { lastPrice: 3725, accounts: { g_mom8: { capital: 1000, position: null, closed: [{ ...pos2, exit: 3730, exitT: T0 + 9000, reason: 'signal de sortie', pnlPct: 0.8, pnlUsd: 8 }] } } });
   const out2 = a.onCycle([], { gold: 3725 }, T0 + 9600);
   const tr = out2.find((m) => m.type === 'trade');
-  assert.ok(tr && tr.p.exit === 3730 && /réconciliation/.test(tr.p.reason), JSON.stringify(out2.map((m) => m.p?.reason)));
+  assert.ok(tr && tr.p.exit === 3730 && /reconciliation/.test(tr.p.reason), JSON.stringify(out2.map((m) => m.p?.reason)));
   assert.strictEqual(a.load().closed.length, n0 + 1);
 });
 
@@ -280,7 +280,7 @@ test('IA validatrice : avis sur chaque trade (observation) et refus sous le seui
   const out = createFtmo({ cfg: a.cfg, store: a.store }).onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0);
   const open = out.find((o) => o.type === 'open');
   assert.ok(open && open.p.ai && open.p.ai.p > 0 && open.p.ai.p < 1);
-  assert.match(ftmoTradeMessage(open, createFtmo({ cfg: a.cfg, store: a.store }).status({ gold: 4000 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /🤖 IA/);
+  assert.match(ftmoTradeMessage(open, createFtmo({ cfg: a.cfg, store: a.store }).status({ gold: 4000 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /🤖 AI/);
   // Block avec un seuil impossible : signal refusé, pas de position, message « refusé par l'IA »
   const b = setup({ ftmoAi: 'block', ftmoAiMin: 0.99 });
   paper(b.store);
@@ -289,7 +289,7 @@ test('IA validatrice : avis sur chaque trade (observation) et refus sous le seui
   const ref = out2.find((o) => o.type === 'refused');
   assert.ok(ref, 'signal refusé');
   assert.strictEqual(Object.keys(f.load().open).length, 0);
-  assert.match(ftmoTradeMessage(ref, f.status({ gold: 4000 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /refusé par l'IA/);
+  assert.match(ftmoTradeMessage(ref, f.status({ gold: 4000 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /refused by the AI/);
   // Bilan des refusés : encore ouvert (latent au cours actuel), puis clôturé (résultat du trade paper × taille prévue)
   let rep = f.refusedReport({ gold: 3960 });
   assert.strictEqual(rep.n, 1);
@@ -301,10 +301,10 @@ test('IA validatrice : avis sur chaque trade (observation) et refus sous le seui
   assert.ok(Math.abs(rep.closedPnl - ref.p.notional * -0.01) < 1e-6);
   const v = await require('../src/interactive').render(b.cfg, b.store, 'i', 'gold', ['0']);
   assert.ok(v.png && v.png.length > 1000);
-  assert.match(v.caption, /Refusés par l’IA : 1 signal/);
-  assert.match(v.caption, /l’IA a eu raison/);
+  assert.match(v.caption, /Refused by the AI: 1 signal/);
+  assert.match(v.caption, /the AI was right/);
   const fv = await require('../src/interactive').render(b.cfg, b.store, 'f', 'gold', []);
-  assert.match(fv.caption, /Refusés par l’IA/);
+  assert.match(fv.caption, /Refused by the AI/);
   assert.ok(JSON.stringify(fv.keyboard).includes('m:i:'));
   // Off : pas d'avis
   const c = setup({ ftmoAi: 'off' });
@@ -327,7 +327,7 @@ test('compte Lucid en direct : micro-contrats entiers, pas de perte du jour, per
   assert.strictEqual(o.p.n, 1);
   assert.strictEqual(o.p.notional, 40_000);
   const { ftmoTradeMessage } = require('../src/cycle');
-  assert.match(ftmoTradeMessage(o, lu.status({ gold: 4000 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /🟣 <b>Lucid<\/b>.*\n.*\n.*1 micro-contrat MGC/);
+  assert.match(ftmoTradeMessage(o, lu.status({ gold: 4000 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /🟣 <b>Lucid<\/b>.*\n.*\n.*1 micro contract MGC/);
   // −4 % dans la journée (−1 600 $) : sur FTMO 1 étape ce serait −3 % du jour ; ici pas de perte du jour, et au-dessus de 48 000 $
   const out2 = lu.onCycle([{ type: 'close', market, strategy: strat, trade: { ...pos, exit: 3840, exitT: T0 + 600, reason: 'stop loss' } }], { gold: 3840 }, T0 + 600);
   assert.ok(!out2.some((x) => x.type === 'fail'));
@@ -340,13 +340,13 @@ test('compte Lucid en direct : micro-contrats entiers, pas de perte du jour, per
   const out3 = lu.onCycle([{ type: 'close', market, strategy: strat, trade: { ...pos2, exit: 3960, exitT: t1 + 600, reason: 'stop loss' } }], { gold: 3960 }, t1 + 600);
   const fail = out3.find((x) => x.type === 'fail');
   assert.ok(fail, 'échec perte max');
-  assert.match(fail.why, /2.000 \$ sous le plus haut solde de clôture/);
+  assert.match(fail.why, /\$2,000 below the highest closing balance/);
   // Panneau : vue du compte Lucid
   const v = await require('../src/interactive').render(cfg, store, 'f', 'gold', ['l']);
-  assert.match(v.caption, /Compte Lucid simulé/);
+  assert.match(v.caption, /Simulated Lucid account/);
   assert.ok(JSON.stringify(v.keyboard).includes('m:f:g'));
   const z = await require('../src/interactive').render(cfg, store, 'z', 'gold', ['0', 'l']);
-  assert.match(z.caption, /Compte Lucid simulé/);
+  assert.match(z.caption, /Simulated Lucid account/);
 });
 
 test('compte Lucid : 1 micro quand le risque prévu est trop petit mais raisonnable, signal sauté s’il est trop gros', () => {
@@ -426,12 +426,12 @@ test('/pnl : PnL du jour (réalisé + latent), trades du jour, limite de perte d
   f.onCycle([{ type: 'open', market, strategy, pos: { side: 'long', entry: 4000, sl: 3960, initSl: 3960, entryT: T0 + DAY + 7200 } }], { gold: 4000 }, T0 + DAY + 7200);
   store.saveJson('gold.json', { lastPrice: 4040 });
   const txt = dailyReport(cfg, store, '');
-  assert.match(txt, /PnL du jour/);
-  assert.match(txt, /réalisé −\$5\d\d · latent \+\$1,\d{3} \(1 position/);
-  assert.match(txt, /Trades clôturés aujourd'hui : 1 \(0 gagnant/);
-  assert.match(txt, /avant la limite \(3 %/);
+  assert.match(txt, /Daily PnL/);
+  assert.match(txt, /realized −\$5\d\d · unrealized \+\$1,\d{3} \(1 position/);
+  assert.match(txt, /Trades closed today: 1 \(0 winner/);
+  assert.match(txt, /before the limit \(3%/);
   assert.match(txt, /🟢 \d{4}-\d{2}-\d{2} \+\$1,000/);
-  assert.match(dailyReport(cfg, store, 'lucid'), /Aucun compte simulé actif/);
+  assert.match(dailyReport(cfg, store, 'lucid'), /No active simulated account/);
 });
 
 test('IA sur Lucid : avis sans refus par défaut (LUCID_AI=observe), refus seulement avec LUCID_AI=block', () => {
@@ -463,7 +463,7 @@ test('trade bloqué par l’IA : annoncé, puis bilan (raison / tort) une seule 
   const ref = f.onCycle([{ type: 'open', market, strategy, pos }], { gold: 4000 }, T0).find((o) => o.type === 'refused');
   assert.ok(ref);
   const mk = { id: 'gold', name: 'Or', emoji: '🥇' };
-  assert.match(ftmoTradeMessage(ref, f.status({ gold: 4000 }), mk), /Trade bloqué par l'IA[\s\S]*risque évité \$\d/);
+  assert.match(ftmoTradeMessage(ref, f.status({ gold: 4000 }), mk), /Trade blocked by the AI[\s\S]*risk avoided \$\d/);
   // Trade fictif encore ouvert : pas de bilan
   assert.ok(!f.onCycle([], { gold: 3990 }, T0 + 600).some((o) => o.type === 'refusedResult'));
   // Il touche son stop : bilan « l'IA a eu raison », une seule fois
@@ -471,7 +471,7 @@ test('trade bloqué par l’IA : annoncé, puis bilan (raison / tort) une seule 
   const res = f.onCycle([], { gold: 3960 }, T0 + 3700).filter((o) => o.type === 'refusedResult');
   assert.strictEqual(res.length, 1);
   assert.ok(res[0].p.pnl < 0);
-  assert.match(ftmoTradeMessage(res[0], f.status({ gold: 3960 }), mk), /aurait fait <b>−\$\d[\s\S]*L’IA a eu raison/);
+  assert.match(ftmoTradeMessage(res[0], f.status({ gold: 3960 }), mk), /would have made <b>−\$\d[\s\S]*The AI was right/);
   assert.ok(!f.onCycle([], { gold: 3960 }, T0 + 3800).some((o) => o.type === 'refusedResult'));
 });
 
@@ -504,7 +504,7 @@ test('Lucid en parallèle : évaluation réussie → compte financé à part + n
   // Le compte financé trade en parallèle (messages « Lucid financé »)
   const o2 = trade(fu, 6, 4040).find((o) => o.type === 'trade');
   assert.ok(o2);
-  assert.match(ftmoTradeMessage(o2, fu.status({ gold: 4040 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /Lucid financé/);
+  assert.match(ftmoTradeMessage(o2, fu.status({ gold: 4040 }), { id: 'gold', name: 'Or', emoji: '🥇' }), /Lucid funded/);
   // Deux grosses pertes (−4 % sur 40 000 $) : perte max 2 000 $ dépassée → compte financé perdu, en sommeil
   out = [];
   for (const k of [7, 8]) out = out.concat(trade(fu, k, 3840));
@@ -514,9 +514,9 @@ test('Lucid en parallèle : évaluation réussie → compte financé à part + n
   assert.ok(trade(ev, 9, 4040).some((o) => o.type === 'trade'));
   // En sommeil : pas de faux « challenge » dans /pnl, /reset ne touche pas à son historique
   const { dailyReport, resetReport } = require('../src/ftmoAccount');
-  assert.match(dailyReport(cfg, store, 'lucid'), /LucidFlex 50K financé<\/b> : en sommeil/);
+  assert.match(dailyReport(cfg, store, 'lucid'), /LucidFlex 50K funded<\/b>: asleep/);
   const h = store.loadJson('lucid-funded.json').history.length;
-  assert.match(resetReport(cfg, store, 'lucid ok'), /financé : déjà en sommeil/);
+  assert.match(resetReport(cfg, store, 'lucid ok'), /funded: already asleep/);
   assert.strictEqual(store.loadJson('lucid-funded.json').history.length, h);
   assert.strictEqual(store.loadJson('lucid-funded.json').attempt, 1);
   assert.ok(fu.asleep());
@@ -536,10 +536,10 @@ test('Lucid financé direct : démarré tout de suite (sans évaluation), une se
   // L'évaluation Lucid reste une évaluation
   assert.strictEqual(createFtmo({ cfg, store, account: 'lucid' }).load().phase, 1);
   // /financer lucid : compte financé déjà en cours → inchangé ; en sommeil → relancé directement
-  assert.match(financerReport(cfg, store, 'lucid'), /déjà en compte financé/);
+  assert.match(financerReport(cfg, store, 'lucid'), /already a funded account/);
   fu.restart({ gold: 4000 }, T0 + 120);
   assert.ok(fu.asleep());
-  assert.match(financerReport(cfg, store, 'lucid'), /lancé directement/);
+  assert.match(financerReport(cfg, store, 'lucid'), /started directly/);
   assert.ok(!fu.asleep());
   assert.strictEqual(createFtmo({ cfg, store, account: 'lucid' }).load().phase, 1);
 });

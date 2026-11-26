@@ -7,17 +7,17 @@ const { Canvas, THEME } = require('./draw');
 const { drawSeries, niceStep } = require('./chart');
 
 const W = 1000;
-const money = (v, d = 0) => (v == null || !Number.isFinite(v) ? 'n/d' : `${v < 0 ? '−' : ''}$${Math.abs(v).toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d })}`);
+const money = (v, d = 0) => (v == null || !Number.isFinite(v) ? 'n/a' : `${v < 0 ? '−' : ''}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })}`);
 const price = (v) => money(v, Math.abs(v) >= 1000 ? 0 : Math.abs(v) < 10 ? 4 : 2);
-const pct = (v, d = 1) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(d).replace('.', ',')} %`;
+const pct = (v, d = 1) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(d)}%`;
 const tone = (v) => (v > 0 ? THEME.up : v < 0 ? THEME.down : THEME.text);
-const date = (t) => new Date(t * 1000).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
-const dateTime = (t) => new Date(t * 1000).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
+const date = (t) => new Date(t * 1000).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const dateTime = (t) => new Date(t * 1000).toLocaleString('en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }) + ' UTC';
 function duration(sec) {
   const h = sec / 3600;
   if (h < 1) return `${Math.max(1, Math.round(h * 60))} min`;
-  if (h < 48) return `${h.toFixed(h < 10 ? 1 : 0).replace('.', ',')} h`;
-  return `${Math.round(h / 24)} jours`;
+  if (h < 48) return `${h.toFixed(h < 10 ? 1 : 0)} h`;
+  return `${Math.round(h / 24)} days`;
 }
 
 /** En-tête commun : pastille du marché, titre, sous-titre. */
@@ -34,7 +34,7 @@ function header(cv, { market, title, subtitle }) {
   if (subtitle) cv.text(subtitle, 28, 62, { size: 15, color: THEME.muted, maxWidth: W - 56 });
 }
 
-function footer(cv, text = 'Paper trading · argent fictif · pas un conseil financier') {
+function footer(cv, text = 'Paper trading · fake money · not financial advice') {
   cv.text(text, W - 24, cv.h - 26, { size: 13, color: THEME.muted, align: 'right' });
 }
 
@@ -50,7 +50,7 @@ function footer(cv, text = 'Paper trading · argent fictif · pas un conseil fin
 function drawCandles(cv, candles, box, { levels = [], markers = [] } = {}) {
   const { x, y, w, h } = box;
   if (!candles?.length) {
-    cv.text('Cours indisponible', x + w / 2, y + h / 2 - 8, { size: 15, color: THEME.muted, align: 'center' });
+    cv.text('Price unavailable', x + w / 2, y + h / 2 - 8, { size: 15, color: THEME.muted, align: 'center' });
     return;
   }
   let lo = Math.min(...candles.map((c) => c.l), ...levels.map((l) => l.price));
@@ -74,7 +74,7 @@ function drawCandles(cv, candles, box, { levels = [], markers = [] } = {}) {
   const span = candles[n - 1].t - candles[0].t;
   for (const k of [0, Math.floor(n / 3), Math.floor((2 * n) / 3), n - 1]) {
     const d = new Date(candles[k].t * 1000);
-    const lab = span > 3 * 86400 ? d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+    const lab = span > 3 * 86400 ? d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
     cv.text(lab, X(k), B + 8, { size: 13, color: THEME.muted, align: k === 0 ? 'left' : k === n - 1 ? 'right' : 'center' });
   }
   const bw = Math.max(1, Math.min(14, step * 0.62));
@@ -115,9 +115,9 @@ function priceChartImage({ market, candles, title, subtitle, levels = [], marker
 
 /** Niveaux d'une position (entrée, stop, objectif) pour drawCandles. */
 function positionLevels(p) {
-  const out = [{ price: p.entry, label: 'Entrée', rgb: THEME.accent }];
+  const out = [{ price: p.entry, label: 'Entry', rgb: THEME.accent }];
   if (p.sl) out.push({ price: p.sl, label: 'Stop', rgb: THEME.down, dash: true });
-  if (p.tp) out.push({ price: p.tp, label: 'Objectif', rgb: THEME.up, dash: true });
+  if (p.tp) out.push({ price: p.tp, label: 'Target', rgb: THEME.up, dash: true });
   if (p.exit) out.push({ price: p.exit, label: 'Sortie', rgb: p.pnlUsd >= 0 ? THEME.up : THEME.down });
   return out;
 }
@@ -139,20 +139,20 @@ function tradeCardImage({ market, strategy, trade = null, pos = null, price: now
   header(cv, {
     market,
     title: strategy.name,
-    subtitle: `${long ? 'Achat (long)' : 'Vente à découvert (short)'} · ${closed ? `clôturé le ${dateTime(t.exitT)}` : `ouvert le ${dateTime(t.entryT)}`}`,
+    subtitle: `${long ? 'Buy (long)' : 'Sell short (short)'} · ${closed ? `closed on ${dateTime(t.exitT)}` : `opened on ${dateTime(t.entryT)}`}`,
   });
 
   // Colonne de gauche : résultat
   cv.roundRect(24, 96, 380, 420, 18, THEME.surface);
-  cv.text(closed ? 'RÉSULTAT' : 'EN COURS', 48, 118, { style: 'b', size: 15, color: THEME.muted });
+  cv.text(closed ? 'RESULT' : 'RUNNING', 48, 118, { style: 'b', size: 15, color: THEME.muted });
   cv.text(pct(pnlPct, 2), 46, 146, { style: 'b', size: 56, color: tone(pnlPct) });
-  cv.text(`${pnlUsd >= 0 ? '+' : '−'}${money(Math.abs(pnlUsd), 2)} sur ${money(t.size)}`, 48, 214, { style: 'b', size: 18, color: tone(pnlUsd) });
+  cv.text(`${pnlUsd >= 0 ? '+' : '−'}${money(Math.abs(pnlUsd), 2)} on ${money(t.size)}`, 48, 214, { style: 'b', size: 18, color: tone(pnlUsd) });
   const rows = [
-    ['Entrée', price(t.entry)],
-    closed ? ['Sortie', price(t.exit)] : ['Cours actuel', now ? price(now) : 'n/d'],
+    ['Entry', price(t.entry)],
+    closed ? ['Exit', price(t.exit)] : ['Current price', now ? price(now) : 'n/a'],
     ['Stop', t.sl ? price(t.sl) : '—'],
-    ['Objectif', t.tp ? price(t.tp) : 'signal de sortie'],
-    ['Durée', duration((closed ? t.exitT : Date.now() / 1000) - t.entryT)],
+    ['Target', t.tp ? price(t.tp) : 'exit signal'],
+    ['Duration', duration((closed ? t.exitT : Date.now() / 1000) - t.entryT)],
   ];
   if (closed) rows.push(['Raison', t.reason]);
   if (capital !== null) rows.push(['Capital', `${money(capital)}${start ? ` (${pct((capital / start - 1) * 100)})` : ''}`]);
@@ -182,14 +182,14 @@ function tradeCardImage({ market, strategy, trade = null, pos = null, price: now
 function strategyCardImage({ market, row, curve = [], note = '', color = THEME.accent }) {
   const s = row.strategy;
   const cv = new Canvas(W, 640, THEME.bg);
-  const tfName = { '1d': 'bougies 1 jour', '1h': 'bougies 1 h', '6h': 'bougies 6 h', '5m': 'bougies 5 min' }[s.tf || '1h'] || s.tf;
-  header(cv, { market, title: s.name, subtitle: `${s.id} · ${tfName}${note ? ` · banc d’essai : ${note}` : ''}` });
+  const tfName = { '1d': '1-day candles', '1h': '1 h candles', '6h': '6 h candles', '5m': '5 min candles' }[s.tf || '1h'] || s.tf;
+  header(cv, { market, title: s.name, subtitle: `${s.id} · ${tfName}${note ? ` · backtest: ${note}` : ''}` });
 
   const kpis = [
-    ['Valeur', money(row.equity), THEME.text],
-    ['Depuis le départ', pct(row.returnPct), tone(row.returnPct)],
-    ['Trades clôturés', String(row.trades), THEME.text],
-    ['Gagnants', row.trades ? `${Math.round(row.winRate)} %` : '—', THEME.text],
+    ['Value', money(row.equity), THEME.text],
+    ['Since start', pct(row.returnPct), tone(row.returnPct)],
+    ['Closed trades', String(row.trades), THEME.text],
+    ['Winners', row.trades ? `${Math.round(row.winRate)}%` : '—', THEME.text],
   ];
   kpis.forEach(([k, v, c], i) => {
     const x = 24 + i * 241;
@@ -200,7 +200,7 @@ function strategyCardImage({ market, row, curve = [], note = '', color = THEME.a
 
   // Description (retour à la ligne)
   cv.roundRect(24, 194, 952, 150, 14, THEME.surface);
-  cv.text('COMMENT ELLE MARCHE', 40, 206, { style: 'b', size: 13, color: THEME.muted });
+  cv.text('HOW IT WORKS', 40, 206, { style: 'b', size: 13, color: THEME.muted });
   const lines = cv.wrap(s.desc, 916, 'r', 15);
   lines.slice(0, 5).forEach((l, i) => cv.text(i === 4 && lines.length > 5 ? `${l}…` : l, 40, 230 + i * 21, { size: 15, color: THEME.text }));
 
@@ -212,16 +212,16 @@ function strategyCardImage({ market, row, curve = [], note = '', color = THEME.a
     cv.text(p.side === 'long' ? 'Achat' : 'Vente', 40, 394, { style: 'b', size: 28, color: p.side === 'long' ? THEME.up : THEME.down });
     const upct = (p.side === 'long' ? 1 : -1) * (row.unrealized / p.size) * 100;
     cv.text(pct(upct, 2), 40, 434, { style: 'b', size: 22, color: tone(upct) });
-    [['Entrée', price(p.entry)], ['Stop', price(p.sl)], ['Depuis', date(p.entryT)]].forEach(([k, v], i) => {
+    [['Entry', price(p.entry)], ['Stop', price(p.sl)], ['Since', date(p.entryT)]].forEach(([k, v], i) => {
       cv.text(k, 40, 476 + i * 30, { size: 15, color: THEME.muted });
       cv.text(v, 308, 476 + i * 30, { style: 'b', size: 15, color: THEME.text, align: 'right' });
     });
   } else {
-    cv.text('À plat', 40, 394, { style: 'b', size: 28, color: THEME.text });
-    cv.wrap('La stratégie attend son signal d’entrée.', 260, 'r', 15).forEach((l, i) => cv.text(l, 40, 438 + i * 21, { size: 15, color: THEME.muted }));
+    cv.text('Flat', 40, 394, { style: 'b', size: 28, color: THEME.text });
+    cv.wrap('The strategy is waiting for its entry signal.', 260, 'r', 15).forEach((l, i) => cv.text(l, 40, 438 + i * 21, { size: 15, color: THEME.muted }));
   }
   cv.roundRect(336, 358, 640, 236, 14, THEME.surface);
-  cv.text('ÉVOLUTION DU CAPITAL', 352, 370, { style: 'b', size: 13, color: THEME.muted });
+  cv.text('CAPITAL OVER TIME', 352, 370, { style: 'b', size: 13, color: THEME.muted });
   drawSeries(cv, [{ points: curve, rgb: color, fill: true, width: 3 }], { x: 340, y: 392, w: 628, h: 196 }, { baseline: row.equity - (row.equity * row.returnPct) / (100 + row.returnPct) });
   footer(cv);
   return cv.png();
@@ -271,10 +271,10 @@ function rankingImage({ market = null, title, subtitle = '', rows, unit = '', mi
 function positionsImage({ market, rows, price: now }) {
   const rowH = 52;
   const cv = new Canvas(W, 150 + Math.max(1, rows.length) * rowH + 40, THEME.bg);
-  header(cv, { market, title: `Positions ouvertes · ${rows.length}`, subtitle: `Cours actuel ${now ? price(now) : 'n/d'} · gains latents, frais de sortie non inclus` });
-  const cols = [['Stratégie', 28, 'left'], ['Sens', 430, 'left'], ['Entrée', 620, 'right'], ['Stop', 760, 'right'], ['Résultat', W - 28, 'right']];
+  header(cv, { market, title: `Open positions · ${rows.length}`, subtitle: `Current price ${now ? price(now) : 'n/a'} · unrealized gains, exit fees not included` });
+  const cols = [['Strategy', 28, 'left'], ['Side', 430, 'left'], ['Entry', 620, 'right'], ['Stop', 760, 'right'], ['Result', W - 28, 'right']];
   for (const [k, x, a] of cols) cv.text(k.toUpperCase(), x, 100, { style: 'b', size: 13, color: THEME.muted, align: a });
-  if (!rows.length) cv.text('Aucune position ouverte : toutes les stratégies attendent leur signal.', W / 2, 150, { size: 18, color: THEME.muted, align: 'center' });
+  if (!rows.length) cv.text('No open position: all strategies are waiting for their signal.', W / 2, 150, { size: 18, color: THEME.muted, align: 'center' });
   rows.forEach((r, i) => {
     const y = 128 + i * rowH;
     const p = r.position;
@@ -283,8 +283,8 @@ function positionsImage({ market, rows, price: now }) {
     const isRef = r.strategy.id === 'hold';
     if (i % 2 === 0) cv.roundRect(16, y - 6, W - 32, rowH - 6, 10, THEME.surface);
     cv.text(r.strategy.name, 28, y + 6, { style: 'b', size: 18, color: THEME.text, maxWidth: 390 });
-    cv.text(p.side === 'long' ? '▲ achat' : '▼ vente', 430, y + 6, { style: 'b', size: 18, color: p.side === 'long' ? THEME.up : THEME.down });
-    cv.text(`depuis le ${date(p.entryT)}`, 430, y + 28, { size: 13, color: THEME.muted });
+    cv.text(p.side === 'long' ? '▲ buy' : '▼ sell', 430, y + 6, { style: 'b', size: 18, color: p.side === 'long' ? THEME.up : THEME.down });
+    cv.text(`since ${date(p.entryT)}`, 430, y + 28, { size: 13, color: THEME.muted });
     cv.text(price(p.entry), 620, y + 6, { size: 18, color: THEME.text, align: 'right' });
     cv.text(isRef ? '—' : price(p.sl), 760, y + 6, { size: 18, color: THEME.muted, align: 'right' });
     cv.text(pct(u, 2), W - 28, y + 6, { style: 'b', size: 18, color: tone(u), align: 'right' });
@@ -302,17 +302,17 @@ function tradesImage({ market, title, subtitle, rows, footerText }) {
   const rowH = 52;
   const cv = new Canvas(W, 150 + Math.max(1, rows.length) * rowH + 40, THEME.bg);
   header(cv, { market, title, subtitle });
-  const cols = [['Clôture', 28, 'left'], ['Stratégie', 168, 'left'], ['Sens', 520, 'left'], ['Entrée → sortie', 800, 'right'], ['Résultat', W - 28, 'right']];
+  const cols = [['Closed', 28, 'left'], ['Strategy', 168, 'left'], ['Side', 520, 'left'], ['Entry → exit', 800, 'right'], ['Result', W - 28, 'right']];
   for (const [k, x, a] of cols) cv.text(k.toUpperCase(), x, 100, { style: 'b', size: 13, color: THEME.muted, align: a });
-  if (!rows.length) cv.text('Aucun trade clôturé pour l’instant.', W / 2, 150, { size: 18, color: THEME.muted, align: 'center' });
+  if (!rows.length) cv.text('No closed trade yet.', W / 2, 150, { size: 18, color: THEME.muted, align: 'center' });
   rows.forEach((r, i) => {
     const y = 128 + i * rowH;
     if (i % 2 === 0) cv.roundRect(16, y - 6, W - 32, rowH - 6, 10, THEME.surface);
-    cv.text(new Date(r.exitT * 1000).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', timeZone: 'UTC' }), 28, y + 6, { style: 'b', size: 17, color: THEME.text });
-    cv.text(new Date(r.exitT * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC', 28, y + 28, { size: 13, color: THEME.muted });
+    cv.text(new Date(r.exitT * 1000).toLocaleDateString('en-US', { day: '2-digit', month: 'short', timeZone: 'UTC' }), 28, y + 6, { style: 'b', size: 17, color: THEME.text });
+    cv.text(new Date(r.exitT * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }) + ' UTC', 28, y + 28, { size: 13, color: THEME.muted });
     cv.text(r.name, 168, y + 6, { style: 'b', size: 17, color: THEME.text, maxWidth: 340 });
     if (r.reason) cv.text(r.reason, 168, y + 28, { size: 13, color: THEME.muted, maxWidth: 340 });
-    cv.text(r.side === 'long' ? '▲ achat' : '▼ vente', 520, y + 6, { style: 'b', size: 17, color: r.side === 'long' ? THEME.up : THEME.down });
+    cv.text(r.side === 'long' ? '▲ buy' : '▼ sell', 520, y + 6, { style: 'b', size: 17, color: r.side === 'long' ? THEME.up : THEME.down });
     cv.text(duration(r.exitT - r.entryT), 520, y + 28, { size: 13, color: THEME.muted });
     cv.text(`${price(r.entry)} → ${price(r.exit)}`, 800, y + 6, { size: 17, color: THEME.text, align: 'right' });
     cv.text(pct(r.pnlPct, 2), W - 28, y + 6, { style: 'b', size: 17, color: tone(r.pnlPct), align: 'right' });
@@ -339,27 +339,27 @@ function ftmoImage(st) {
   const cv = new Canvas(W, 600, THEME.bg);
   const firm = st.account?.firm || 'FTMO';
   const lucid = firm === 'Lucid';
-  const phase = s.phase === 'funded' ? 'Compte financé' : lucid ? 'Évaluation LucidFlex' : st.program?.steps === 1 ? 'Challenge 1 étape' : `Étape ${s.phase} sur 2`;
-  header(cv, { market: st.account ? { id: st.account.firm === 'Lucid' ? 'gold' : st.account.id, name: st.account.label } : null, title: `Compte ${firm} simulé · ${phase}`, subtitle: `${lucid ? 'Évaluation' : 'Challenge'} n° ${s.attempt} · capital ${money(s.capital)} · ${lucid ? 'micro-futures, contrats entiers' : 'risque par trade selon le stop'} · depuis le ${date(s.startedAt)}` });
+  const phase = s.phase === 'funded' ? 'Funded account' : lucid ? 'LucidFlex evaluation' : st.program?.steps === 1 ? '1-step challenge' : `Step ${s.phase} of 2`;
+  header(cv, { market: st.account ? { id: st.account.firm === 'Lucid' ? 'gold' : st.account.id, name: st.account.label } : null, title: `Simulated ${firm} account · ${phase}`, subtitle: `${lucid ? 'Evaluation' : 'Challenge'} #${s.attempt} · capital ${money(s.capital)} · ${lucid ? 'micro futures, whole contracts' : 'risk per trade from the stop'} · since ${date(s.startedAt)}` });
   const ret = (st.equity / s.capital - 1) * 100;
   cv.roundRect(24, 96, 952, 150, 16, THEME.surface);
-  cv.text('VALEUR DU COMPTE', 48, 112, { style: 'b', size: 13, color: THEME.muted });
+  cv.text('ACCOUNT VALUE', 48, 112, { style: 'b', size: 13, color: THEME.muted });
   cv.text(money(st.equity), 46, 134, { style: 'b', size: 56, color: THEME.text });
   cv.text(pct(ret, 2), 48 + cv.measure(money(st.equity), 'b', 56) + 12, 158, { style: 'b', size: 28, color: tone(ret) });
   // D'où vient la valeur : gains latents des positions ouvertes / gains des trades clôturés
   if (st.unrealized !== undefined) {
     const nOpen = Object.keys(s.open).length;
     const sgn = (v) => `${v >= 0 ? '+' : '−'}${money(Math.abs(v))}`;
-    cv.text(`dont ${sgn(st.unrealized)} latents (${nOpen} position${nOpen > 1 ? 's' : ''} ouverte${nOpen > 1 ? 's' : ''}) · réalisé ${sgn(st.realized)}`, 48, 192, { size: 15, color: THEME.muted, maxWidth: 560 });
+    cv.text(`incl. ${sgn(st.unrealized)} unrealized (${nOpen} open position${nOpen > 1 ? 's' : ''}) · realized ${sgn(st.realized)}`, 48, 192, { size: 15, color: THEME.muted, maxWidth: 560 });
   }
   if (st.target) {
-    cv.text(`Objectif ${money(st.target)} (+${st.targetPct ?? (s.phase === 1 ? 10 : 5)} %)`, 952, 112, { size: 15, color: THEME.muted, align: 'right' });
+    cv.text(`Target ${money(st.target)} (+${st.targetPct ?? (s.phase === 1 ? 10 : 5)}%)`, 952, 112, { size: 15, color: THEME.muted, align: 'right' });
     gauge(cv, 48, 212, 904, st.progress, THEME.up);
-    cv.text(`${Math.round(Math.min(1, st.progress) * 100)} % de l’objectif`, 952, 186, { style: 'b', size: 15, color: THEME.up, align: 'right' });
+    cv.text(`${Math.round(Math.min(1, st.progress) * 100)}% of target`, 952, 186, { style: 'b', size: 15, color: THEME.up, align: 'right' });
   } else {
     const gain = s.balance - s.capital;
     const split = st.program?.split || 80;
-    cv.text(`Gain depuis le financement : ${gain >= 0 ? '+' : '−'}${money(Math.abs(gain))} · part du trader (${split} %) : ${money((Math.max(0, gain) * split) / 100)}`, 48, 212, { size: 15, color: THEME.muted });
+    cv.text(`Gain since funding: ${gain >= 0 ? '+' : '−'}${money(Math.abs(gain))} · trader share (${split}%): ${money((Math.max(0, gain) * split) / 100)}`, 48, 212, { size: 15, color: THEME.muted });
   }
   const box = (x, title, used, label) => {
     cv.roundRect(x, 262, 300, 130, 16, THEME.surface);
@@ -368,30 +368,30 @@ function ftmoImage(st) {
     gauge(cv, x + 20, 348, 260, used, used > 0.6 ? THEME.down : used > 0.3 ? THEME.gold : THEME.up);
   };
   const P = st.program || { daily: 5, max: 10, trailing: false };
-  if (Number.isFinite(P.daily)) box(24, `PERTE DU JOUR (MAX ${P.daily} %)`, st.dailyUsed, `${Math.round(st.dailyUsed * 100)} % utilisé`);
-  else box(24, 'PERTE DU JOUR', 0, 'aucune limite');
-  if (P.maxUsd) box(350, `PERTE MAX ${money(P.maxUsd)} SUIVEUSE`, st.maxUsed, `seuil ${money(st.floor)}`);
-  else box(350, `PERTE MAX (${P.max} %${P.trailing ? ', SUIVEUSE' : ''})`, st.maxUsed, `${Math.round(st.maxUsed * 100)} % utilisé`);
+  if (Number.isFinite(P.daily)) box(24, `DAILY LOSS (MAX ${P.daily}%)`, st.dailyUsed, `${Math.round(st.dailyUsed * 100)}% used`);
+  else box(24, 'DAILY LOSS', 0, 'no limit');
+  if (P.maxUsd) box(350, `MAX LOSS ${money(P.maxUsd)} TRAILING`, st.maxUsed, `floor ${money(st.floor)}`);
+  else box(350, `MAX LOSS (${P.max}%${P.trailing ? ', TRAILING' : ''})`, st.maxUsed, `${Math.round(st.maxUsed * 100)}% used`);
   cv.roundRect(676, 262, 300, 130, 16, THEME.surface);
-  cv.text('JOURS DE TRADING', 696, 278, { style: 'b', size: 13, color: THEME.muted });
+  cv.text('TRADING DAYS', 696, 278, { style: 'b', size: 13, color: THEME.muted });
   const minD = P.minDays ?? 4;
   cv.text(`${s.days.length}${s.phase === 'funded' ? '' : ` / ${minD} minimum`}`, 696, 302, { style: 'b', size: 22, color: s.days.length >= minD ? THEME.up : THEME.text });
-  cv.text(`${st.trades} trades · ${st.trades ? Math.round((st.wins / st.trades) * 100) : 0} % gagnants`, 696, 344, { size: 15, color: THEME.muted });
+  cv.text(`${st.trades} trades · ${st.trades ? Math.round((st.wins / st.trades) * 100) : 0}% winners`, 696, 344, { size: 15, color: THEME.muted });
 
   cv.roundRect(24, 408, 952, 150, 16, THEME.surface);
   const open = Object.values(s.open);
   cv.text(open.length ? `POSITIONS OUVERTES · ${open.length}` : 'DERNIERS TRADES', 48, 424, { style: 'b', size: 13, color: THEME.muted });
   const rows = open.length ? open.slice(0, 4) : s.closed.slice(-4).reverse();
-  if (!rows.length) cv.text('Aucun trade pour l’instant : le compte attend les signaux des stratégies suivies.', 48, 456, { size: 15, color: THEME.muted });
+  if (!rows.length) cv.text('No trade yet: the account is waiting for signals from the strategies it follows.', 48, 456, { size: 15, color: THEME.muted });
   rows.forEach((r, i) => {
     const y = 450 + i * 26;
-    cv.text(`${r.side === 'long' ? '▲ achat' : '▼ vente'} · ${r.name}`, 48, y, { size: 15, color: r.side === 'long' ? THEME.up : THEME.down, maxWidth: 470 });
-    cv.text(`${price(r.entry)}${r.exit ? ` → ${price(r.exit)}` : ''} · ${r.n ? `${r.n} ${r.contract || 'micro'}` : `${money(r.notional)}${r.lev ? ` · levier ${r.lev.toFixed(1).replace('.', ',')}` : ''}`}`, 820, y, { size: 15, color: THEME.muted, align: 'right' });
+    cv.text(`${r.side === 'long' ? '▲ buy' : '▼ sell'} · ${r.name}`, 48, y, { size: 15, color: r.side === 'long' ? THEME.up : THEME.down, maxWidth: 470 });
+    cv.text(`${price(r.entry)}${r.exit ? ` → ${price(r.exit)}` : ''} · ${r.n ? `${r.n} ${r.contract || 'micro'}` : `${money(r.notional)}${r.lev ? ` · leverage ${r.lev.toFixed(1)}` : ''}`}`, 820, y, { size: 15, color: THEME.muted, align: 'right' });
     // Résultat : soldé pour un trade clôturé, latent (au cours actuel) pour une position ouverte
     const v = r.pnl !== undefined ? r.pnl : st.openPnl ? st.openPnl(r) : null;
     if (v !== null && v !== undefined) cv.text(`${v >= 0 ? '+' : '−'}${money(Math.abs(v))}`, 952, y, { style: 'b', size: 15, color: tone(v), align: 'right' });
   });
-  footer(cv, `Simulation ${lucid ? 'd’une évaluation Lucid' : 'd’un challenge FTMO'} · argent fictif · pas un conseil financier`);
+  footer(cv, `Simulation of ${lucid ? 'a Lucid evaluation' : 'an FTMO challenge'} · fake money · not financial advice`);
   return cv.png();
 }
 

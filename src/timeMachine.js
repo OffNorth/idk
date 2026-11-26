@@ -127,30 +127,30 @@ function cached(cfg, store, accountId = 'gold', opts = {}) {
   return res;
 }
 
-const pct = (v) => `${Math.round(v)} %`;
+const pct = (v) => `${Math.round(v)}%`;
 /** Une ligne pour les panneaux /ftmo et /lucid. */
 function line(res) {
   if (!res) return '';
-  if (res.phase === 'funded') return `🔮 Time Machine (${res.paths} années simulées) : compte financé encore en vie à 3 mois ${pct(res.alive[91])} · 6 mois ${pct(res.alive[182])} · 1 an ${pct(res.alive[365])}`;
-  return `🔮 Time Machine (${res.paths} années simulées) : réussite <b>${pct(res.passPct)}</b> · échec ${pct(res.failPct)}${res.openPct >= 1 ? ` · pas fini en 1 an ${pct(res.openPct)}` : ''}${res.medianDays !== null ? ` · en ${Math.round(res.medianDays)} jours médians` : ''}`;
+  if (res.phase === 'funded') return `🔮 Time Machine (${res.paths} simulated years): funded account still alive at 3 months ${pct(res.alive[91])} · 6 months ${pct(res.alive[182])} · 1 year ${pct(res.alive[365])}`;
+  return `🔮 Time Machine (${res.paths} simulated years): pass <b>${pct(res.passPct)}</b> · fail ${pct(res.failPct)}${res.openPct >= 1 ? ` · not done in 1 year ${pct(res.openPct)}` : ''}${res.medianDays !== null ? ` · in ${Math.round(res.medianDays)} days (median)` : ''}`;
 }
 
 /** Texte détaillé (/timemachine). */
 function report(cfg, store) {
   const { ftmoAccounts } = require('./ftmoAccount');
-  const lines = ['🔮 <b>Time Machine</b> — chances du compte en cours, d’après 1 000 années simulées'];
+  const lines = ['🔮 <b>Time Machine</b> — odds of the current account, from 1,000 simulated years'];
   for (const a of ftmoAccounts(cfg)) {
     const r = cached(cfg, store, a.id);
-    lines.push('', `<b>${a.firm || 'FTMO'} ${a.emoji} ${a.label}</b> · ${r.phase === 'funded' ? 'compte financé' : 'évaluation'} n° ${r.attempt} · solde $${Math.round(r.balance).toLocaleString('en-US')}`);
+    lines.push('', `<b>${a.firm || 'FTMO'} ${a.emoji} ${a.label}</b> · ${r.phase === 'funded' ? 'funded account' : 'evaluation'} #${r.attempt} · balance $${Math.round(r.balance).toLocaleString('en-US')}`);
     if (r.phase === 'funded') {
-      lines.push(`Encore en vie : 3 mois ${pct(r.alive[91])} · 6 mois ${pct(r.alive[182])} · 1 an ${pct(r.alive[365])}`);
+      lines.push(`Still alive: 3 months ${pct(r.alive[91])} · 6 months ${pct(r.alive[182])} · 1 year ${pct(r.alive[365])}`);
       continue;
     }
-    lines.push(`✅ Réussite ${pct(r.passPct)}${r.medianDays !== null ? ` — en ${Math.round(r.q1Days)} à ${Math.round(r.q3Days)} jours (médiane ${Math.round(r.medianDays)})` : ''}`);
-    lines.push(`❌ Échec ${pct(r.failPct)} (${r.daily ? `perte du jour ${pct(r.dailyPct)}, ` : ''}perte max ${pct(r.maxlossPct)})${r.openPct >= 1 ? ` · ⏳ pas fini en 1 an ${pct(r.openPct)}` : ''}`);
+    lines.push(`✅ Pass ${pct(r.passPct)}${r.medianDays !== null ? ` — in ${Math.round(r.q1Days)} to ${Math.round(r.q3Days)} days (median ${Math.round(r.medianDays)})` : ''}`);
+    lines.push(`❌ Fail ${pct(r.failPct)} (${r.daily ? `daily loss ${pct(r.dailyPct)}, ` : ''}max loss ${pct(r.maxlossPct)})${r.openPct >= 1 ? ` · ⏳ not done in 1 year ${pct(r.openPct)}` : ''}`);
   }
   const d = data();
-  lines.push('', `<i>Journées tirées au hasard parmi les trades simulés des stratégies du bot (${d.from} → ${d.to}), réglages actuels, état actuel du compte. Positions ouvertes et IA validatrice non comptées. Estimation, pas une promesse.</i>`);
+  lines.push('', `<i>Days drawn at random from the bot strategies’ simulated trades (${d.from} → ${d.to}), current settings, current account state. Open positions and validator AI not counted. An estimate, not a promise.</i>`);
   return lines.join('\n');
 }
 

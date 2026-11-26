@@ -216,7 +216,7 @@ function backtest(strategy, candles, {
     const sig = strategy.evaluate(ind, i);
     if (pos) {
       trailStop(strategy, pos, ind, i);
-      if ((pos.side === 'long' && sig.exitLong) || (pos.side === 'short' && sig.exitShort)) close(c.c, 'signal de sortie', c.t);
+      if ((pos.side === 'long' && sig.exitLong) || (pos.side === 'short' && sig.exitShort)) close(c.c, 'exit signal', c.t);
     }
     if (!pos && sig.entry && i < end - 1 && capital > 0) {
       pos = openPos(sig.entry, c.c, sig, compound ? (capital * positionPct) / 100 : size, c.t);
@@ -410,7 +410,7 @@ class MarketTrader {
         const hit = hitInCandle(acc.position, { h: price, l: price });
         if (hit) {
           const continuous = prevCheck && now - prevCheck < 3600;
-          events.push(this.#close(strat, acc, continuous ? hit.price : price, continuous ? hit.reason : `${hit.reason} (écart)`, now));
+          events.push(this.#close(strat, acc, continuous ? hit.price : price, continuous ? hit.reason : `${hit.reason} (gap)`, now));
         }
       }
       if (acc.position && stops) acc.position.checkedFrom = now;
@@ -427,7 +427,7 @@ class MarketTrader {
         trailStop(strat, acc.position, ind, i);
         const p = acc.position;
         if ((p.side === 'long' && sig.exitLong) || (p.side === 'short' && sig.exitShort)) {
-          events.push(this.#close(strat, acc, price, 'signal de sortie', now));
+          events.push(this.#close(strat, acc, price, 'exit signal', now));
         }
       }
       if (!acc.position && sig.entry) {

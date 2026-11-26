@@ -4,7 +4,7 @@
  * 67 → 69 %, 55 → 50 j ; choix de l'utilisateur). Levier FTMO sur les actions : 1:5 au plus.
  */
 const STOCKS = {
-  tlt: { name: 'Obligations US (TLT)', symbol: 'TLT', code: 'TLT', tv: 'NASDAQ:TLT' },
+  tlt: { name: 'US bonds (TLT)', symbol: 'TLT', code: 'TLT', tv: 'NASDAQ:TLT' },
   googl: { name: 'Alphabet (Google)', symbol: 'GOOGL', code: 'GOOGL', tv: 'NASDAQ:GOOGL' },
   pltr: { name: 'Palantir', symbol: 'PLTR', code: 'PLTR', tv: 'NASDAQ:PLTR' },
   lly: { name: 'Eli Lilly', symbol: 'LLY', code: 'LLY', tv: 'NYSE:LLY' },

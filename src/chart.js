@@ -33,8 +33,8 @@ function niceStep(range, target = 5) {
   return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
 }
 
-const fmtMoney = (v) => (Math.abs(v) >= 100_000 ? `$${Math.round(v / 1000).toLocaleString('fr-FR')}k` : `$${Math.round(v).toLocaleString('fr-FR')}`);
-const fmtPct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1).replace('.', ',')} %`;
+const fmtMoney = (v) => (Math.abs(v) >= 100_000 ? `$${Math.round(v / 1000).toLocaleString('en-US')}k` : `$${Math.round(v).toLocaleString('en-US')}`);
+const fmtPct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}%`;
 
 /**
  * Zone de graphique (axes + grille + courbes) dans un rectangle de la toile.
@@ -44,7 +44,7 @@ function drawSeries(cv, series, box, { baseline = null, log = false, money = fmt
   const { x, y, w, h } = box;
   const pts = series.flatMap((s) => s.points);
   if (pts.length < 2) {
-    cv.text('Pas encore assez de points : la courbe se remplit au fil des heures.', x + w / 2, y + h / 2 - 8, { size: 15, color: THEME.muted, align: 'center' });
+    cv.text('Not enough points yet: the curve fills in over the hours.', x + w / 2, y + h / 2 - 8, { size: 15, color: THEME.muted, align: 'center' });
     return;
   }
   const f = log ? (v) => Math.log10(Math.max(v, 1e-9)) : (v) => v;
@@ -100,8 +100,8 @@ function drawSeries(cv, series, box, { baseline = null, log = false, money = fmt
     const label = span > 400 * 86400
       ? String(d.getUTCFullYear())
       : span > 2 * 86400
-        ? d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', timeZone: 'UTC' })
-        : d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+        ? d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', timeZone: 'UTC' })
+        : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
     cv.text(label, X(t), B + 7, { size: axisFont, color: THEME.muted, align: k === 0 ? 'left' : k === 4 ? 'right' : 'center' });
   }
   if (baseline !== null) cv.line(L, Y(baseline), R, Y(baseline), THEME.muted, 1, 5, 0.7);

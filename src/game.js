@@ -37,8 +37,8 @@ function createGame({ cfg, store, api }) {
     const count = (mk, dir) => Object.values(round.votes[mk] || {}).filter((v) => v === dir).length;
     return {
       inline_keyboard: markets().map((m) => [
-        { text: `${m.emoji} ${m.id === 'nas100' ? 'Nasdaq' : m.name} ▲ Hausse (${count(m.id, 'u')})`, callback_data: `g:${round.id}:${KM[m.id]}:u` },
-        { text: `▼ Baisse (${count(m.id, 'd')})`, callback_data: `g:${round.id}:${KM[m.id]}:d` },
+        { text: `${m.emoji} ${m.id === 'nas100' ? 'Nasdaq' : m.name} ▲ Up (${count(m.id, 'u')})`, callback_data: `g:${round.id}:${KM[m.id]}:u` },
+        { text: `▼ Down (${count(m.id, 'd')})`, callback_data: `g:${round.id}:${KM[m.id]}:d` },
       ]),
     };
   }
@@ -46,17 +46,17 @@ function createGame({ cfg, store, api }) {
   /** Image d'ouverture : cours des 30 derniers jours de chaque marché. */
   async function openingImage(ms) {
     const cv = new Canvas(1000, 560, THEME.bg);
-    cv.text('Pronostic du jour', 28, 20, { style: 'b', size: 28, color: THEME.text });
-    cv.text('Hausse ou baisse d’ici le prochain jour de bourse, même heure ? 1 point par bonne réponse.', 28, 58, { size: 15, color: THEME.muted });
+    cv.text('Daily prediction', 28, 20, { style: 'b', size: 28, color: THEME.text });
+    cv.text('Up or down by the next trading day, same time? 1 point per correct answer.', 28, 58, { size: 15, color: THEME.muted });
     const w = (1000 - 48 - 16 * (ms.length - 1)) / ms.length;
     for (const [i, { market, candles, price }] of ms.entries()) {
       const x = 24 + i * (w + 16);
       cv.roundRect(x, 92, w, 420, 16, THEME.surface);
       cv.text(market.name, x + 18, 106, { style: 'b', size: 22, color: market.id === 'gold' ? THEME.gold : THEME.accent });
-      cv.text(price ? money(price) : 'n/d', x + w - 18, 106, { style: 'b', size: 22, color: THEME.text, align: 'right' });
+      cv.text(price ? money(price) : 'n/a', x + w - 18, 106, { style: 'b', size: 22, color: THEME.text, align: 'right' });
       C.drawCandles(cv, candles.slice(-30), { x: x + 4, y: 146, w: w - 8, h: 356 }, {});
     }
-    cv.text('Jeu entre membres · aucun argent en jeu', 976, 526, { size: 13, color: THEME.muted, align: 'right' });
+    cv.text('Game between members · no money at stake', 976, 526, { size: 13, color: THEME.muted, align: 'right' });
     return cv.png();
   }
 
@@ -86,12 +86,12 @@ function createGame({ cfg, store, api }) {
       closed: false,
       messageId: null,
     };
-    const when = new Date(round.resolveAt).toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+    const when = new Date(round.resolveAt).toLocaleString('en-US', { weekday: 'long', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
     const caption = [
-      `🎯 <b>Pronostic du jour n° ${id}</b>`,
+      `🎯 <b>Daily prediction #${id}</b>`,
       ...ms.map((m) => `${m.market.emoji} ${esc(m.market.name)} : ${money(m.price)}`),
-      `Votez avec les boutons (${cfg.gameVoteHours} h pour voter, vote modifiable). Résultat ${when} UTC.`,
-      '<i>/classement pour voir les points.</i>',
+      `Vote with the buttons (${cfg.gameVoteHours} h to vote, you can change your vote). Result ${when} UTC.`,
+      '<i>/leaderboard to see the points.</i>',
     ].join('\n');
     const msg = await api.sendPhoto(cfg.channelId, new InputFile(await openingImage(ms), 'pronostic.png'), { caption, parse_mode: 'HTML', reply_markup: voteKeyboard(round) });
     round.messageId = msg.message_id;
@@ -106,7 +106,7 @@ function createGame({ cfg, store, api }) {
   async function closeVotes(s) {
     s.round.closed = true;
     save(s);
-    await api.editMessageReplyMarkup(cfg.channelId, s.round.messageId, { reply_markup: { inline_keyboard: [[{ text: '🔒 Votes clos — résultat au prochain jour de bourse', callback_data: 'g:0:x:x' }]] } }).catch(() => {});
+    await api.editMessageReplyMarkup(cfg.channelId, s.round.messageId, { reply_markup: { inline_keyboard: [[{ text: '🔒 Voting closed — result on the next trading day', callback_data: 'g:0:x:x' }]] } }).catch(() => {});
   }
 
   async function resolve(s, now) {
@@ -147,11 +147,11 @@ function createGame({ cfg, store, api }) {
     });
     const winners = [...players].filter((u) => right[u]).map((u) => esc(s.scores[u].name));
     const caption = [
-      `🏁 <b>Résultat du pronostic n° ${r.id}</b>`,
+      `🏁 <b>Prediction #${r.id} result</b>`,
       ...verdict,
-      players.size ? `${winners.length} joueur${winners.length > 1 ? 's' : ''} sur ${players.size} marque${winners.length > 1 ? 'nt' : ''} des points${winners.length ? ` : ${winners.slice(0, 12).join(', ')}` : ''}.` : 'Personne n’a voté.',
+      players.size ? `${winners.length} player${winners.length > 1 ? 's' : ''} out of ${players.size} score${winners.length > 1 ? '' : 's'} points${winners.length ? `: ${winners.slice(0, 12).join(', ')}` : ''}.` : 'Nobody voted.',
     ].join('\n');
-    const png = scoreboardImage(s, `Tour n° ${r.id} : ${Object.entries(moves).map(([id, mv]) => `${marketById(cfg, id).name} ${mv.chg > 0 ? '▲' : '▼'} ${pct(mv.chg)}`).join(' · ')}`);
+    const png = scoreboardImage(s, `Round #${r.id}: ${Object.entries(moves).map(([id, mv]) => `${marketById(cfg, id).name} ${mv.chg > 0 ? '▲' : '▼'} ${pct(mv.chg)}`).join(' · ')}`);
     await api.sendPhoto(cfg.channelId, new InputFile(png, 'resultat.png'), { caption: caption.slice(0, 1024), parse_mode: 'HTML', reply_parameters: { message_id: r.messageId, allow_sending_without_reply: true } });
     console.log(`[jeu] tour ${r.id} résolu : ${players.size} joueurs`);
   }
@@ -161,9 +161,9 @@ function createGame({ cfg, store, api }) {
     const rows = Object.values(s.scores)
       .sort((a, b) => b.points - a.points || b.best - a.best)
       .slice(0, 15)
-      .map((p) => ({ label: p.name, value: p.points, text: `${p.points} pt${p.points > 1 ? 's' : ''}`, badge: `${p.played} joué${p.played > 1 ? 's' : ''}${p.streak >= 2 ? ` · série ${p.streak}` : ''}` }));
-    if (!rows.length) rows.push({ label: 'Personne n’a encore joué', value: 0, text: '0 pt' });
-    return C.rankingImage({ title: 'Classement du pronostic', subtitle: subtitle || `${s.rounds || 0} tour${(s.rounds || 0) > 1 ? 's' : ''} joué${(s.rounds || 0) > 1 ? 's' : ''} · 1 point par bonne réponse`, rows });
+      .map((p) => ({ label: p.name, value: p.points, text: `${p.points} pt${p.points > 1 ? 's' : ''}`, badge: `${p.played} played${p.streak >= 2 ? ` · streak ${p.streak}` : ''}` }));
+    if (!rows.length) rows.push({ label: 'Nobody has played yet', value: 0, text: '0 pt' });
+    return C.rankingImage({ title: 'Prediction leaderboard', subtitle: subtitle || `${s.rounds || 0} round${(s.rounds || 0) > 1 ? 's' : ''} played · 1 point per correct answer`, rows });
   }
 
   /** Appelé à chaque passage du bot. */
@@ -187,19 +187,19 @@ function createGame({ cfg, store, api }) {
     const [, rid, mk, dir] = parts;
     const s = load();
     const r = s.round;
-    if (mk === 'x' || !r || String(r.id) !== rid) return ctx.answerCallbackQuery({ text: 'Ce tour est terminé.' }).catch(() => {});
-    if (r.closed || Date.now() >= r.closesAt) return ctx.answerCallbackQuery({ text: '🔒 Les votes sont clos pour ce tour.' }).catch(() => {});
+    if (mk === 'x' || !r || String(r.id) !== rid) return ctx.answerCallbackQuery({ text: 'This round is over.' }).catch(() => {});
+    if (r.closed || Date.now() >= r.closesAt) return ctx.answerCallbackQuery({ text: '🔒 Voting is closed for this round.' }).catch(() => {});
     const marketId = MK[mk];
     if (!r.votes[marketId] || !['u', 'd'].includes(dir)) return ctx.answerCallbackQuery().catch(() => {});
     const uid = String(ctx.from.id);
-    const name = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' ').slice(0, 40) || ctx.from.username || 'Joueur';
+    const name = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' ').slice(0, 40) || ctx.from.username || 'Player';
     const sc = (s.scores[uid] ||= { name, points: 0, played: 0, streak: 0, best: 0 });
     sc.name = name;
     const before = r.votes[marketId][uid];
     r.votes[marketId][uid] = dir;
     save(s);
     const m = marketById(cfg, marketId);
-    await ctx.answerCallbackQuery({ text: `${before && before !== dir ? 'Vote modifié' : 'Vote enregistré'} : ${m.name} en ${dir === 'u' ? 'hausse ▲' : 'baisse ▼'}` }).catch(() => {});
+    await ctx.answerCallbackQuery({ text: `${before && before !== dir ? 'Vote changed' : 'Vote saved'}: ${m.name} ${dir === 'u' ? 'up ▲' : 'down ▼'}` }).catch(() => {});
     if (before !== dir) await ctx.editMessageReplyMarkup({ reply_markup: voteKeyboard(r) }).catch(() => {});
   }
 
@@ -207,12 +207,12 @@ function createGame({ cfg, store, api }) {
   function status() {
     const s = load();
     const r = s.round;
-    if (!cfg.gameEnabled) return 'Le jeu est désactivé (GAME=0 dans le .env).';
-    const lines = ['🎯 <b>Pronostic du jour</b>', `Chaque jour de semaine à ${cfg.gameHourUtc} h UTC : hausse ou baisse de l’or et du Nasdaq d’ici le jour de bourse suivant. 1 point par bonne réponse.`];
+    if (!cfg.gameEnabled) return 'The game is off (GAME=0 in the .env).';
+    const lines = ['🎯 <b>Daily prediction</b>', `Every weekday at ${cfg.gameHourUtc}:00 UTC: gold and Nasdaq up or down by the next trading day. 1 point per correct answer.`];
     if (r) {
       const n = new Set(Object.values(r.votes).flatMap((v) => Object.keys(v))).size;
-      lines.push('', `Tour n° ${r.id} ${r.closed ? '(votes clos)' : 'en cours'} · ${n} joueur${n > 1 ? 's' : ''} · résultat le ${new Date(r.resolveAt).toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC`);
-    } else lines.push('', `Prochain tour : ${new Date(nextSlot(Date.now(), cfg.gameHourUtc)).toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC.`);
+      lines.push('', `Round #${r.id} ${r.closed ? '(voting closed)' : 'running'} · ${n} player${n > 1 ? 's' : ''} · result on ${new Date(r.resolveAt).toLocaleString('en-US', { weekday: 'long', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' })} UTC`);
+    } else lines.push('', `Next round: ${new Date(nextSlot(Date.now(), cfg.gameHourUtc)).toLocaleString('en-US', { weekday: 'long', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' })} UTC.`);
     return lines.join('\n');
   }
 

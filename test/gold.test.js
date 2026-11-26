@@ -85,14 +85,14 @@ test('or : bilan et messages', () => {
   const trader = new GoldTrader(store, cfg);
   const stats = trader.stats();
   assert.strictEqual(stats.rows.length, require('../src/strategies').STRATEGIES.filter((s) => !s.scalp && !s.markets).length, 'toutes les stratégies (hors scalp et hors stratégies propres à un marché)');
-  assert.match(portfolioMessage(stats, cfg), /Bilan paper trading — 🥇 Or/);
+  assert.match(portfolioMessage(stats, cfg), /Paper trading report — 🥇 Gold/);
   const { MarketTrader, nasMarket } = require('../src/markets');
   const nas = new MarketTrader(nasMarket(cfg), store, cfg).stats();
   assert.strictEqual(nas.rows.length, 3);
   assert.match(portfolioMessage(nas, cfg), /Nasdaq 100/);
   const strategy = trader.strategies[0];
   const pos = { side: 'long', entry: 4000, sl: 3980, tp: 4040, size: 1000, entryT: 0 };
-  assert.match(goldEventMessage({ type: 'open', strategy, pos, rsi: 55 }), /ACHAT/);
+  assert.match(goldEventMessage({ type: 'open', strategy, pos, rsi: 55 }), /BUY/);
   const trade = { ...pos, exit: 4040, exitT: 7200, reason: 'take profit', pnlPct: 0.9, pnlUsd: 9 };
   assert.match(goldEventMessage({ type: 'close', strategy, trade }), /\+0\.9%/);
 });
@@ -117,5 +117,5 @@ test('stop franchi au cours actuel avant que la bougie 5 min soit publiée : cl�
   assert.strictEqual(cont.reason, 'stop loss');
   const gap = await run(3 * 3600);
   assert.strictEqual(gap.exit, 3672);
-  assert.strictEqual(gap.reason, 'stop loss (écart)');
+  assert.strictEqual(gap.reason, 'stop loss (gap)');
 });

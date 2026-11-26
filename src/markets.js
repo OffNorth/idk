@@ -163,7 +163,7 @@ async function basisOf(cfg, id, yahooSym, session, feed = 'oanda') {
 function goldMarket(cfg) {
   return {
     id: 'gold',
-    name: 'Or',
+    name: 'Gold',
     emoji: '🥇',
     file: 'gold.json',
     enabled: cfg.goldEnabled,
@@ -392,7 +392,7 @@ function sessionMarket(cfg, { id, key, name, emoji, symbol }) {
     },
   };
 }
-const silverMarket = (cfg) => sessionMarket(cfg, { id: 'silver', key: 'silver', name: 'Argent', emoji: '🥈', symbol: 'SI=F' });
+const silverMarket = (cfg) => sessionMarket(cfg, { id: 'silver', key: 'silver', name: 'Silver', emoji: '🥈', symbol: 'SI=F' });
 const dowMarket = (cfg) => sessionMarket(cfg, { id: 'dow', key: 'dow', name: 'Dow Jones', emoji: '🏭', symbol: '^DJI' });
 // Russell 2000 (^RUT, micro M2K) : journalières du compte Lucid (npm run lucid-research4)
 const russellMarket = (cfg) => sessionMarket(cfg, { id: 'russell', key: 'russell', name: 'Russell 2000', emoji: '🐎', symbol: '^RUT' });
