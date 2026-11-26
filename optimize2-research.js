@@ -54,7 +54,7 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
   const P = { B: [Y(2009) + 60 * DAY, Y(2020)], C: [Y(2020), Infinity], A: [A0, Infinity] };
   const accts = {};
   for (const id of ['ftmo', 'lucid']) {
-    const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, id === 'ftmo' ? 'gold' : 'lucid');
+    const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, id === 'ftmo' ? 'gold' : 'lucid');
     const sids = A.strategies.filter((k) => A.riskOf(...strat(k), 'eval') > 0);
     const intra = sids.filter((k) => { const [m, s] = strat(k); return s.tf && s.tf !== '1d' && NYB[m]; })
       .flatMap((k) => { const [b, mult, fee, fp] = NYB[k.split(':')[0]]; return nyRun(b, strat(k)[1], k, k.split(':')[0], mult, fee, fp); });
@@ -191,7 +191,7 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
       const runs = starts(A0, LIST('lucid')[LIST('lucid').length - 1]?.entryT || A0).length;
       void runs;
       const pA = ev.per[2] / 100;
-      const f = fundedLucid(fundedRisk(LIST('lucid')), { sizer: cushionLucid, ...(o.capital ? { capital: o.capital, maxLossUsd: o.maxLossUsd, maxContracts: o.maxContracts, scaling: S100 } : {}) }, pay);
+      const f = fundedLucid(fundedRisk(LIST('lucid')), { ...(o.capital ? { capital: o.capital, maxLossUsd: o.maxLossUsd, maxContracts: o.maxContracts, scaling: S100 } : {}) }, pay);
       console.log(`   ${name.padEnd(14)} évaluation ${fmt(ev)}\n                  coût par compte financé (nov. 24–26) ${usd(price / pA)} · financé 12 mois : retraits ${usd(f.paid)} · 1er retrait ≤ 60 j ${pc(f.p60)} · perdus ${pc(f.lost)} · net ≈ ${usd(f.paid - price / pA)} par compte financé`);
     }
     console.log('   (prix 100K estimé à 230 $, retrait ≤ 2 500 $ et jours gagnants ≥ 200 $ : sources secondaires, à vérifier)\n');
@@ -205,7 +205,7 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
       return fundedRisk([...LIST('lucid').filter((t) => !(t.intraday && NYB[t.market])), ...intra]);
     };
     for (const [name, k] of [['objectifs actuels (0,5 / 0,75 / 1 R)', 'keep'], ['objectif 1 R', 1], ['objectif 1,5 R', 1.5], ['objectif 2 R', 2], ['sans objectif (sortie du soir)', null]]) {
-      const f = fundedLucid(listWith(k), { sizer: cushionLucid });
+      const f = fundedLucid(listWith(k));
       console.log(`   ${name.padEnd(38)} retraits 12 mois ${usd(f.paid).padStart(8)} · 1er retrait ≤ 60 j ${pc(f.p60)} · perdus en 12 mois ${pc(f.lost)}`);
     }
     console.log('   (départ chaque jour ouvré, nov. 2024 → nov. 2025, risque « financé » actuel)\n');

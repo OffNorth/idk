@@ -37,12 +37,13 @@ Every minute (every CHECK_INTERVAL_MINUTES without scalp strategies)
 |---|---|---|
 | **FTMO 100K, 1-step challenge** (`/ftmo`) | +10% target, 3% daily loss, 10% trailing max loss, best day ≤ 50% of the gain, min 4 days; funded: 80–90% split, payouts every 14 days | daily strategies (gold, S&P, EUR/USD) + gold / S&P / stock intraday breakouts |
 | **LucidFlex 50K, two evaluations at once** (`/lucid`, `/lucid daily`) | +6% ($3,000), no daily loss limit, $2,000 end-of-day trailing max loss locked at capital + $100, best day ≤ 40%, whole CME micro contracts | one evaluation takes the **intraday** strategies (Nasdaq, Dow, silver), the other the **daily** ones (S&P, Nasdaq, Russell, silver) |
-| **Separate funded Lucid account** | no consistency rule; payout after 5 winning days ≥ $150, ≤ 50% of the gain and ≤ $2,000; 90% split | everything Lucid trades |
+| **Separate funded Lucid account** | Lucid's official funded rules: no consistency rule, contract cap by profit (20 / 30 / 40 micros from $0 / $1,000 / $2,000), max loss locked at capital + $100 from the first payout, payout after 5 winning days ≥ $150 (≤ 50% of the gain, ≤ $2,000, 5 payouts max), 90% split | everything Lucid trades |
 
 Account management that came out of the research (all switchable in `.env`):
 - **Correlation-based sizing (FTMO)**: size × 0.5 when a position from the same market group (US indices and stocks,
   metals, currencies) is already open, or from 3 open positions.
-- **Cushion-based risk (funded accounts)**: risk × remaining cushion before the max loss (× 1 down to × 0.25).
+- **Cushion-based risk (funded FTMO account)**: risk × remaining cushion before the max loss (× 1 down to × 0.25). Not used on
+  funded Lucid: with its max loss locked from the first payout it cuts payouts.
 - **Trailing stop (FTMO)**: once a trade has made +2 R, the stop trails 1 R from the best close.
 - **Day management**: Lucid stops for the day at +$750 or after the first loss during the evaluation; FTMO the same way.
 - **Validator AI**: a logistic model scores every signal; it blocks the weakest ≈ 20% on FTMO and only gives its opinion on
@@ -64,7 +65,7 @@ included; an idea is only kept if no period gets worse. Pass rates below are "ch
 | Daily vs intraday | Daily trend / seasonal strategies are the most solid; on 1-hour candles and below, almost everything loses to fees and noise |
 | FTMO account | ≈ 55 / 57 / 73% with the current settings, then +8 / +4 / +2 points from correlation-based sizing |
 | Lucid account | ≈ 50 / 62 / 78%; running two different evaluations (intraday / daily) gets at least one pass within a year 92% of the time instead of 49%, at $198 instead of $279 per funded account |
-| Funded accounts | cushion-based risk: FTMO payouts over 24 months $17,052 → $23,768, accounts lost 99% → 29%; Lucid accounts lost within 12 months 100% → 30% |
+| Funded accounts | cushion-based risk on FTMO: payouts over 24 months $17,052 → $23,768, accounts lost 99% → 29%. Funded Lucid with the official rules: ≈ $2,050 of payouts over 12 months, first payout within 60 days 85% (Nov 24–26); the cushion rule would cut that to $1,300, so it is off on Lucid |
 | Validator AI | helps FTMO (+3 to +7 points), not Lucid (opinion only) |
 | Prop firms (same strategies) | Lucid, Tradeify, Topstep, Apex and Take Profit Trader pass about equally often; monthly subscriptions cost 2–5× more per funded account when evaluations last months |
 | Rejected after testing | order flow, ICT, news trading, overnight drift, VIX term structure, risk by hour, longer targets once funded, pullback limit entries, closing before weekends, 1-min gold entries, abandoning bad evaluations, adding to winners, many extra markets |

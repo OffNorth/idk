@@ -102,7 +102,7 @@ const FILTERS = {
   const A0 = q5[0].t + 30 * 86400;
   const P = { B: [Y(2009) + 60 * 86400, Y(2020)], C: [Y(2020), Infinity], A: [A0, Infinity] };
   const RL = { capital: 50_000, steps: 1, target1: 6, dailyPct: Infinity, maxLossUsd: 2000, eodTrailing: true, lockAt: 100, bestDayPct: cfg.lucidConsistency, minDays: 2, contracts: true, maxContracts: 40, minOneRisk: 0.4, leverage: 1000, dayOf: cmeDay, dayStopPct: cfg.ftmoDayStop };
-  const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
   const dailyBase = all.filter((t) => !t.intraday && A.strategies.includes(t.sid) && A.riskOf(...strat(t.sid)) > 0).map((t) => ({ ...t, riskPct: A.riskOf(...strat(t.sid)) }));
   const goldIntra = all.filter((t) => t.intraday && t.market === 'gold' && A.strategies.includes(t.sid) && A.riskOf(...strat(t.sid)) > 0).map((t) => ({ ...t, riskPct: A.riskOf(...strat(t.sid)) }));
   const ir = cfg.lucidIntradayRisk; const dr = cfg.ftmoRisk * cfg.lucidRiskMul;

@@ -42,7 +42,7 @@ const NY_LUCID = ['n_noise_t05', 'n_orb5s_t05', 'n_orb15_t05', 'n_mom10_t05', 'n
   const { all, q5 } = await buildTrades(cfg, CACHE, { withLucid: true });
   const qs = nySession(aggregate(await polygonBars(CACHE, 'QQQ', 1, '2024-11-18', { maxAgeH: Infinity }), 300, 60));
   const strat = (sid) => { const [m, id] = sid.split(':'); return [m, selectStrategies([id])[0] || { id, tf: '1d' }]; };
-  const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
   const nyRun = (bars, s, sid, m, mult, fee) => backtest({ ...s, compute: (c, sec) => s.compute(c, sec, 'nas100') }, bars, { size: 1000, feePct: 0.003, financingPct: 6, barSec: 300, market: 'nas100' }).list
     .map((t) => ({ ...t, sid, market: m, intraday: true, contractUsd: t.entry * mult, contractFee: fee }));
   const NYB = {

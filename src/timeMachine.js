@@ -40,7 +40,7 @@ function businessDays(t, horizonDays) {
 /** Options runPhase du compte (règles de la formule FTMO ou Lucid, réglages du bot). */
 function phaseOptions(cfg, A, s) {
   const P = A.program || programOf(cfg);
-  const common = { riskPct: 1, sizer: s.phase === 'funded' && cfg.fundedCushion !== false
+  const common = { riskPct: 1, sizer: s.phase === 'funded' && A.firm !== 'Lucid' && cfg.fundedCushion !== false
     ? ((rule) => (t, st) => rule(t, st) * require('./sizing').cushionMul(st.room))(require('./sizing').ruleFor(cfg, A.firm)) : require('./sizing').ruleFor(cfg, A.firm), dayStopPct: cfg.ftmoDayStop || 0, capital: s.capital, minDays: P.minDays ?? 4 };
   const funded = s.phase === 'funded';
   const target = funded ? Infinity : P.target ?? TARGET[s.phase] ?? 10;

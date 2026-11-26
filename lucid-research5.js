@@ -78,7 +78,7 @@ const gapGo = (th, tp, id) => ({
   // Compte Lucid actuel
   const { all, q5 } = await buildTrades(cfg, CACHE, { withLucid: true });
   const strat = (sid) => { const [m, id] = sid.split(':'); return [m, selectStrategies([id])[0] || { id, tf: '1d' }]; };
-  const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
   const LIS = cfg.lucidIntradayStrategies;
   const cur = Object.fromEntries(LIS.filter((k) => BARS[k.split(':')[0]]).map((k) => [k, run(k.split(':')[0], strat(k)[1], k)]));
   const sids = A.strategies.filter((k) => A.riskOf(...strat(k)) > 0);

@@ -288,7 +288,8 @@ module.exports = {
   // Compte FTMO : réduction selon la corrélation (même groupe de marchés déjà ouvert, ou 3 positions) au lieu de
   // « 2 positions ouvertes » (npm run optimize : 34 / 43 / 67 % → 42 / 47 / 69 %) ; 0 pour revenir à l'ancienne règle
   ftmoGroupSizing: num('FTMO_GROUP_SIZING', 1) === 1,
-  // Comptes financés (FTMO et Lucid) : risque × marge restante avant la perte max (× 0,25 à × 1) ; 0 pour le couper
+  // Compte FTMO financé : risque × marge restante avant la perte max (× 0,25 à × 1) ; 0 pour le couper (pas sur Lucid :
+  // avec la perte max bloquée dès le 1er retrait, elle fait chuter les retraits)
   fundedCushion: num('FUNDED_CUSHION', 1) === 1,
   // IA validatrice (src/aiFilter.js, npm run ai-train) : block (défaut, refuse les signaux sous le seuil), observe
   // (avis seulement) ou off ; FTMO_AI_MIN : seuil de probabilité (défaut : celui du modèle, ≈ 20 % des signaux refusés)

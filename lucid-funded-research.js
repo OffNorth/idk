@@ -31,7 +31,7 @@ const Y = (y) => Date.UTC(y, 0, 1) / 1000;
   const { all, q5 } = await buildTrades(cfg, CACHE, { withLucid: true });
   const qs = nySession(aggregate(await polygonBars(CACHE, 'QQQ', 1, '2024-11-18', { maxAgeH: Infinity }), 300, 60));
   const strat = (sid) => { const [m, id] = sid.split(':'); return [m, selectStrategies([id])[0] || { id, tf: '1d' }]; };
-  const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
   const NYB = { nas100: [qs, 82, 2.5], silver: [nySession(await polygonBars(CACHE, 'SLV', 5, '2024-11-18', { maxAgeH: Infinity })), 1075, 3.5],
     dow: [nySession(await polygonBars(CACHE, 'DIA', 5, '2024-11-18', { maxAgeH: Infinity })), 50, 2.5],
     spx: [nySession(aggregate(await polygonBars(CACHE, 'SPY', 1, '2024-11-18', { maxAgeH: Infinity }), 300, 60)), 50, 4] };
@@ -80,12 +80,16 @@ const Y = (y) => Date.UTC(y, 0, 1) / 1000;
     return `1er retrait ≤30 j ${pc(p30)} · ≤60 j ${pc(p60)} · médiane ${med.padStart(5)} · retraits 6 mois ${Math.round(paid6 / n).toLocaleString('fr-FR').padStart(6)} $ · 12 mois ${Math.round(paid12 / n).toLocaleString('fr-FR').padStart(6)} $ · perdus ${pc(lost)}`;
   };
   const PER = { 'nov. 24–26 (tout)': [A0, Infinity, true, DAY], '2020–24 (journalier)': [Y(2020), Y(2025), false, 7 * DAY] };
+  const NC = { sizer: RULES[cfg.ftmoSizing] }; // sans la règle de marge (FUNDED_CUSHION=0)
   const VAR = [
-    ['risque financé actuel', 1, {}], ['sans marge (FUNDED_CUSHION=0)', 1, { sizer: RULES[cfg.ftmoSizing] }], ['ancien modèle (40 micros, sans blocage)', 1, { scaling: null, lockOnPayout: false }], ['× 0,5', 0.5, {}], ['× 0,75', 0.75, {}], ['× 1,5', 1.5, {}], ['× 2', 2, {}], ['× 3', 3, {}],
-    ['arrêt après 1 perte', 1, { maxLossesPerDay: 1 }], ['plafond jour 150 $', 1, { dayProfitCapUsd: 150 }], ['plafond jour 300 $', 1, { dayProfitCapUsd: 300 }],
-    ['plafond jour 500 $', 1, { dayProfitCapUsd: 500 }], ['× 2 + plafond 300 $ + 1 perte', 2, { dayProfitCapUsd: 300, maxLossesPerDay: 1 }],
-    ['× 1,5 + plafond 300 $', 1.5, { dayProfitCapUsd: 300 }], ['× 2 + plafond 500 $', 2, { dayProfitCapUsd: 500 }],
+    ['avec marge (actuel)', 1, {}], ['ancien modèle (40 micros, sans blocage), avec marge', 1, { scaling: null, lockOnPayout: false }],
+    ['sans marge', 1, NC], ['sans marge × 0,75', 0.75, NC], ['sans marge × 1,5', 1.5, NC], ['sans marge × 2', 2, NC], ['sans marge × 3', 3, NC],
+    ['sans marge, arrêt après 1 perte', 1, { ...NC, maxLossesPerDay: 1 }], ['sans marge, plafond jour 300 $', 1, { ...NC, dayProfitCapUsd: 300 }],
+    ['sans marge, plafond jour 500 $', 1, { ...NC, dayProfitCapUsd: 500 }], ['sans marge × 1,5 + plafond 300 $', 1.5, { ...NC, dayProfitCapUsd: 300 }],
+    ['sans marge × 2 + plafond 300 $ + 1 perte', 2, { ...NC, dayProfitCapUsd: 300, maxLossesPerDay: 1 }], ['sans marge × 2 + plafond 500 $', 2, { ...NC, dayProfitCapUsd: 500 }],
+    ['avec marge × 2', 2, {}], ['avec marge × 2 + plafond 300 $ + 1 perte', 2, { dayProfitCapUsd: 300, maxLossesPerDay: 1 }],
   ];
+
   for (const [pname, per] of Object.entries(PER)) {
     console.log(`\n=== Lucid financé · ${pname} ===`);
     for (const [name, mul, rules] of VAR) console.log(`${name.padEnd(30)} ${study(mul, rules, per)}`);

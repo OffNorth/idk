@@ -146,7 +146,7 @@ function auc(list, sc) {
   // Listes de trades des deux comptes (stratégies et risques actuels)
   const accounts = {};
   for (const id of ['ftmo', 'lucid']) {
-    const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, id === 'ftmo' ? 'gold' : 'lucid');
+    const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, id === 'ftmo' ? 'gold' : 'lucid');
     const sids = A.strategies.filter((k) => A.riskOf(...strat(k), 'eval') > 0);
     const intra = sids.filter((k) => { const [m, s] = strat(k); return s.tf && s.tf !== '1d' && NYB[m]; })
       .flatMap((k) => { const [b, mult, fee] = NYB[k.split(':')[0]]; return nyRun(b, strat(k)[1], k, k.split(':')[0], mult, fee); });

@@ -124,7 +124,7 @@ const DAILY = ['rsi2', 'ibs', 'down3', 'double7', 'cumrsi'];
   const { all, q5 } = await buildTrades(cfg, CACHE, { withLucid: true });
   const qs = nySession(aggregate(await polygonBars(CACHE, 'QQQ', 1, '2024-11-18', { maxAgeH: Infinity }), 300, 60));
   const strat = (sid) => { const [m, id] = sid.split(':'); return [m, selectStrategies([id])[0] || { id, tf: '1d' }]; };
-  const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid');
+  const A = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false }, 'lucid');
   const IB = { nas100: [qs, 82, 2.5] };
   for (const [m, T, mult, fee] of [['silver', 'SLV', 1075, 3.5], ['dow', 'DIA', 50, 2.5]]) IB[m] = [nySession(await polygonBars(CACHE, T, 5, '2024-11-18', { maxAgeH: Infinity })), mult, fee];
   const sids = A.strategies.filter((k) => A.riskOf(...strat(k)) > 0);

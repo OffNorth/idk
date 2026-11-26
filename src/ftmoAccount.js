@@ -514,7 +514,9 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         if (!(riskPct > 0)) continue; // stratégie non prise par ce compte (ex. intraday sur Lucid)
         // Compte financé : risque selon la marge restante avant la perte max (npm run optimize2, FUNDED_CUSHION) :
         // × 1 avec toute la marge, × 0,5 à mi-chemin de la perte max, × 0,25 au plus bas
-        const cushion = s.phase === 'funded' && cfg.fundedCushion !== false
+        // (FTMO seulement : sur Lucid financé, la perte max bloquée dès le 1er retrait rend la règle nuisible — retraits
+        // 12 mois 1 304 → 2 054 $ sans elle, npm run lucid-funded avec les règles officielles)
+        const cushion = s.phase === 'funded' && A.firm !== 'Lucid' && cfg.fundedCushion !== false
           ? require('./sizing').cushionMul((s.balance - maxFloor(s)) / (P.maxUsd || (s.capital * P.max) / 100)) : 1;
         let notional = Math.min((s.balance * riskPct * mul * wAdapt * cushion) / stopPct, s.balance * cap);
         let lots = null;

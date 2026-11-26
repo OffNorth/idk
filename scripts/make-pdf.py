@@ -382,8 +382,10 @@ story.append(KeepTogether([Paragraph('Strategies for Lucid: fewer losses in a ro
 
 story.append(KeepTogether([Paragraph('Plan: Lucid, payouts, then an FTMO account that lasts', h2), Paragraph(
     'Pass the Lucid evaluation fast, collect Lucid payouts, use them to pay for an FTMO account set up to last (scaling up to $2M). '
-    '<b>Lucid funded</b>: the current settings are the best for getting at least one payout (85% within ≤ 60 days, median 17 days, ≈ $2,700 over 12 months); '
-    'a funded Lucid account rarely lasts (max loss locked at capital + $100). <b>FTMO during the evaluation</b>: set up “like Lucid” (intraday × 2, '
+    '<b>Lucid funded</b> (Lucid’s official funded rules: contract cap by profit 20 / 30 / 40 micros, max loss locked at capital + $100 from the first payout, '
+    '5 payouts max): first payout within 60 days 85%, median 17 days, ≈ $2,050 over 12 months (Nov 24–26), ≈ $1,840 (2020–24, daily only); '
+    'the account rarely lasts. Risk × 2 pays more in total ($2,611 / $2,749) but the first payout comes less often within 60 days recently (85 → 67%). '
+    'The cushion-based risk is NOT used on Lucid: with the max loss locked right after a payout it cuts payouts to ≈ $1,300. <b>FTMO during the evaluation</b>: set up “like Lucid” (intraday × 2, '
     'day over at +$2,500 or after 1 loss). <b>FTMO funded</b>: all risk × 0.75 (chosen on 26/11/2026), plus partial exits (⅓ at +1 R, ⅓ at +2 R, the rest on the trailing stop).', body),
     Spacer(1, 3), small_table([
     ('FTMO 100K funded (a start every week 2009–2023)', 'Alive at 12 / 24 / 36 months', 'Trader income / month (3-year average)', 'At least 1 scaling step'),
@@ -605,6 +607,21 @@ story.append(KeepTogether([Paragraph('Optimizing returns: 7 ideas (26/11/2026)',
     ], [72 * mm, 36 * mm, 36 * mm, 36 * mm]), Paragraph(
     'Monthly subscriptions cost 2 to 5 times more when evaluations last months. Apex is only worth it during its big sales. Rules and prices '
     'from third-party 2026 sources, promo prices are assumptions: check them before buying. Payout rules once funded differ too much to compare here.', note)]))
+
+story.append(KeepTogether([Paragraph('Optimizing returns: 7 more ideas (26/11/2026)', h2), Paragraph(
+    'Same method. Two ideas are kept: <b>two Lucid evaluations at once</b> (one takes only the intraday strategies, the other only the daily ones, '
+    'so their losses no longer stack on the same day) and <b>cushion-based risk on the funded FTMO account</b> (risk × remaining cushion before the '
+    'max loss, from × 1 down to × 0.25). Funded-Lucid figures use Lucid’s official funded rules.', body), Spacer(1, 3), small_table([
+    ('Idea', 'Result', 'Decision'),
+    ('<b>Two different Lucid evaluations</b> (intraday | daily)', 'at least one passes within a year 92% (vs 49%), 34 days median (vs 13), cost per funded account $198 (vs $279); within 30 days unchanged (46%)', '<b>added</b> (LUCID_SPLIT=1)'),
+    ('<b>Cushion-based risk, funded FTMO</b>', 'payouts over 24 months $17,052 → $23,768, accounts lost 99% → 29%', '<b>added</b> (FUNDED_CUSHION=1)'),
+    ('Cushion-based risk, funded Lucid', 'payouts 12 months ≈ $2,050 → $1,300 (max loss locked from the 1st payout)', '✘ off on Lucid'),
+    ('LucidFlex 100K instead of 50K', 'harder evaluation (39% vs 53% Nov 24–26); payouts $3,134 vs $2,161 but cost per funded $593 vs $256: about the same net per evaluation bought (≈ $1,000)', '✘ no gain (100K price estimated)'),
+    ('Abandoning a bad evaluation (below −$750 to −$1,500)', 'same pass rate, slightly more evaluations bought', '✘'),
+    ('Longer targets once Lucid is funded', '1 R: payouts +2% but first payout within 60 days 89 → 82%; 1.5 R / 2 R / none: clearly worse', '✘'),
+    ('Pullback limit entries after a breakout', 'first test biased (fill inside the breakout candle); fixed: FTMO 42 / 43 / 53%, Lucid Nov 24–26 53 → 35%', '✘'),
+    ('Closing daily positions before weekends', 'FTMO 42 / 47 / 69 → 27 / 30 / 43%', '✘'),
+    ], [58 * mm, 82 * mm, 38 * mm])]))
 
 story += part(4, 'The bot day to day')
 story.append(KeepTogether([Paragraph('Execution, notifications and tools', h2), Paragraph(
