@@ -458,5 +458,44 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     }
     console.log('');
   }
+  /* ---------- 13. Rendement Lucid avec les réglages actuels (×3 → ×1 financé, anti-hedging, or g_nypdl) ---------- */
+  if (want(13)) {
+    console.log('=== 13. Rendement Lucid, réglages actuels ===');
+    const after = (k) => ({ sizer: (t, st) => baseSizer(t, st) * (st.paid ? k : 1) });
+    const CUR = after(1 / 3);
+    console.log('  a. Compte financé');
+    fline('journalières, × 3 → × 1 (actuel)', funded(FLD, CUR));
+    fline('+ intraday Nasdaq', funded(FL.filter((t) => !t.intraday || isNas(t)), CUR));
+    fline('+ tout l\'intraday', funded(FL, CUR));
+    for (const [nm, pay] of [['retrait si marge ≥ 1 000 $', { buffer: 1000 }], ['retrait si marge ≥ 1 500 $', { buffer: 1500 }], ['seulement le retrait max', { maxOnly: true }]]) fline(nm, funded(FLD, CUR, pay));
+    console.log('  b. Séparer les marchés (anti-hedging entre comptes, approximation section 11)');
+    const xf = (books) => { // même filtre que la section 11
+      const evs = []; books.forEach((l, bi) => l.forEach((t) => evs.push({ t, bi })));
+      evs.sort((x, y) => x.t.entryT - y.t.entryT || x.bi - y.bi);
+      const open = []; const keep = books.map(() => new Set());
+      for (const { t, bi } of evs) {
+        for (let i = open.length - 1; i >= 0; i--) if (open[i].t.exitT <= t.entryT) open.splice(i, 1);
+        if (open.some((o) => o.bi !== bi && o.t.market === t.market && o.t.side !== t.side)) continue;
+        keep[bi].add(t); open.push({ t, bi });
+      }
+      return books.map((l, bi) => l.filter((t) => keep[bi].has(t)));
+    };
+    const intraMk = new Set(INTRA.map((t) => t.market));
+    for (const [nm, drop] of [['aucune séparation (actuel)', new Set()], ['journalières sans Nasdaq', new Set(['nas100'])], ['journalières sans les marchés intraday', intraMk]]) {
+      const D = DAILY.filter((t) => !drop.has(t.market)), F = FLD.filter((t) => !drop.has(t.market));
+      const [f2, i2, d2] = xf([F, INTRA, D]);
+      console.log(`   ${nm}`);
+      console.log(`      intraday  ${fmtE(evalStats(i2, {}), true)}`);
+      console.log(`      daily     ${fmtE(evalStats(d2, NODM), false)}`);
+      fline('      financé', funded(f2, CUR));
+      console.log(`      deux évaluations : ${multi([i2, d2])}`);
+    }
+    console.log('  c. Évaluation intraday (avec or g_nypdl 0,2 %)');
+    for (const [nm, l, o] of [['× 3 (actuel)', INTRA, {}], ['× 2', INTRA.map((t) => (t.market === 'gold' ? t : { ...t, riskPct: t.riskPct * 2 / 3 })), {}],
+      ['× 3 + coussin plancher 0,5', INTRA, { sizer: cush(0.5) }], ['× 2 + coussin plancher 0,5', INTRA.map((t) => (t.market === 'gold' ? t : { ...t, riskPct: t.riskPct * 2 / 3 })), { sizer: cush(0.5) }]]) {
+      console.log(`      ${nm.padEnd(30)} ${fmtE(evalStats(l, o), true)}`);
+    }
+    console.log('');
+  }
   console.log('\n✅ = rien ne baisse et au moins un chiffre monte (évaluations : réussite, ≤ 14 j, ≤ 30 j, échecs ≤ 14 j ; financé : retraits, comptes perdus)');
 })().catch((e) => { console.error(e); process.exit(1); });
