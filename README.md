@@ -53,6 +53,9 @@ Account management that came out of the research (all switchable in `.env`):
 - **Funded Lucid**: risk × 2 (`LUCID_FUNDED_RISK_MUL`): payouts over 12 months ≈ $2,611 (Nov 24–26) and $2,749 (2020–24)
   instead of $2,054 / $1,841, but the first payout comes within 60 days less often recently (67% vs 85%).
   Daily strategies only (27/11/2026): payouts over 12 months $2,253 → $3,021 (Nov 24–26), 2020–24 equal, accounts lost 91 → 78%.
+  Since 27/11/2026: risk × 3 until the first payout, then × 1 (`LUCID_FUNDED_RISK_MUL` / `LUCID_FUNDED_RISK_MUL_AFTER`): the max
+  loss locks at the first payout, so the account is protected after it. Payouts over 12 months $3,021 → $5,159 (Nov 24–26) and
+  $2,888 → $3,467 (2020–24), accounts lost 78% → 32% / 59%, first payout within 60 days unchanged.
 
 The plan these accounts serve: pass Lucid fast, collect Lucid payouts, use them to pay for FTMO accounts set up to last.
 

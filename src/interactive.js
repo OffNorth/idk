@@ -113,7 +113,9 @@ function riskText(cfg, acct, phase) {
   const r = (x) => Math.round(x * 1000) / 1000;
   const intra = intraSid ? r(acct.riskOf(intraSid.split(':')[0], selectStrategies([intraSid.split(':')[1]])[0], phase)) : 0;
   const boost = acct.id === 'lucid' && phase !== 'funded' && (cfg.lucidEvalIntradayMul ?? 1) !== 1 ? ` during the evaluation, ${r(cfg.lucidIntradayRisk)}% once funded` : '';
-  return `${daily.join(' / ')}% (daily)${intra > 0 ? ` · ${intra}% (intraday${boost})` : ''}`;
+  const fundedTxt = acct.firm === 'Lucid' && phase === 'funded' && (cfg.lucidFundedRiskMulAfter ?? cfg.lucidFundedRiskMul) !== cfg.lucidFundedRiskMul
+    ? ` · funded: × ${cfg.lucidFundedRiskMul} until the 1st payout, then × ${cfg.lucidFundedRiskMulAfter} (capped by the contract limit)` : '';
+  return `${daily.join(' / ')}% (daily)${intra > 0 ? ` · ${intra}% (intraday${boost})` : ''}${fundedTxt}`;
 }
 const PAGE = 6;
 

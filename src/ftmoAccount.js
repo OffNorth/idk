@@ -55,6 +55,8 @@ const scaledContracts = (tiers, profit) => tiers.reduce((n, [from, max]) => (pro
 const FTMO_PAYOUT = { rule: 'ftmo', every: 14 };
 
 const LUCID_FUNDED_FILE = 'lucid-funded.json';
+/** Lucid financé, après le 1er retrait : risque ramené de × LUCID_FUNDED_RISK_MUL à × LUCID_FUNDED_RISK_MUL_AFTER. */
+const lucidAfterPayoutMul = (cfg) => { const b = cfg.lucidFundedRiskMul ?? 1, a = cfg.lucidFundedRiskMulAfter ?? b; return b > 0 ? a / b : 1; };
 /**
  * Réglages d'un compte simulé : 'gold' (FTMO, or ou compte combiné), 'nas100' (FTMO Nasdaq), 'lucid' (LucidFlex,
  * évaluation), 'lucid2' (2e évaluation LucidFlex, LUCID_SPLIT) ou 'lucidf' (compte Lucid financé qui tourne à part,
@@ -532,7 +534,9 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         // 12 mois 1 304 → 2 054 $ sans elle, npm run lucid-funded avec les règles officielles)
         const cushion = s.phase === 'funded' && A.firm !== 'Lucid' && cfg.fundedCushion !== false
           ? require('./sizing').cushionMul((s.balance - maxFloor(s)) / (P.maxUsd || (s.capital * P.max) / 100)) : 1;
-        let notional = Math.min((s.balance * riskPct * mul * wAdapt * cushion) / stopPct, s.balance * cap);
+        // Lucid financé : × LUCID_FUNDED_RISK_MUL jusqu'au 1er retrait, puis × LUCID_FUNDED_RISK_MUL_AFTER (npm run lucid-ideas3)
+        const afterPay = A.firm === 'Lucid' && s.phase === 'funded' && s.funded?.payouts?.length ? lucidAfterPayoutMul(cfg) : 1;
+        let notional = Math.min((s.balance * riskPct * mul * wAdapt * cushion * afterPay) / stopPct, s.balance * cap);
         let lots = null;
         if (P.contracts) {
           // Futures (Lucid) : contrats entiers de micro-futures, arrondis vers le bas, plafond de contrats ouverts
@@ -890,4 +894,4 @@ function shiftOpen(store, marketId, shift) {
   }
 }
 
-module.exports = { shiftOpen, openOn, createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram, FTMO_PAYOUT, financerReport, resetReport, dailyReport };
+module.exports = { lucidAfterPayoutMul, shiftOpen, openOn, createFtmo, accountOf, ftmoAccounts, TARGET, PROGRAMS, programOf, MICRO, lucidProgram, FTMO_PAYOUT, financerReport, resetReport, dailyReport };

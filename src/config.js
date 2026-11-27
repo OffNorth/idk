@@ -219,7 +219,11 @@ module.exports = {
   lucidCombined: num('LUCID_COMBINED', 1) === 1,
   // Compte Lucid financé : risque × ce nombre (2, demande de l'utilisateur 27/11/2026 : retraits 12 mois 2 054 → 2 611 $,
   // 2020–24 1 841 → 2 749 $ ; 1er retrait en ≤ 60 j 85 → 67 % sur nov. 24–26) ; 1 = risque d'évaluation sans le × intraday
-  lucidFundedRiskMul: num('LUCID_FUNDED_RISK_MUL', 2),
+  // npm run lucid-ideas3 (27/11/2026) : × 3 jusqu'au 1er retrait, puis × LUCID_FUNDED_RISK_MUL_AFTER (1) : la perte max se
+  // bloque dès le 1er retrait, on protège ensuite le compte. Journalières seulement : retraits 12 mois 3 021 → 5 159 $
+  // (nov. 24–26) et 2 888 → 3 467 $ (2020–24), comptes perdus 78 → 32 % / 59 %, 1er retrait en ≤ 60 j inchangé
+  lucidFundedRiskMul: upgraded('LUCID_FUNDED_RISK_MUL', ['2'], 3),
+  lucidFundedRiskMulAfter: num('LUCID_FUNDED_RISK_MUL_AFTER', 1),
   // npm run lucid-improve (27/11/2026) : compte financé en journalières seulement (retraits 12 mois nov. 24–26 2 253 →
   // 3 021 $, 2020–24 égal, comptes perdus 91 → 78 %) ; 0 = toutes les stratégies
   lucidFundedDailyOnly: num('LUCID_FUNDED_DAILY_ONLY', 1) === 1,

@@ -97,3 +97,20 @@ test('Lucid financé : risque × LUCID_FUNDED_RISK_MUL (2 par défaut), évaluat
   assert.ok(Math.abs(f.riskOf('nas100', intra, 'funded') - 2 * e.riskOf('nas100', intra, 'funded')) < 1e-9);
   assert.strictEqual(f.riskOf('spx', daily, 'eval'), e.riskOf('spx', daily, 'eval'), 'évaluation inchangée');
 });
+
+test('Lucid financé : × LUCID_FUNDED_RISK_MUL jusqu\'au 1er retrait, puis × LUCID_FUNDED_RISK_MUL_AFTER', () => {
+  const cfg = require('../src/config');
+  const { lucidAfterPayoutMul } = require('../src/ftmoAccount');
+  assert.strictEqual(cfg.lucidFundedRiskMul, 3);
+  assert.strictEqual(cfg.lucidFundedRiskMulAfter, 1);
+  assert.ok(Math.abs(lucidAfterPayoutMul(cfg) - 1 / 3) < 1e-9, 'après le 1er retrait : × 1 au lieu de × 3');
+  assert.strictEqual(lucidAfterPayoutMul({ lucidFundedRiskMul: 2, lucidFundedRiskMulAfter: 2 }), 1);
+  // Simulateur : le multiplicateur dépend du nombre de retraits vus par la règle de taille
+  const { runPhase } = require('../src/ftmo');
+  const seen = [];
+  const t0 = Date.UTC(2025, 0, 6, 15) / 1000;
+  const trades = [0, 1, 2].map((k) => ({ entryT: t0 + k * 86400, exitT: t0 + k * 86400 + 3600, entry: 100, initSl: 99, pnlPct: 2, riskPct: 1 }));
+  runPhase(trades, { capital: 50_000, target: Infinity, dailyPct: Infinity, maxLossUsd: 2000, minDays: 0, sizer: (t, st) => { seen.push(st.paid); return 1; },
+    payout: ({ balance, capital }) => (balance - capital > 500 ? 600 : 0) });
+  assert.deepStrictEqual(seen, [0, 1, 2], 'nombre de retraits transmis à la règle de taille');
+});

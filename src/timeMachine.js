@@ -43,6 +43,11 @@ function phaseOptions(cfg, A, s) {
   const common = { riskPct: 1, sizer: s.phase === 'funded' && A.firm !== 'Lucid' && cfg.fundedCushion !== false
     ? ((rule) => (t, st) => rule(t, st) * require('./sizing').cushionMul(st.room))(require('./sizing').ruleFor(cfg, A.firm)) : require('./sizing').ruleFor(cfg, A.firm), dayStopPct: cfg.ftmoDayStop || 0, capital: s.capital, minDays: P.minDays ?? 4 };
   const funded = s.phase === 'funded';
+  if (funded && A.firm === 'Lucid') {
+    // Lucid financé : risque réduit après le 1er retrait (déjà fait → réduit tout de suite)
+    const k = require('./ftmoAccount').lucidAfterPayoutMul(cfg), rule = common.sizer, done = !!s.funded?.payouts?.length;
+    if (k !== 1) common.sizer = (t, st) => rule(t, st) * (done || st.paid ? k : 1);
+  }
   const target = funded ? Infinity : P.target ?? TARGET[s.phase] ?? 10;
   if (P.contracts) {
     // Lucid pendant l'évaluation : journée finie après un gain du jour de LUCID_DAY_PROFIT_CAP_PCT % de l'objectif ou
@@ -119,7 +124,7 @@ function simulate(cfg, store, accountId = 'gold', opts = {}) {
 function cached(cfg, store, accountId = 'gold', opts = {}) {
   const s = createFtmo({ cfg, store, account: accountId }).load();
   const key = [s.attempt, s.phase, Math.round(s.balance), (s.closed || []).length, (s.days || []).length, new Date().toISOString().slice(0, 10),
-    cfg.ftmoSizing, cfg.ftmoGroupSizing, cfg.fundedCushion, cfg.ftmoRisk, cfg.ftmoIntradayRisk, cfg.lucidRiskMul, cfg.lucidIntradayRisk, cfg.lucidEvalIntradayMul, cfg.ftmoProgram].join('|');
+    cfg.ftmoSizing, cfg.ftmoGroupSizing, cfg.fundedCushion, cfg.lucidFundedRiskMul, cfg.lucidFundedRiskMulAfter, cfg.ftmoRisk, cfg.ftmoIntradayRisk, cfg.lucidRiskMul, cfg.lucidIntradayRisk, cfg.lucidEvalIntradayMul, cfg.ftmoProgram].join('|');
   const all = store.loadJson('time-machine.json', {});
   if (all[accountId]?.key === key) return all[accountId].res;
   const res = simulate(cfg, store, accountId, { ...opts, state: s });
