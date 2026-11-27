@@ -500,5 +500,132 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     }
     console.log('');
   }
+  /* ---------- 14. Nouvelles stratégies Lucid (journalières hors Nasdaq, argent intraday) ---------- */
+  if (want(14)) {
+    console.log('=== 14. Nouvelles stratégies pour Lucid ===');
+    const { computeAll } = require('./src/indicators');
+    const CUR = { sizer: (t, st) => baseSizer(t, st) * (st.paid ? 1 / 3 : 1) };
+    const DR = accts.lucid.A.riskOf('spx', selectStrategies(['double7'])[0], 'eval'); // risque des journalières Lucid (évaluation)
+    const FMUL = cfg.lucidFundedRiskMul ?? 3;
+    const MK = { spx: ['^GSPC', 5, 4], dow: ['^DJI', 0.5, 2.5], russell: ['^RUT', 5, 2.5], silver: ['SI=F', 1000, 3.5] };
+    const vix = (await cachedYahoo(CACHE, '^VIX', '1d', {}, 72)).filter((k) => k.c > 0);
+    const D = {}; for (const [m, [sym]] of Object.entries(MK)) D[m] = (await cachedYahoo(CACHE, sym, '1d', {}, 72)).filter((k) => k.c > 0);
+    const goldD = (await cachedYahoo(CACHE, 'GC=F', '1d', {}, 72)).filter((k) => k.c > 0);
+    const tag = (l, m, sid) => l.map((t) => ({ ...t, sid, market: m, intraday: false, contractUsd: t.entry * MK[m][1], contractFee: MK[m][2] }));
+    const per3 = (l) => [[Y(2009), Y(2015)], [Y(2015), Y(2021)], [Y(2021), Infinity]].map(([a2, b]) => rStats(l.filter((t) => t.entryT >= a2 && t.entryT < b)));
+    const cands = [];
+    const have = new Set([...DAILY, ...FLD].map((t) => t.sid));
+    // 1, 2, 5 : stratégies existantes sur S&P, Dow, Russell, argent
+    for (const [m] of Object.entries(MK)) {
+      const ind = computeAll(D[m], D[m], 86400, null, vix, {});
+      for (const id of ['tom', 'rsi2', 'ibs', 'down3', 'double7', 'cumrsi', 'n_low10', 'dip5', 'n_drop', 'n_2down', 'n_weekrev']) {
+        const sid = `${m}:${id}`; if (have.has(sid)) continue;
+        const st = selectStrategies([id])[0]; if (!st) continue;
+        let l; try { l = backtest(st, D[m], { size: 1000, feePct: 0.01, financingPct: 5, barSec: 86400, ind, daily: D[m], vix }).list; } catch (e) { console.log(`   ${sid} : erreur ${e.message}`); continue; }
+        cands.push({ sid, fam: id === 'tom' ? 'fin de mois' : id === 'n_weekrev' ? 'semaine' : 'portage', l: tag(l, m, sid) });
+      }
+    }
+    // Simulateur journalier simple (achat à la clôture, stop 3 ATR touché par le plus bas, sortie à la clôture)
+    const atr = (d) => { const out = []; let a2 = 0; d.forEach((k, i) => { const tr = i ? Math.max(k.h - k.l, Math.abs(k.h - d[i - 1].c), Math.abs(k.l - d[i - 1].c)) : k.h - k.l; a2 = i < 14 ? (a2 * i + tr) / (i + 1) : (a2 * 13 + tr) / 14; out.push(a2); }); return out; };
+    const simLong = (d, enter, exit, maxHold = 10) => {
+      const A2 = atr(d), out = []; let pos = null;
+      for (let i = 30; i < d.length; i++) {
+        const k = d[i];
+        if (pos) {
+          const held = i - pos.i;
+          let px = null;
+          if (k.l <= pos.sl) px = Math.min(k.o, pos.sl); else if (exit(i, pos) || held >= maxHold) px = k.c;
+          if (px !== null) { out.push({ side: 'long', entry: pos.entry, sl: pos.sl, initSl: pos.sl, entryT: pos.t, exit: px, exitT: k.t + 86400 - 3600, pnlPct: (px / pos.entry - 1) * 100 - 0.02, worstPct: (Math.min(pos.low, k.l) / pos.entry - 1) * 100 }); pos = null; continue; }
+          pos.low = Math.min(pos.low, k.l);
+        } else if (enter(i)) pos = { i, entry: k.c, sl: k.c - 3 * A2[i], t: k.t + 86400 - 3600, low: k.c };
+      }
+      return out;
+    };
+    const byDate = (d) => new Map(d.map((k) => [new Date(k.t * 1000).toISOString().slice(0, 10), k.c]));
+    // 3. Russell en retard sur le S&P (5 jours) → achat du Russell
+    { const R = D.russell, S = byDate(D.spx); const sc = R.map((k) => S.get(new Date(k.t * 1000).toISOString().slice(0, 10)));
+      const ret = (i, n) => (R[i].c / R[i - n].c) - (sc[i] && sc[i - n] ? sc[i] / sc[i - n] : 1);
+      for (const thr of [0.02, 0.03]) {
+        const l = simLong(R, (i) => sc[i] && sc[i - 5] && ret(i, 5) < -thr, (i) => sc[i] && sc[i - 5] && ret(i, 5) > 0, 10);
+        cands.push({ sid: `russell:x_rutspx${thr * 100}`, fam: 'Russell / S&P', l: tag(l, 'russell', `russell:x_rutspx${thr * 100}`) });
+      } }
+    // 4. Ratio or / argent au plus haut sur 20 jours → achat de l'argent
+    { const Sv = D.silver, G = byDate(goldD); const r = Sv.map((k) => { const g = G.get(new Date(k.t * 1000).toISOString().slice(0, 10)); return g ? g / k.c : null; });
+      for (const n of [20, 60]) {
+        const l = simLong(Sv, (i) => r[i] && r.slice(i - n, i).every((x) => x && x < r[i]), (i, p) => r[i] && r.slice(i - 10, i).filter(Boolean).reduce((a2, x, _, arr) => a2 + x / arr.length, 0) > r[i], 10);
+        cands.push({ sid: `silver:x_gsratio${n}`, fam: 'ratio or / argent', l: tag(l, 'silver', `silver:x_gsratio${n}`) });
+      } }
+    // 6. Argent intraday : panoplie « objectif 0,5 R » du Nasdaq
+    const IR = (cfg.lucidIntradayRisk ?? 0.45) * (cfg.lucidEvalIntradayMul ?? 3);
+    const intraC = [];
+    for (const id of ['n_mom10_t05', 'n_orb15_t05', 'n_orb10l_t075', 'n_orb30l_t075', 'n_or60_t05', 'n_crabel4_t05', 'n_crabel7_15_t075', 'n_wvb07_t05']) {
+      const sid = `silver:${id}`; const [b, mult, fee, fp] = NYB.silver;
+      const l = nyRun(b, selectStrategies([id])[0], sid, 'silver', mult, fee, fp);
+      const y = [[0, A0 + 335 * DAY], [A0 + 335 * DAY, Infinity]].map(([a2, b2]) => rStats(l.filter((t) => t.entryT >= a2 && t.entryT < b2)));
+      const ok = y.every((p) => p.expR > 0.02 && p.n >= 15);
+      console.log(`   ${ok ? '✓' : '·'} ${sid.padEnd(28)} ${y.map((p) => `${sgn(p.expR)} R (${p.n})`).join(' / ')}`);
+      if (ok) intraC.push({ sid, l: l.map((t) => ({ ...t, riskPct: IR })) });
+    }
+    // Sélection seule (journalières) : > +0,02 R sur 2009–14, 2015–20, 2021–26, ≥ 15 trades chacune
+    const dailyOk = [];
+    for (const c of cands) {
+      const p = per3(c.l); const ok = p.every((x) => x.expR > 0.02 && x.n >= 15);
+      console.log(`   ${ok ? '✓' : '·'} ${c.sid.padEnd(28)} ${c.fam.padEnd(18)} ${p.map((x) => `${sgn(x.expR)} R (${x.n})`).join(' / ')}`);
+      if (ok) dailyOk.push(c);
+    }
+    // Système (évaluations intraday + journalière, financé), anti-hedging entre comptes
+    const xf = (books) => {
+      const evs = []; books.forEach((l, bi) => l.forEach((t) => evs.push({ t, bi })));
+      evs.sort((x, y) => x.t.entryT - y.t.entryT || x.bi - y.bi);
+      const open = []; const keep = books.map(() => new Set());
+      for (const { t, bi } of evs) {
+        for (let i = open.length - 1; i >= 0; i--) if (open[i].t.exitT <= t.entryT) open.splice(i, 1);
+        if (open.some((o) => o.bi !== bi && o.t.market === t.market && o.t.side !== t.side)) continue;
+        keep[bi].add(t); open.push({ t, bi });
+      }
+      return books.map((l, bi) => l.filter((t) => keep[bi].has(t)));
+    };
+    const multiN = (lists) => {
+      const end = L[L.length - 1].entryT - 120 * DAY; let n = 0, any30 = 0, fundedN = 0, bought = 0; const firsts = [];
+      for (const s0 of starts(A0, end)) {
+        n++; bought += lists.length; let first = Infinity;
+        for (const [x, o] of lists) { const r = runPhase(x.filter((t) => t.entryT >= s0 && t.entryT < s0 + 365 * DAY), { ...RLE, ...o, from: s0 }); if (r.outcome === 'target') { fundedN++; first = Math.min(first, (r.at - s0) / DAY); } }
+        if (first <= 30) any30++; if (Number.isFinite(first)) firsts.push(first);
+      }
+      return { any30: any30 / n, med: median(firsts), cost: (bought * PRICE50) / fundedN };
+    };
+    const sysEval = (dAdd, iAdd) => {
+      const sortT = (l) => l.sort((x, y) => x.entryT - y.entryT);
+      const Dd = sortT([...DAILY, ...dAdd.map((t) => ({ ...t, riskPct: DR }))]);
+      const Ff = sortT([...FLD, ...dAdd.map((t) => ({ ...t, riskPct: DR * FMUL }))]);
+      const Ii = sortT([...INTRA, ...iAdd]);
+      const [f2, i2, d2] = xf([Ff, Ii, Dd]);
+      return { i: evalStats(i2, {}), d: evalStats(d2, NODM), f: funded(f2, CUR), m: multiN([[i2, {}], [d2, NODM]]) };
+    };
+    const sysFmt = (r) => `intraday ${fmtE(r.i, true)}\n         daily ${fmtE(r.d, false)}\n         2 éval. : ≥1 réussie ≤ 30 j ${pc(r.m.any30)} · médiane ${r.m.med.toFixed(0)} j · ${usd(r.m.cost)}/financé · financé ${Object.entries(r.f).map(([k, v]) => `${k} ${usd(v.paid)} (perdus ${pc(v.lost)})`).join(' | ')}`;
+    const sysBetter = (r, b) => {
+      const no = r.m.cost <= b.m.cost + 2 && r.m.any30 >= b.m.any30 - 0.005 && r.m.med <= b.m.med + 2
+        && Object.keys(b.f).every((k) => r.f[k].paid >= b.f[k].paid - 25 && r.f[k].lost <= b.f[k].lost + 0.005)
+        && r.d.per.every((p, i) => !(p < b.d.per[i] - 0.5)) && !(r.i.per[2] < b.i.per[2] - 0.5);
+      const up = r.m.cost < b.m.cost - 2 || r.m.any30 > b.m.any30 + 0.005 || r.m.med < b.m.med - 2 || Object.keys(b.f).some((k) => r.f[k].paid > b.f[k].paid + 25)
+        || r.d.per.some((p, i) => p > b.d.per[i] + 0.5) || r.i.per[2] > b.i.per[2] + 0.5;
+      return no && up;
+    };
+    let accD = [], accI = []; let best = sysEval([], []);
+    console.log(`\n   Système actuel\n         ${sysFmt(best)}`);
+    const all14 = [...dailyOk.map((c) => ({ ...c, kind: 'd' })), ...intraC.map((c) => ({ ...c, kind: 'i' }))];
+    // classement : chaque candidate seule sur le système
+    const scored = all14.map((c) => { const r = sysEval(c.kind === 'd' ? c.l : [], c.kind === 'i' ? c.l : []); return { c, r, ok: sysBetter(r, best) }; });
+    for (const { c, r, ok } of scored) console.log(`${ok ? '✅' : '  '} + ${c.sid}\n         ${sysFmt(r)}`);
+    const kept = [];
+    for (const { c } of scored.filter((x) => x.ok).sort((x, y) => x.r.m.cost - y.r.m.cost)) {
+      const nd = c.kind === 'd' ? [...accD, ...c.l] : accD, ni = c.kind === 'i' ? [...accI, ...c.l] : accI;
+      const r = sysEval(nd, ni);
+      const ok = sysBetter(r, best);
+      console.log(`${ok ? '✅' : '  '} ensemble + ${c.sid}\n         ${sysFmt(r)}`);
+      if (ok) { accD = nd; accI = ni; best = r; kept.push(c.sid); }
+    }
+    console.log(`\n   Retenues : ${kept.join(', ') || 'aucune'}`);
+  }
   console.log('\n✅ = rien ne baisse et au moins un chiffre monte (évaluations : réussite, ≤ 14 j, ≤ 30 j, échecs ≤ 14 j ; financé : retraits, comptes perdus)');
 })().catch((e) => { console.error(e); process.exit(1); });
