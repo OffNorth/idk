@@ -187,6 +187,7 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
   const fline = (name, f) => console.log(`   ${name.padEnd(44)} ${Object.entries(f).map(([k, v]) => (v ? `${k} : retraits 12 mois ${usd(v.paid).padStart(7)} (${v.nPays.toFixed(1)} retraits) · 1er ≤ 60 j ${pc(v.p60)} · perdus ${pc(v.lost)}` : `${k} : —`)).join('  |  ')}`);
   const FL = fundedRisk(L); // risque « financé » actuel (× LUCID_FUNDED_RISK_MUL)
 
+  const scale = (l, m) => (m === 1 ? l : l.map((t) => ({ ...t, riskPct: t.riskPct * m })));
   const evalStats = (l, o = {}) => { const r = evaluate('lucid', l, o); return { per: r.per, p14: r.p14, p30: r.p30, f14: r.f14 }; };
   const fmtE = (r, intraOnly) => (intraOnly ? `nov. 24–26 ${r.per[2].toFixed(0).padStart(3)} %` : `${r.per.map((p) => `${p.toFixed(0).padStart(3)} %`).join(' |')}`) + ` · ≤14 j ${pc(r.p14 / 100)} · ≤30 j ${pc(r.p30 / 100)} · échec ≤14 j ${pc(r.f14 / 100)}`;
   /* ---------- Réglages actuels ---------- */
