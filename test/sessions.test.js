@@ -61,10 +61,11 @@ test('séances : g_asiabrk, g_nypdl sur le compte FTMO, n_pdlbrk retirée ; pas 
   assert.strictEqual(L.riskOf('gold', { id: 'down3', tf: '1d' }), cfg.ftmoRisk * cfg.lucidRiskMul, 'Lucid sans FTMO_RISK_MUL');
   assert.strictEqual(L.riskOf('nas100', { id: 'n_noise', tf: '5m' }), 0, 'Lucid ne prend plus l’originale');
   // Intraday or : sur les évaluations seulement (LUCID_EVAL_GOLD, 27/11/2026), jamais une fois financé
-  assert.ok(L.riskOf('gold', { id: 'g_nypdl', tf: '5m' }, 'eval') > 0 && L.riskOf('gold', { id: 'g_asiabrk', tf: '5m' }, 'eval') > 0);
+  assert.strictEqual(L.riskOf('gold', { id: 'g_nypdl', tf: '5m' }, 'eval'), 0.2, 'g_nypdl à 0,2 % sur l’évaluation');
+  assert.strictEqual(L.riskOf('gold', { id: 'g_asiabrk', tf: '5m' }, 'eval'), 0, 'les autres stratégies or restent sur FTMO');
   assert.strictEqual(L.riskOf('gold', { id: 'g_nypdl', tf: '5m' }, 'funded'), 0);
   const L0 = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidEvalGold: [] }, 'lucid');
-  assert.strictEqual(L0.riskOf('gold', { id: 'g_asiabrk', tf: '5m' }, 'eval'), 0, 'LUCID_EVAL_GOLD vide');
+  assert.strictEqual(L0.riskOf('gold', { id: 'g_nypdl', tf: '5m' }, 'eval'), 0, 'LUCID_EVAL_GOLD vide');
   const S = require('../src/ftmoAccount').accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid2');
   assert.strictEqual(S.riskOf('gold', { id: 'g_orb30', tf: '5m' }, 'eval'), 0, 'évaluation journalière : pas d’intraday');
 });

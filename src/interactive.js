@@ -109,13 +109,15 @@ function riskText(cfg, acct, phase) {
   if (!acct.riskOf) return `${acct.risk}%`;
   const daily = [...new Set(['gold', 'nas100', 'spx', 'eurusd', 'silver', 'dow', 'russell', ...require('./stocks').STOCK_IDS].filter((m) => acct.strategies.some((x) => x.startsWith(`${m}:`))).map((m) => acct.riskOf(m, { tf: '1d' })))];
   // Risque intraday : celui d'une stratégie intraday que le compte prend vraiment
-  const intraSid = acct.strategies.find((x) => { const s = selectStrategies([x.split(':')[1]])[0]; return s && s.tf && s.tf !== '1d' && acct.riskOf(x.split(':')[0], s, phase) > 0; });
+  const evalGold = acct.firm === 'Lucid' ? cfg.lucidEvalGold || [] : [];
+  const intraSid = acct.strategies.find((x) => { if (evalGold.includes(x)) return false; const s = selectStrategies([x.split(':')[1]])[0]; return s && s.tf && s.tf !== '1d' && acct.riskOf(x.split(':')[0], s, phase) > 0; });
   const r = (x) => Math.round(x * 1000) / 1000;
   const intra = intraSid ? r(acct.riskOf(intraSid.split(':')[0], selectStrategies([intraSid.split(':')[1]])[0], phase)) : 0;
   const boost = acct.id === 'lucid' && phase !== 'funded' && (cfg.lucidEvalIntradayMul ?? 1) !== 1 ? ` during the evaluation, ${r(cfg.lucidIntradayRisk)}% once funded` : '';
   const fundedTxt = acct.firm === 'Lucid' && phase === 'funded' && (cfg.lucidFundedRiskMulAfter ?? cfg.lucidFundedRiskMul) !== cfg.lucidFundedRiskMul
     ? ` · funded: × ${cfg.lucidFundedRiskMul} until the 1st payout, then × ${cfg.lucidFundedRiskMulAfter} (capped by the contract limit)` : '';
-  return `${daily.join(' / ')}% (daily)${intra > 0 ? ` · ${intra}% (intraday${boost})` : ''}${fundedTxt}`;
+  const goldTxt = evalGold.length && phase !== 'funded' && acct.strategies.some((x) => evalGold.includes(x)) ? ` · ${cfg.lucidEvalGoldRisk ?? 0.2}% (gold intraday ${evalGold.map((x) => x.split(':')[1]).join(', ')}, evaluation only)` : '';
+  return `${daily.join(' / ')}% (daily)${intra > 0 ? ` · ${intra}% (intraday${boost})` : ''}${goldTxt}${fundedTxt}`;
 }
 const PAGE = 6;
 
