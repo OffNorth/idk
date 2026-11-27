@@ -145,6 +145,7 @@ The most useful ones:
 | `FTMO_STRATEGIES` | see `.env.example` | strategies followed by the FTMO account (`market:id`) |
 | `LUCID_SPLIT` | 1 | two Lucid evaluations (intraday / daily); 0 = a single one |
 | `LUCID_COMBINED` | 1 | third Lucid evaluation taking intraday + daily on the same account |
+| `LUCID_NO_CROSS_HEDGE` | 1 | no opposite positions from one Lucid account to another (Lucid forbids hedging between accounts) |
 | `LUCID_FUNDED_DAILY_ONLY` / `LUCID_DAILY_DAY_MGMT` | 1 / 0 | funded Lucid on daily strategies only / day management on the daily evaluation |
 | `FTMO_GROUP_SIZING` / `FUNDED_CUSHION` | 1 / 1 | correlation-based sizing (FTMO) / cushion-based risk (funded accounts) |
 | `FTMO_AI` / `LUCID_AI` | `block` / `observe` | validator AI mode |

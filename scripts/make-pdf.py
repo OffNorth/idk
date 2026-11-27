@@ -654,7 +654,12 @@ story.append(KeepTogether([Paragraph('Lucid: 8 more ideas tested (27/11/2026)', 
     ('Pausing a strategy that slips (N losses, below its average)', 'intraday below its 10-trade average: pass 47 → 53%, failures within 14 days 51 → 39%, but within 14 days 32 → 28%; daily worse', 'trade-off (intraday)'),
     ('Risk by volatility (stop width vs its last 20 trades)', 'daily 2020–26 62 → 68% but intraday ≤ 14 days 32 → 28% and combined worse', '✘'),
     ('Waiting after a failed evaluation before buying the next', 'intraday cost per funded $263 → $281–313; daily and combined about equal', '✘'),
-    ], [44 * mm, 86 * mm, 48 * mm])]))
+    ], [44 * mm, 86 * mm, 48 * mm]), Paragraph(
+    '<b>Lucid forbids hedging between accounts</b> (a buy on one account and a sell on another, same market, same time). Since 27/11/2026 the bot '
+    'skips a Lucid signal when another Lucid account holds the opposite side (LUCID_NO_CROSS_HEDGE=1). Cost, worst case (funded account always active): '
+    'about 20% of the intraday trades are skipped, intraday evaluation pass 47 → 31%, combined Nov 24–26 53 → 37%; daily and funded unchanged. '
+    '<b>Several 50K accounts</b> rather than one 150K: the 150K pays ≈ ×1.6–2 per funded account for ≈ ×2.5 the cost; Lucid allows 5 funded accounts '
+    'per household and copy trading between your own accounts.', note)]))
 
 story += part(4, 'The bot day to day')
 story.append(KeepTogether([Paragraph('Execution, notifications and tools', h2), Paragraph(
