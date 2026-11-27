@@ -141,7 +141,9 @@ function buildLive(cfg, store, version = '') {
   const accounts = ['gold', 'lucid', 'lucid2', 'lucid3', 'lucidf'].map((id) => accountView(cfg, store, id, prices)).filter(Boolean);
   const adapt = cfg.autoAdapt ? require('./adapt').summary(cfg, store) : '';
   // Trades paper des stratégies suivies (tous marchés, depuis le démarrage), 500 les plus récents
-  const followed = new Set([...(cfg.ftmoStrategies || []), ...(cfg.ftmoNasStrategies || [])]);
+  // (comptes FTMO et Lucid : l'analyse du dimanche lit aussi les stratégies propres à Lucid)
+  const followed = new Set([...(cfg.ftmoStrategies || []), ...(cfg.ftmoNasStrategies || []), ...(cfg.lucidIntradayStrategies || []),
+    ...(cfg.lucidDailyStrategies || []), ...(cfg.lucidFundedStrategies || []), ...(cfg.lucidEvalGold || [])]);
   const paper = [];
   for (const m of markets) {
     const st = store.loadJson(m.file, null);
@@ -169,6 +171,7 @@ function buildLive(cfg, store, version = '') {
     ai: cfg.ftmoAi,
     adapt,
     paper: paper.slice(-500),
+    aiScore: cfg.autoAdapt ? require('./adapt').aiScore(store.loadJson('ai-samples.json', [])) : null,
     portfolio: cfg.portfolioEnabled ? require('./personalPortfolio').view(store) : null,
   };
 }

@@ -1,6 +1,6 @@
 {
   "name": "gold-paper-bot",
-  "version": "5.41.0",
+  "version": "5.42.0",
   "description": "Telegram paper trading bot: gold, Nasdaq 100 and more, with simulated FTMO and Lucid prop-firm accounts",
   "main": "bot.js",
   "scripts": {
