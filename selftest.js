@@ -223,7 +223,7 @@ async function run({ live = false, log = console.log } = {}) {
       if (!out.some((c) => /^(send|edit)/.test(c.method))) noReply.push(cmd);
     }
     step(`commandes (${CMDS.length}) : réponse sans erreur`, !cmdErr.length && !noReply.length, [...cmdErr, ...noReply.map((c) => `${c} : pas de réponse`)].join(' | ').slice(0, 900));
-    const ADMIN_CMDS = ['/settings', '/testcanal', '/export', '/verif', '/financer', '/pause', '/video'];
+    const ADMIN_CMDS = ['/settings', '/testcanal', '/verif', '/financer', '/pause', '/video'];
     const leaked = [];
     for (const cmd of ADMIN_CMDS) {
       const { out } = await send(message(cmd, MEMBER_ID));

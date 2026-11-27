@@ -81,7 +81,7 @@ function tick() {
 /* Accès                                                               */
 /* ------------------------------------------------------------------ */
 
-const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'export', 'video', 'fonds', 'signature', 'financer', 'fund', 'reset']);
+const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'video', 'fonds', 'signature', 'financer', 'fund', 'reset']);
 const isAdmin = (ctx) => !cfg.allowedUserIds.size || (ctx.from && cfg.allowedUserIds.has(String(ctx.from.id)));
 
 // Les boutons et les commandes de consultation sont ouverts à tout le groupe ; les réglages sont réservés.
@@ -118,7 +118,7 @@ bot.command(['start', 'aide', 'help'], (ctx) =>
       '/pnl [ftmo|lucid] [days] — 📅 daily PnL of the simulated accounts (realized, unrealized, trades, daily limit, previous days)',
       '/interface — 🖥 live interface on the website (charts, SL / TP, FTMO and Lucid accounts)',
       '/version — bot version in service (check it after a restart)',
-      '/export — 📦 (admin) bot statistics file, to send to Claude for analysis',
+      '/export — 📦 bot statistics file (everyone), to send to Claude for analysis',
       '🎬 Send a video to the bot (in private): it asks you for the trade and sends it back with the transparent PnL card on top (admin) · /video: built-in background · /fond, /fonds · /signature @name',
       '/game — 🎯 daily prediction · /leaderboard — player points',
       '/nasdaq · /gold — text report',
@@ -191,7 +191,7 @@ bot.command(['historique', 'history', 'trades'], async (ctx) => {
 });
 
 // Vérification de cohérence des trades (paper + compte FTMO), réservée aux admins
-// Export des statistiques (admin) : un fichier JSON avec les comptes, trades, refus de l'IA, adaptation
+// Export des statistiques (ouvert à tous depuis le 27/11/2026, sans secret) : un fichier JSON avec les comptes, trades, refus de l'IA, adaptation
 bot.command('export', async (ctx) => {
   try {
     const data = JSON.stringify(require('./src/export').buildExport(cfg, store, version()));
