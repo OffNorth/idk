@@ -596,7 +596,7 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     };
     const sysEval = (dAdd, iAdd) => {
       const sortT = (l) => l.sort((x, y) => x.entryT - y.entryT);
-      const Dd = sortT([...DAILY, ...dAdd.map((t) => ({ ...t, riskPct: DR }))]);
+      const Dd = sortT([...DAILY, ...(process.env.FONLY ? [] : dAdd).map((t) => ({ ...t, riskPct: DR }))]); // FONLY=1 : compte financé seulement
       const Ff = sortT([...FLD, ...dAdd.map((t) => ({ ...t, riskPct: DR * FMUL }))]);
       const Ii = sortT([...INTRA, ...iAdd]);
       const [f2, i2, d2] = xf([Ff, Ii, Dd]);
@@ -613,7 +613,8 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     };
     let accD = [], accI = []; let best = sysEval([], []);
     console.log(`\n   Système actuel\n         ${sysFmt(best)}`);
-    const all14 = [...dailyOk.map((c) => ({ ...c, kind: 'd' })), ...intraC.map((c) => ({ ...c, kind: 'i' }))];
+    const CANDS = process.env.CANDS ? process.env.CANDS.split(',') : null;
+    const all14 = [...dailyOk.map((c) => ({ ...c, kind: 'd' })), ...intraC.map((c) => ({ ...c, kind: 'i' }))].filter((c) => !CANDS || CANDS.includes(c.sid));
     // classement : chaque candidate seule sur le système
     const scored = all14.map((c) => { const r = sysEval(c.kind === 'd' ? c.l : [], c.kind === 'i' ? c.l : []); return { c, r, ok: sysBetter(r, best) }; });
     for (const { c, r, ok } of scored) console.log(`${ok ? '✅' : '  '} + ${c.sid}\n         ${sysFmt(r)}`);
