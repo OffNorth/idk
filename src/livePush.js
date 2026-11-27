@@ -89,7 +89,7 @@ function diagOf(cfg, store) {
   const id = String(cfg.channelId || '');
   const counters = (file) => {
     const s = store.loadJson(file, null);
-    return s ? { tooBig: s.tooBig || 0, tooBigBy: s.tooBigBy || {}, tooSmall: s.tooSmall || 0, missed: s.missed || 0, aiRefused: s.aiRefused || 0, skippedHedge: s.skipped || 0 } : null;
+    return s ? { tooBig: s.tooBig || 0, tooBigBy: s.tooBigBy || {}, tooSmall: s.tooSmall || 0, missed: s.missed || 0, aiRefused: s.aiRefused || 0, skippedHedge: s.skipped || 0, skippedCross: s.skippedCross || 0 } : null;
   };
   return {
     group: {

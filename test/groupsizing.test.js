@@ -114,3 +114,32 @@ test('Lucid financé : × LUCID_FUNDED_RISK_MUL jusqu\'au 1er retrait, puis × L
     payout: ({ balance, capital }) => (balance - capital > 500 ? 600 : 0) });
   assert.deepStrictEqual(seen, [0, 1, 2], 'nombre de retraits transmis à la règle de taille');
 });
+
+test('Lucid : pas de position inverse d\'un compte Lucid à l\'autre (LUCID_NO_CROSS_HEDGE)', () => {
+  const fs = require('fs'); const os = require('os'); const path = require('path');
+  const { Store } = require('../src/store');
+  const { createFtmo } = require('../src/ftmoAccount');
+  const { selectStrategies } = require('../src/strategies');
+  const T0 = Date.UTC(2026, 10, 17, 15) / 1000;
+  const strategy = selectStrategies(['n_mom10_t05'])[0];
+  const market = { id: 'nas100', name: 'Nasdaq 100' };
+  const run = (cross) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xhedge-'));
+    const store = new Store(dir);
+    const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, lucidEnabled: true, lucidSplit: true, lucidParallel: true, lucidFundedDirect: false,
+      ftmoAi: 'off', lucidAi: 'off', autoAdapt: false, lucidNoCrossHedge: cross };
+    // L'évaluation journalière tient un achat Nasdaq
+    const d = createFtmo({ cfg, store, account: 'lucid2' });
+    const s2 = d.load();
+    s2.open = { 'nas100:rsi2:1': { market: 'nas100', sid: 'rsi2', side: 'long', entry: 26000, sl: 25500, initSl: 25500, entryT: T0 - 86400, n: 2, notional: 104000 } };
+    store.saveJson('lucid2.json', s2);
+    // L'évaluation intraday reçoit une vente Nasdaq
+    const l = createFtmo({ cfg, store, account: 'lucid' });
+    const out = l.onCycle([{ type: 'open', market, strategy, pos: { side: 'short', entry: 26000, sl: 26100, initSl: 26100, entryT: T0 } }], { nas100: 26000 }, T0);
+    return { opened: out.some((x) => x.type === 'open'), s: l.load() };
+  };
+  const on = run(true);
+  assert.strictEqual(on.opened, false, 'vente refusée : achat ouvert sur un autre compte Lucid');
+  assert.strictEqual(on.s.skippedCross, 1);
+  assert.strictEqual(run(false).opened, true, 'LUCID_NO_CROSS_HEDGE=0 : la vente passe');
+});

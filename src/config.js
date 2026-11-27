@@ -217,6 +217,8 @@ module.exports = {
   // 3e évaluation Lucid « combined » (lucid3.json) : intraday + journalières sur le même compte, à côté des deux autres
   // (demande de l'utilisateur 27/11/2026) ; 0 = seulement les deux évaluations séparées
   lucidCombined: num('LUCID_COMBINED', 1) === 1,
+  // Pas de position inverse d'un compte Lucid à l'autre (Lucid interdit le hedging entre comptes, 27/11/2026) ; 0 = libre
+  lucidNoCrossHedge: num('LUCID_NO_CROSS_HEDGE', 1) === 1,
   // Compte Lucid financé : risque × ce nombre (2, demande de l'utilisateur 27/11/2026 : retraits 12 mois 2 054 → 2 611 $,
   // 2020–24 1 841 → 2 749 $ ; 1er retrait en ≤ 60 j 85 → 67 % sur nov. 24–26) ; 1 = risque d'évaluation sans le × intraday
   // npm run lucid-ideas3 (27/11/2026) : × 3 jusqu'au 1er retrait, puis × LUCID_FUNDED_RISK_MUL_AFTER (1) : la perte max se

@@ -450,6 +450,11 @@ function createFtmo({ cfg, store, account = 'gold' }) {
    */
   /** Compte financé à part (lucidf) : actif seulement entre la réussite d'une évaluation et sa perte. */
   const asleep = () => { if (!A.fundedOnly) return false; const x = store.loadJson(FILE, null); return !x || x.dormant || x.phase !== 'funded'; };
+  /** Positions ouvertes des AUTRES comptes Lucid actifs (contrôle du hedging entre comptes). */
+  const otherLucidOpen = () => ftmoAccounts(cfg).filter((a) => a.firm === 'Lucid' && a.file !== FILE).flatMap((a) => {
+    const x = store.loadJson(a.file, null);
+    return x && !x.dormant ? Object.values(x.open || {}) : [];
+  });
 
   /** Compte Lucid financé à part : démarré directement en compte financé (sans évaluation). */
   const startFunded = (t, extra = {}) => {
@@ -505,6 +510,12 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         // Pas d'achat et de vente en même temps sur le même marché (FTMO_NO_HEDGE) : le signal opposé est ignoré
         if (cfg.ftmoNoHedge !== false && Object.values(s.open).some((o) => o.market === ev.market.id && o.side !== p.side)) {
           s.skipped = (s.skipped || 0) + 1;
+          continue;
+        }
+        // Lucid : pas de position inverse d'un compte Lucid à l'autre (hedging entre comptes interdit chez Lucid,
+        // LUCID_NO_CROSS_HEDGE) : le signal est ignoré si un autre compte Lucid tient le sens opposé sur ce marché
+        if (A.firm === 'Lucid' && cfg.lucidNoCrossHedge !== false && otherLucidOpen().some((o) => o.market === ev.market.id && o.side !== p.side)) {
+          s.skippedCross = (s.skippedCross || 0) + 1;
           continue;
         }
         // IA validatrice (src/aiFilter.js, FTMO_AI) : avis sur le signal ; en mode « block », refus sous le seuil

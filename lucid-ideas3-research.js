@@ -406,5 +406,37 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     fline('financé 50K (actuel, × 3 puis × 1)', funded(FLD, { sizer: (t, st) => baseSizer(t, st) * (st.paid ? 1 / 3 : 1) }));
     console.log('');
   }
+  /* ---------- 11. Pas de position inverse d'un compte Lucid à l'autre ---------- */
+  // Approximation : chaque compte est supposé prendre tous ses signaux ; un trade est retiré si, à son entrée, un autre
+  // compte Lucid tient une position inverse sur le même marché (le premier entré garde la main ; à égalité, l'ordre du bot :
+  // financé, intraday, journalières, combinée). Le compte financé est supposé actif tout le temps (cas le plus serré).
+  if (want(11)) {
+    console.log('=== 11. Pas de position inverse d\'un compte Lucid à l\'autre (hedging entre comptes interdit) ===');
+    const crossFilter = (books) => {
+      const evs = [];
+      books.forEach((b, bi) => b.list.forEach((t) => evs.push({ t, bi })));
+      evs.sort((x, y) => x.t.entryT - y.t.entryT || x.bi - y.bi);
+      const open = []; const keep = books.map(() => new Set());
+      for (const { t, bi } of evs) {
+        for (let i = open.length - 1; i >= 0; i--) if (open[i].t.exitT <= t.entryT) open.splice(i, 1);
+        if (open.some((o) => o.bi !== bi && o.t.market === t.market && o.t.side !== t.side)) continue;
+        keep[bi].add(t); open.push({ t, bi });
+      }
+      return books.map((b, bi) => b.list.filter((t) => keep[bi].has(t)));
+    };
+    const sets = { 'deux évaluations + financé': ['funded', 'intraday', 'daily'], 'trois évaluations + financé': ['funded', 'intraday', 'daily', 'combined'] };
+    const LISTS = { funded: FLD, intraday: INTRA, daily: DAILY, combined: L };
+    for (const [sn, ids] of Object.entries(sets)) {
+      const out = crossFilter(ids.map((id) => ({ id, list: LISTS[id] })));
+      console.log(`  ${sn}`);
+      ids.forEach((id, i) => {
+        const removed = LISTS[id].length - out[i].length;
+        if (id === 'funded') { process.stdout.write(`     trades retirés ${removed} / ${LISTS[id].length}`); fline('financé', funded(out[i])); return; }
+        const [, o, intraOnly] = EVALS[id];
+        console.log(`     ${id.padEnd(9)} trades retirés ${String(removed).padStart(4)} / ${LISTS[id].length} · ${fmtE(evalStats(out[i], o), intraOnly)}   (sans : ${fmtE(evRef[id], intraOnly)})`);
+      });
+    }
+    console.log('');
+  }
   console.log('\n✅ = rien ne baisse et au moins un chiffre monte (évaluations : réussite, ≤ 14 j, ≤ 30 j, échecs ≤ 14 j ; financé : retraits, comptes perdus)');
 })().catch((e) => { console.error(e); process.exit(1); });
