@@ -209,7 +209,7 @@ bot.command(['interface', 'site'], (ctx) => ctx.reply(`🖥 <b>Bot live interfac
 bot.command('version', (ctx) => {
   const lucid = require('./src/ftmoAccount').accountOf(cfg, 'lucid');
   return ctx.reply([
-    `🔖 Version <code>${version()}</code> · Node ${process.version}`,
+    `🔖 Version <b>${version()}</b> (commit <code>${require('./src/version').commit()}</code>) · Node ${process.version}`,
     `🏦 FTMO account: ${cfg.ftmoEnabled ? 'on' : 'off'} · 🟣 Lucid account: ${lucid.enabled ? `on (${lucid.label})` : 'off (LUCID=0)'}`,
     `🤖 Validator AI: ${cfg.ftmoAi} · 🧠 adaptation: ${cfg.autoAdapt ? `learning AI${cfg.adaptStrategies ? ' + strategies' : ''}` : 'off'} · risk: ${esc(cfg.ftmoSizing)}`,
     esc(channel.status()),
@@ -396,7 +396,7 @@ module.exports = { bot, store, channel, tick, cfg, game, setPaused: (v) => { pau
 if (require.main === module) start();
 
 function start() {
-console.log(`Démarrage du bot (version ${version()}, Node ${process.version}) · IA validatrice : ${cfg.ftmoAi} · risque : ${cfg.ftmoSizing}`);
+console.log(`Démarrage du bot (version ${version()}, commit ${require('./src/version').commit()}, Node ${process.version}) · IA validatrice : ${cfg.ftmoAi} · risque : ${cfg.ftmoSizing}`);
 
 (async () => {
   console.log('… connexion à Telegram');

@@ -134,6 +134,11 @@ On **Bot-Hosting**: a **Node.js** server, start file `bot.js`, create `.env` und
 Telegram commands. Only enable it if the bot is not running elsewhere (otherwise trades are posted twice). Secrets:
 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`.
 
+## Versions
+
+The bot shows a readable version (v1.0, v1.1, …) taken from `package.json`; `/version` also gives the git commit.
+Each update bumps it (`npm run bump`, or `npm run bump major` for a big change). History: [CHANGELOG.md](CHANGELOG.md).
+
 ## Configuration
 
 Every setting lives in `.env`; **[.env.example](.env.example)** lists them all with their defaults and an explanation.
