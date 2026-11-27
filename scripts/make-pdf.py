@@ -663,6 +663,8 @@ story.append(KeepTogether([Paragraph('Lucid: separate funded account, and backup
     '<b>Separate funded Lucid account</b>: when a Lucid evaluation passes, the funded account runs separately (“Lucid funded” in the messages, '
     'on the website and in /pnl, simulated payouts) and a new evaluation starts the next day, alongside FTMO. One funded account at a time; '
     'when lost, it goes to sleep until the next passed evaluation (or /fund lucid). Started directly on 26/11/2026, without waiting for an evaluation. '
+    '<b>Three Lucid evaluations</b> (27/11/2026): intraday only (/lucid), daily only (/lucid daily) and a <b>combined</b> one taking both on the same account '
+    '(/lucid combined, LUCID_COMBINED=1, with the day management), to compare the merged version live; any of them that passes starts the funded account. '
     '<b>Backup candles</b>: when Yahoo stops sending intraday candles while the price keeps moving (Thanksgiving 2026: nothing since 04:55 UTC on '
     'gold and futures), the bot builds its own 1-minute candles from the price read at each pass, until the real ones return. Less precise '
     '(one price per minute); never used when candles come from Binance or OANDA (real time).', body)]))

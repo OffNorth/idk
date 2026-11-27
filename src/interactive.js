@@ -233,8 +233,8 @@ async function render(cfg, store, view, marketId, args = []) {
   if (view === 'f') {
     const { createFtmo } = require('./ftmoAccount');
     const prices = Object.fromEntries(activeMarkets(cfg).map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-    const isLucid = ['l', 'l2', 'lf'].includes(args[0]);
-    const lucidId = { l2: 'lucid2', lf: 'lucidf' }[args[0]] || 'lucid';
+    const isLucid = ['l', 'l2', 'l3', 'lf'].includes(args[0]);
+    const lucidId = { l2: 'lucid2', l3: 'lucid3', lf: 'lucidf' }[args[0]] || 'lucid';
     const acct = require('./ftmoAccount').accountOf(cfg, isLucid ? lucidId : marketId);
     const fobj = createFtmo({ cfg, store, account: isLucid ? lucidId : acct.enabled ? marketId : 'gold' });
     const fst = fobj.status(prices);
@@ -243,6 +243,7 @@ async function render(cfg, store, view, marketId, args = []) {
     const sfx = isLucid ? `:${args[0]}` : '';
     const lucid2On = require('./ftmoAccount').accountOf(cfg, 'lucid2').enabled;
     const lucidOn = require('./ftmoAccount').accountOf(cfg, 'lucid').enabled;
+    const lucid3On = require('./ftmoAccount').accountOf(cfg, 'lucid3').enabled;
     const P = fst.program || {};
     const lines = [
       isLucid
@@ -267,6 +268,7 @@ async function render(cfg, store, view, marketId, args = []) {
     const rows = [[btn(`🧾 Trades ${isLucid ? 'Lucid' : 'FTMO'}`, `m:z:${KM[marketId]}:0${sfx}`), ...(rep.n ? [btn('🤖 Refused by the AI', `m:i:${KM[marketId]}:0${sfx}`)] : [])]];
     if (lucidOn) rows.push([...(isLucid ? [btn('🏦 FTMO account', `m:f:${KM[marketId]}`)] : []), ...(!isLucid || lucidId !== 'lucid' ? [btn(lucid2On ? '🟣 Lucid intraday' : '🟣 Lucid account', `m:f:${KM[marketId]}:l`)] : []),
       ...(lucid2On && lucidId !== 'lucid2' ? [btn('🟣 Lucid daily', `m:f:${KM[marketId]}:l2`)] : []),
+      ...(lucid3On && lucidId !== 'lucid3' ? [btn('🟣 Lucid combined', `m:f:${KM[marketId]}:l3`)] : []),
       ...(isLucid && lucidId !== 'lucidf' && !require('./ftmoAccount').createFtmo({ cfg, store, account: 'lucidf' }).asleep() ? [btn('🟣 Lucid funded', `m:f:${KM[marketId]}:lf`)] : [])]);
     if (cfg.siteUrl) rows.push([{ text: '🖥 Live interface', url: `${cfg.siteUrl}/#bot` }]);
     return { png: C.ftmoImage(fst), caption: fitCaption(lines), keyboard: panelKeyboard(cfg, 'f', marketId, rows) };
@@ -337,8 +339,8 @@ async function render(cfg, store, view, marketId, args = []) {
   if (view === 'z') {
     // Trades du compte FTMO simulé
     const { createFtmo } = require('./ftmoAccount');
-    const isLucid = ['l', 'l2', 'lf'].includes(args[1]);
-    const lucidId = { l2: 'lucid2', lf: 'lucidf' }[args[1]] || 'lucid';
+    const isLucid = ['l', 'l2', 'l3', 'lf'].includes(args[1]);
+    const lucidId = { l2: 'lucid2', l3: 'lucid3', lf: 'lucidf' }[args[1]] || 'lucid';
     const sfx = isLucid ? `:${args[1]}` : '';
     const acct = require('./ftmoAccount').accountOf(cfg, marketId);
     const s = createFtmo({ cfg, store, account: isLucid ? lucidId : acct.enabled ? marketId : 'gold' }).load();
@@ -354,8 +356,8 @@ async function render(cfg, store, view, marketId, args = []) {
   if (view === 'i') {
     // Signaux refusés par l'IA validatrice : ce qu'ils auraient fait sur le compte FTMO
     const { createFtmo } = require('./ftmoAccount');
-    const isLucid = ['l', 'l2', 'lf'].includes(args[1]);
-    const lucidId = { l2: 'lucid2', lf: 'lucidf' }[args[1]] || 'lucid';
+    const isLucid = ['l', 'l2', 'l3', 'lf'].includes(args[1]);
+    const lucidId = { l2: 'lucid2', l3: 'lucid3', lf: 'lucidf' }[args[1]] || 'lucid';
     const sfx = isLucid ? `:${args[1]}` : '';
     const acct = require('./ftmoAccount').accountOf(cfg, marketId);
     const f = createFtmo({ cfg, store, account: isLucid ? lucidId : acct.enabled ? marketId : 'gold' });

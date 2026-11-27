@@ -67,7 +67,7 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
       const firm = acct.firm || 'FTMO';
       const name = `Simulated ${firm} account ${acct.emoji} ${acct.label}`;
       const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-      const button = ui && !acct.fundedOnly ? { reply_markup: { inline_keyboard: [[{ text: '🏦 View the account', callback_data: acct.firm === 'Lucid' ? (acct.id === 'lucid2' ? 'm:f:g:l2' : 'm:f:g:l') : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
+      const button = ui && !acct.fundedOnly ? { reply_markup: { inline_keyboard: [[{ text: '🏦 View the account', callback_data: acct.firm === 'Lucid' ? ({ lucid2: 'm:f:g:l2', lucid3: 'm:f:g:l3' }[acct.id] || 'm:f:g:l') : `m:f:${acct.id === 'nas100' ? 'n' : 'g'}` }]] } } : {};
       for (const msg of ftmo.onCycle(all, prices, undefined, { fills })) {
         // Chaque trade du compte FTMO (ouverture et clôture) : console + message dans le groupe (FTMO_TRADE_MESSAGES)
         if (msg.type === 'open' || msg.type === 'trade' || msg.type === 'refused' || msg.type === 'refusedResult') {

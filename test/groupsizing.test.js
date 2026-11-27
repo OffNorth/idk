@@ -55,6 +55,13 @@ test('deux évaluations Lucid (LUCID_SPLIT) : intraday seulement / journalières
   assert.notStrictEqual(a.dayMgmt, false, 'lucid intraday : gestion de la journée gardée');
   assert.deepStrictEqual([a.file, b.file, f.file], ['lucid.json', 'lucid2.json', 'lucid-funded.json']);
   assert.ok(ftmoAccounts(cfg).some((x) => x.id === 'lucid2'));
+  const c = accountOf(cfg, 'lucid3');
+  assert.ok(c.enabled && c.file === 'lucid3.json' && c.tag === 'combined', 'lucid3 : évaluation fusionnée');
+  assert.ok(c.riskOf('nas100', intra, 'eval') > 0 && c.riskOf('spx', daily, 'eval') > 0, 'lucid3 : intraday + journalières');
+  assert.notStrictEqual(c.dayMgmt, false, 'lucid3 : gestion de la journée gardée');
+  assert.ok(ftmoAccounts(cfg).some((x) => x.id === 'lucid3'));
+  assert.ok(!ftmoAccounts({ ...cfg, lucidCombined: false }).some((x) => x.id === 'lucid3'), 'LUCID_COMBINED=0');
+  assert.ok(!ftmoAccounts({ ...cfg, lucidSplit: false }).some((x) => x.id === 'lucid3'), 'LUCID_SPLIT=0 : lucid est déjà fusionné');
   assert.ok(!ftmoAccounts({ ...cfg, lucidSplit: false }).some((x) => x.id === 'lucid2'), 'LUCID_SPLIT=0 : une seule évaluation');
   assert.ok(accountOf({ ...cfg, lucidSplit: false }, 'lucid').riskOf('spx', daily, 'eval') > 0);
 });

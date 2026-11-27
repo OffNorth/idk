@@ -20,7 +20,7 @@ const NAME = { gold: 'Gold', nas100: 'Nasdaq', spx: 'S&P 500', eurusd: 'EUR/USD'
 function recentTrades(cfg, store, n = 10) {
   const { createFtmo, accountOf } = require('./ftmoAccount');
   const out = [];
-  for (const id of ['gold', 'lucid', 'lucid2', 'lucidf']) {
+  for (const id of ['gold', 'lucid', 'lucid2', 'lucid3', 'lucidf']) {
     const A = accountOf(cfg, id);
     if (!A.enabled) continue;
     const f = createFtmo({ cfg, store, account: id });

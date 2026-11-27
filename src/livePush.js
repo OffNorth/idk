@@ -105,6 +105,8 @@ function diagOf(cfg, store) {
     lucidIntradayRisk: cfg.lucidIntradayRisk,
     ftmo: counters('ftmo.json'),
     lucid: counters('lucid.json'),
+    lucid2: counters('lucid2.json'),
+    lucid3: counters('lucid3.json'),
     lucidFunded: counters('lucid-funded.json'),
   };
 }
@@ -136,7 +138,7 @@ function toChartScale(list, off, open = false) {
 function buildLive(cfg, store, version = '') {
   const markets = activeMarkets(cfg);
   const prices = Object.fromEntries(markets.map((m) => [m.id, store.loadJson(m.file, {}).lastPrice || null]));
-  const accounts = ['gold', 'lucid', 'lucid2', 'lucidf'].map((id) => accountView(cfg, store, id, prices)).filter(Boolean);
+  const accounts = ['gold', 'lucid', 'lucid2', 'lucid3', 'lucidf'].map((id) => accountView(cfg, store, id, prices)).filter(Boolean);
   const adapt = cfg.autoAdapt ? require('./adapt').summary(cfg, store) : '';
   // Trades paper des stratégies suivies (tous marchés, depuis le démarrage), 500 les plus récents
   const followed = new Set([...(cfg.ftmoStrategies || []), ...(cfg.ftmoNasStrategies || [])]);

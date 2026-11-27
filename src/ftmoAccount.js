@@ -72,6 +72,12 @@ function accountOf(cfg, id = 'gold') {
     return { ...L, id: 'lucidf', label: `${L.label} funded`, file: LUCID_FUNDED_FILE, fundedOnly: true, tag: 'funded', enabled: L.enabled && !!cfg.lucidParallel,
       riskOf: (m, st, phase) => (cfg.lucidFundedDailyOnly !== false && intra(st) ? 0 : L.riskOf(m, st, phase)) };
   }
+  if (id === 'lucid3') {
+    // 3e évaluation (LUCID_COMBINED, demande de l'utilisateur 27/11/2026) : la version fusionnée, intraday + journalières
+    // sur le même compte (avec la gestion de la journée), à côté des deux évaluations séparées
+    const L = accountOf({ ...cfg, lucidSplit: false }, 'lucid');
+    return { ...L, id: 'lucid3', label: `${L.label} combined`, file: 'lucid3.json', tag: 'combined', enabled: L.enabled && !!cfg.lucidSplit && !!cfg.lucidCombined };
+  }
   if (id === 'lucid2') {
     const L = accountOf({ ...cfg, lucidSplit: false }, 'lucid');
     const intra = (st) => !!(st && st.tf && st.tf !== '1d');
@@ -133,7 +139,7 @@ function accountOf(cfg, id = 'gold') {
   return { id: 'gold', label: 'Gold', emoji: '🥇', file: 'ftmo.json', enabled: cfg.ftmoEnabled, strategies: cfg.ftmoStrategies, risk: cfg.ftmoRisk, riskOf: () => cfg.ftmoRisk * (cfg.ftmoRiskMul ?? 1) };
 }
 /** Comptes FTMO actifs. */
-const ftmoAccounts = (cfg) => ['nas100', 'gold', 'lucidf', 'lucid', 'lucid2'].map((id) => accountOf(cfg, id)).filter((a) => a.enabled);
+const ftmoAccounts = (cfg) => ['nas100', 'gold', 'lucidf', 'lucid', 'lucid2', 'lucid3'].map((id) => accountOf(cfg, id)).filter((a) => a.enabled);
 const TARGET = { 1: 10, 2: 5 };
 
 /**
@@ -864,7 +870,7 @@ function dailyReport(cfg, store, arg = '') {
   return lines.join('\n');
 }
 
-const ACCOUNT_FILES = ['ftmo.json', 'ftmo-nas.json', 'lucid.json', 'lucid2.json', 'lucid-funded.json'];
+const ACCOUNT_FILES = ['ftmo.json', 'ftmo-nas.json', 'lucid.json', 'lucid2.json', 'lucid3.json', 'lucid-funded.json'];
 /** Positions ouvertes sur ce marché dans un des comptes FTMO / Lucid ? */
 function openOn(store, marketId) {
   return ACCOUNT_FILES.some((f) => Object.values(store.loadJson(f, null)?.open || {}).some((p) => p.market === marketId));

@@ -36,7 +36,7 @@ Every minute (every CHECK_INTERVAL_MINUTES without scalp strategies)
 | Account | Rules simulated | Strategies |
 |---|---|---|
 | **FTMO 100K, 1-step challenge** (`/ftmo`) | +10% target, 3% daily loss, 10% trailing max loss, best day ≤ 50% of the gain, min 4 days; funded: 80–90% split, payouts every 14 days | daily strategies (gold, S&P, EUR/USD) + gold / S&P / stock intraday breakouts |
-| **LucidFlex 50K, two evaluations at once** (`/lucid`, `/lucid daily`) | +6% ($3,000), no daily loss limit, $2,000 end-of-day trailing max loss locked at capital + $100, best day ≤ 40%, whole CME micro contracts | one evaluation takes the **intraday** strategies (Nasdaq, Dow, silver), the other the **daily** ones (S&P, Nasdaq, Russell, silver) |
+| **LucidFlex 50K, three evaluations at once** (`/lucid`, `/lucid daily`, `/lucid combined`) | +6% ($3,000), no daily loss limit, $2,000 end-of-day trailing max loss locked at capital + $100, best day ≤ 40%, whole CME micro contracts | one evaluation takes the **intraday** strategies (Nasdaq, Dow, silver), one the **daily** ones (S&P, Nasdaq, Russell, silver), and a **combined** one takes both on the same account (`LUCID_COMBINED`) |
 | **Separate funded Lucid account** | Lucid's official funded rules: no consistency rule, contract cap by profit (20 / 30 / 40 micros from $0 / $1,000 / $2,000), max loss locked at capital + $100 from the first payout, payout after 5 winning days ≥ $150 (≤ 50% of the gain, ≤ $2,000, 5 payouts max), 90% split | daily strategies only (`LUCID_FUNDED_DAILY_ONLY`) |
 
 Account management that came out of the research (all switchable in `.env`):
@@ -84,7 +84,7 @@ Full tables: [docs/strategies.pdf](docs/strategies.pdf), part 3.
 |---|---|
 | `/menu [gold\|nasdaq]` | 🎛 Interactive panel (images that change with the buttons) |
 | `/chart [gold\|nasdaq]` | 🕯 Candlestick chart |
-| `/ftmo` · `/lucid` · `/lucid daily` | 🏦 🟣 Simulated FTMO and Lucid accounts |
+| `/ftmo` · `/lucid` · `/lucid daily` · `/lucid combined` | 🏦 🟣 Simulated FTMO and Lucid accounts |
 | `/pnl [ftmo\|lucid] [days]` | 📅 Daily PnL of the simulated accounts |
 | `/timemachine` | 🔮 Odds of passing the current challenge (1,000 simulated years) |
 | `/history [gold\|nasdaq\|sp500\|eur\|ftmo]` | Trade history |
@@ -141,6 +141,7 @@ The most useful ones:
 | `FTMO_PROGRAM` | `1step` | FTMO program: `1step`, `2step` or `swing` |
 | `FTMO_STRATEGIES` | see `.env.example` | strategies followed by the FTMO account (`market:id`) |
 | `LUCID_SPLIT` | 1 | two Lucid evaluations (intraday / daily); 0 = a single one |
+| `LUCID_COMBINED` | 1 | third Lucid evaluation taking intraday + daily on the same account |
 | `LUCID_FUNDED_DAILY_ONLY` / `LUCID_DAILY_DAY_MGMT` | 1 / 0 | funded Lucid on daily strategies only / day management on the daily evaluation |
 | `FTMO_GROUP_SIZING` / `FUNDED_CUSHION` | 1 / 1 | correlation-based sizing (FTMO) / cushion-based risk (funded accounts) |
 | `FTMO_AI` / `LUCID_AI` | `block` / `observe` | validator AI mode |
