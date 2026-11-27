@@ -358,5 +358,16 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
       }
     }
   }
+  /* ---------- 9. Suite de l'idée 2 : risque avant / après le 1er retrait (risque de base = × 1 du financé) ---------- */
+  if (want(9)) {
+    console.log('=== 9. Financé : risque avant → après le 1er retrait (multiplicateurs du risque des journalières) ===');
+    const F1 = FLD.map((t) => ({ ...t, riskPct: t.riskPct / (cfg.lucidFundedRiskMul || 2) }));
+    for (const [b, a2] of [[2, 2], [2, 1], [3, 1], [3, 1.5], [3, 0.75], [4, 1], [4, 0.75], [5, 1], [3, 1, 2]]) {
+      const after2 = a2;
+      fLine(`× ${b} puis × ${after2}${b === 2 && after2 === 2 ? ' (actuel)' : ''}`, funded(F1, { sizer: (t, st) => baseSizer(t, st) * (st.paid ? after2 : b) }));
+    }
+    fLine('× 3 puis × 1 après le 2e retrait', funded(F1, { sizer: (t, st) => baseSizer(t, st) * (st.paid >= 2 ? 1 : 3) }));
+    console.log('');
+  }
   console.log('\n✅ = rien ne baisse et au moins un chiffre monte (évaluations : réussite, ≤ 14 j, ≤ 30 j, échecs ≤ 14 j ; financé : retraits, comptes perdus)');
 })().catch((e) => { console.error(e); process.exit(1); });
