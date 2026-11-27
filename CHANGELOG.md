@@ -15,6 +15,9 @@ number per commit since that step.
 | v4.0 → v4.111 | 20/11/2026 | simulated Lucid account (LucidFlex 50K, /lucid), funded accounts, website, PDF, videos |
 | v5.0 → | 26/11/2026 | bot in English, Binance real-time gold / silver, Lucid optimizations |
 
+## v5.40 — 27/11/2026
+- /export open to everyone (the file holds no token, channel ID or server path).
+
 ## v5.39 — 27/11/2026
 Readable version numbers rebuilt from the history. Since v5.0, in particular:
 - Lucid: three evaluations (intraday, daily, combined) and a separate funded account; funded risk × 3 until the first
