@@ -188,6 +188,18 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
   const FL = fundedRisk(L); // risque « financé » actuel (× LUCID_FUNDED_RISK_MUL)
 
   const scale = (l, m) => (m === 1 ? l : l.map((t) => ({ ...t, riskPct: t.riskPct * m })));
+  const multi = (lists, price = PRICE50, o = {}) => {
+    const end = L[L.length - 1].entryT - 120 * DAY; let n = 0, any30 = 0, any365 = 0, fundedN = 0, bought = 0; const firsts = [];
+    for (const s of starts(A0, end)) {
+      n++; bought += lists.length; let first = Infinity;
+      for (const x of lists) {
+        const r = runPhase(x.filter((t) => t.entryT >= s && t.entryT < s + 365 * DAY), { ...RLE, ...o, from: s });
+        if (r.outcome === 'target') { fundedN++; first = Math.min(first, (r.at - s) / DAY); }
+      }
+      if (first <= 30) any30++; if (Number.isFinite(first)) { any365++; firsts.push(first); }
+    }
+    return `au moins une réussie ≤ 30 j ${pc(any30 / n)} · < 1 an ${pc(any365 / n)} (${median(firsts).toFixed(0)} j) · financés par départ ${(fundedN / n).toFixed(2)} · coût par compte financé ${usd((bought * price) / fundedN)}`;
+  };
   const evalStats = (l, o = {}) => { const r = evaluate('lucid', l, o); return { per: r.per, p14: r.p14, p30: r.p30, f14: r.f14 }; };
   const fmtE = (r, intraOnly) => (intraOnly ? `nov. 24–26 ${r.per[2].toFixed(0).padStart(3)} %` : `${r.per.map((p) => `${p.toFixed(0).padStart(3)} %`).join(' |')}`) + ` · ≤14 j ${pc(r.p14 / 100)} · ≤30 j ${pc(r.p30 / 100)} · échec ≤14 j ${pc(r.f14 / 100)}`;
   /* ---------- Réglages actuels ---------- */
