@@ -15,6 +15,13 @@ number per commit since that step.
 | v4.0 → v4.111 | 20/11/2026 | simulated Lucid account (LucidFlex 50K, /lucid), funded accounts, website, PDF, videos |
 | v5.0 → | 26/11/2026 | bot in English, Binance real-time gold / silver, Lucid optimizations |
 
+## v5.41 — 28/11/2026
+- AI learns from every paper signal (all strategies, followed or not), not only the FTMO account's: about 2–3× more examples
+  (AI_LEARN_ALL=1). Lucid signals are stored too.
+- Signal results labeled at every pass (not only on Sunday); live AI scorecard in /adapt and /export (accepted vs refused
+  signals, win rate by AI probability).
+- /export also holds the daily and combined Lucid evaluations and the archived trades of previous challenges.
+
 ## v5.40 — 27/11/2026
 - /export open to everyone (the file holds no token, channel ID or server path).
 

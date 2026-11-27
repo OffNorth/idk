@@ -245,8 +245,12 @@ bot.command('adapt', async (ctx) => {
   if (arg === 'now') return ctx.reply(ad.weeklyReview(cfg, store).text, HTML);
   const st = ad.loadState(store);
   const w = Object.entries(st.weights || {}).filter(([, v]) => v !== 1).map(([k, v]) => `• <code>${esc(k)}</code> ${v === 0 ? 'suspended' : `× ${v}`}`);
-  const n = store.loadJson('ai-samples.json', []).length;
-  return ctx.reply(require('./src/htmlSplit').truncHtml([ad.summary(cfg, store), `Judged signals stored: ${n}`, ...(w.length ? ['Learned weights:', ...w] : ['No weight changed yet.']), (st.promoted || []).length ? `Promoted candidates: ${st.promoted.map((k) => `<code>${esc(k)}</code>`).join(', ')}` : '', `Candidates under observation: ${cfg.adaptCandidates.map((k) => `<code>${esc(k)}</code>`).join(', ')}`].filter(Boolean).join('\n'), 4000), HTML);
+  const sc = ad.aiScore(ad.labelSamples(store).length >= 0 ? store.loadJson('ai-samples.json', []) : []);
+  const g = (x) => (x.n ? `${x.n} signals, ${x.winPct}% winners, ${x.avgR >= 0 ? '+' : ''}${x.avgR} R on average` : 'none yet');
+  const scoreLines = [`Judged signals stored: ${sc.judged} (closed: ${sc.closed}; the AI retrains from 150 closed signals)`,
+    `AI accepted: ${g(sc.accepted)} · AI would refuse: ${g(sc.refused)}`,
+    ...(sc.closed ? [`By AI probability: ${sc.bands.filter((b) => b.n).map((b) => `${b.p} → ${b.winPct}% winners (${b.n})`).join(' · ')}`] : [])];
+  return ctx.reply(require('./src/htmlSplit').truncHtml([ad.summary(cfg, store), ...scoreLines, ...(w.length ? ['Learned weights:', ...w] : ['No weight changed yet.']), (st.promoted || []).length ? `Promoted candidates: ${st.promoted.map((k) => `<code>${esc(k)}</code>`).join(', ')}` : '', `Candidates under observation: ${cfg.adaptCandidates.map((k) => `<code>${esc(k)}</code>`).join(', ')}`].filter(Boolean).join('\n'), 4000), HTML);
 });
 
 // Simulation des stratégies sur l'historique des cours (ex-« /historique »)

@@ -486,6 +486,12 @@ function createFtmo({ cfg, store, account = 'gold' }) {
     if (s.waitDay && s.day !== s.waitDay) s.waitDay = null; // nouveau challenge : reprise le jour suivant
 
     for (const ev of events) {
+      // IA : chaque signal paper (toutes stratégies, suivies ou non) est jugé et mémorisé pour l'apprentissage, par le
+      // compte FTMO principal (AI_LEARN_ALL, 27/11/2026 : ≈ 2 à 3 fois plus d'exemples qu'avec les seuls trades du compte)
+      if (ev.type === 'open' && A.id === 'gold' && cfg.autoAdapt && cfg.aiLearnAll !== false && ev.strategy?.id !== 'hold' && !follows(ev)) {
+        const ai0 = aiOpinion(ev, ev.pos);
+        if (ai0) adapt.recordSignal(store, { market: ev.market.id, sid: ev.strategy.id, entryT: ev.pos.entryT, x: ai0.x, p: ai0.p, ok: ai0.ok, side: ev.pos.side, entry: ev.pos.entry, sl: ev.pos.initSl ?? ev.pos.sl, v: ai0.version, paperOnly: true });
+      }
       if (!follows(ev)) continue;
       if (ev.type === 'open' && !s.waitDay) {
         const p = ev.pos;
@@ -525,8 +531,8 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         // IA validatrice (src/aiFilter.js, FTMO_AI) : avis sur le signal ; en mode « block », refus sous le seuil
         const ai = aiMode && aiMode !== 'off' ? aiOpinion(ev, p) : null;
         const skey = `${ev.market.id}:${ev.strategy.id}`;
-        // Signal jugé mémorisé pour l'apprentissage de l'IA (compte FTMO seulement : Lucid voit les mêmes signaux)
-        if (ai && cfg.autoAdapt && A.firm !== 'Lucid') {
+        // Signal jugé mémorisé pour l'apprentissage de l'IA (tous les comptes ; un même signal n'est gardé qu'une fois)
+        if (ai && cfg.autoAdapt) {
           adapt.recordSignal(store, { market: ev.market.id, sid: ev.strategy.id, entryT: p.entryT, x: ai.x, p: ai.p, ok: ai.ok, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, v: ai.version });
         }
         // Poids appris par l'adaptation (× 0 = stratégie suspendue, × 0,5 réduite, × 1,25 renforcée)

@@ -122,3 +122,13 @@ test('en direct : signaux mémorisés, poids appliqué au compte, stratégie sus
   assert.strictEqual(ad.reviewDue(cfg, store, sunday + 3600_000), false);
   assert.match(ad.summary(cfg, store), /Adaptation: AI v0/);
 });
+
+test('IA : bilan en direct (acceptés / refusés, par probabilité) et apprentissage sur tous les signaux paper', () => {
+  const { aiScore } = require('../src/adapt');
+  const s = aiScore([{ p: 0.6, ok: true, win: true, r: 1 }, { p: 0.42, ok: false, win: false, r: -1 }, { p: 0.52, ok: true, win: false, r: -1 }, { p: 0.5, ok: true }]);
+  assert.strictEqual(s.judged, 4);
+  assert.strictEqual(s.closed, 3);
+  assert.deepStrictEqual([s.accepted.n, s.accepted.winPct, s.refused.n, s.refused.winPct], [2, 50, 1, 0]);
+  assert.strictEqual(s.bands.find((b) => b.p === '55–100%').winPct, 100);
+  assert.strictEqual(require('../src/config').aiLearnAll, true);
+});

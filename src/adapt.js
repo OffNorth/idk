@@ -167,6 +167,18 @@ function labelSamples(store) {
   return list.filter((t) => t.win !== undefined).sort((a, b) => a.entryT - b.entryT);
 }
 
+/**
+ * Bilan de l'IA sur les signaux en direct déjà clôturés : réussite et R moyen des signaux qu'elle accepte et de ceux
+ * qu'elle aurait refusés, et par tranche de probabilité. Dit si elle trie bien (accepte mieux que ce qu'elle refuse).
+ */
+function aiScore(samples) {
+  const done = (samples || []).filter((t) => t.win !== undefined);
+  const grp = (l) => ({ n: l.length, winPct: l.length ? Math.round((l.filter((t) => t.win).length / l.length) * 100) : null, avgR: l.length ? +(l.reduce((a, t) => a + (Number.isFinite(t.r) ? t.r : 0), 0) / l.length).toFixed(2) : null });
+  const ok = done.filter((t) => t.ok !== false), no = done.filter((t) => t.ok === false);
+  const bands = [[0, 0.45], [0.45, 0.5], [0.5, 0.55], [0.55, 1.01]].map(([a, b]) => ({ p: `${Math.round(a * 100)}–${Math.min(100, Math.round(b * 100))}%`, ...grp(done.filter((t) => t.p >= a && t.p < b)) }));
+  return { judged: (samples || []).length, closed: done.length, accepted: grp(ok), refused: grp(no), bands };
+}
+
 /** R des trades paper live de chaque stratégie (clé « marché:id »). */
 function liveStats(cfg, store, keys) {
   const out = {};
@@ -279,6 +291,6 @@ function reset(cfg, store) {
 }
 
 module.exports = {
-  reviewAI, aiSafety, reviewStrategies, targetWeight, scoreOf, recordSignal, labelSamples, liveStats, weightOf, promotedOf, aiModeOf,
+  reviewAI, aiSafety, reviewStrategies, targetWeight, scoreOf, recordSignal, labelSamples, aiScore, liveStats, weightOf, promotedOf, aiModeOf,
   reviewDue, weeklyReview, summary, reset, loadState, PRIOR_N, PRIOR_R,
 };

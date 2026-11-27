@@ -50,13 +50,21 @@ function buildExport(cfg, store, version = 'inconnue') {
     }
     markets[m.id] = { lastPrice: st.lastPrice ?? null, lastUpdate: st.lastUpdate ?? null, accounts };
   }
+  require('./adapt').labelSamples(store); // résultats des signaux à jour avant l'export
   const samples = store.loadJson('ai-samples.json', []).map(({ x, ...rest }) => rest); // sans les caractéristiques
   const accounts = {
     ftmo: store.loadJson('ftmo.json', null),
     ftmoNasdaq: store.loadJson('ftmo-nas.json', null),
     lucid: store.loadJson('lucid.json', null),
+    lucidDaily: store.loadJson('lucid2.json', null),
+    lucidCombined: store.loadJson('lucid3.json', null),
     lucidFunded: store.loadJson('lucid-funded.json', null),
   };
+  // Trades des challenges / évaluations précédents (archivés à chaque réussite, échec ou /reset)
+  const archives = {};
+  for (const [k, id] of [['ftmo', 'gold'], ['lucid', 'lucid'], ['lucidDaily', 'lucid2'], ['lucidCombined', 'lucid3'], ['lucidFunded', 'lucidf']]) {
+    try { archives[k] = require('./ftmoAccount').createFtmo({ cfg, store, account: id }).archived(); } catch { archives[k] = []; }
+  }
   const out = {
     exportedAt: new Date().toISOString(),
     version,
@@ -65,6 +73,8 @@ function buildExport(cfg, store, version = 'inconnue') {
     accounts,
     aiRefused: { ftmo: store.loadJson('ftmo-ia-refuses.json', []), lucid: store.loadJson('lucid-ia-refuses.json', []) },
     aiSamples: samples,
+    aiScore: require('./adapt').aiScore(samples),
+    archives,
     adapt: store.loadJson('adapt.json', null),
     markets,
   };

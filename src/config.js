@@ -219,6 +219,8 @@ module.exports = {
   lucidCombined: num('LUCID_COMBINED', 1) === 1,
   // Pas de position inverse d'un compte Lucid à l'autre (Lucid interdit le hedging entre comptes, 27/11/2026) ; 0 = libre
   lucidNoCrossHedge: num('LUCID_NO_CROSS_HEDGE', 1) === 1,
+  // IA : apprend de tous les signaux paper, pas seulement de ceux du compte FTMO (0 = seulement les signaux des comptes)
+  aiLearnAll: num('AI_LEARN_ALL', 1) === 1,
   // Pas de Nasdaq journalier sur Lucid (choix de l'utilisateur « passer vite », 27/11/2026, npm run lucid-ideas3 idée 13) : les
   // achats Nasdaq de plusieurs jours bloquaient l'évaluation intraday (anti-hedging). Au moins une évaluation réussie en
   // ≤ 30 j 23 → 37 %, délai médian 125 → 42 j, coût par compte financé 222 → 190 $ ; retraits du financé 5 159 → 4 406 $
