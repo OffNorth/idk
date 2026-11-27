@@ -289,6 +289,9 @@ module.exports = {
   // Vide = pas d'or
   lucidEvalGold: list('LUCID_EVAL_GOLD', 'gold:g_nypdl'),
   lucidEvalGoldRisk: num('LUCID_EVAL_GOLD_RISK_PCT', 0.2),
+  // Journalières du compte Lucid FINANCÉ seulement (pas les évaluations) : russell:rsi2 (npm run lucid-ideas3, idée 14,
+  // FONLY=1, 27/11/2026) : retraits 12 mois 4 406 → 5 346 $ (nov. 24–26), 3 117 → 3 158 $ (2020–24), évaluations inchangées
+  lucidFundedStrategies: list('LUCID_FUNDED_STRATEGIES', 'russell:rsi2'),
   lucidDailyStrategies: list('LUCID_DAILY_STRATEGIES', 'spx:double7,spx:rsi2,russell:n_low10,nas100:double7,silver:double7'),
   // Stratégies du compte FTMO que Lucid ne prend pas (avantage < +0,03 R)
   lucidExclude: list('LUCID_EXCLUDE', 'nas100:ibs'),
@@ -365,7 +368,7 @@ module.exports = {
   cfg.trialStrategies = list('TRIAL_STRATEGIES', '');
   if (cfg.ftmoOnly) {
     const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : []),
-      ...(cfg.ftmoEnabled && cfg.lucidEnabled ? [...cfg.lucidIntradayStrategies, ...cfg.lucidDailyStrategies] : [])]; // stratégies propres au compte Lucid
+      ...(cfg.ftmoEnabled && cfg.lucidEnabled ? [...cfg.lucidIntradayStrategies, ...cfg.lucidDailyStrategies, ...cfg.lucidFundedStrategies] : [])]; // stratégies propres au compte Lucid
     // + candidates de l'adaptation automatique (suivies en paper sans être publiées, promues si elles font mieux)
     const cand = cfg.autoAdapt && cfg.adaptStrategies ? cfg.adaptCandidates : [];
     const of = (m) => [...new Set([...all, ...cfg.trialStrategies, ...cand].filter((x) => x.startsWith(`${m}:`)).map((x) => x.slice(m.length + 1))), 'hold'];

@@ -672,7 +672,8 @@ story.append(KeepTogether([Paragraph('Lucid: new strategies tested (27/11/2026)'
     'to the whole Lucid system (intraday and daily evaluations, funded account, cross-account hedge rule). Kept only if nothing gets worse.', body), Spacer(1, 3), small_table([
     ('Strategy', 'Result on the Lucid system', 'Decision'),
     ('<b>Silver intraday: Crabel NR7, 15 min, 0.75 R target</b>', 'intraday evaluation 51 → 55%, at least one pass within 30 days 37 → 41%, median 39 → 35 days, $195 → $192 per funded account', '<b>added</b>'),
-    ('Dow Double 7, Russell Double 7, Russell RSI 2', 'funded payouts up (Nov 24–26 $4,406 → $5,309 / $5,903 / $5,346) but the daily evaluation passes less often on 2009–19 / 2020–26', '✘ (trade-off)'),
+    ('<b>Russell RSI 2, funded account only</b>', 'funded payouts $4,406 → $5,346 (Nov 24–26), $3,117 → $3,158 (2020–24), accounts lost unchanged; evaluations unchanged', '<b>added</b> (LUCID_FUNDED_ STRATEGIES)'),
+    ('Dow Double 7, Russell Double 7 (evaluations or funded only)', 'funded payouts up recently ($5,309 / $5,903) but more accounts lost (Dow 47%) or less on 2020–24 (Russell $3,077); on the evaluations the daily one passes less often', '✘ (trade-off)'),
     ('S&amp;P IBS / 10-day low, Dow RSI 2 / 10-day low, Russell 3 down days / cumulative RSI / weekly reversal', 'faster median but dearer per funded account or fewer daily passes', '✘'),
     ('Silver 3 down days, gold / silver ratio, silver 15-min breakout', 'no gain on the system', '✘'),
     ('Turn of month (S&amp;P, Dow, Russell, silver), Russell vs S&amp;P', 'not stable on the 3 periods', '✘'),

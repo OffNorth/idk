@@ -143,3 +143,11 @@ test('Lucid : pas de position inverse d\'un compte Lucid à l\'autre (LUCID_NO_C
   assert.strictEqual(on.s.skippedCross, 1);
   assert.strictEqual(run(false).opened, true, 'LUCID_NO_CROSS_HEDGE=0 : la vente passe');
 });
+
+test('Lucid : LUCID_FUNDED_STRATEGIES (russell:rsi2) sur le compte financé seulement', () => {
+  const cfg = { ...require('../src/config'), ftmoEnabled: true, lucidEnabled: true };
+  const { accountOf } = require('../src/ftmoAccount');
+  assert.ok(accountOf(cfg, 'lucidf').strategies.includes('russell:rsi2'));
+  for (const id of ['lucid', 'lucid2', 'lucid3']) assert.ok(!accountOf(cfg, id).strategies.includes('russell:rsi2'), `${id} : pas de russell:rsi2`);
+  assert.ok(cfg.russellStrategies.includes('rsi2'), 'suivie en paper');
+});

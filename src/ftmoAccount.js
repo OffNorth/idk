@@ -71,7 +71,9 @@ function accountOf(cfg, id = 'gold') {
     // LUCID_FUNDED_DAILY_ONLY (npm run lucid-improve, 27/11/2026) : le compte financé ne prend que les journalières
     // (retraits 12 mois nov. 24–26 2 253 → 3 021 $, comptes perdus 91 → 78 % ; 2020–24 égal)
     const intra = (st) => !!(st && st.tf && st.tf !== '1d');
+    // + LUCID_FUNDED_STRATEGIES : journalières prises seulement par le compte financé (russell:rsi2)
     return { ...L, id: 'lucidf', label: `${L.label} funded`, file: LUCID_FUNDED_FILE, fundedOnly: true, tag: 'funded', enabled: L.enabled && !!cfg.lucidParallel,
+      strategies: [...new Set([...L.strategies, ...(cfg.lucidFundedStrategies || [])])],
       riskOf: (m, st, phase) => (cfg.lucidFundedDailyOnly !== false && intra(st) ? 0 : L.riskOf(m, st, phase)) };
   }
   if (id === 'lucid3') {
