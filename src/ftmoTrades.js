@@ -54,7 +54,7 @@ async function buildTrades(cfg, CACHE, { withLucid = false, wrap = null } = {}) 
 
   const all = [];
   // withLucid (Time Machine) : + stratégies propres au compte Lucid (variantes « objectif 0,5 R »)
-  const ids = withLucid ? [...new Set([...A.strategies, ...accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid').strategies])] : A.strategies;
+  const ids = withLucid ? [...new Set([...A.strategies, ...accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid').strategies, ...(cfg.lucidFundedStrategies || [])])] : A.strategies;
   for (const k of ids) {
     const [m, id] = k.split(':');
     const s0 = selectStrategies([id])[0];
