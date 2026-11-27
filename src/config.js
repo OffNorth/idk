@@ -276,6 +276,9 @@ module.exports = {
   // 26/11/2026 : Lucid n'a pas de micro-devises (M6E) → l'IBS EUR/USD (gros contributeur) ne passe plus en 6E standard
   // (137 000 $ le contrat) : réussite réelle 45 / 46 / 76 %. Remplacée par 3 journalières sur des micros Lucid (npm run
   // lucid-research4) : plus bas de 10 j sur le Russell (M2K), Double 7 Nasdaq (MNQ) et argent (SIL) → 50 / 62 / 78 %
+  // Intraday or sur les ÉVALUATIONS Lucid seulement (demande de l'utilisateur, 27/11/2026), au risque intraday Lucid ;
+  // jamais sur le compte financé. Vide = aucune (npm run lucid-ideas3, idée 12, pour l'effet mesuré)
+  lucidEvalGold: list('LUCID_EVAL_GOLD', 'gold:g_orb30,gold:g_orb60,gold:g_mom8,gold:g_gap,gold:g_asiabrk,gold:g_nypdl'),
   lucidDailyStrategies: list('LUCID_DAILY_STRATEGIES', 'spx:double7,spx:rsi2,russell:n_low10,nas100:double7,silver:double7'),
   // Stratégies du compte FTMO que Lucid ne prend pas (avantage < +0,03 R)
   lucidExclude: list('LUCID_EXCLUDE', 'nas100:ibs'),

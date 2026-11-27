@@ -438,5 +438,18 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     }
     console.log('');
   }
+  /* ---------- 12. Intraday or sur les évaluations Lucid (LUCID_EVAL_GOLD) ---------- */
+  if (want(12)) {
+    console.log('=== 12. Intraday or (MGC) ajouté aux évaluations intraday et combinée ===');
+    const goldIds = cfg.lucidEvalGold.length ? cfg.lucidEvalGold : ['gold:g_orb30', 'gold:g_orb60', 'gold:g_mom8', 'gold:g_gap', 'gold:g_asiabrk', 'gold:g_nypdl'];
+    const G = all.filter((t) => goldIds.includes(t.sid) && t.intraday).map((t) => ({ ...t, riskPct: (cfg.lucidIntradayRisk ?? 0.45) * (cfg.lucidEvalIntradayMul ?? 3) }));
+    const noG = (l) => l.filter((t) => !goldIds.includes(t.sid));
+    console.log(`   ${G.length} trades or (2009–2026)`);
+    for (const [k, base, o, intraOnly] of [['intraday', noG(INTRA), {}, true], ['combined', noG(L), {}, false]]) {
+      const r0 = evalStats(base, o), r1 = evalStats([...base, ...G].sort((x, y) => x.entryT - y.entryT), o);
+      console.log(`   ${k.padEnd(9)} sans or ${fmtE(r0, intraOnly)}\n   ${''.padEnd(9)} avec or ${fmtE(r1, intraOnly)}`);
+    }
+    console.log('');
+  }
   console.log('\n✅ = rien ne baisse et au moins un chiffre monte (évaluations : réussite, ≤ 14 j, ≤ 30 j, échecs ≤ 14 j ; financé : retraits, comptes perdus)');
 })().catch((e) => { console.error(e); process.exit(1); });

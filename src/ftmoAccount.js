@@ -112,7 +112,8 @@ function accountOf(cfg, id = 'gold') {
       // sur 2020–24, npm run lucid-funded avec les règles officielles ; 1er retrait en ≤ 60 j 85 → 67 % sur nov. 24–26)
       riskOf: (m, st, phase) => (st && excluded.has(`${m}:${st.id}`) ? 0
         : (phase === 'funded' ? cfg.lucidFundedRiskMul ?? 1 : 1) * (st && st.tf && st.tf !== '1d'
-          ? ((cfg.lucidIntradayStrategies || []).includes(`${m}:${st.id}`) ? (cfg.lucidIntradayRisk ?? 0) * (phase === 'funded' ? 1 : cfg.lucidEvalIntradayMul ?? 1) : 0)
+          ? ((cfg.lucidIntradayStrategies || []).includes(`${m}:${st.id}`) || (phase !== 'funded' && (cfg.lucidEvalGold || []).includes(`${m}:${st.id}`))
+            ? (cfg.lucidIntradayRisk ?? 0) * (phase === 'funded' ? 1 : cfg.lucidEvalIntradayMul ?? 1) : 0)
           : base.riskOf(m, st) * mul)),
     };
   }
