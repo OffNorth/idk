@@ -369,5 +369,29 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     fLine('× 3 puis × 1 après le 2e retrait', funded(F1, { sizer: (t, st) => baseSizer(t, st) * (st.paid >= 2 ? 1 : 3) }));
     console.log('');
   }
+  /* ---------- 10. LucidFlex 150K au lieu de 50K ---------- */
+  // Sources secondaires (nov. 2026, à vérifier) : objectif 9 000 $, perte max 4 500 $ suiveuse fin de journée bloquée à
+  // capital + 100 $, 100 micros, régularité 40 %, retrait ≤ 3 000 $ (5 jours ≥ 250 $), ≈ 295 $ ; plan de scaling du
+  // financé non publié : supposé 50 / 75 / 100 micros (0 / +1 500 / +3 000 $) ou 100 d'emblée.
+  if (want(10)) {
+    console.log('=== 10. LucidFlex 150K au lieu de 50K (réglages actuels) ===');
+    const E150 = { capital: 150_000, maxLossUsd: 4500, maxContracts: 100, dayProfitCapUsd: 0.25 * 9000 };
+    const F150 = { capital: 150_000, maxLossUsd: 4500, maxContracts: 100 };
+    for (const [rn, rk] of [['même risque en %', 1], ['risque × 0,75 (même part de la perte max)', 0.75]]) {
+      const sc = (l) => scale(l, rk);
+      console.log(`  150K, ${rn}`);
+      for (const [k, [l, o, intraOnly]] of Object.entries(EVALS)) {
+        const o2 = { ...o, ...E150, ...(o.dayProfitCapUsd === Infinity ? { dayProfitCapUsd: Infinity } : {}) };
+        console.log(`     ${k.padEnd(9)} ${fmtE(evalStats(sc(l), o2), intraOnly)}   (50K : ${fmtE(evRef[k], intraOnly)})`);
+      }
+      console.log(`     deux évaluations 150K : ${multi([sc(INTRA), sc(DAILY)], 295, E150)}`);
+      for (const [sn, scaling] of [['scaling supposé 50/75/100', [[0, 50], [1500, 75], [3000, 100]]], ['100 micros d\'emblée', [[0, 100]]]]) {
+        fline(`financé 150K, ${sn}`, funded(sc(FLD), { ...F150, scaling, sizer: (t, st) => baseSizer(t, st) * (st.paid ? 1 / 3 : 1) }, { minDay: 250, cap: 3000 }));
+      }
+    }
+    console.log(`  50K (actuel) : deux évaluations ${multi([INTRA, DAILY], PRICE50)}`);
+    fline('financé 50K (actuel, × 3 puis × 1)', funded(FLD, { sizer: (t, st) => baseSizer(t, st) * (st.paid ? 1 / 3 : 1) }));
+    console.log('');
+  }
   console.log('\n✅ = rien ne baisse et au moins un chiffre monte (évaluations : réussite, ≤ 14 j, ≤ 30 j, échecs ≤ 14 j ; financé : retraits, comptes perdus)');
 })().catch((e) => { console.error(e); process.exit(1); });
