@@ -80,7 +80,8 @@
     "binance-check": "node scripts/binance-check.js",
     "optimize": "node optimize-research.js",
     "optimize2": "node optimize2-research.js",
-    "lucid-improve": "node --max-old-space-size=12288 lucid-improve-research.js"
+    "lucid-improve": "node --max-old-space-size=12288 lucid-improve-research.js",
+    "lucid-ideas3": "node --max-old-space-size=12288 lucid-ideas3-research.js"
   },
   "engines": {
     "node": ">=20"

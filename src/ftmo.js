@@ -58,7 +58,7 @@ const rMultiple = (t) => t.pnlPct / Math.max(1e-9, stopPct(t));
  * Retourne l'issue (target / daily / maxloss / open), le solde et le nombre de jours de trading.
  */
 function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity, riskMul = 1, sizer = null, trailingMax = false, bestDayPct = 0, levCap = null,
-  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true, start = null, dayProfitCapUsd = Infinity, maxLossesPerDay = Infinity, abandonBelow = null, scaling = null, lockOnPayout = false } = {}) {
+  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true, start = null, dayProfitCapUsd = Infinity, maxLossesPerDay = Infinity, abandonBelow = null, scaling = null, lockOnPayout = false, dayCapFn = null } = {}) {
   const maxLoss = maxLossUsd ?? (capital * maxPct) / 100;
   const events = [];
   for (const t of trades) {
@@ -101,6 +101,8 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       // Gestion de la journée : plus de nouveau trade après un gain du jour ≥ dayProfitCapUsd (règle du meilleur jour)
       // ou après maxLossesPerDay trades perdants dans la journée
       if (balance - dayStart >= dayProfitCapUsd || dayLosses >= maxLossesPerDay) continue;
+      // Plafond du jour calculé (recherche) : dayCapFn({ capital, dayStart, balance }) → gain du jour maximal
+      if (dayCapFn && balance - dayStart >= dayCapFn({ capital, dayStart, balance })) continue;
       const sp = stopPct(e.tr);
       if (!(sp > 0)) continue;
       // risque propre au trade si fourni (comptes multi-marchés) ; `sizer` : multiplicateur de risque selon le trade et l'état du compte
@@ -110,7 +112,7 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       let fl = (eodTrailing ? eodPeak : trailingMax ? peak : capital) - maxLoss;
       if (lockAt !== null) fl = Math.min(fl, capital + lockAt);
       if (lockOnPayout && lockAt !== null && paid.length) fl = capital + lockAt;
-      const mul = sizer ? sizer(e.tr, { balance, capital, dayStart, target: tgt, open: open.size, openTrades: open.keys(), room: (balance - fl) / maxLoss }) : 1;
+      const mul = sizer ? sizer(e.tr, { balance, capital, dayStart, target: tgt, open: open.size, openTrades: open.keys(), room: (balance - fl) / maxLoss, paid: paid.length }) : 1;
       if (!(mul > 0)) continue;
       const cap = (levCap && e.tr.market && levCap[e.tr.market]) || leverage; // levier max par marché (compte Swing)
       let notional = Math.min((balance * (e.tr.riskPct ?? riskPct) * riskMul * mul) / sp, balance * cap);
