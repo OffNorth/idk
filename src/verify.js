@@ -75,7 +75,8 @@ function verifyReport(cfg, store) {
   if (!issues.length) return `${head}\n✅ No inconsistency found.`;
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const shown = issues.slice(0, 25).map((x) => `• ${esc(x)}`);
-  return [head, `⚠️ ${issues.length} inconsistency(ies):`, ...shown, issues.length > 25 ? `… and ${issues.length - 25} more` : ''].filter(Boolean).join('\n').slice(0, 4000);
+  const text = [head, `⚠️ ${issues.length} inconsistency(ies):`, ...shown, issues.length > 25 ? `… and ${issues.length - 25} more` : ''].filter(Boolean).join('\n');
+  return require('./htmlSplit').truncHtml(text, 4000);
 }
 
 module.exports = { verify, verifyReport };

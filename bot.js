@@ -139,7 +139,7 @@ async function replyImage(ctx, build, waitText) {
   try {
     const out = await build();
     await ctx.replyWithPhoto(new InputFile(out.png, 'image.png'), { caption: out.caption, parse_mode: 'HTML', ...(out.keyboard ? { reply_markup: out.keyboard } : {}) });
-    if (out.details) await ctx.reply(out.details.slice(0, 4096), HTML);
+    if (out.details) await ctx.reply(require('./src/htmlSplit').truncHtml(out.details, 4096), HTML);
     await ctx.api.deleteMessage(ctx.chat.id, wait.message_id).catch(() => {});
   } catch (err) {
     await ctx.api.editMessageText(ctx.chat.id, wait.message_id, `❌ Image failed: ${esc(err.message)}`).catch(() => {});
@@ -246,7 +246,7 @@ bot.command('adapt', async (ctx) => {
   const st = ad.loadState(store);
   const w = Object.entries(st.weights || {}).filter(([, v]) => v !== 1).map(([k, v]) => `• <code>${esc(k)}</code> ${v === 0 ? 'suspended' : `× ${v}`}`);
   const n = store.loadJson('ai-samples.json', []).length;
-  return ctx.reply([ad.summary(cfg, store), `Judged signals stored: ${n}`, ...(w.length ? ['Learned weights:', ...w] : ['No weight changed yet.']), (st.promoted || []).length ? `Promoted candidates: ${st.promoted.map((k) => `<code>${esc(k)}</code>`).join(', ')}` : '', `Candidates under observation: ${cfg.adaptCandidates.map((k) => `<code>${esc(k)}</code>`).join(', ')}`].filter(Boolean).join('\n').slice(0, 4000), HTML);
+  return ctx.reply(require('./src/htmlSplit').truncHtml([ad.summary(cfg, store), `Judged signals stored: ${n}`, ...(w.length ? ['Learned weights:', ...w] : ['No weight changed yet.']), (st.promoted || []).length ? `Promoted candidates: ${st.promoted.map((k) => `<code>${esc(k)}</code>`).join(', ')}` : '', `Candidates under observation: ${cfg.adaptCandidates.map((k) => `<code>${esc(k)}</code>`).join(', ')}`].filter(Boolean).join('\n'), 4000), HTML);
 });
 
 // Simulation des stratégies sur l'historique des cours (ex-« /historique »)
@@ -260,17 +260,16 @@ bot.command('simulation', (ctx) => {
   return replyImage(ctx, () => historyChart(cfg, { marketId, fromYear: year }), `⏳ ${m.emoji} ${m.name}: simulation since ${year} (the first call downloads the history, up to ~1 min)…`);
 });
 
-bot.command('strategies', (ctx) =>
-  ctx.reply(
-    activeMarkets(cfg)
-      .map((m) => `<b>${m.emoji} ${esc(m.name)}</b>\n\n` + selectStrategies(m.strategies)
-        .map((s) => `<b>${esc(s.name)}</b> (<code>${s.id}</code> · ${s.tf || '1h'} candles)\n${esc(s.desc)}`)
-        .join('\n\n'))
-      .join('\n\n———\n\n')
-      .slice(0, 4000),
-    HTML,
-  ),
-);
+// Liste longue : plusieurs messages, coupés entre deux lignes (jamais au milieu d'une balise HTML)
+bot.command('strategies', async (ctx) => {
+  const text = activeMarkets(cfg)
+    .map((m) => `<b>${m.emoji} ${esc(m.name)}</b>\n\n` + selectStrategies(m.strategies)
+      .map((s) => `<b>${esc(s.name)}</b> (<code>${s.id}</code> · ${s.tf || '1h'} candles)\n${esc(s.desc)}`)
+      .join('\n\n'))
+    .join('\n\n———\n\n');
+  const parts = require('./src/htmlSplit').splitHtml(text, 4000);
+  for (const p of parts.slice(0, 8)) await ctx.reply(p, HTML);
+});
 
 /* ---------- Jeu ---------- */
 

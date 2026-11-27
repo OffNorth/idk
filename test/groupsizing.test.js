@@ -151,3 +151,15 @@ test('Lucid : LUCID_FUNDED_STRATEGIES (russell:rsi2) sur le compte financé seul
   for (const id of ['lucid', 'lucid2', 'lucid3']) assert.ok(!accountOf(cfg, id).strategies.includes('russell:rsi2'), `${id} : pas de russell:rsi2`);
   assert.ok(cfg.russellStrategies.includes('rsi2'), 'suivie en paper');
 });
+
+test('messages HTML longs : coupés entre deux lignes, jamais au milieu d\'une balise', () => {
+  const { splitHtml, truncHtml } = require('../src/htmlSplit');
+  const block = (i) => `<b>Strategy ${i}</b> (<code>s${i}</code>)\n${'x'.repeat(300)}`;
+  const text = Array.from({ length: 40 }, (_, i) => block(i)).join('\n\n');
+  const parts = splitHtml(text, 4000);
+  assert.ok(parts.length > 1 && parts.every((p) => p.length <= 4000));
+  for (const p of parts) assert.strictEqual((p.match(/<b>/g) || []).length, (p.match(/<\/b>/g) || []).length, 'balises fermées');
+  assert.strictEqual(parts.join('\n'), text, 'rien de perdu');
+  const t = truncHtml(text, 4096);
+  assert.ok(t.length <= 4096 && t.endsWith('…') && (t.match(/<b>/g) || []).length === (t.match(/<\/b>/g) || []).length);
+});

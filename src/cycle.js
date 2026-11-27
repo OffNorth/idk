@@ -326,7 +326,7 @@ function scalpDigest(cfg, store, markets, sinceMs) {
     any = true;
   }
   lines.push('', '<i>Amounts: each strategy has its own paper trading account. Fake money.</i>');
-  return any ? lines.join('\n').slice(0, 4096) : null;
+  return any ? require('./htmlSplit').truncHtml(lines.join('\n'), 4096) : null;
 }
 
 /** Bilan texte d'un marché (or par défaut). */
