@@ -660,7 +660,10 @@ story.append(KeepTogether([Paragraph('Lucid: 8 more ideas tested (27/11/2026)', 
     'about 20% of the intraday trades are skipped, intraday evaluation pass 47 → 31%, combined Nov 24–26 53 → 37%; daily and funded unchanged. '
     '<b>Several 50K accounts</b> rather than one 150K: the 150K pays ≈ ×1.6–2 per funded account for ≈ ×2.5 the cost; Lucid allows 5 funded accounts '
     'per household and copy trading between your own accounts. <b>Gold intraday on the Lucid evaluations</b> (user request, 27/11/2026): all 6 gold strategies at the Lucid intraday risk '
-    'wreck the intraday evaluation (pass 47 → 2%); kept: g_nypdl alone at 0.2% (pass 65%, failed within 14 days 29%, but passed within 14 days 11% instead of 32%), never on the funded account.', note)]))
+    'wreck the intraday evaluation (pass 47 → 2%); kept: g_nypdl alone at 0.2% (pass 65%, failed within 14 days 29%, but passed within 14 days 11% instead of 32%), never on the funded account. '
+    '<b>No Nasdaq daily on Lucid</b> (user choice “pass fast”, 27/11/2026): the funded account’s multi-day Nasdaq buys blocked the intraday evaluation '
+    '(cross-account rule). Without them: at least one evaluation passed within 30 days 23 → 37%, median 125 → 42 days, $222 → $190 per funded account; '
+    'funded payouts $5,159 → $4,406 (Nov 24–26) and $3,467 → $3,117 (2020–24) over 12 months.', note)]))
 
 story += part(4, 'The bot day to day')
 story.append(KeepTogether([Paragraph('Execution, notifications and tools', h2), Paragraph(

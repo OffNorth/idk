@@ -111,6 +111,7 @@ function accountOf(cfg, id = 'gold') {
       // Compte financé : tout × LUCID_FUNDED_RISK_MUL (2 : retraits 12 mois 2 054 → 2 611 $ sur nov. 24–26, 1 841 → 2 749 $
       // sur 2020–24, npm run lucid-funded avec les règles officielles ; 1er retrait en ≤ 60 j 85 → 67 % sur nov. 24–26)
       riskOf: (m, st, phase) => (st && excluded.has(`${m}:${st.id}`) ? 0
+        : cfg.lucidNoNasDaily && m === 'nas100' && !(st && st.tf && st.tf !== '1d') ? 0
         : (phase === 'funded' ? cfg.lucidFundedRiskMul ?? 1 : 1) * (st && st.tf && st.tf !== '1d'
           ? ((cfg.lucidIntradayStrategies || []).includes(`${m}:${st.id}`) ? (cfg.lucidIntradayRisk ?? 0) * (phase === 'funded' ? 1 : cfg.lucidEvalIntradayMul ?? 1)
             : phase !== 'funded' && (cfg.lucidEvalGold || []).includes(`${m}:${st.id}`) ? cfg.lucidEvalGoldRisk ?? 0.2 : 0)

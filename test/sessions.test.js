@@ -248,8 +248,13 @@ test('Lucid : euro en 6E standard (pas de micro M6E chez Lucid) ; journalières 
   assert.strictEqual(MICRO.eurusd.name, '6E');
   assert.strictEqual(MICRO.eurusd.mult, 125_000);
   assert.strictEqual(MICRO.russell.name, 'M2K');
-  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidFundedRiskMul: 1 }, 'lucid');
+  const L = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidFundedRiskMul: 1, lucidNoNasDaily: false }, 'lucid');
   const F = accountOf({ ...cfg, ftmoEnabled: true }, 'gold');
+  // LUCID_NO_NAS_DAILY (défaut) : plus de Nasdaq journalier sur Lucid, l'intraday Nasdaq reste
+  const L1 = accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid2');
+  assert.strictEqual(L1.riskOf('nas100', selectStrategies(['double7'])[0], 1), 0);
+  assert.ok(L1.riskOf('spx', selectStrategies(['double7'])[0], 1) > 0);
+  assert.ok(accountOf({ ...cfg, ftmoEnabled: true, lucidEnabled: true }, 'lucid').riskOf('nas100', selectStrategies(['n_mom10_t05'])[0], 1) > 0);
   for (const sid of ['russell:n_low10', 'nas100:double7', 'silver:double7']) {
     const [m, id] = sid.split(':');
     const s = selectStrategies([id])[0];
