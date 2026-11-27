@@ -136,8 +136,9 @@ Telegram commands. Only enable it if the bot is not running elsewhere (otherwise
 
 ## Versions
 
-The bot shows a readable version (v1.0, v1.1, …) taken from `package.json`; `/version` also gives the git commit.
-Each update bumps it (`npm run bump`, or `npm run bump major` for a big change). History: [CHANGELOG.md](CHANGELOG.md).
+The bot shows a readable version (v5.39, v5.40, …) taken from `package.json`, rebuilt from the whole history: one major
+number per big step (v1 scanner, v2 paper trading, v3 FTMO, v4 Lucid, v5 English + Binance), one minor number per update.
+`/version` also gives the git commit. `npm run bump` at each update (`npm run bump major` for a big step). History: [CHANGELOG.md](CHANGELOG.md).
 
 ## Configuration
 
