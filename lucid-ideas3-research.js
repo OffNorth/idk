@@ -445,6 +445,13 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     const G = all.filter((t) => goldIds.includes(t.sid) && t.intraday).map((t) => ({ ...t, riskPct: (cfg.lucidIntradayRisk ?? 0.45) * (cfg.lucidEvalIntradayMul ?? 3) }));
     const noG = (l) => l.filter((t) => !goldIds.includes(t.sid));
     console.log(`   ${G.length} trades or (2009–2026)`);
+    const one = (ids, risk) => all.filter((t) => ids.includes(t.sid) && t.intraday).map((t) => ({ ...t, riskPct: risk }));
+    for (const [nm, ids] of [['les 6', goldIds], ['g_asiabrk + g_nypdl', ['gold:g_asiabrk', 'gold:g_nypdl']], ['g_orb30 seule', ['gold:g_orb30']], ['g_nypdl seule', ['gold:g_nypdl']]]) {
+      for (const risk of [0.45, 0.2, 0.1]) {
+        const r1 = evalStats([...noG(INTRA), ...one(ids, risk)].sort((x, y) => x.entryT - y.entryT), {});
+        console.log(`   intraday + or ${nm.padEnd(20)} à ${String(risk).padEnd(4)} % ${fmtE(r1, true)}`);
+      }
+    }
     for (const [k, base, o, intraOnly] of [['intraday', noG(INTRA), {}, true], ['combined', noG(L), {}, false]]) {
       const r0 = evalStats(base, o), r1 = evalStats([...base, ...G].sort((x, y) => x.entryT - y.entryT), o);
       console.log(`   ${k.padEnd(9)} sans or ${fmtE(r0, intraOnly)}\n   ${''.padEnd(9)} avec or ${fmtE(r1, intraOnly)}`);
