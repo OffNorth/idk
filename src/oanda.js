@@ -68,9 +68,9 @@ const NYF = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', wee
 /** Bougies de la séance de New York seulement (9 h 30 → 16 h, lundi → vendredi), comme les données d'indice Yahoo. */
 function nySession(candles) {
   return candles.filter((c) => {
-    const p = Object.fromEntries(NYF.formatToParts(new Date(c.t * 1000)).map((x) => [x.type, x.value]));
+    const p = require('./nytime').nyParts(c.t);
     if (p.weekday === 'Sat' || p.weekday === 'Sun') return false;
-    const m = (Number(p.hour) % 24) * 60 + Number(p.minute);
+    const m = p.min;
     return m >= 9 * 60 + 30 && m < 16 * 60;
   });
 }

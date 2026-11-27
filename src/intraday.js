@@ -12,8 +12,8 @@ const NY = new Intl.DateTimeFormat('en-US', {
 
 /** Heure de New York d'un timestamp : { day: 'AAAA-MM-JJ', min: minutes depuis minuit }. */
 function nyTime(t) {
-  const p = Object.fromEntries(NY.formatToParts(new Date(t * 1000)).map((x) => [x.type, x.value]));
-  return { day: `${p.year}-${p.month}-${p.day}`, min: (Number(p.hour) % 24) * 60 + Number(p.minute) };
+  const p = require('./nytime').nyParts(t);
+  return { day: p.day, min: p.min };
 }
 
 /** Regroupe des bougies par clé et renvoie, pour chaque bougie d'origine, l'indice du dernier groupe TERMINÉ. */

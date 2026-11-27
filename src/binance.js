@@ -53,8 +53,8 @@ const ETF = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', wee
  */
 function metalsOpen(candles) {
   return candles.filter((c) => {
-    const p = Object.fromEntries(ETF.formatToParts(new Date(c.t * 1000)).map((x) => [x.type, x.value]));
-    const h = Number(p.hour) % 24;
+    const p = require('./nytime').nyParts(c.t);
+    const h = p.hour;
     if (p.weekday === 'Sat') return false;
     if (p.weekday === 'Sun') return h >= 18;
     if (p.weekday === 'Fri') return h < 17;
