@@ -481,8 +481,11 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
       return books.map((l, bi) => l.filter((t) => keep[bi].has(t)));
     };
     const intraMk = new Set(INTRA.map((t) => t.market));
-    for (const [nm, drop] of [['aucune séparation (actuel)', new Set()], ['journalières sans Nasdaq', new Set(['nas100'])], ['journalières sans les marchés intraday', intraMk]]) {
-      const D = DAILY.filter((t) => !drop.has(t.market)), F = FLD.filter((t) => !drop.has(t.market));
+    const ONLY13 = process.env.SEP ? process.env.SEP.split(',') : null;
+    for (const [nm, drop, fDrop] of [['aucune séparation (actuel)', new Set(), new Set()], ['journalières sans Nasdaq', new Set(['nas100']), new Set(['nas100'])],
+      ['journalières sans les marchés intraday', intraMk, intraMk], ['éval. journalière sans Nasdaq, financé inchangé', new Set(['nas100']), new Set()],
+      ['éval. journalière sans Nasdaq ni Dow, financé inchangé', new Set(['nas100', 'dow']), new Set()]].filter((x, i) => !ONLY13 || ONLY13.includes(String(i)))) {
+      const D = DAILY.filter((t) => !drop.has(t.market)), F = FLD.filter((t) => !fDrop.has(t.market));
       const [f2, i2, d2] = xf([F, INTRA, D]);
       console.log(`   ${nm}`);
       console.log(`      intraday  ${fmtE(evalStats(i2, {}), true)}`);
