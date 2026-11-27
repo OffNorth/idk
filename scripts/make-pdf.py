@@ -665,6 +665,20 @@ story.append(KeepTogether([Paragraph('Lucid: 8 more ideas tested (27/11/2026)', 
     '(cross-account rule). Without them: at least one evaluation passed within 30 days 23 → 37%, median 125 → 42 days, $222 → $190 per funded account; '
     'funded payouts $5,159 → $4,406 (Nov 24–26) and $3,467 → $3,117 (2020–24) over 12 months.', note)]))
 
+story.append(KeepTogether([Paragraph('Lucid: new strategies tested (27/11/2026)', h2), Paragraph(
+    'npm run lucid-ideas3 (idea 14). 51 candidates: turn of month on S&amp;P / Dow / Russell / silver, the Nasdaq daily winners on the other markets '
+    '(RSI 2, IBS, Double 7, 3 down days, 10-day low, cumulative RSI, dips), weekly reversal, Russell lagging the S&amp;P, the gold / silver ratio, and the '
+    'Nasdaq “0.5 R target” intraday set on silver. 17 pass alone (> +0.02 R per trade on 2009–14, 2015–20 and 2021–26, 2 years for intraday). Each is then added '
+    'to the whole Lucid system (intraday and daily evaluations, funded account, cross-account hedge rule). Kept only if nothing gets worse.', body), Spacer(1, 3), small_table([
+    ('Strategy', 'Result on the Lucid system', 'Decision'),
+    ('<b>Silver intraday: Crabel NR7, 15 min, 0.75 R target</b>', 'intraday evaluation 51 → 55%, at least one pass within 30 days 37 → 41%, median 39 → 35 days, $195 → $192 per funded account', '<b>added</b>'),
+    ('Dow Double 7, Russell Double 7, Russell RSI 2', 'funded payouts up (Nov 24–26 $4,406 → $5,309 / $5,903 / $5,346) but the daily evaluation passes less often on 2009–19 / 2020–26', '✘ (trade-off)'),
+    ('S&amp;P IBS / 10-day low, Dow RSI 2 / 10-day low, Russell 3 down days / cumulative RSI / weekly reversal', 'faster median but dearer per funded account or fewer daily passes', '✘'),
+    ('Silver 3 down days, gold / silver ratio, silver 15-min breakout', 'no gain on the system', '✘'),
+    ('Turn of month (S&amp;P, Dow, Russell, silver), Russell vs S&amp;P', 'not stable on the 3 periods', '✘'),
+    ], [52 * mm, 90 * mm, 36 * mm])]))
+
+
 story += part(4, 'The bot day to day')
 story.append(KeepTogether([Paragraph('Execution, notifications and tools', h2), Paragraph(
     f'<b>“Real-life” execution</b>: the FTMO and Lucid accounts enter and exit (on signal) at the price {fc["fd"]:g} s after the signal; stops and '

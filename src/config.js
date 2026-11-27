@@ -272,7 +272,10 @@ module.exports = {
   // + argent (silver:n_wvb05_t075, micro SIL) et Dow Jones (dow:n_mom10_t05, micro MYM) (npm run markets-research,
   // 25/11/2026) : réussite inchangée (55 / 72 / 94 % sur 2009–19 / 2020–26 / nov. 24–26), 34 j au lieu de 37 j ; pétrole,
   // Bitcoin, Russell et EUR/USD intraday font baisser Lucid, et chaque nouveau marché fait baisser FTMO
-  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_mom10_t05,nas100:n_orb15_t05,nas100:n_orb10l_t075,nas100:n_orb30l_t075,nas100:n_or60_t05,nas100:n_crabel4_t05,nas100:n_crabel7_15_t075,nas100:n_wvb05_t075,nas100:n_wvb07_t05,silver:n_wvb05_t075,dow:n_mom10_t1be,spx:n_mom10_t1be'),
+  // + silver:n_crabel7_15_t075 (npm run lucid-ideas3, idée 14, 27/11/2026 : seule nouvelle stratégie qui améliore le système
+  // Lucid avec l'anti-hedging : évaluation intraday 51 → 55 %, au moins une réussie en ≤ 30 j 37 → 41 %, médiane 39 → 35 j,
+  // 195 → 192 $ par compte financé ; argent intraday +0,06 / +0,19 R par trade sur les deux années)
+  lucidIntradayStrategies: list('LUCID_INTRADAY_STRATEGIES', 'nas100:n_mom10_t05,nas100:n_orb15_t05,nas100:n_orb10l_t075,nas100:n_orb30l_t075,nas100:n_or60_t05,nas100:n_crabel4_t05,nas100:n_crabel7_15_t075,nas100:n_wvb05_t075,nas100:n_wvb07_t05,silver:n_wvb05_t075,silver:n_crabel7_15_t075,dow:n_mom10_t1be,spx:n_mom10_t1be'),
   // + spx:n_mom10_t1be (micro MES, npm run lucid-research6, 26/11/2026) : nov. 24–26 51 → 53 %, ≤ 30 j 42 → 43 %, rien ne baisse
   // Journalières propres au compte Lucid (npm run lucid-research4, 25/11/2026) : Double 7 et RSI 2 sur le S&P 500
   // (micro MES), au risque des journalières Lucid ; avec le Dow en break-even (dow:n_mom10_t1be, objectif 1 R) : réussite
