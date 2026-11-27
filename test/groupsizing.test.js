@@ -47,7 +47,12 @@ test('deux évaluations Lucid (LUCID_SPLIT) : intraday seulement / journalières
   const a = accountOf(cfg, 'lucid'), b = accountOf(cfg, 'lucid2'), f = accountOf(cfg, 'lucidf');
   assert.ok(a.riskOf('nas100', intra, 'eval') > 0 && a.riskOf('spx', daily, 'eval') === 0, 'lucid : intraday seulement');
   assert.ok(b.riskOf('spx', daily, 'eval') > 0 && b.riskOf('nas100', intra, 'eval') === 0, 'lucid2 : journalières seulement');
-  assert.ok(f.riskOf('nas100', intra, 'funded') > 0 && f.riskOf('spx', daily, 'funded') > 0, 'financé : tout');
+  assert.ok(f.riskOf('nas100', intra, 'funded') === 0 && f.riskOf('spx', daily, 'funded') > 0, 'financé : journalières seulement (LUCID_FUNDED_DAILY_ONLY)');
+  const fAll = accountOf({ ...cfg, lucidFundedDailyOnly: false }, 'lucidf');
+  assert.ok(fAll.riskOf('nas100', intra, 'funded') > 0 && fAll.riskOf('spx', daily, 'funded') > 0, 'LUCID_FUNDED_DAILY_ONLY=0 : tout');
+  assert.strictEqual(b.dayMgmt, false, 'lucid2 : pas de gestion de la journée');
+  assert.strictEqual(accountOf({ ...cfg, lucidDailyDayMgmt: true }, 'lucid2').dayMgmt, true);
+  assert.notStrictEqual(a.dayMgmt, false, 'lucid intraday : gestion de la journée gardée');
   assert.deepStrictEqual([a.file, b.file, f.file], ['lucid.json', 'lucid2.json', 'lucid-funded.json']);
   assert.ok(ftmoAccounts(cfg).some((x) => x.id === 'lucid2'));
   assert.ok(!ftmoAccounts({ ...cfg, lucidSplit: false }).some((x) => x.id === 'lucid2'), 'LUCID_SPLIT=0 : une seule évaluation');
@@ -76,7 +81,7 @@ test('Lucid financé : règles du financé (pas de régularité, scaling des con
 });
 
 test('Lucid financé : risque × LUCID_FUNDED_RISK_MUL (2 par défaut), évaluation inchangée', () => {
-  const cfg = { ...require('../src/config'), ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidParallel: true, lucidFundedRiskMul: 2 };
+  const cfg = { ...require('../src/config'), ftmoEnabled: true, lucidEnabled: true, lucidSplit: false, lucidParallel: true, lucidFundedRiskMul: 2, lucidFundedDailyOnly: false };
   const { accountOf } = require('../src/ftmoAccount');
   const { selectStrategies } = require('../src/strategies');
   const daily = selectStrategies(['double7'])[0], intra = selectStrategies(['n_mom10_t05'])[0];

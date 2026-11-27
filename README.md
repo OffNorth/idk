@@ -37,7 +37,7 @@ Every minute (every CHECK_INTERVAL_MINUTES without scalp strategies)
 |---|---|---|
 | **FTMO 100K, 1-step challenge** (`/ftmo`) | +10% target, 3% daily loss, 10% trailing max loss, best day ≤ 50% of the gain, min 4 days; funded: 80–90% split, payouts every 14 days | daily strategies (gold, S&P, EUR/USD) + gold / S&P / stock intraday breakouts |
 | **LucidFlex 50K, two evaluations at once** (`/lucid`, `/lucid daily`) | +6% ($3,000), no daily loss limit, $2,000 end-of-day trailing max loss locked at capital + $100, best day ≤ 40%, whole CME micro contracts | one evaluation takes the **intraday** strategies (Nasdaq, Dow, silver), the other the **daily** ones (S&P, Nasdaq, Russell, silver) |
-| **Separate funded Lucid account** | Lucid's official funded rules: no consistency rule, contract cap by profit (20 / 30 / 40 micros from $0 / $1,000 / $2,000), max loss locked at capital + $100 from the first payout, payout after 5 winning days ≥ $150 (≤ 50% of the gain, ≤ $2,000, 5 payouts max), 90% split | everything Lucid trades |
+| **Separate funded Lucid account** | Lucid's official funded rules: no consistency rule, contract cap by profit (20 / 30 / 40 micros from $0 / $1,000 / $2,000), max loss locked at capital + $100 from the first payout, payout after 5 winning days ≥ $150 (≤ 50% of the gain, ≤ $2,000, 5 payouts max), 90% split | daily strategies only (`LUCID_FUNDED_DAILY_ONLY`) |
 
 Account management that came out of the research (all switchable in `.env`):
 - **Correlation-based sizing (FTMO)**: size × 0.5 when a position from the same market group (US indices and stocks,
@@ -45,12 +45,14 @@ Account management that came out of the research (all switchable in `.env`):
 - **Cushion-based risk (funded FTMO account)**: risk × remaining cushion before the max loss (× 1 down to × 0.25). Not used on
   funded Lucid: with its max loss locked from the first payout it cuts payouts.
 - **Trailing stop (FTMO)**: once a trade has made +2 R, the stop trails 1 R from the best close.
-- **Day management**: Lucid stops for the day at +$750 or after the first loss during the evaluation; FTMO the same way.
+- **Day management**: the Lucid intraday evaluation stops for the day at +$750 or after the first loss; FTMO the same way.
+  The daily evaluation has none (`LUCID_DAILY_DAY_MGMT=0`: pass 46 → 49%).
 - **Validator AI**: a logistic model scores every signal; it blocks the weakest ≈ 20% on FTMO and only gives its opinion on
   Lucid. It retrains carefully every Sunday on live signals.
 - **Funded FTMO**: risk × 0.75 and partial exits (⅓ at +1 R, ⅓ at +2 R).
 - **Funded Lucid**: risk × 2 (`LUCID_FUNDED_RISK_MUL`): payouts over 12 months ≈ $2,611 (Nov 24–26) and $2,749 (2020–24)
   instead of $2,054 / $1,841, but the first payout comes within 60 days less often recently (67% vs 85%).
+  Daily strategies only (27/11/2026): payouts over 12 months $2,253 → $3,021 (Nov 24–26), 2020–24 equal, accounts lost 91 → 78%.
 
 The plan these accounts serve: pass Lucid fast, collect Lucid payouts, use them to pay for FTMO accounts set up to last.
 
@@ -139,6 +141,7 @@ The most useful ones:
 | `FTMO_PROGRAM` | `1step` | FTMO program: `1step`, `2step` or `swing` |
 | `FTMO_STRATEGIES` | see `.env.example` | strategies followed by the FTMO account (`market:id`) |
 | `LUCID_SPLIT` | 1 | two Lucid evaluations (intraday / daily); 0 = a single one |
+| `LUCID_FUNDED_DAILY_ONLY` / `LUCID_DAILY_DAY_MGMT` | 1 / 0 | funded Lucid on daily strategies only / day management on the daily evaluation |
 | `FTMO_GROUP_SIZING` / `FUNDED_CUSHION` | 1 / 1 | correlation-based sizing (FTMO) / cushion-based risk (funded accounts) |
 | `FTMO_AI` / `LUCID_AI` | `block` / `observe` | validator AI mode |
 | `BINANCE_FEED` | 1 | Binance real-time gold / silver candles (falls back to Yahoo) |

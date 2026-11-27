@@ -384,7 +384,7 @@ story.append(KeepTogether([Paragraph('Plan: Lucid, payouts, then an FTMO account
     'Pass the Lucid evaluation fast, collect Lucid payouts, use them to pay for an FTMO account set up to last (scaling up to $2M). '
     '<b>Lucid funded</b> (Lucid’s official funded rules: contract cap by profit 20 / 30 / 40 micros, max loss locked at capital + $100 from the first payout, '
     '5 payouts max): first payout within 60 days 85%, median 17 days, ≈ $2,050 over 12 months (Nov 24–26), ≈ $1,840 (2020–24, daily only); '
-    'the account rarely lasts. <b>Risk × 2 (current, chosen on 27/11/2026)</b>: more payouts in total ($2,611 / $2,749) but the first payout comes less often within 60 days recently (85 → 67%). '
+    'the account rarely lasts. <b>Risk × 2 (current, chosen on 27/11/2026)</b>: more payouts in total ($2,611 / $2,749) but the first payout comes less often within 60 days recently (85 → 67%). <b>Daily strategies only (current, 27/11/2026)</b>: $3,021 of payouts over 12 months (Nov 24–26), accounts lost 91 → 78%. '
     'The cushion-based risk is NOT used on Lucid: with the max loss locked right after a payout it cuts payouts to ≈ $1,300. <b>FTMO during the evaluation</b>: set up “like Lucid” (intraday × 2, '
     'day over at +$2,500 or after 1 loss). <b>FTMO funded</b>: all risk × 0.75 (chosen on 26/11/2026), plus partial exits (⅓ at +1 R, ⅓ at +2 R, the rest on the trailing stop).', body),
     Spacer(1, 3), small_table([
@@ -622,6 +622,23 @@ story.append(KeepTogether([Paragraph('Optimizing returns: 7 more ideas (26/11/20
     ('Pullback limit entries after a breakout', 'first test biased (fill inside the breakout candle); fixed: FTMO 42 / 43 / 53%, Lucid Nov 24–26 53 → 35%', '✘'),
     ('Closing daily positions before weekends', 'FTMO 42 / 47 / 69 → 27 / 30 / 43%', '✘'),
     ], [58 * mm, 82 * mm, 38 * mm])]))
+
+story.append(KeepTogether([Paragraph('Lucid: 6 improvement ideas tested (27/11/2026)', h2), Paragraph(
+    'Tested with npm run lucid-improve, Lucid’s official funded rules, funded risk × 2. Payouts = 12 months after funding (Nov 24–26 / 2020–24). '
+    'Two ideas worsen nothing and are kept: <b>the daily evaluation without day management</b> and <b>the funded account on daily strategies only</b>. '
+    'The others are trade-offs left to the user.', body), Spacer(1, 3), small_table([
+    ('Idea', 'Result', 'Decision'),
+    ('<b>Funded account: daily strategies only</b>', 'payouts $2,253 → $3,021 (Nov 24–26), 2020–24 equal; accounts lost 91 → 78%', '<b>added</b> (LUCID_FUNDED_ DAILY_ONLY=1)'),
+    ('<b>Daily evaluation without day management</b>', 'pass 46 → 49%, within 30 days 61 → 62%; stop after 2 losses 48%; risk × 1.5 / × 2 worse', '<b>added</b> (LUCID_DAILY_ DAY_MGMT=0)'),
+    ('Intraday evaluation at × 2 instead of × 3', 'pass 47 → 61%, failed within 14 days 51 → 33%, but passed within 14 days 32 → 25%; × 4 worse', 'trade-off (LUCID_EVAL_ INTRADAY_MUL)'),
+    ('Waiting for a margin before asking for a payout', 'margin ≥ $1,500: payouts $2,253 → $2,796 (2020–24 $2,888 → $2,900), first payout within 60 days 67 → 59%; max payout only $2,973', 'trade-off'),
+    ('Three evaluations (Nasdaq intraday | other intraday | daily)', 'at least one passes within 30 days 45 → 51%, within a year 92 → 99%, median 63 → 28 days; funded accounts 1.37 → 1.64 per start, cost per funded $198 → $248', 'trade-off (faster, dearer)'),
+    ('LucidPro instead of LucidFlex (same price assumed)', 'evaluation similar (two evaluations: 22 days median); funded payouts $5,333 / $2,856 vs $2,253 / $2,888, lost 74%', 'to check: price and rules'),
+    ('LucidDaily', 'funded payouts $3,375 / $4,342 but account lost 100% of the time', '✘'),
+    ('50% consistency option (paid add-on)', 'cost per funded $196 vs $198, median 27 vs 63 days, intraday passes within 14 days 32 → 35%', 'to check: option price'),
+    ], [44 * mm, 86 * mm, 48 * mm]), Paragraph(
+    'Lucid plan prices are not published to automated readers: LucidPro, LucidDaily and the option were compared at the same price ($136). '
+    'Check them on the Lucid website before choosing.', note)]))
 
 story += part(4, 'The bot day to day')
 story.append(KeepTogether([Paragraph('Execution, notifications and tools', h2), Paragraph(

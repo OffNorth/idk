@@ -66,12 +66,18 @@ const LUCID_FUNDED_FILE = 'lucid-funded.json';
 function accountOf(cfg, id = 'gold') {
   if (id === 'lucidf') {
     const L = accountOf({ ...cfg, lucidSplit: false }, 'lucid');
-    return { ...L, id: 'lucidf', label: `${L.label} funded`, file: LUCID_FUNDED_FILE, fundedOnly: true, tag: 'funded', enabled: L.enabled && !!cfg.lucidParallel };
+    // LUCID_FUNDED_DAILY_ONLY (npm run lucid-improve, 27/11/2026) : le compte financé ne prend que les journalières
+    // (retraits 12 mois nov. 24–26 2 253 → 3 021 $, comptes perdus 91 → 78 % ; 2020–24 égal)
+    const intra = (st) => !!(st && st.tf && st.tf !== '1d');
+    return { ...L, id: 'lucidf', label: `${L.label} funded`, file: LUCID_FUNDED_FILE, fundedOnly: true, tag: 'funded', enabled: L.enabled && !!cfg.lucidParallel,
+      riskOf: (m, st, phase) => (cfg.lucidFundedDailyOnly !== false && intra(st) ? 0 : L.riskOf(m, st, phase)) };
   }
   if (id === 'lucid2') {
     const L = accountOf({ ...cfg, lucidSplit: false }, 'lucid');
     const intra = (st) => !!(st && st.tf && st.tf !== '1d');
+    // Sans gestion de la journée (LUCID_DAILY_DAY_MGMT=0, npm run lucid-improve) : réussie 46 → 49 %, ≤ 30 j 61 → 62 %
     return { ...L, id: 'lucid2', label: `${L.label} daily`, file: 'lucid2.json', tag: 'daily', enabled: L.enabled && !!cfg.lucidSplit,
+      dayMgmt: !!cfg.lucidDailyDayMgmt,
       riskOf: (m, st, phase) => (intra(st) ? 0 : L.riskOf(m, st, phase)) };
   }
   if (id === 'lucid' && cfg.lucidSplit) {
@@ -480,7 +486,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         // Lucid, pendant l'évaluation (npm run lucid-research5) : journée finie dès que le gain du jour atteint
         // LUCID_DAY_PROFIT_CAP_PCT % de l'objectif ou après LUCID_MAX_LOSSES_DAY trade(s) perdant(s)
         // FTMO pendant l'évaluation, même gestion (FTMO_DAY_PROFIT_CAP_PCT, FTMO_MAX_LOSSES_DAY ; npm run ftmo-lucidlike)
-        if (s.phase !== 'funded') {
+        if (s.phase !== 'funded' && A.dayMgmt !== false) {
           const lucid = A.firm === 'Lucid';
           const capPct = lucid ? cfg.lucidDayProfitCapPct : cfg.ftmoDayProfitCapPct;
           const maxL = lucid ? cfg.lucidMaxLossesDay : cfg.ftmoMaxLossesDay;
@@ -841,7 +847,7 @@ function dailyReport(cfg, store, arg = '') {
     const lucid = a.firm === 'Lucid';
     const maxL = lucid ? cfg.lucidMaxLossesDay : cfg.ftmoMaxLossesDay;
     const capPct = lucid ? cfg.lucidDayProfitCapPct : cfg.ftmoDayProfitCapPct;
-    if (s.phase !== 'funded' && (maxL > 0 || capPct > 0)) {
+    if (s.phase !== 'funded' && a.dayMgmt !== false && (maxL > 0 || capPct > 0)) {
       const cap = ((capPct ?? 0) / 100) * s.capital * ((st.program.target ?? TARGET[s.phase] ?? 10) / 100);
       const done = (maxL > 0 && (s.dayLosses || 0) >= maxL) || (cap > 0 && s.balance - st.dayStart >= cap);
       lines.push(`Day management: ${done ? '⏸ day over (no new trades today)' : 'open'}${cap > 0 ? ` · stop at +$${Math.round(cap).toLocaleString('en-US')}` : ''}${maxL > 0 ? ` or after ${maxL} loss(es) (${s.dayLosses || 0} today)` : ''}`);

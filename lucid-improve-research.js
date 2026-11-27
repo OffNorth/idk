@@ -70,7 +70,7 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
   const evaluate = (id, list, extra = {}) => {
     const o = { ...(id === 'ftmo' ? RF : RL), ...extra };
     const cs = Object.entries(P).map(([k, [a, b]]) => challengeStats(list.filter((t) => inPer(t, k, a, b)), { horizonDays: 365, start: a, ...(Number.isFinite(b) ? { end: b } : {}), ...o }));
-    const res = { per: cs.map((c) => c.passRate), days: cs.map((c) => c.medianDays), p14: 0, p30: 0, f14: 0 };
+    const res = { per: cs.map((c) => c?.passRate ?? NaN), days: cs.map((c) => c?.medianDays), p14: 0, p30: 0, f14: 0 };
     if (id === 'lucid') {
       const l = list.filter((t) => t.entryT >= A0).sort((x, y) => x.entryT - y.entryT);
       const end = l[l.length - 1].entryT - 60 * DAY; let n = 0;
@@ -140,9 +140,24 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
 
   /* Compte financé : départ chaque jour ouvré (nov. 24–25, tout) et chaque semaine (2020–24, journalières seules) */
   const FP = { 'nov. 24–26': [A0, true, DAY], '2020–24': [Y(2020), false, 7 * DAY] };
-  const payoutWith = ({ buffer = 0, maxOnly = false, minDay = 150, cap = 2000 } = {}) => {
-    let good = 0, nPay = 0, cycleStart = -Infinity;
+  const payoutWith = ({ buffer = 0, maxOnly = false, minDay = 150, cap = 2000, mode = 'flex' } = {}) => {
+    let good = 0, nPay = 0, cycleStart = -Infinity, cycleDays = [];
     return ({ day, balance, capital, dayPnl }) => {
+      if (mode === 'pro' || mode === 'daily') {
+        // LucidPro : gain du cycle ≥ 500 $, meilleur jour ≤ 40 % du gain du cycle, solde gardé au-dessus de capital + 2 100 $,
+        // 2 000 $ au 1er retrait puis 2 500 $ ; LucidDaily : chaque jour, tout ce qui dépasse capital + 2 100 $ (≥ 500 $)
+        cycleDays.push(dayPnl.get(day) || 0);
+        const above = balance - (capital + 2100);
+        if (above < 500 || balance <= cycleStart) return 0;
+        let amt = above;
+        if (mode === 'pro') {
+          const cyc = cycleDays.reduce((a, b) => a + b, 0);
+          if (cyc < 500 || Math.max(...cycleDays) > 0.4 * cyc) return 0;
+          amt = Math.min(above, nPay ? 2500 : 2000);
+        }
+        nPay++; cycleStart = balance - amt; cycleDays = [];
+        return amt;
+      }
       if ((dayPnl.get(day) || 0) >= minDay) good++;
       const gain = balance - capital;
       if (nPay >= 5 || good < 5 || gain <= 0 || balance <= cycleStart) return 0;
@@ -235,7 +250,15 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
 
   /* ---------- 5 et 6. Autres formules Lucid, option régularité 50 % ---------- */
   // PLANS : règles 50K des formules Lucid (centre d'aide Lucid), à compléter : [nom, évaluation (options runPhase), prix, financé (options), retraits]
-  const PLANS = require('./data/research/lucid-plans.json');
+  const PLANS = [
+    // Centre d'aide Lucid (oct.–nov. 2026). Prix non publiés : 136 $ pour tous (LucidFlex, affiliés) pour comparer.
+    { name: 'LucidFlex, régularité 40 % (actuel)', price: 136, eval: {}, funded: {}, payout: {} },
+    { name: 'LucidFlex + option régularité 50 %', price: 136, eval: { bestDayPct: 50 }, funded: {}, payout: {} },
+    { name: 'LucidPro (pas de régularité, perte du jour 1 200 $ en évaluation)', price: 136, eval: { bestDayPct: 0, dayStopPct: 2.4 },
+      funded: { scaling: null }, payout: { mode: 'pro' } },
+    { name: 'LucidDaily (régularité 50 %, retraits chaque jour au-dessus de 52 100 $)', price: 136, eval: { bestDayPct: 50 },
+      funded: { scaling: null }, payout: { mode: 'daily' } },
+  ];
   if (want(5) || want(6)) {
     console.log('=== 5 et 6. Formules Lucid (50K) et option régularité 50 % ===');
     for (const P of PLANS) {

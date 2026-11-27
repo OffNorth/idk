@@ -47,7 +47,7 @@ function phaseOptions(cfg, A, s) {
   if (P.contracts) {
     // Lucid pendant l'évaluation : journée finie après un gain du jour de LUCID_DAY_PROFIT_CAP_PCT % de l'objectif ou
     // LUCID_MAX_LOSSES_DAY trade(s) perdant(s)
-    const day = funded ? {} : {
+    const day = funded || A.dayMgmt === false ? {} : {
       ...(cfg.lucidDayProfitCapPct > 0 ? { dayProfitCapUsd: (cfg.lucidDayProfitCapPct / 100) * s.capital * (target / 100) } : {}),
       ...(cfg.lucidMaxLossesDay > 0 ? { maxLossesPerDay: cfg.lucidMaxLossesDay } : {}),
     };

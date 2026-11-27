@@ -217,6 +217,11 @@ module.exports = {
   // Compte Lucid financé : risque × ce nombre (2, demande de l'utilisateur 27/11/2026 : retraits 12 mois 2 054 → 2 611 $,
   // 2020–24 1 841 → 2 749 $ ; 1er retrait en ≤ 60 j 85 → 67 % sur nov. 24–26) ; 1 = risque d'évaluation sans le × intraday
   lucidFundedRiskMul: num('LUCID_FUNDED_RISK_MUL', 2),
+  // npm run lucid-improve (27/11/2026) : compte financé en journalières seulement (retraits 12 mois nov. 24–26 2 253 →
+  // 3 021 $, 2020–24 égal, comptes perdus 91 → 78 %) ; 0 = toutes les stratégies
+  lucidFundedDailyOnly: num('LUCID_FUNDED_DAILY_ONLY', 1) === 1,
+  // Gestion de la journée sur l'évaluation journalières (lucid2) : 0 (défaut, npm run lucid-improve : réussie 46 → 49 %)
+  lucidDailyDayMgmt: num('LUCID_DAILY_DAY_MGMT', 0) === 1,
   // Compte Lucid financé à part démarré directement, sans attendre une évaluation réussie (s'il n'existe pas encore)
   lucidFundedDirect: num('LUCID_FUNDED_DIRECT', 1) === 1,
   // npm run lucid-tune : Lucid sans intraday, journalières à 2,5 % → 62 % / 67 % / 73 % (contre 13 % / 11 % / 21 %)
