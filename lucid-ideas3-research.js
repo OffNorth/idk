@@ -765,5 +765,28 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     }
     console.log('');
   }
+  /* ---------- 19. Compte FTMO + cassure 4 h crypto (BTC, ETH : volume + vrai delta, src/crypto4h.js) ---------- */
+  if (want(19)) {
+    console.log('=== 19. FTMO (réglage actuel) + cassure 4 h BTC / ETH ===');
+    const { loadKlines, loadFunding, backtest4h } = require('./src/crypto4h');
+    const YS = { nas100: '^NDX', spx: '^GSPC', dow: '^DJI', russell: '^RUT', silver: 'SI=F', gold: 'GC=F', tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA', eurusd: 'EURUSD=X' };
+    const TR = {}; const emaOf = (c, n) => { const k = 2 / (n + 1); let e = c[0]; return c.map((x) => (e = x * k + e * (1 - k))); };
+    for (const [m, sym] of Object.entries(YS)) { const d = DLY?.[m]?.c?.length ? DLY[m].c : (await cachedYahoo(CACHE, sym, '1d', {}, 72)).filter((k) => k.c > 0); const c = d.map((k) => k.c); TR[m] = { t: d.map((k) => k.t), c, e50: emaOf(c, 50), e200: emaOf(c, 200) }; }
+    const trendAt = (m, t) => { const T = TR[m]; if (!T) return 0; let lo = 0, hi = T.t.length - 1, i = -1; while (lo <= hi) { const md = (lo + hi) >> 1; if (T.t[md] + 86400 <= t) { i = md; lo = md + 1; } else hi = md - 1; }
+      if (i < 200) return 0; return T.c[i] > T.e50[i] && T.e50[i] > T.e200[i] ? 1 : T.c[i] < T.e50[i] && T.e50[i] < T.e200[i] ? -1 : 0; };
+    const FTL = LIST('ftmo').filter((t) => { if (!t.intraday) return true; const tr = trendAt(t.market, t.entryT); return tr !== 0 && (tr === 1) === (t.side === 'long'); });
+    const LEV = { ...RF.levCap, btc: 3, eth: 3 };
+    const ref = evaluate('ftmo', FTL, { dayLockUsd: 5000, levCap: LEV });
+    console.log(`   FTMO actuel ${fmt(ref)}`);
+    const cr = (o, side) => ['BTCUSDT', 'ETHUSDT'].flatMap((s) => backtest4h(loadKlines(s), { ...o, side, funding: loadFunding(s) })
+      .map((t) => ({ ...t, sid: `${s.slice(0, 3).toLowerCase()}:x_brk4h`, market: s.slice(0, 3).toLowerCase(), intraday: false })));
+    const SETS = { 'N 40, volume + delta ≥ 1 σ (choisi sur 2020–23)': { n: 40, kVol: 1, kDelta: 1 }, 'N 20, volume + delta ≥ 0,5 σ (proposé)': { n: 20, kVol: 0.5, kDelta: 0.5 }, 'N 20, cassure seule': { n: 20, useVol: false, useDelta: false } };
+    for (const [nm, o] of Object.entries(SETS)) for (const side of ['both', 'long']) for (const risk of [0.25, 0.5, 1]) {
+      const add = cr(o, side).map((t) => ({ ...t, riskPct: risk }));
+      const r = evaluate('ftmo', [...FTL, ...add].sort((a2, b) => a2.entryT - b.entryT), { dayLockUsd: 5000, levCap: LEV });
+      console.log(`${better(r, ref, 'ftmo') ? '✅' : '  '} + ${nm}${side === 'long' ? ', achats seuls' : ''} à ${risk} % (${add.length} trades)`.padEnd(86) + fmt(r));
+    }
+    console.log('');
+  }
   console.log('\n✅ = rien ne baisse et au moins un chiffre monte (évaluations : réussite, ≤ 14 j, ≤ 30 j, échecs ≤ 14 j ; financé : retraits, comptes perdus)');
 })().catch((e) => { console.error(e); process.exit(1); });
