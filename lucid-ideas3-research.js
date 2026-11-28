@@ -714,5 +714,34 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     for (const m2 of [1.25, 1.5]) lineF(`journalières × ${m2}, intraday × 0,75`, evaluate('ftmo', LIST('ftmo').map((t) => ({ ...t, riskPct: t.riskPct * (t.intraday ? 0.75 : m2) }))));
     console.log('');
   }
+  /* ---------- 17. FTMO : combinaison des gagnants de la section 16 (ajout un à un, gardé si mieux) ---------- */
+  if (want(17)) {
+    console.log('=== 17. FTMO : combinaison (verrou +5 %, tendance, retraits de stratégies) ===');
+    const YS = { nas100: '^NDX', spx: '^GSPC', dow: '^DJI', russell: '^RUT', silver: 'SI=F', gold: 'GC=F', tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA', eurusd: 'EURUSD=X' };
+    const TR = {}; const emaOf = (c, n) => { const k = 2 / (n + 1); let e = c[0]; return c.map((x) => (e = x * k + e * (1 - k))); };
+    for (const [m, sym] of Object.entries(YS)) { const d = DLY?.[m]?.c?.length ? DLY[m].c : (await cachedYahoo(CACHE, sym, '1d', {}, 72)).filter((k) => k.c > 0); const c = d.map((k) => k.c); TR[m] = { t: d.map((k) => k.t), c, e50: emaOf(c, 50), e200: emaOf(c, 200) }; }
+    const trendAt = (m, t) => { const T = TR[m]; if (!T) return 0; let lo = 0, hi = T.t.length - 1, i = -1; while (lo <= hi) { const md = (lo + hi) >> 1; if (T.t[md] + 86400 <= t) { i = md; lo = md + 1; } else hi = md - 1; }
+      if (i < 200) return 0; return T.c[i] > T.e50[i] && T.e50[i] > T.e200[i] ? 1 : T.c[i] < T.e50[i] && T.e50[i] < T.e200[i] ? -1 : 0; };
+    const steps = {
+      'verrou +5 %': { o: { dayLockUsd: 5000 } },
+      'tendance (les deux)': { f: (l) => l.filter((t) => { if (!t.intraday) return true; const tr = trendAt(t.market, t.entryT); return tr === 0 || (tr === 1) === (t.side === 'long'); }) },
+      'tendance (les deux), rien si neutre': { f: (l) => l.filter((t) => { if (!t.intraday) return true; const tr = trendAt(t.market, t.entryT); return tr !== 0 && (tr === 1) === (t.side === 'long'); }) },
+      ...Object.fromEntries(['gold:g_orb30', 'gold:g_nypdl', 'tlt:n_crabel7_15', 'lly:n_orb5s', 'nas100:n_orb5s'].map((sid) => [`sans ${sid}`, { f: (l) => l.filter((t) => t.sid !== sid) }])),
+    };
+    const apply = (keys) => { let l = LIST('ftmo'); let o = {}; for (const k of keys) { if (steps[k].f) l = steps[k].f(l); if (steps[k].o) o = { ...o, ...steps[k].o }; } return evaluate('ftmo', l, o); };
+    let cur = []; let best = evaluate('ftmo', LIST('ftmo'));
+    console.log(`   actuel ${fmt(best)}`);
+    const score = (r) => r.per.reduce((a, b) => a + b, 0);
+    for (;;) {
+      const tries = Object.keys(steps).filter((k) => !cur.includes(k) && !(k.startsWith('tendance') && cur.some((c) => c.startsWith('tendance')))).map((k) => ({ k, r: apply([...cur, k]) })).filter((x) => better(x.r, best, 'ftmo'));
+      if (!tries.length) break;
+      tries.sort((a, b) => score(b.r) - score(a.r));
+      cur = [...cur, tries[0].k]; best = tries[0].r;
+      console.log(`✅ + ${tries[0].k.padEnd(40)} ${fmt(best)}`);
+    }
+    console.log(`   retenu : ${cur.join(' · ') || 'rien'}`);
+    // Contrôle : le même ensemble sur des départs décalés (années impaires / paires), pour voir si c'est stable
+    console.log('');
+  }
   console.log('\n✅ = rien ne baisse et au moins un chiffre monte (évaluations : réussite, ≤ 14 j, ≤ 30 j, échecs ≤ 14 j ; financé : retraits, comptes perdus)');
 })().catch((e) => { console.error(e); process.exit(1); });
