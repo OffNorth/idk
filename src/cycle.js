@@ -217,6 +217,8 @@ async function runCycle({ cfg, store, channel, publish = true, buttons = false }
   // IA : résultats des signaux jugés mis à jour à chaque passage (bilan /adapt, /export ; plus seulement le dimanche)
   if (cfg.autoAdapt) { try { require('./adapt').labelSamples(store); } catch { /* rien */ } }
   if (cfg.livePush) require('./livePush').pushLive(cfg, store).catch(() => {});
+  // Sauvegarde quotidienne des données (src/backup.js, BACKUP=1)
+  require('./backup').pushBackup(cfg, store).catch(() => {});
   return out;
 }
 

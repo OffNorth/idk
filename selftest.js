@@ -23,7 +23,7 @@ async function run({ live = false, log = console.log } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'selftest-'));
   Object.assign(process.env, {
     TELEGRAM_BOT_TOKEN: '123456:selftest', DATA_DIR: dir, TELEGRAM_CHANNEL_ID: GROUP_ID, ALLOWED_TELEGRAM_USER_IDS: String(ADMIN_ID),
-    LIVE_PUSH: '0', FILL_DELAY_SEC: '0', INTRADAY_FEED: 'yahoo', PORTFOLIO: '0',
+    LIVE_PUSH: '0', BACKUP: '0', BACKUP_RESTORE: '0', FILL_DELAY_SEC: '0', INTRADAY_FEED: 'yahoo', PORTFOLIO: '0',
   });
   delete process.env.OANDA_TOKEN;
   for (const k of Object.keys(require.cache)) if (k.startsWith(__dirname + path.sep) && !k.includes(`${path.sep}node_modules${path.sep}`)) delete require.cache[k];

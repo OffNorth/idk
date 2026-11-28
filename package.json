@@ -1,6 +1,6 @@
 {
   "name": "gold-paper-bot",
-  "version": "5.42.0",
+  "version": "5.43.0",
   "description": "Telegram paper trading bot: gold, Nasdaq 100 and more, with simulated FTMO and Lucid prop-firm accounts",
   "main": "bot.js",
   "scripts": {
@@ -51,6 +51,7 @@
     "mc-build": "node mc-build.js",
     "selftest": "node selftest.js",
     "bump": "node scripts/bump.js",
+    "restore": "node scripts/restore.js",
     "sessions": "node --max-old-space-size=6144 session-research.js",
     "sessions2": "node --max-old-space-size=6144 session-research2.js",
     "lucid-research": "node --max-old-space-size=7000 lucid-research.js",

@@ -221,6 +221,10 @@ module.exports = {
   lucidNoCrossHedge: num('LUCID_NO_CROSS_HEDGE', 1) === 1,
   // IA : apprend de tous les signaux paper, pas seulement de ceux du compte FTMO (0 = seulement les signaux des comptes)
   aiLearnAll: num('AI_LEARN_ALL', 1) === 1,
+  // Sauvegarde quotidienne des données (comptes, trades, IA, jeu) sur le serveur du site, privée (clé dérivée du token du
+  // bot) ; restauration automatique au démarrage si le dossier de données est vide (BACKUP_RESTORE)
+  backup: num('BACKUP', 1) === 1 && !process.env.NODE_TEST_CONTEXT,
+  backupRestore: num('BACKUP_RESTORE', 1) === 1,
   // Pas de Nasdaq journalier sur Lucid (choix de l'utilisateur « passer vite », 27/11/2026, npm run lucid-ideas3 idée 13) : les
   // achats Nasdaq de plusieurs jours bloquaient l'évaluation intraday (anti-hedging). Au moins une évaluation réussie en
   // ≤ 30 j 23 → 37 %, délai médian 125 → 42 j, coût par compte financé 222 → 190 $ ; retraits du financé 5 159 → 4 406 $

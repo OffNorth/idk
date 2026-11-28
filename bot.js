@@ -81,7 +81,7 @@ function tick() {
 /* Accès                                                               */
 /* ------------------------------------------------------------------ */
 
-const ADMIN = new Set(['bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'video', 'fonds', 'signature', 'financer', 'fund', 'reset']);
+const ADMIN = new Set(['backup', 'bilan', 'testcanal', 'settings', 'pause', 'resume', 'backtest', 'pronostic', 'verif', 'adapt', 'video', 'fonds', 'signature', 'financer', 'fund', 'reset']);
 const isAdmin = (ctx) => !cfg.allowedUserIds.size || (ctx.from && cfg.allowedUserIds.has(String(ctx.from.id)));
 
 // Les boutons et les commandes de consultation sont ouverts à tout le groupe ; les réglages sont réservés.
@@ -192,6 +192,15 @@ bot.command(['historique', 'history', 'trades'], async (ctx) => {
 
 // Vérification de cohérence des trades (paper + compte FTMO), réservée aux admins
 // Export des statistiques (ouvert à tous depuis le 27/11/2026, sans secret) : un fichier JSON avec les comptes, trades, refus de l'IA, adaptation
+// Sauvegarde des données (admin) : tout de suite, et état de la dernière sauvegarde
+bot.command('backup', async (ctx) => {
+  const r = await require('./src/backup').pushBackup(cfg, store, { force: true });
+  const info = store.getMeta('lastBackupInfo') || {};
+  await ctx.reply(r.ok
+    ? `💾 Backup done: ${r.files} files (${(r.bytes / 1024).toFixed(0)} KB, ${(r.packed / 1024).toFixed(0)} KB compressed). Automatic backup every day; the previous one is kept. If the server loses its data, the bot restores the last backup by itself at startup.`
+    : `❌ Backup failed: ${r.error || r.skipped}${info.at ? ` · last good backup ${new Date(info.at).toISOString().slice(0, 16).replace('T', ' ')} UTC` : ''}`);
+});
+
 bot.command('export', async (ctx) => {
   try {
     const data = JSON.stringify(require('./src/export').buildExport(cfg, store, version()));
@@ -435,6 +444,13 @@ console.log(`Démarrage du bot (version ${version()}, commit ${require('./src/ve
   await step('bouton du menu', bot.api.setChatMenuButton({ menu_button: { type: 'commands' } })).catch(() => {});
   console.log('… vérification du groupe');
   await step('vérification du groupe', channel.check()).catch((err) => console.warn(`⚠️ ${err.message} (on continue)`));
+  // Serveur réinitialisé (dossier de données vide) : restauration automatique de la dernière sauvegarde
+  if (cfg.backupRestore !== false && require('./src/backup').looksEmpty(cfg)) {
+    console.log('… dossier de données vide : restauration de la dernière sauvegarde');
+    const r = await require('./src/backup').restoreBackup(cfg);
+    if (r.ok) { store.meta = JSON.parse(require('fs').readFileSync(store.metaFile, 'utf8') || '{}'); console.log(`✅ Sauvegarde du ${new Date(r.at).toISOString().slice(0, 16)} restaurée (${r.restored} fichiers, ${r.version})`); }
+    else console.log(`(pas de restauration : ${r.error})`);
+  }
   console.log('… premier passage sur les marchés (20 à 60 s)');
 
   // Stratégies de scalp (bougies 1 / 5 min) actives : vérification chaque minute pour entrer à la clôture de la bougie

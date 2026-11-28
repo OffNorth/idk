@@ -24,3 +24,26 @@ test('export des statistiques : comptes et trades, sans secret ni caractéristiq
   assert.strictEqual(out.summary.ftmo.bestDayShareOfGain, 100);
   assert.ok(!json.includes('SECRET') && !json.includes('-100999') && !json.includes(dir));
 });
+
+test('sauvegarde : clé dérivée du token, fichiers privés compressés, restauration sans écraser ni la clé du site', async () => {
+  const fs = require('fs'); const os = require('os'); const path = require('path');
+  const B = require('../src/backup');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bk-'));
+  fs.writeFileSync(path.join(dir, 'ftmo.json'), '{"balance":101000}');
+  fs.writeFileSync(path.join(dir, 'bot-push-key.json'), '{"key":"secret"}');
+  const cfg = { telegramToken: '1:SECRET', dataDir: dir, backup: true, backupUrl: 'https://exemple.test/bot' };
+  const k = B.keyOf(cfg);
+  assert.ok(/^[A-Za-z0-9_-]{43}$/.test(k) && !k.includes('SECRET'));
+  const { Store } = require('../src/store');
+  let sent = null;
+  const fetchImpl = async (url, o) => { if (url.includes('backup_put')) { sent = JSON.parse(o.body); return { ok: true, json: async () => ({ ok: true }) }; } return { ok: true, json: async () => ({ data: sent.data }) }; };
+  const r = await B.pushBackup(cfg, new Store(dir), { force: true, fetchImpl });
+  assert.ok(r.ok && r.files >= 1);
+  const files = B.unpack(sent.data).files;
+  assert.ok(files['ftmo.json'] && !files['bot-push-key.json'], 'la clé du site n\'est jamais sauvegardée');
+  assert.strictEqual((await B.pushBackup(cfg, new Store(dir), { fetchImpl })).skipped, 'recent', 'une par jour');
+  const dir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'bk2-'));
+  const rr = await B.restoreBackup({ ...cfg, dataDir: dir2 }, { fetchImpl });
+  assert.ok(rr.ok && fs.readFileSync(path.join(dir2, 'ftmo.json'), 'utf8').includes('101000'));
+  assert.ok(B.looksEmpty({ dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'bk3-')) }) && !B.looksEmpty({ dataDir: dir2 }));
+});

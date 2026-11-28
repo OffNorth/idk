@@ -15,6 +15,11 @@ number per commit since that step.
 | v4.0 → v4.111 | 20/11/2026 | simulated Lucid account (LucidFlex 50K, /lucid), funded accounts, website, PDF, videos |
 | v5.0 → | 26/11/2026 | bot in English, Binance real-time gold / silver, Lucid optimizations |
 
+## v5.43 — 28/11/2026
+- Daily backup of the bot's data (simulated accounts, trades, archives, AI learning, game) to the website's server,
+  private (key derived from the bot token), the previous backup kept. If the server loses its data, the bot restores
+  the last backup by itself at startup. /backup (admin) backs up now; npm run restore to restore by hand.
+
 ## v5.42 — 28/11/2026
 - Sunday analysis: the bot publishes the Lucid strategies' paper trades and the AI scorecard to the website;
   scripts/weekly-stats.js + scripts/weekly-report.py build the weekly PDF (docs/weekly/, website “Week” button), written
