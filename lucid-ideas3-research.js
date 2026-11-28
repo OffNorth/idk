@@ -743,5 +743,27 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     // Contrôle : le même ensemble sur des départs décalés (années impaires / paires), pour voir si c'est stable
     console.log('');
   }
+  /* ---------- 18. Test de résistance : chaque trade perd h R (frais, glissement, avantage surestimé) ---------- */
+  if (want(18)) {
+    console.log('=== 18. Test de résistance : avantage réduit de h R par trade ===');
+    const hc = (l, h) => (h ? l.map((t) => ({ ...t, pnlPct: t.pnlPct - h * stopPct(t) })) : l);
+    const avgR = (l) => l.reduce((a2, t) => a2 + R(t), 0) / Math.max(1, l.length);
+    // FTMO réglage actuel : filtre de tendance (les deux, rien si neutre) + verrou du jour à +5 %
+    const YS = { nas100: '^NDX', spx: '^GSPC', dow: '^DJI', russell: '^RUT', silver: 'SI=F', gold: 'GC=F', tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA', eurusd: 'EURUSD=X' };
+    const TR = {}; const emaOf = (c, n) => { const k = 2 / (n + 1); let e = c[0]; return c.map((x) => (e = x * k + e * (1 - k))); };
+    for (const [m, sym] of Object.entries(YS)) { const d = DLY?.[m]?.c?.length ? DLY[m].c : (await cachedYahoo(CACHE, sym, '1d', {}, 72)).filter((k) => k.c > 0); const c = d.map((k) => k.c); TR[m] = { t: d.map((k) => k.t), c, e50: emaOf(c, 50), e200: emaOf(c, 200) }; }
+    const trendAt = (m, t) => { const T = TR[m]; if (!T) return 0; let lo = 0, hi = T.t.length - 1, i = -1; while (lo <= hi) { const md = (lo + hi) >> 1; if (T.t[md] + 86400 <= t) { i = md; lo = md + 1; } else hi = md - 1; }
+      if (i < 200) return 0; return T.c[i] > T.e50[i] && T.e50[i] > T.e200[i] ? 1 : T.c[i] < T.e50[i] && T.e50[i] < T.e200[i] ? -1 : 0; };
+    const FTL = LIST('ftmo').filter((t) => { if (!t.intraday) return true; const tr = trendAt(t.market, t.entryT); return tr !== 0 && (tr === 1) === (t.side === 'long'); });
+    const CUR = { sizer: (t, st) => baseSizer(t, st) * (st.paid ? 1 / 3 : 1) };
+    for (const h of [0, 0.02, 0.03, 0.05, 0.1]) {
+      console.log(`-- h = ${h} R par trade (R moyen : Lucid intraday ${avgR(hc(INTRA, h)).toFixed(3)} · journalières ${avgR(hc(DAILY, h)).toFixed(3)} · FTMO ${avgR(hc(FTL, h)).toFixed(3)})`);
+      console.log(`   FTMO (réglage actuel)         ${fmt(evaluate('ftmo', hc(FTL, h), { dayLockUsd: 5000 }))}`);
+      for (const [k, [l, o, intraOnly]] of Object.entries(EVALS)) console.log(`   Lucid ${k.padEnd(9)}               ${fmtE(evalStats(hc(l, h), o), intraOnly)}`);
+      console.log(`   Lucid deux évaluations        ${multi([hc(INTRA, h), hc(DAILY, h)])}`);
+      fline('Lucid financé', funded(hc(FLD, h), CUR));
+    }
+    console.log('');
+  }
   console.log('\n✅ = rien ne baisse et au moins un chiffre monte (évaluations : réussite, ≤ 14 j, ≤ 30 j, échecs ≤ 14 j ; financé : retraits, comptes perdus)');
 })().catch((e) => { console.error(e); process.exit(1); });
