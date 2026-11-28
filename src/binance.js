@@ -9,11 +9,11 @@
  */
 const SYMBOL = { gold: 'XAUUSDT', silver: 'XAGUSDT' };
 const HOST = 'https://fapi.binance.com';
-const INTERVAL = { 60: '1m', 300: '5m', 900: '15m' };
+const INTERVAL = { 60: '1m', 300: '5m', 900: '15m', 3600: '1h', 14400: '4h', 86400: '1d' };
 
 /** [openTime ms, open, high, low, close, volume, …] → { t (s), o, h, l, c, v } */
 const parseKlines = (rows) => (Array.isArray(rows) ? rows : [])
-  .map((r) => ({ t: Math.floor(Number(r[0]) / 1000), o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] }))
+  .map((r) => ({ t: Math.floor(Number(r[0]) / 1000), o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5], ...(r[9] !== undefined ? { bv: +r[9] } : {}) })) // bv : achats agressifs (delta)
   .filter((c) => Number.isFinite(c.t) && c.c > 0);
 
 /** Une page de bougies (au plus 1500). */

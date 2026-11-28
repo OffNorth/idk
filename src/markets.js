@@ -397,10 +397,45 @@ const dowMarket = (cfg) => sessionMarket(cfg, { id: 'dow', key: 'dow', name: 'Do
 // Russell 2000 (^RUT, micro M2K) : journalières du compte Lucid (npm run lucid-research4)
 const russellMarket = (cfg) => sessionMarket(cfg, { id: 'russell', key: 'russell', name: 'Russell 2000', emoji: '🐎', symbol: '^RUT' });
 
+/**
+ * Crypto (BTC, ETH) : contrats perpétuels publics de Binance, bougies 4 h avec le volume des achats agressifs (delta),
+ * 15 min pour les stops, 1 jour pour le contexte ; cote 24 h / 24. Binance injoignable (pays bloqué) : Yahoo (BTC-USD,
+ * 1 h regroupées en 4 h, sans delta → aucune nouvelle entrée, les positions ouvertes restent suivies).
+ */
+function cryptoMarket(cfg, { id, name, emoji, symbol, yahoo }) {
+  const bnc = binance;
+  return {
+    id, name, emoji, file: `${id}.json`, enabled: cfg[`${id}Enabled`] ?? !!cfg.cryptoEnabled, strategies: cfg[`${id}Strategies`] || ['x_brk4h', 'hold'],
+    startCapital: 1000, positionPct: 100, feePct: 0.07, financingPct: 8, yahooSymbol: yahoo, session: false, crypto: true,
+    async fetch() {
+      let s4 = null, s15 = null, d1 = null, src = 'binance';
+      try {
+        [s4, s15, d1] = await Promise.all([
+          cached(`${id}4h`, 300, () => bnc.klines(symbol, 14400, { limit: 400 })),
+          cached(`${id}15m`, 60, () => bnc.klines(symbol, 900, { limit: 300 })),
+          cached(`${id}1d`, 3600, () => bnc.klines(symbol, 86400, { limit: 500 })),
+        ]);
+      } catch {
+        src = 'yahoo';
+        const [h1, d] = await Promise.all([
+          cached(`${id}1hY`, 600, () => fetchYahoo(yahoo, '1h', { range: '120d', ...LIVE })),
+          cached(`${id}1dY`, 3600, () => fetchYahoo(yahoo, '1d', { range: '2y', ...LIVE })),
+        ]);
+        s4 = h1 ? aggregate(h1, 14400, 3600) : null; s15 = h1; d1 = d;
+      }
+      const last = s15?.[s15.length - 1] ?? s4?.[s4.length - 1];
+      // (même échelle de prix des deux côtés : la source est toujours notée « binance », pas de décalage de positions)
+      return { price: last?.c, stops: s15, daily: d1, fx: null, vix: null, aux: {}, series: { '4h': s4, '1d': d1, '15m': s15 }, feed: 'binance', source: src };
+    },
+  };
+}
+const btcMarket = (cfg) => cryptoMarket(cfg, { id: 'btc', name: 'Bitcoin', emoji: '₿', symbol: 'BTCUSDT', yahoo: 'BTC-USD' });
+const ethMarket = (cfg) => cryptoMarket(cfg, { id: 'eth', name: 'Ether', emoji: '💠', symbol: 'ETHUSDT', yahoo: 'ETH-USD' });
+
 /** Tous les marchés (actifs ou non). */
 function allMarkets(cfg) {
   // Nasdaq en premier : marché par défaut du panneau, du résumé, des bilans et du jeu ; l'or suit
-  return [nasMarket(cfg), goldMarket(cfg), spxMarket(cfg), eurusdMarket(cfg), silverMarket(cfg), dowMarket(cfg), russellMarket(cfg),
+  return [nasMarket(cfg), goldMarket(cfg), spxMarket(cfg), eurusdMarket(cfg), silverMarket(cfg), dowMarket(cfg), russellMarket(cfg), btcMarket(cfg), ethMarket(cfg),
     ...require('./stocks').STOCK_IDS.map((id) => { const S = require('./stocks').STOCKS[id]; return sessionMarket(cfg, { id, key: id, name: S.name, emoji: '📈', symbol: S.symbol }); })];
 }
 

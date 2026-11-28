@@ -55,6 +55,8 @@ const scaledContracts = (tiers, profit) => tiers.reduce((n, [from, max]) => (pro
 const FTMO_PAYOUT = { rule: 'ftmo', every: 14 };
 
 const LUCID_FUNDED_FILE = 'lucid-funded.json';
+/** Marchés crypto (compte FTMO seulement ; pas de micro-contrat crypto pris en compte pour Lucid). */
+const CRYPTO_MARKETS = new Set(['btc', 'eth']);
 /** Lucid financé, après le 1er retrait : risque ramené de × LUCID_FUNDED_RISK_MUL à × LUCID_FUNDED_RISK_MUL_AFTER. */
 const lucidAfterPayoutMul = (cfg) => { const b = cfg.lucidFundedRiskMul ?? 1, a = cfg.lucidFundedRiskMulAfter ?? b; return b > 0 ? a / b : 1; };
 /**
@@ -128,12 +130,14 @@ function accountOf(cfg, id = 'gold') {
     // Compte unique or + Nasdaq (npm run ftmo-combo) : chaque marché garde son propre risque par trade
     return {
       id: 'gold', firm: 'FTMO', label: 'Gold + Nasdaq + EUR/USD', emoji: '🌍', file: 'ftmo.json', enabled: cfg.ftmoEnabled,
-      strategies: [...cfg.ftmoStrategies, ...cfg.ftmoNasStrategies], risk: cfg.ftmoRisk,
+      strategies: [...cfg.ftmoStrategies, ...cfg.ftmoNasStrategies, ...(cfg.cryptoEnabled ? cfg.ftmoCryptoStrategies || [] : [])], risk: cfg.ftmoRisk,
       // Stratégies intraday (tf ≠ 1d) : risque propre (FTMO_INTRADAY_RISK_PCT), plus petit que celui des journalières
       // × FTMO_RISK_MUL (1,25 : challenge ≈ 2–3 semaines plus rapide, npm run speed)
       // Réglage « comme Lucid » (npm run ftmo-lucidlike) : intraday × FTMO_EVAL_INTRADAY_MUL pendant l'évaluation ;
       // compte financé : tout × FTMO_FUNDED_RISK_MUL (le compte dure et décroche les hausses de capital)
       riskOf: (marketId, strat, phase) => {
+        // Crypto (cassure 4 h BTC / ETH) : risque propre FTMO_CRYPTO_RISK_PCT (0,25 %), × FTMO_FUNDED_RISK_MUL une fois financé
+        if (CRYPTO_MARKETS.has(marketId)) return (cfg.ftmoCryptoRisk ?? 0.25) * (phase === 'funded' ? cfg.ftmoFundedRiskMul ?? 1 : 1);
         const intra = !!(strat && strat.tf && strat.tf !== '1d');
         const r = (cfg.ftmoRiskMul ?? 1) * (intra && cfg.ftmoIntradayRisk ? cfg.ftmoIntradayRisk
           : marketId === 'nas100' ? cfg.ftmoComboNasRisk : marketId === 'eurusd' ? cfg.ftmoEurRisk ?? cfg.ftmoRisk : marketId === 'spx' ? cfg.ftmoSpxRisk ?? cfg.ftmoRisk : cfg.ftmoRisk);
@@ -519,7 +523,7 @@ function createFtmo({ cfg, store, account = 'gold' }) {
         }
         // FTMO : intraday seulement dans le sens de la tendance journalière de la veille (clôture, EMA 50, EMA 200 alignées ;
         // rien si neutre), FTMO_TREND_FILTER (npm run lucid-ideas3, idée 17) ; pas sur Lucid (moins bien en test)
-        if (A.firm !== 'Lucid' && cfg.ftmoTrendFilter && require('./strategies').tfOf(ev.strategy) !== '1d') {
+        if (A.firm !== 'Lucid' && cfg.ftmoTrendFilter && require('./strategies').tfOf(ev.strategy) !== '1d' && !CRYPTO_MARKETS.has(ev.market.id)) {
           const tr = store.loadJson(`${ev.market.id}.json`, {})?.trend;
           if (tr && (tr.dir === 0 || (tr.dir === 1) !== (p.side === 'long'))) { s.trendSkip = (s.trendSkip || 0) + 1; continue; }
         }
@@ -594,7 +598,8 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           }
           notional = lots * entry * mc.mult;
         }
-        if (ai && !ai.ok && aiMode === 'block') {
+        // (crypto : l'IA n'a jamais vu ces marchés → avis seulement, jamais de refus)
+        if (ai && !ai.ok && aiMode === 'block' && !CRYPTO_MARKETS.has(ev.market.id)) {
           // Refusé : gardé (avec la taille qu'il aurait eue) pour le bilan des trades refusés
           s.aiRefused = (s.aiRefused || 0) + 1;
           const r = { market: ev.market.id, sid: ev.strategy.id, name: ev.strategy.name, side: p.side, entry: p.entry, sl: p.initSl ?? p.sl, entryT: p.entryT, notional, risk: (notional * stopPct) / 100, ai: { p: ai.p, ok: ai.ok, min: ai.min }, watch: true };

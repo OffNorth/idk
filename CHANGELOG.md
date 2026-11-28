@@ -15,6 +15,11 @@ number per commit since that step.
 | v4.0 → v4.111 | 20/11/2026 | simulated Lucid account (LucidFlex 50K, /lucid), funded accounts, website, PDF, videos |
 | v5.0 → | 26/11/2026 | bot in English, Binance real-time gold / silver, Lucid optimizations |
 
+## v5.45 — 28/11/2026
+- New markets BTC and ETH (Binance perpetuals, 4h candles with the real aggressive-buy volume; Yahoo as a fallback):
+  4h breakout confirmed by volume and delta, buys only, stop 1.5 ATR then trailing 3 ATR, 10 days max, on the FTMO account
+  only at 0.25% (FTMO pass within a year on 2020–26: 53% → 66%). Engine: optional maximum holding time per strategy.
+
 ## v5.44 — 28/11/2026
 - FTMO: intraday signals only in the direction of the daily trend (close, EMA 50, EMA 200 aligned the day before;
   nothing when neutral) and day locked at +5% during the challenge (open positions closed). Research (ideas 16–17):

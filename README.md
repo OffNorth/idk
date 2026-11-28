@@ -153,6 +153,7 @@ The most useful ones:
 | `LUCID_COMBINED` | 1 | third Lucid evaluation taking intraday + daily on the same account |
 | `LUCID_EVAL_GOLD` / `LUCID_EVAL_GOLD_RISK_PCT` | `gold:g_nypdl` / 0.2 | gold intraday on the Lucid evaluations only (never funded) |
 | `LUCID_FUNDED_STRATEGIES` | `russell:rsi2` | daily strategies taken only by the funded Lucid account (payouts $4,406 → $5,346 over 12 months, Nov 24–26) |
+| `CRYPTO` / `FTMO_CRYPTO_RISK_PCT` | 1 / 0.25 | BTC and ETH (Binance perpetuals): 4h breakout with volume and real delta, buys only, FTMO account only |
 | `FTMO_TREND_FILTER` / `FTMO_DAY_LOCK_PCT` | 1 / 5 | FTMO intraday only with the daily trend; day locked at +5% during the challenge (pass 42/47/69% → 51/53/84%) |
 | `LUCID_NO_NAS_DAILY` | 1 | no Nasdaq daily strategies on Lucid (multi-day Nasdaq buys blocked the intraday evaluation): median time to a passed evaluation 125 → 42 days, funded payouts ≈ −15% |
 | `LUCID_NO_CROSS_HEDGE` | 1 | no opposite positions from one Lucid account to another (Lucid forbids hedging between accounts) |

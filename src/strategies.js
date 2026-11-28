@@ -1203,12 +1203,13 @@ function withBE(s, k, tp, id, name, desc) {
 
 /* Intraday NAS100 (formation TradingView, module 5) : voir src/intraday.js */
 STRATEGIES.push(...require('./intraday').INTRADAY);
+STRATEGIES.push(...require('./cryptoStrats').CRYPTO); // BTC / ETH : cassure 4 h + volume + delta (compte FTMO)
 
 /* ------------------------------------------------------------------ */
 /* Unités de temps                                                     */
 /* ------------------------------------------------------------------ */
 
-const TF_SEC = { '1m': 60, '5m': 300, '15m': 900, '1h': 3600, '6h': 21600, '1d': 86400 };
+const TF_SEC = { '1m': 60, '5m': 300, '15m': 900, '1h': 3600, '4h': 14400, '6h': 21600, '1d': 86400 };
 const tfOf = (s) => s.tf || '1h';
 
 /** Copie d'une stratégie sur une autre unité de temps (id « ema@6h »). */

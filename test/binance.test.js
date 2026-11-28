@@ -110,3 +110,27 @@ test('site : trades passés par Binance ramenés à l’échelle des bougies Yah
   toChartScale(closed, off);
   assert.deepStrictEqual(closed.map((t) => t.exit), [4090, 4110], 'trade clos avant le passage sur Binance : inchangé');
 });
+
+test('crypto : cassure 4 h + volume + delta (achats seuls), sortie au bout de 10 jours, risque 0,25 % sur FTMO seulement', () => {
+  const { CRYPTO } = require('../src/cryptoStrats');
+  const { backtest } = require('../src/gold');
+  const s = CRYPTO[0];
+  // 40 bougies calmes puis une cassure avec gros volume acheteur, puis une lente montée
+  const bars = [];
+  for (let i = 0; i < 120; i++) {
+    const brk = i === 40;
+    const c = i < 40 ? 100 + (i % 2) : 110 + (i - 40) * 0.05;
+    bars.push({ t: i * 14400, o: c - 0.2, h: c + 0.5, l: c - 0.5, c, v: brk ? 500 : 100 + (i % 3), bv: brk ? 450 : 50 });
+  }
+  const r = backtest(s, bars, { size: 1000, feePct: 0.07, barSec: 14400 });
+  assert.ok(r.list.length >= 1 && r.list[0].side === 'long', 'achat à la cassure');
+  assert.strictEqual(r.list[0].reason, 'time limit', 'sortie au bout de 10 jours');
+  assert.ok(r.list[0].exitT - r.list[0].entryT >= 10 * 86400);
+  const { parseKlines } = require('../src/binance');
+  assert.strictEqual(parseKlines([[0, '1', '2', '0.5', '1.5', '10', 0, 0, 0, '6']])[0].bv, 6, 'achats agressifs lus');
+  const cfg = { ...require('../src/config'), ftmoEnabled: true, lucidEnabled: true, cryptoEnabled: true };
+  const { accountOf } = require('../src/ftmoAccount');
+  assert.strictEqual(accountOf(cfg, 'gold').riskOf('btc', s, 1), 0.25);
+  assert.ok(accountOf(cfg, 'gold').strategies.includes('btc:x_brk4h'));
+  for (const id of ['lucid', 'lucid2', 'lucid3', 'lucidf']) assert.strictEqual(accountOf(cfg, id).riskOf('btc', s, 1), 0, `${id} : pas de crypto`);
+});

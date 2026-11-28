@@ -225,6 +225,11 @@ module.exports = {
   // 51/53/84 % de réussite < 1 an (2009–19 | 2020–26 | nov. 24–26). Intraday seulement dans le sens de la tendance
   // journalière (rien si neutre) ; journée verrouillée à +5 % pendant le challenge (positions fermées). FTMO seulement.
   ftmoTrendFilter: num('FTMO_TREND_FILTER', 1) === 1,
+  // Crypto (BTC, ETH, Binance) : cassure 4 h + volume + delta, achats seuls, compte FTMO seulement (npm run crypto4h,
+  // lucid-ideas3 idée 19, 28/11/2026 : réussite FTMO 51/53/84 % → 50/66/84 %) ; CRYPTO=0 pour couper
+  cryptoEnabled: num('CRYPTO', 1) === 1,
+  ftmoCryptoStrategies: list('FTMO_CRYPTO_STRATEGIES', 'btc:x_brk4h,eth:x_brk4h'),
+  ftmoCryptoRisk: num('FTMO_CRYPTO_RISK_PCT', 0.25),
   ftmoDayLockPct: num('FTMO_DAY_LOCK_PCT', 5),
   // Sauvegarde quotidienne des données (comptes, trades, IA, jeu) sur le serveur du site, privée (clé dérivée du token du
   // bot) ; restauration automatique au démarrage si le dossier de données est vide (BACKUP_RESTORE)
@@ -379,7 +384,7 @@ module.exports = {
   cfg.trialStrategies = list('TRIAL_STRATEGIES', '');
   if (cfg.ftmoOnly) {
     const all = [...(cfg.ftmoEnabled ? cfg.ftmoStrategies : []), ...(cfg.ftmoEnabled && (cfg.ftmoNasEnabled || cfg.ftmoCombined) ? cfg.ftmoNasStrategies : []),
-      ...(cfg.ftmoEnabled && cfg.lucidEnabled ? [...cfg.lucidIntradayStrategies, ...cfg.lucidDailyStrategies, ...cfg.lucidFundedStrategies] : [])]; // stratégies propres au compte Lucid
+      ...(cfg.ftmoEnabled && cfg.lucidEnabled ? [...cfg.lucidIntradayStrategies, ...cfg.lucidDailyStrategies, ...cfg.lucidFundedStrategies] : []), ...(cfg.cryptoEnabled ? cfg.ftmoCryptoStrategies : [])]; // stratégies propres au compte Lucid
     // + candidates de l'adaptation automatique (suivies en paper sans être publiées, promues si elles font mieux)
     const cand = cfg.autoAdapt && cfg.adaptStrategies ? cfg.adaptCandidates : [];
     const of = (m) => [...new Set([...all, ...cfg.trialStrategies, ...cand].filter((x) => x.startsWith(`${m}:`)).map((x) => x.slice(m.length + 1))), 'hold'];
@@ -390,6 +395,9 @@ module.exports = {
     cfg.silverStrategies = of('silver');
     cfg.dowStrategies = of('dow');
     cfg.russellStrategies = of('russell');
+    cfg.btcStrategies = of('btc');
+    cfg.ethStrategies = of('eth');
+    cfg.btcEnabled = cfg.ethEnabled = cfg.cryptoEnabled;
     // Actions / ETF (FTMO) : un marché par titre, ses stratégies prises dans FTMO_STRATEGIES
     for (const id of require('./stocks').STOCK_IDS) {
       cfg[`${id}Enabled`] = cfg.stocksEnabled; cfg[`${id}Strategies`] = of(id); cfg[`${id}StartCapital`] = 1000; cfg[`${id}FeePct`] = 0.005;

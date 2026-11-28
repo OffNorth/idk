@@ -692,6 +692,26 @@ story.append(KeepTogether([Paragraph('FTMO: less dependence on big days (28/11/2
     ('Risk by cushion during the evaluation', 'tested on 27/11: Lucid intraday passes more but slower; daily and combined worse', '✘'),
     ], [56 * mm, 86 * mm, 36 * mm])]))
 
+story.append(KeepTogether([Paragraph('Crypto: 4h breakout with volume and real delta (28/11/2026)', h2), Paragraph(
+    'Strategy proposed by the user, rebuilt on Binance perpetuals (data.binance.vision: 4h candles with the real volume of aggressive buys, '
+    'funding every 8 h, 0.07% costs per side). Entry: 4h close above the high of the previous 20 candles, volume and delta (aggressive buys − '
+    'aggressive sells) above their 20-candle average by 0.5 standard deviation. Stop 1.5 ATR, trailing stop 3 ATR from the best close, 10 days at most.', body),
+    Spacer(1, 3), small_table([
+    ('Market (npm run crypto4h)', 'Breakout only', 'With volume + delta', 'Buys / sells (with filter)'),
+    ('BTC 2020–2026', '+0.27 R (459)', '+0.36 R (397)', '+0.59 / +0.11 R'),
+    ('ETH 2020–2026', '+0.21 R (477)', '+0.29 R (405)', '+0.44 / +0.11 R'),
+    ('Gold / silver (Binance, ≈ 1 year)', '+0.01 / −0.02 R', '+0.05 / +0.07 R', 'too few trades'),
+    ('Filter chosen on 2020–23, judged on 2024–26 (BTC + ETH)', '+0.22 R', '+0.35 R', 'the filter adds ≈ +0.1 R out of sample'),
+    ], [62 * mm, 34 * mm, 38 * mm, 46 * mm]), Spacer(1, 3), small_table([
+    ('FTMO account (current settings) + crypto', '2009–19', '2020–26', 'Nov 24–26'),
+    ('Current', '51%', '53%', '84%'),
+    ('<b>+ BTC / ETH, buys only, 0.25% (current, 28/11/2026)</b>', '50% (no crypto before 2020)', '<b>66%</b>', '84%'),
+    ('+ buys and sells, 0.25%', '50%', '65%', '84%'),
+    ('+ at 1% risk', '50%', '33–56%', '63–86%'),
+    ], [72 * mm, 36 * mm, 30 * mm, 30 * mm]), Paragraph(
+    'Buys carry the gain: 2020–2026 was very bullish for crypto; a long bear market would remove this contribution. 30% winners only: long '
+    'losing streaks while waiting for the big trends. FTMO only (CFD on BTC / ETH), never on Lucid; the AI only gives its opinion on these signals.', note)]))
+
 story += part(4, 'The bot day to day')
 story.append(KeepTogether([Paragraph('Execution, notifications and tools', h2), Paragraph(
     f'<b>“Real-life” execution</b>: the FTMO and Lucid accounts enter and exit (on signal) at the price {fc["fd"]:g} s after the signal; stops and '

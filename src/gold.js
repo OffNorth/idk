@@ -226,6 +226,8 @@ function backtest(strategy, candles, {
       if (hit) close(hit.price, hit.reason, c.t);
     }
     const sig = strategy.evaluate(ind, i);
+    // Durée maximale (strategy.maxHoldSec) : sortie à la clôture
+    if (pos && strategy.maxHoldSec && c.t - pos.entryT >= strategy.maxHoldSec) close(c.c, 'time limit', c.t);
     if (pos) {
       trailStop(strategy, pos, ind, i);
       if ((pos.side === 'long' && sig.exitLong) || (pos.side === 'short' && sig.exitShort)) close(c.c, 'exit signal', c.t);
@@ -437,6 +439,9 @@ class MarketTrader {
       if (i < strat.warmup || closed[i].t <= acc.lastEvalT) continue;
       acc.lastEvalT = closed[i].t;
       const sig = strat.evaluate(ind, i);
+      if (acc.position && strat.maxHoldSec && closed[i].t + (TF_SEC[tfOf(strat)] || 0) - acc.position.entryT >= strat.maxHoldSec) {
+        events.push(this.#close(strat, acc, price, 'time limit', now));
+      }
       if (acc.position) {
         trailStop(strat, acc.position, ind, i);
         const p = acc.position;
