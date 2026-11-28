@@ -119,6 +119,18 @@ function openPos(side, price, sig, size, t) {
  * Clôture d'une position. feePct = frais par côté (%), financingPct = coût de financement annuel (%)
  * appliqué au prorata des jours en position (CFD : « swap » de nuit).
  */
+/**
+ * Tendance journalière à la dernière clôture TERMINÉE (bougie du jour en cours exclue) : 1 si clôture > EMA 50 > EMA 200,
+ * −1 si clôture < EMA 50 < EMA 200, 0 sinon (neutre) ; null s'il manque de l'historique (< 200 jours).
+ */
+function dailyTrend(daily, now) {
+  const done = daily.filter((k) => k.t + 86400 <= now && k.c > 0);
+  if (done.length < 210) return null;
+  const ema = (n) => { const k = 2 / (n + 1); let e = done[0].c; for (const d of done) e = d.c * k + e * (1 - k); return e; };
+  const c = done[done.length - 1].c, e50 = ema(50), e200 = ema(200);
+  return { t: done[done.length - 1].t, dir: c > e50 && e50 > e200 ? 1 : c < e50 && e50 < e200 ? -1 : 0, c, e50, e200 };
+}
+
 function closePos(pos, price, reason, t, feePct, financingPct = 0) {
   const dir = pos.side === 'long' ? 1 : -1;
   const days = Math.max(0, (t - pos.entryT) / 86400);
@@ -388,6 +400,8 @@ class MarketTrader {
     this.state.lastBarT = stops?.[stops.length - 1]?.t ?? null; // début de la dernière bougie 5 min (retard de la source)
     // Contexte de marché pour l'IA validatrice du compte FTMO (60 dernières bougies journalières, VIX)
     if (daily?.length) this.state.ctx = { daily: daily.slice(-60).map((k) => ({ t: k.t, c: k.c })), vix: vix?.length ? vix.slice(-5).map((k) => ({ t: k.t, c: k.c })) : null };
+    // Tendance journalière de la veille (clôture vs EMA 50 vs EMA 200), pour le filtre de tendance de l'intraday FTMO
+    if (daily?.length) this.state.trend = dailyTrend(daily, Math.floor(Date.now() / 1000));
 
     for (const strat of this.strategies) {
       const acc = this.account(strat.id);
@@ -483,4 +497,4 @@ class MarketTrader {
   }
 }
 
-module.exports = { MarketTrader, backtest, unrealized, fetchHistory, fetchBacktestData, fetchCandles, cachedHistory, rollingHistory, fetchEurUsd, hitInCandle, closePos };
+module.exports = { dailyTrend, MarketTrader, backtest, unrealized, fetchHistory, fetchBacktestData, fetchCandles, cachedHistory, rollingHistory, fetchEurUsd, hitInCandle, closePos };

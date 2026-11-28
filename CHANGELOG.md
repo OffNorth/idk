@@ -15,6 +15,12 @@ number per commit since that step.
 | v4.0 → v4.111 | 20/11/2026 | simulated Lucid account (LucidFlex 50K, /lucid), funded accounts, website, PDF, videos |
 | v5.0 → | 26/11/2026 | bot in English, Binance real-time gold / silver, Lucid optimizations |
 
+## v5.44 — 28/11/2026
+- FTMO: intraday signals only in the direction of the daily trend (close, EMA 50, EMA 200 aligned the day before;
+  nothing when neutral) and day locked at +5% during the challenge (open positions closed). Research (ideas 16–17):
+  pass within a year 42/47/69% → 51/53/84%. Not on Lucid (worse there).
+- Tested and rejected: one position per idea, removing weak strategies, stronger daily strategies.
+
 ## v5.43 — 28/11/2026
 - Daily backup of the bot's data (simulated accounts, trades, archives, AI learning, game) to the website's server,
   private (key derived from the bot token), the previous backup kept. If the server loses its data, the bot restores

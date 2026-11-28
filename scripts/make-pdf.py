@@ -680,6 +680,18 @@ story.append(KeepTogether([Paragraph('Lucid: new strategies tested (27/11/2026)'
     ], [52 * mm, 90 * mm, 36 * mm])]))
 
 
+story.append(KeepTogether([Paragraph('FTMO: less dependence on big days (28/11/2026)', h2), Paragraph(
+    'Ideas from a reader after the first 10 days (the FTMO challenge #2 reached +10% but one day made 75% of the gain, above the 50% rule). '
+    'Tested with npm run lucid-ideas3 (ideas 15–17), kept only if nothing gets worse.', body), Spacer(1, 3), small_table([
+    ('Idea', 'Result (FTMO pass within a year, 2009–19 | 2020–26 | Nov 24–26)', 'Decision'),
+    ('<b>Intraday only with the daily trend</b> (close, EMA 50 and EMA 200 aligned the day before; nothing when neutral)', '42 / 47 / 69% → 50 / 51 / 84%; on Lucid much worse (intraday evaluation 67 → 12–35%)', '<b>added, FTMO only</b> (FTMO_TREND_FILTER)'),
+    ('<b>Day locked at +5%</b> (open positions closed)', 'with the trend filter: 51 / 53 / 84%; +3% → 29 / 40 / 55% (cuts the big days too much)', '<b>added</b> (FTMO_DAY_LOCK_PCT=5)'),
+    ('One position per idea (same market, same side, within 1 / 5 / 15 min)', 'worse everywhere (best: 42 / 45 / 67%); the “same group → less” rule already halves the size', '✘'),
+    ('Removing a weak intraday strategy (one by one)', 'without g_orb30: 51 / 47 / 73% alone, but nothing more once the trend filter is on', '✘'),
+    ('Daily strategies stronger (× 1.25 / × 1.5)', '34 / 34 / 63% and 29 / 30 / 63%', '✘'),
+    ('Risk by cushion during the evaluation', 'tested on 27/11: Lucid intraday passes more but slower; daily and combined worse', '✘'),
+    ], [56 * mm, 86 * mm, 36 * mm])]))
+
 story += part(4, 'The bot day to day')
 story.append(KeepTogether([Paragraph('Execution, notifications and tools', h2), Paragraph(
     f'<b>“Real-life” execution</b>: the FTMO and Lucid accounts enter and exit (on signal) at the price {fc["fd"]:g} s after the signal; stops and '

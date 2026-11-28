@@ -163,3 +163,31 @@ test('messages HTML longs : coupés entre deux lignes, jamais au milieu d\'une b
   const t = truncHtml(text, 4096);
   assert.ok(t.length <= 4096 && t.endsWith('…') && (t.match(/<b>/g) || []).length === (t.match(/<\/b>/g) || []).length);
 });
+
+test('FTMO : intraday dans le sens de la tendance journalière seulement, journée verrouillée à +5 %', () => {
+  const fs = require('fs'); const os = require('os'); const path = require('path');
+  const { dailyTrend } = require('../src/gold');
+  const now = Date.UTC(2026, 10, 20) / 1000;
+  const up = Array.from({ length: 260 }, (_, i) => ({ t: now - (261 - i) * 86400, c: 100 + i }));
+  assert.strictEqual(dailyTrend(up, now).dir, 1);
+  assert.strictEqual(dailyTrend(up.map((k, i) => ({ ...k, c: 400 - i })), now).dir, -1);
+  assert.strictEqual(dailyTrend(up.slice(-100), now), null, 'pas assez d\'historique');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'trend-'));
+  const { Store } = require('../src/store'); const store = new Store(dir);
+  const cfg = { ...require('../src/config'), dataDir: dir, ftmoEnabled: true, ftmoCombined: false, ftmoStrategies: ['gold:g_orb30'], ftmoAi: 'off', lucidEnabled: false, autoAdapt: false, ftmoTrendFilter: true, ftmoDayLockPct: 5, fillDelaySec: 0 };
+  const { createFtmo } = require('../src/ftmoAccount');
+  const T0 = Date.UTC(2026, 10, 16, 10) / 1000;
+  const pos = (side, k) => ({ side, entry: 4000, sl: side === 'long' ? 3990 : 4010, initSl: side === 'long' ? 3990 : 4010, entryT: T0 + k });
+  store.saveJson('gold.json', { trend: { dir: 1 }, accounts: {} });
+  const f = createFtmo({ cfg, store });
+  const ev = (side, k) => ({ type: 'open', market: { id: 'gold', name: 'Or' }, strategy: { id: 'g_orb30', name: 'ORB', tf: '5m' }, pos: pos(side, k) });
+  f.onCycle([ev('short', 0)], { gold: 4000 }, T0);
+  assert.strictEqual(Object.keys(f.load().open).length, 0, 'vente contre la tendance haussière refusée');
+  assert.strictEqual(f.load().trendSkip, 1);
+  f.onCycle([ev('long', 60)], { gold: 4000 }, T0 + 60);
+  assert.strictEqual(Object.keys(f.load().open).length, 1, 'achat dans la tendance pris');
+  // Le cours monte : le gain du jour dépasse +5 % → positions fermées
+  f.onCycle([], { gold: 4000 * 1.5 }, T0 + 120);
+  assert.strictEqual(Object.keys(f.load().open).length, 0, 'journée verrouillée');
+  assert.strictEqual(f.load().dayLocked, 1);
+});

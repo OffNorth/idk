@@ -221,6 +221,11 @@ module.exports = {
   lucidNoCrossHedge: num('LUCID_NO_CROSS_HEDGE', 1) === 1,
   // IA : apprend de tous les signaux paper, pas seulement de ceux du compte FTMO (0 = seulement les signaux des comptes)
   aiLearnAll: num('AI_LEARN_ALL', 1) === 1,
+  // Idées « moins de dépendance aux gros jours » (npm run lucid-ideas3, idées 16–17, 28/11/2026) : FTMO 42/47/69 % →
+  // 51/53/84 % de réussite < 1 an (2009–19 | 2020–26 | nov. 24–26). Intraday seulement dans le sens de la tendance
+  // journalière (rien si neutre) ; journée verrouillée à +5 % pendant le challenge (positions fermées). FTMO seulement.
+  ftmoTrendFilter: num('FTMO_TREND_FILTER', 1) === 1,
+  ftmoDayLockPct: num('FTMO_DAY_LOCK_PCT', 5),
   // Sauvegarde quotidienne des données (comptes, trades, IA, jeu) sur le serveur du site, privée (clé dérivée du token du
   // bot) ; restauration automatique au démarrage si le dossier de données est vide (BACKUP_RESTORE)
   backup: num('BACKUP', 1) === 1 && !process.env.NODE_TEST_CONTEXT,

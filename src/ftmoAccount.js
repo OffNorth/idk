@@ -517,6 +517,12 @@ function createFtmo({ cfg, store, account = 'gold' }) {
           if (cap > 0 && s.balance - s.dayStart >= cap) { s.dayCapped = (s.dayCapped || 0) + 1; continue; }
           if ((maxL ?? 0) > 0 && (s.dayLosses || 0) >= maxL) { s.dayCapped = (s.dayCapped || 0) + 1; continue; }
         }
+        // FTMO : intraday seulement dans le sens de la tendance journalière de la veille (clôture, EMA 50, EMA 200 alignées ;
+        // rien si neutre), FTMO_TREND_FILTER (npm run lucid-ideas3, idée 17) ; pas sur Lucid (moins bien en test)
+        if (A.firm !== 'Lucid' && cfg.ftmoTrendFilter && require('./strategies').tfOf(ev.strategy) !== '1d') {
+          const tr = store.loadJson(`${ev.market.id}.json`, {})?.trend;
+          if (tr && (tr.dir === 0 || (tr.dir === 1) !== (p.side === 'long'))) { s.trendSkip = (s.trendSkip || 0) + 1; continue; }
+        }
         // Pas d'achat et de vente en même temps sur le même marché (FTMO_NO_HEDGE) : le signal opposé est ignoré
         if (cfg.ftmoNoHedge !== false && Object.values(s.open).some((o) => o.market === ev.market.id && o.side !== p.side)) {
           s.skipped = (s.skipped || 0) + 1;
@@ -614,6 +620,14 @@ function createFtmo({ cfg, store, account = 'gold' }) {
       }
     }
     reconcile(s, prices, t, out);
+
+    // FTMO pendant le challenge : journée verrouillée dès +FTMO_DAY_LOCK_PCT % (positions fermées), pour qu'un seul gros
+    // jour ne pèse pas plus de 50 % du gain (npm run lucid-ideas3, idée 17, 28/11/2026)
+    if (s.phase !== 'funded' && A.firm !== 'Lucid' && cfg.ftmoDayLockPct > 0 && Object.keys(s.open).length
+      && equity(s, prices) - s.dayStart >= (s.capital * cfg.ftmoDayLockPct) / 100) {
+      closeAll(s, prices, t, `day locked at +${cfg.ftmoDayLockPct}%`, out);
+      s.dayLocked = (s.dayLocked || 0) + 1;
+    }
 
     // Règles du challenge (positions ouvertes comprises)
     if (s.phase !== 'funded') {
