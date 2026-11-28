@@ -1,0 +1,41 @@
+{
+  "daily": [
+    {
+      "agent": "all",
+      "cacheCreationTokens": 15064,
+      "cacheReadTokens": 59828,
+      "inputTokens": 2,
+      "metadata": {
+        "agents": [
+          "claude"
+        ]
+      },
+      "modelBreakdowns": [
+        {
+          "cacheCreation1hTokens": 15064,
+          "cacheCreationTokens": 15064,
+          "cacheReadTokens": 59828,
+          "cost": 0.1361456,
+          "inputTokens": 2,
+          "modelName": "claude-opus-5-5",
+          "outputTokens": 183
+        }
+      ],
+      "modelsUsed": [
+        "claude-opus-5-5"
+      ],
+      "outputTokens": 183,
+      "period": "2026-11-28",
+      "totalCost": 0.1361456,
+      "totalTokens": 75077
+    }
+  ],
+  "totals": {
+    "cacheCreationTokens": 15064,
+    "cacheReadTokens": 59828,
+    "inputTokens": 2,
+    "outputTokens": 183,
+    "totalCost": 0.1361456,
+    "totalTokens": 75077
+  }
+}
