@@ -58,7 +58,7 @@ const rMultiple = (t) => t.pnlPct / Math.max(1e-9, stopPct(t));
  * Retourne l'issue (target / daily / maxloss / open), le solde et le nombre de jours de trading.
  */
 function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverage = 30, dailyPct = 5, maxPct = 10, minDays = 4, from = 0, dayStopPct = 0, maxOpen = Infinity, riskMul = 1, sizer = null, trailingMax = false, bestDayPct = 0, levCap = null,
-  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true, start = null, dayProfitCapUsd = Infinity, maxLossesPerDay = Infinity, abandonBelow = null, scaling = null, lockOnPayout = false, dayCapFn = null } = {}) {
+  maxLossUsd = null, eodTrailing = false, lockAt = null, contracts = false, maxContracts = Infinity, minOneRisk = 0, dayOf = ftmoDay, until = Infinity, payout = null, effTarget = true, start = null, dayProfitCapUsd = Infinity, maxLossesPerDay = Infinity, abandonBelow = null, scaling = null, lockOnPayout = false, dayCapFn = null, dayLockUsd = Infinity } = {}) {
   const maxLoss = maxLossUsd ?? (capital * maxPct) / 100;
   const events = [];
   for (const t of trades) {
@@ -151,7 +151,9 @@ function runPhase(trades, { capital = 100_000, target = 10, riskPct = 1, leverag
       if (worst <= dayStart - (capital * dailyPct) / 100) return { outcome: 'daily', at: e.t, balance: worst, days: days.size, paid };
       if (worst <= floor) return { outcome: 'maxloss', at: e.t, balance: worst, days: days.size, paid };
     }
-    const gain = (notional * e.tr.pnlPct) / 100 - fees;
+    let gain = (notional * e.tr.pnlPct) / 100 - fees;
+    // Recherche : journée verrouillée à +dayLockUsd (positions fermées quand le gain du jour atteint ce niveau)
+    if (gain > 0 && Number.isFinite(dayLockUsd)) gain = Math.min(gain, Math.max(0, dayLockUsd - (balance - dayStart)));
     balance += gain;
     if (gain < 0) dayLosses++;
     dayPnl.set(d, (dayPnl.get(d) || 0) + gain);

@@ -43,7 +43,7 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
 
 (async () => {
   /* ---------- Comptes actuels (comme npm run ideas) + actions intraday du compte FTMO ---------- */
-  const { all, q5 } = await buildTrades(cfg, CACHE, { withLucid: true });
+  const { all, q5, daily: DLY } = await buildTrades(cfg, CACHE, { withLucid: true });
   const qs = nySession(aggregate(await polygonBars(CACHE, 'QQQ', 1, '2024-11-18', { maxAgeH: Infinity }), 300, 60));
   const strat = (sid) => { const [m, id] = sid.split(':'); return [m, selectStrategies([id])[0] || { id, tf: '1d' }]; };
   const nyRun = (bars, s, sid, m, mult, fee, feePct = 0.003, fin = 6) => backtest({ ...s, compute: (c, sec) => s.compute(c, sec, 'nas100') }, bars, { size: 1000, feePct, financingPct: fin, barSec: 300, market: 'nas100' }).list
@@ -664,6 +664,54 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
       }
     }
     for (const mode of ['first', 'split', 'cap']) fLine(`financé 5 min ${mode}`, funded(cluster(FLD, 300, mode).list, { sizer: (t, st) => baseSizer(t, st) * (st.paid ? 1 / 3 : 1) }));
+    console.log('');
+  }
+  /* ---------- 16. Idées d'un ami : verrou du jour, filtre de tendance, stratégies faibles, poids du journalier ---------- */
+  if (want(16)) {
+    console.log('=== 16. Moins de dépendance aux gros jours ===');
+    const refF = evaluate('ftmo', LIST('ftmo'));
+    const lineF = (name, r) => console.log(`${better(r, refF, 'ftmo') ? '✅' : '  '} FTMO  ${name.padEnd(48)} ${fmt(r)}`);
+    const lineL = (k, name, r) => console.log(`${evBetter(r, evRef[k], EVALS[k][2]) ? '✅' : '  '} Lucid ${k.padEnd(9)} ${name.padEnd(38)} ${fmtE(r, EVALS[k][2])}`);
+    console.log(`   FTMO actuel ${fmt(refF)}`);
+    // 1. Verrou du jour : positions fermées quand le gain du jour atteint X
+    console.log('-- 1. Fermer les positions quand la journée atteint +X');
+    for (const p of [3, 4, 5]) lineF(`verrou du jour à +${p} % (${p * 1000} $)`, evaluate('ftmo', LIST('ftmo'), { dayLockUsd: p * 1000 }));
+    for (const x of [900, 1200]) for (const k of ['intraday', 'combined', 'daily']) lineL(k, `verrou du jour à +${x} $`, evalStats(EVALS[k][0], { ...EVALS[k][1], dayLockUsd: x }));
+    fLine('financé : verrou du jour à +1 000 $', funded(FLD, { sizer: (t, st) => baseSizer(t, st) * (st.paid ? 1 / 3 : 1), dayLockUsd: 1000 }));
+    // 2. Filtre de tendance journalière pour l'intraday
+    console.log('-- 2. Intraday seulement dans le sens de la tendance journalière (veille)');
+    const YS = { nas100: '^NDX', spx: '^GSPC', dow: '^DJI', russell: '^RUT', silver: 'SI=F', gold: 'GC=F', tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA', eurusd: 'EURUSD=X' };
+    const TR = {};
+    const emaOf = (c, n) => { const k = 2 / (n + 1); let e = c[0]; return c.map((x) => (e = x * k + e * (1 - k))); };
+    for (const [m, sym] of Object.entries(YS)) {
+      const d = DLY?.[m]?.c?.length ? DLY[m].c : (await cachedYahoo(CACHE, sym, '1d', {}, 72)).filter((k) => k.c > 0);
+      const c = d.map((k) => k.c), e50 = emaOf(c, 50), e200 = emaOf(c, 200);
+      TR[m] = { t: d.map((k) => k.t), c, e50, e200 };
+    }
+    const trendAt = (m, t, mode) => {
+      const T = TR[m]; if (!T) return 0;
+      let lo = 0, hi = T.t.length - 1, i = -1;
+      while (lo <= hi) { const md = (lo + hi) >> 1; if (T.t[md] + 86400 <= t) { i = md; lo = md + 1; } else hi = md - 1; }
+      if (i < 200) return 0;
+      const up = mode === '200' ? T.c[i] > T.e200[i] : mode === '50/200' ? T.e50[i] > T.e200[i] : T.c[i] > T.e50[i] && T.e50[i] > T.e200[i];
+      const dn = mode === '200' ? T.c[i] < T.e200[i] : mode === '50/200' ? T.e50[i] < T.e200[i] : T.c[i] < T.e50[i] && T.e50[i] < T.e200[i];
+      return up ? 1 : dn ? -1 : 0;
+    };
+    const trendF = (l, mode, neutral) => l.filter((t) => { if (!t.intraday) return true; const tr = trendAt(t.market, t.entryT, mode); return tr === 0 ? neutral : (tr === 1) === (t.side === 'long'); });
+    for (const mode of ['200', '50/200', 'les deux']) for (const neutral of [true, false]) {
+      const nm = `tendance ${mode}${neutral ? '' : ', rien si neutre'}`;
+      lineF(nm, evaluate('ftmo', trendF(LIST('ftmo'), mode, neutral)));
+      for (const k of ['intraday', 'combined']) lineL(k, nm, evalStats(trendF(EVALS[k][0], mode, neutral), EVALS[k][1]));
+    }
+    // 3. Stratégies faibles : chaque stratégie intraday retirée une à une
+    console.log('-- 3. Retirer une stratégie intraday (une à une)');
+    const intraIds = (l) => [...new Set(l.filter((t) => t.intraday).map((t) => t.sid))];
+    for (const sid of intraIds(LIST('ftmo'))) lineF(`sans ${sid}`, evaluate('ftmo', LIST('ftmo').filter((t) => t.sid !== sid)));
+    for (const sid of intraIds(INTRA)) lineL('intraday', `sans ${sid}`, evalStats(INTRA.filter((t) => t.sid !== sid), {}));
+    // 4. Plus de poids sur le journalier (FTMO)
+    console.log('-- 4. Journalières FTMO plus fortes');
+    for (const m2 of [1.25, 1.5]) lineF(`journalières × ${m2}`, evaluate('ftmo', LIST('ftmo').map((t) => (t.intraday ? t : { ...t, riskPct: t.riskPct * m2 }))));
+    for (const m2 of [1.25, 1.5]) lineF(`journalières × ${m2}, intraday × 0,75`, evaluate('ftmo', LIST('ftmo').map((t) => ({ ...t, riskPct: t.riskPct * (t.intraday ? 0.75 : m2) }))));
     console.log('');
   }
   console.log('\n✅ = rien ne baisse et au moins un chiffre monte (évaluations : réussite, ≤ 14 j, ≤ 30 j, échecs ≤ 14 j ; financé : retraits, comptes perdus)');
