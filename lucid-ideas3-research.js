@@ -628,5 +628,43 @@ const STOCKS = { tlt: 'TLT', googl: 'GOOGL', pltr: 'PLTR', lly: 'LLY', ba: 'BA' 
     }
     console.log(`\n   Retenues : ${kept.join(', ') || 'aucune'}`);
   }
+  /* ---------- 15. Une seule position par idée (plusieurs stratégies qui entrent ensemble sur le même marché) ---------- */
+  if (want(15)) {
+    console.log('=== 15. Entrées groupées : même marché, même sens, à moins de N minutes ===');
+    // mode 'first' : une seule position (la première) ; 'split' : toutes, risque partagé ; 'cap' : risque total ≤ 1,5 × une
+    const cluster = (l, win, mode) => {
+      const xs = [...l].sort((a, b) => a.entryT - b.entryT); const out = []; const groups = [];
+      for (const t of xs) {
+        const g = groups.find((g2) => g2.m === t.market && g2.side === t.side && t.entryT - g2.t0 <= win && g2.open);
+        if (g) g.list.push(t); else groups.push({ m: t.market, side: t.side, t0: t.entryT, list: [t], open: true });
+        for (const g2 of groups) if (t.entryT - g2.t0 > win) g2.open = false;
+      }
+      let merged = 0;
+      for (const g of groups) {
+        if (g.list.length === 1) { out.push(g.list[0]); continue; }
+        merged += g.list.length - 1;
+        if (mode === 'first') out.push(g.list[0]);
+        else if (mode === 'split') for (const t of g.list) out.push({ ...t, riskPct: t.riskPct / g.list.length });
+        else for (const t of g.list) out.push({ ...t, riskPct: t.riskPct * Math.min(1, 1.5 / g.list.length) });
+      }
+      return { list: out.sort((a, b) => a.entryT - b.entryT), merged };
+    };
+    const refF = evaluate('ftmo', LIST('ftmo'));
+    console.log(`   FTMO actuel                          ${fmt(refF)}`);
+    for (const win of [60, 300, 900]) for (const mode of ['first', 'split', 'cap']) {
+      const c = cluster(LIST('ftmo'), win, mode);
+      const r = evaluate('ftmo', c.list);
+      console.log(`${better(r, refF, 'ftmo') ? '✅' : '  '} FTMO ${String(win / 60).padStart(2)} min ${mode.padEnd(5)} (${String(c.merged).padStart(4)} groupés) ${fmt(r)}`);
+    }
+    for (const [k, [l, o, intraOnly]] of Object.entries(EVALS)) {
+      console.log(`   Lucid ${k.padEnd(9)} actuel             ${fmtE(evRef[k], intraOnly)}`);
+      for (const mode of ['first', 'split', 'cap']) {
+        const c = cluster(l, 300, mode); const r = evalStats(c.list, o);
+        console.log(`${evBetter(r, evRef[k], intraOnly) ? '✅' : '  '} Lucid ${k.padEnd(9)} 5 min ${mode.padEnd(5)} (${String(c.merged).padStart(4)}) ${fmtE(r, intraOnly)}`);
+      }
+    }
+    for (const mode of ['first', 'split', 'cap']) fLine(`financé 5 min ${mode}`, funded(cluster(FLD, 300, mode).list, { sizer: (t, st) => baseSizer(t, st) * (st.paid ? 1 / 3 : 1) }));
+    console.log('');
+  }
   console.log('\n✅ = rien ne baisse et au moins un chiffre monte (évaluations : réussite, ≤ 14 j, ≤ 30 j, échecs ≤ 14 j ; financé : retraits, comptes perdus)');
 })().catch((e) => { console.error(e); process.exit(1); });
